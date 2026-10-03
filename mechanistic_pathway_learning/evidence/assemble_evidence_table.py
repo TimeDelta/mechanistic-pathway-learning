@@ -173,7 +173,29 @@ def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -
         "by_grade": {grade: int(n) for grade, n in observations.groupby("grade").size().items()},
         "weight_quantiles": {str(q): float(observations.weight.quantile(q)) for q in (0.1, 0.25, 0.5, 0.75, 0.9)},
         "monogenic_rows_with_frequency": int(genes.label_frequency.notna().sum()) if len(genes) else 0,
+        "disease_cluster_concentration_by_symptom": disease_cluster_concentration(genes) if len(genes) else {},
     }
+
+
+def disease_cluster_concentration(gene_observations: pd.DataFrame, top_clusters: int = 3) -> dict:
+    """Per symptom: share of positive genes contributed by the largest disease clusters (assumption A7 audit).
+
+    A symptom whose positives come mostly from one cluster (one disease or one group of diseases sharing
+    genes) is learnable as disease identity rather than as mechanism, and the disease-cluster split is
+    what keeps that from inflating the scores.
+    """
+    concentration: dict[str, dict] = {}
+    for symptom, rows in gene_observations.groupby("symptom"):
+        counts = rows.groupby("disease_cluster_id").perturbation_id.nunique().sort_values(ascending=False)
+        total = int(counts.sum())
+        top = counts.head(top_clusters)
+        concentration[symptom] = {
+            "positive_genes": total, "clusters": int(len(counts)),
+            "largest_cluster_share": float(counts.iloc[0] / total) if total else 0.0,
+            f"top_{top_clusters}_share": float(top.sum() / total) if total else 0.0,
+            "top_clusters": {cluster: int(n) for cluster, n in top.items()},
+        }
+    return concentration
 
 
 def main() -> None:
