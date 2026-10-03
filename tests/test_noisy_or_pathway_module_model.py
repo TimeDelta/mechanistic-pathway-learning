@@ -70,3 +70,16 @@ def test_relation_index_selects_separate_link_matrix() -> None:
         head.module_symptom_link_logit[1].fill_(-5.0)
     assert head.link_probability(0).mean() > 0.9
     assert head.link_probability(1).mean() < 0.1
+
+
+def test_leak_initialization_reproduces_base_rates_and_off_by_default_bias_silences_modules() -> None:
+    head = NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=3, num_symptoms=2, initial_readout_bias=-3.0, gate_initial_log_alpha_noise=0.5)
+    base_rates = torch.tensor([0.25, 0.4])
+    head.initialize_leak_from_base_rates(base_rates)
+    assert torch.allclose(head.leak_probability(0), base_rates, atol=1e-6)
+    head.eval()
+    with torch.no_grad():
+        output = head(torch.zeros(2, 6, 4), relation_index=0)  # no perturbation signal in the field
+    assert torch.all(output.module_activation < 0.06)  # sigmoid(-3) with nothing to read
+    assert torch.allclose(output.symptom_probability, 1.0 - (1.0 - base_rates) * torch.prod(1.0 - output.module_activation[:, :, None] * output.link_probability[None], dim=1), atol=1e-6)
+    assert head.support_gate.log_alpha.std() > 0.3  # symmetry between modules is broken at initialization
