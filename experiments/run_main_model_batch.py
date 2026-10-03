@@ -21,6 +21,7 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b6_k1": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--num-modules", "1"],
     "b6_k16": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--num-modules", "16"],
     "b6_no_description_length": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--description-length-coefficient", "0"],
+    "b6_leak_init": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--init-leak-from-base-rate"],
     "b6_frequency_target": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--positive-target-from-frequency"],
     "b6_default_permuted": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--permute-labels"],
     "b3_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum"],

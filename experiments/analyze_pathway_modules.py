@@ -9,8 +9,11 @@ For one run directory of experiments/run_main_model.py (noisy-OR head), per spli
     equifinality_independence_and_convergence.py;
   - overlap of each module support with the curated modules (gene nodes of docs/curated_pathway_modules.csv)
     and the Human-GEM subsystems of the reactions in the support;
-  - stability across splits: for every pair of modules from different splits, Jaccard of supports; modules are
-    matched greedily and the selection frequency of each consensus support is reported.
+  - stability across splits: for every pair of modules from different splits, Jaccard of supports;
+  - the sufficiency test of design section 6.5, computed post hoc from the saved test module activations: for
+    symptom s, P_k is the set of held-out perturbations whose largest contribution link_{k,s} * a_k comes from
+    module k; the symptom probability is recomputed with one module removed from the noisy-OR; ablating k should
+    lower AUPRC on P_k and ablating any other module should not (paired bootstrap over perturbations).
 
 Writes <run-dir>/module_analysis.json and docs/<name>_modules.md (one card per symptom).
 """
@@ -25,12 +28,55 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from sklearn.metrics import average_precision_score
+
 from mechanistic_pathway_learning.evaluation.equifinality_independence_and_convergence import (
     convergence_index,
     independence_index,
     jaccard_index,
 )
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import read_curated_modules
+
+
+def noisy_or_probabilities(activations: np.ndarray, links: np.ndarray, leaks: np.ndarray, ablated_module: int | None = None) -> np.ndarray:
+    """P(symptom) from activations [n, K], links [K, S] and leaks [S], with one module removed when given."""
+    contributions = activations[:, :, None] * links[None, :, :]  # [n, K, S]
+    if ablated_module is not None:
+        contributions = np.delete(contributions, ablated_module, axis=1)
+    return 1.0 - (1.0 - leaks[None, :]) * np.prod(1.0 - np.clip(contributions, 0.0, 1.0 - 1e-6), axis=1)
+
+
+def sufficiency_test(activations: np.ndarray, links: np.ndarray, leaks: np.ndarray, outcomes: np.ndarray, symptoms: list[str], min_group_size: int = 8, min_positives: int = 3, num_bootstrap: int = 500, seed: int = 0) -> list[dict]:
+    """Design section 6.5: per (symptom, dominant module) group, AUPRC with the full model, with the own module ablated and with each other module ablated."""
+    generator = np.random.default_rng(seed)
+    num_modules = links.shape[0]
+    full = noisy_or_probabilities(activations, links, leaks)
+    ablated = [noisy_or_probabilities(activations, links, leaks, k) for k in range(num_modules)]
+    contributions = activations[:, :, None] * links[None, :, :]
+    dominant = contributions.argmax(axis=1)  # [n, S]
+    rows_out = []
+    for s, symptom in enumerate(symptoms):
+        for k in range(num_modules):
+            group = np.where(dominant[:, s] == k)[0]
+            positives = outcomes[group, s].sum() if len(group) else 0
+            if len(group) < min_group_size or positives < min_positives or positives == len(group):
+                continue
+            auprc_full = average_precision_score(outcomes[group, s], full[group, s])
+            auprc_own = average_precision_score(outcomes[group, s], ablated[k][group, s])
+            others = [average_precision_score(outcomes[group, s], ablated[other][group, s]) for other in range(num_modules) if other != k]
+            differences = []
+            for _ in range(num_bootstrap):
+                sample = generator.choice(group, size=len(group), replace=True)
+                if outcomes[sample, s].sum() in (0, len(sample)):
+                    continue
+                differences.append(average_precision_score(outcomes[sample, s], full[sample, s]) - average_precision_score(outcomes[sample, s], ablated[k][sample, s]))
+            lower, upper = (float(np.quantile(differences, 0.025)), float(np.quantile(differences, 0.975))) if differences else (float("nan"), float("nan"))
+            rows_out.append({"symptom": symptom, "module": f"module_{k}", "group_size": int(len(group)), "positives": int(positives), "auprc_full": float(auprc_full),
+                             "auprc_ablate_own": float(auprc_own), "auprc_ablate_others_mean": float(np.mean(others)) if others else float("nan"),
+                             "own_ablation_drop": float(auprc_full - auprc_own), "own_ablation_drop_ci": [lower, upper],
+                             "mean_contribution": float(contributions[group, k, s].mean())})
+    return rows_out
 
 
 def load_split(split_directory: Path) -> tuple[dict, np.ndarray]:
@@ -76,8 +122,11 @@ def main() -> None:
     parser.add_argument("--downstream-hops", type=int, default=3)
     parser.add_argument("--top-k", type=int, default=15)
     parser.add_argument("--minimum-support-nodes", type=int, default=25, help="when fewer gates exceed the threshold, the top-ranked gates up to this many form the support (reported as such)")
+    parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
     parser.add_argument("--markdown-output", type=Path, default=None)
     arguments = parser.parse_args()
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir)
+    position_of = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
     edges = pd.read_parquet(arguments.graph_dir / "edges.parquet")
     node_ids = list(nodes.node_id)
@@ -102,7 +151,14 @@ def main() -> None:
                 support_rule[f"module_{k}"] = f"gate > {arguments.support_threshold}"
             supports[f"module_{k}"] = {node_ids[i] for i in above}
             gate_values[f"module_{k}"] = {node_ids[i]: float(support[k, i]) for i in above}
-        split_entry = {"modules": {}, "symptoms": {}, "gate_summary": {f"module_{k}": {"max": float(support[k].max()), "mean": float(support[k].mean()), "above_threshold": int((support[k] > arguments.support_threshold).sum())} for k in range(support.shape[0])}}
+        activations_path = split_directory / "test_module_activations.npy"
+        sufficiency_rows = []
+        if activations_path.exists() and "symptom_leaks" in results:
+            activations = np.load(activations_path)
+            test_rows = np.array([position_of[p] for p in results["test_perturbation_ids"] if p in position_of])
+            if len(test_rows) == activations.shape[0]:
+                sufficiency_rows = sufficiency_test(activations, links, np.array(results["symptom_leaks"]), data.outcomes[test_rows], symptoms)
+        split_entry = {"sufficiency_test": sufficiency_rows, "modules": {}, "symptoms": {}, "gate_summary": {f"module_{k}": {"max": float(support[k].max()), "mean": float(support[k].mean()), "above_threshold": int((support[k] > arguments.support_threshold).sum())} for k in range(support.shape[0])}}
         for module_name, module_support in supports.items():
             k = int(module_name.split("_")[1])
             description = describe_support(sorted(module_support), nodes, gate_values[module_name], arguments.top_k) if module_support else {"size": 0}
@@ -142,6 +198,12 @@ def main() -> None:
         for symptom, entry in split_entry["symptoms"].items():
             lines.append(f"| {symptom} | {entry['active_modules']} | {entry['independence_index']:.2f} | {entry['convergence_index']:.2f} |")
         lines.append("")
+        if split_entry["sufficiency_test"]:
+            lines += ["Sufficiency test (design section 6.5): held-out perturbations grouped by the module with the largest contribution to the symptom; AUPRC with the full noisy-OR, with that module ablated and with each other module ablated (mean); 95 percent paired bootstrap interval of the own-ablation drop.", "",
+                      "| symptom | dominant module | group size | positives | AUPRC full | ablate own | ablate others (mean) | own-ablation drop [95% CI] | mean contribution |", "|---|---|---|---|---|---|---|---|---|"]
+            for row in split_entry["sufficiency_test"]:
+                lines.append(f"| {row['symptom']} | {row['module']} | {row['group_size']} | {row['positives']} | {row['auprc_full']:.3f} | {row['auprc_ablate_own']:.3f} | {row['auprc_ablate_others_mean']:.3f} | {row['own_ablation_drop']:+.3f} [{row['own_ablation_drop_ci'][0]:+.3f}, {row['own_ablation_drop_ci'][1]:+.3f}] | {row['mean_contribution']:.3f} |")
+            lines.append("")
         for module_name, description in split_entry["modules"].items():
             if description["size"] == 0:
                 continue

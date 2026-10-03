@@ -167,6 +167,7 @@ def main() -> None:
     parser.add_argument("--num-modules", type=int, default=8)
     parser.add_argument("--sigmoid-hidden-dim", type=int, default=64)
     parser.add_argument("--gate-initial-log-alpha", type=float, default=-1.0)
+    parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
@@ -193,6 +194,8 @@ def main() -> None:
     if arguments.permute_labels:
         split_name += "_permuted"
     encoder, head = build_models(data, arguments, device)
+    if arguments.init_leak_from_base_rate and arguments.head == "noisy_or":
+        head.initialize_leak_from_base_rates(torch.as_tensor(data.outcomes[train_indices].mean(axis=0), dtype=torch.float32, device=device))
     adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
         torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
     optimizer = torch.optim.AdamW(list(encoder.parameters()) + list(head.parameters()), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)

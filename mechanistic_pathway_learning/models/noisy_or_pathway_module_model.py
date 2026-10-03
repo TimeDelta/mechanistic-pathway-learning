@@ -146,6 +146,16 @@ class NoisyOrPathwayModuleHead(nn.Module):
         activation_logit = (gated_pool * self.module_readout_weight[None, :, :]).sum(dim=-1) + self.module_readout_bias
         return torch.sigmoid(activation_logit)
 
+    @torch.no_grad()
+    def initialize_leak_from_base_rates(self, symptom_base_rates: Tensor, relation_index: int = 0) -> None:
+        """Set the leak of each symptom to its training base rate, so the untrained model predicts the base rate.
+
+        The leak absorbs unmodelled causes; starting it at the base rate instead of near zero removes the
+        early epochs in which every positive is penalized against a probability of a few percent.
+        """
+        clamped = symptom_base_rates.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
+        self.symptom_leak_logit[relation_index] = torch.log(clamped) - torch.log1p(-clamped)
+
     def link_probability(self, relation_index: int = 0) -> Tensor:
         return torch.sigmoid(self.module_symptom_link_logit[relation_index])
 
