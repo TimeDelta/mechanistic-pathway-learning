@@ -20,3 +20,19 @@ E1: Human-GEM genes with an HPO annotation in the symptom or its descendants. E2
 distinct Human-GEM genes with any target-symptom annotation: 473; distinct qualifying E2 drugs: 65; symptoms passing: 10 (need 8); go/no-go: go
 
 Sources: HPO release and Human-GEM version as pinned in docs/data_sources.md; SIDER 4.1 (labels to 2015); ChEMBL mechanisms via experiments/fetch_chembl_drug_targets.py.
+
+## Metabolic layer of the physiology graph (Human-GEM 2.0.1 via build_physiology_graph.py)
+
+Nodes: 12877 reactions, 8460 compartment-specific metabolites, 2848 genes. Edges: 34791 substrate_of, 36051 product_of (reversible reactions carry both orientations), 23944 catalyzed_by.
+
+| check | value |
+|---|---|
+| metabolites by compartment | c: 3339, e: 1660, r: 971, m: 939, x: 506, l: 452, g: 361, n: 212, i: 20 |
+| currency metabolites tagged (name list plus top 0.5 percent degree) | 227 |
+| transport reactions (span more than one compartment) | 4688 |
+| reversible reactions | 5714 |
+| reactions without a gene rule (exchange, transport, spontaneous) | 5101 |
+| largest connected component, all nodes | 0.992 |
+| largest connected component, currency metabolites removed | 0.966 |
+
+Signaling (OmniPath) and transcription (CollecTRI) layers are not yet joined.
