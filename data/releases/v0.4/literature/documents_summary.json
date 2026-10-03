@@ -1,0 +1,9 @@
+{
+ "pmids_with_directional_relations": 83478,
+ "pmids_other": 45943,
+ "pmids_fetched": 30000,
+ "pmids_unfetched": 99421,
+ "documents_returned": 30000,
+ "documents_with_species": 24492,
+ "documents_with_publication_types": 29991
+}

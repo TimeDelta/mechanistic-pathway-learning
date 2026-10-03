@@ -51,3 +51,13 @@ def test_build_then_verify_and_detect_tampering(tmp_path: Path) -> None:
     assert problems == ["graph/relation_types.json: checksum differs from the manifest"]
     (release / "stray.txt").write_text("x")
     assert any(problem.startswith("stray.txt") for problem in verify_release(release))
+
+
+def test_extra_directories_drop_article_text_but_keep_metadata(tmp_path: Path) -> None:
+    graph, evidence = write_inputs(tmp_path)
+    literature = tmp_path / "literature"; literature.mkdir()
+    pd.DataFrame({"pmid": ["1"], "year": [2020], "title": ["A title"], "abstract": ["Long text"], "species_ids": ["9606"], "publication_types": ["Review"]}).to_parquet(literature / "documents.parquet", index=False)
+    release = build_release("vdocs", tmp_path / "releases", {"graph": graph}, {"evidence": evidence}, None, None, extra_directories={"literature": literature})
+    released = pd.read_parquet(release / "literature" / "documents.parquet")
+    assert list(released.columns) == ["pmid", "year", "species_ids", "publication_types"]
+    assert verify_release(release) == []

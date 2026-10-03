@@ -29,6 +29,7 @@ import pandas as pd
 
 LABEL_DERIVED_SOURCES = ("SIDER-label", "SIDER-indication", "OnSIDES-label")
 LICENSED_TERM_LABEL_COLUMN = "source_term_label"
+DOCUMENT_TEXT_COLUMNS = ("title", "abstract")  # article text is publisher-copyrighted and never released; metadata columns stay
 GRAPH_FILES = ("nodes.parquet", "edges.parquet", "relation_types.json", "graph_summary.json")
 EVIDENCE_FILES = ("evidence_records.parquet", "evidence_reports.parquet", "evidence_summary.json", "unmapped_records.parquet")
 CSV_TWIN_MAX_ROWS = 10_000  # tables up to this size also get a CSV twin for readable diffs (evidence tables; not the node and edge tables)
@@ -159,7 +160,7 @@ def build_release(
                     nonlocal stripped_rows_total
                     stripped, count = strip_licensed_term_labels(table)
                     stripped_rows_total += count
-                    return stripped
+                    return stripped.drop(columns=[column for column in DOCUMENT_TEXT_COLUMNS if column in stripped.columns])
                 written += copy_table_with_twin(source, release_directory / name / source.name, strip_if_present)
             else:
                 written += copy_table_with_twin(source, release_directory / name / source.name)

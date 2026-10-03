@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
  "created": "2026-10-03",
- "git_commit": "df788ae83d30468a811ebae343d35043e56e318a",
+ "git_commit": "80fa854d22c8b5a072571c7332c1f7726de752c7",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
- "licensed_term_labels_blanked": 7376,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES v3.1.1 identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs: 226,347 PubTator3 relation reports (127,866 PubMed ids), 5,607 CTD reports, publication dates, the gene identifier map and the SIDER chemical map.",
+ "licensed_term_labels_blanked": 8653,
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended (3,977 observations: 2,425 grade A gene pairs, 943 grade B drug pairs over 168 drugs, 609 grade C human associations excluded from labels by default; 7,621 reports from five sources); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs (226,347 PubTator3 relation reports over 127,866 papers, 5,607 CTD reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map).",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -109,28 +109,28 @@
  ],
  "files": {
   "evidence_full/evidence_records.csv": {
-   "sha256": "c8e32d595bca67d85a324c6830f6ad42667f8fcf2c620d72f87e1587ccac7ae8",
-   "bytes": 992997,
-   "rows": 3606
+   "sha256": "fad8507ba8ba4c5937465e1f83132363585192219b23cd68212295ee73041f27",
+   "bytes": 1134686,
+   "rows": 3977
   },
   "evidence_full/evidence_records.parquet": {
-   "sha256": "5779b2d4de66a56624f02da07fca0ae06d70ad0ae760fb670e7ddf8065e2c414",
-   "bytes": 156509,
-   "rows": 3606
+   "sha256": "d74ba75539fe92c6448677723b4ae9b04a64c6cba03bd2e62e030d82c574b56f",
+   "bytes": 164963,
+   "rows": 3977
   },
   "evidence_full/evidence_reports.csv": {
-   "sha256": "f7ffe123926b3ae906c77f33d823df3cadb3065ecdd6faf0854df285ccf529ae",
-   "bytes": 3718300,
-   "rows": 6344
+   "sha256": "9020863fdc1f97cefb998eed366f829f44286b411aa86c56d5871a6548ed8b56",
+   "bytes": 4733107,
+   "rows": 7621
   },
   "evidence_full/evidence_reports.parquet": {
-   "sha256": "7ffd7c06471e653244a801c233f6614d03ac72650eb715ab4ce24b2ec6fdaafa",
-   "bytes": 320352,
-   "rows": 6344
+   "sha256": "77558038699119e54b84ff24a2628259d521874c73ff644c883bdba4cb5145c1",
+   "bytes": 383374,
+   "rows": 7621
   },
   "evidence_full/evidence_summary.json": {
-   "sha256": "6a842f0e0b4610f5bba41435053e9f54cdd88e87fef21f9c495e5a8935a76243",
-   "bytes": 8062,
+   "sha256": "0c81e0803d89e70b08aecdb2cc4b1a233dad1f8ffd8c54dbc79764012b3cb4cf",
+   "bytes": 8577,
    "rows": null
   },
   "evidence_full/unmapped_records.csv": {
@@ -246,6 +246,16 @@
   "literature/ctd_relations_summary.json": {
    "sha256": "ec94dd106a7947ab44924efb5aa935f09ae6d17b69845d7f29345c722a702232",
    "bytes": 3003,
+   "rows": null
+  },
+  "literature/documents.parquet": {
+   "sha256": "577118ff5939bf934429d5494feacbd655a4a75fde825f1bd7582ba484adff9f",
+   "bytes": 1382111,
+   "rows": 30000
+  },
+  "literature/documents_summary.json": {
+   "sha256": "3fce97b97aa042e37e0e71efd10aa88fd766e30046b55ec331006245ee7f5b22",
+   "bytes": 229,
    "rows": null
   },
   "literature/gene_identifier_map.parquet": {
