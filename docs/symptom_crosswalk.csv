@@ -1,0 +1,13 @@
+target_symptom,hpo_ids,hpo_names,meddra_preferred_terms,questionnaire_item,rdoc_domain,identifier_status,notes
+depressed_mood,HP:0000716,Depression,Depressed mood;Depression,PHQ-9 item 2,negative_valence,verified_hpo_2026-09-01,
+anhedonia,HP:0012154,Anhedonia,Anhedonia,PHQ-9 item 1,positive_valence,verified_hpo_2026-09-01,no Human-GEM gene carries this annotation (0 genes); E2 and E4 only
+anxiety,HP:0000739,Anxiety,Anxiety;Nervousness,GAD-7 items,negative_valence,verified_hpo_2026-09-01,
+irritability_or_aggression,HP:0000737;HP:0000718,Irritability;Aggressive behavior,Irritability;Aggression;Agitation,,negative_valence;arousal,verified_hpo_2026-09-01,
+insomnia,HP:0100785,Insomnia,Insomnia;Initial insomnia,PHQ-9 item 3,arousal_regulatory,verified_hpo_2026-09-01,
+somnolence_or_hypersomnia,HP:0001262,Excessive daytime somnolence,Somnolence;Hypersomnia,PHQ-9 item 3,arousal_regulatory,verified_hpo_2026-09-01,HP:0100786 Hypersomnia is obsolete and replaced by HP:0001262
+fatigue,HP:0012378,Fatigue,Fatigue;Asthenia,PHQ-9 item 4,arousal_regulatory,verified_hpo_2026-09-01,
+psychomotor_agitation,HP:0000713;HP:0000711,Agitation;Restlessness,Psychomotor hyperactivity;Agitation;Restlessness,PHQ-9 item 8,arousal,verified_hpo_2026-09-01,
+psychomotor_retardation,,,Psychomotor retardation;Bradyphrenia,PHQ-9 item 8,arousal,no_hpo_term,HPO retired Psychomotor retardation (HP:0025356) into Global developmental delay (HP:0001263) which is a different construct; E2 and E4 only
+psychosis,HP:0000709;HP:0000738;HP:0000746,Psychosis;Hallucinations;Delusion,Psychotic disorder;Hallucination;Delusion,,cognitive_systems;perception,verified_hpo_2026-09-01,
+cognitive_impairment,HP:0100543,Cognitive impairment,Memory impairment;Disturbance in attention;Confusional state,PHQ-9 item 7,cognitive_systems,verified_hpo_2026-09-01,
+elevated_mood_or_mania,HP:0100754,Mania,Mania;Hypomania;Euphoric mood,,positive_valence;arousal,verified_hpo_2026-09-01,one Human-GEM gene carries this annotation (SLC25A13); E2-dependent

@@ -1,0 +1,25 @@
+# Evaluation protocol (design sections 6 and 7)
+splits:
+  grouped_perturbation_wise: {num_folds: 5, group_by: {drug: dominant_target, gene: gene_symbol}}
+  pathway_wise: {hold_out_each_curated_module: true}
+  time_split: {training_cutoff: "2015-12-31", test_drugs_first_approved_after: "2016-01-01"}
+metrics: [auroc, auprc, mean_reciprocal_rank, hits_at_3, expected_calibration_error]
+stratify_by: [evidence_grade, node_degree_bin]
+bootstrap: {num_resamples: 1000, confidence: 0.95}
+negative_controls: [label_permutation_within_degree_strata, degree_preserving_rewiring, grade_shuffle, peripheral_event_control]
+orthogonal_validation:
+  gwas_gene_set: {top_n_genes: 50, exclude_training_genes: true, random_set_matches: 1000}
+  metabolomics_rank_enrichment: true
+equifinality:
+  link_threshold: 0.5
+  downstream_hops: 3
+  expected_multi_module_symptoms: [psychosis, cognitive_impairment, depressed_mood, anxiety]
+  expected_single_module_symptoms: [psychomotor_retardation]
+primary_endpoint:
+  metric: macro_auprc
+  split: pathway_wise
+  comparator: best_of [network_proximity, knowledge_graph_embedding, relational_gnn_sigmoid]
+  minimum_difference: 0.05
+  seeds_by_folds: [5, 5]
+multiple_comparisons: benjamini_hochberg
+failure_criterion: "B6 must beat popularity and network proximity under the gene-wise split before ablations run"

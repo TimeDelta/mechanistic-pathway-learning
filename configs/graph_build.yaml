@@ -1,0 +1,23 @@
+# Physiology graph construction (design section 4.1)
+reconstruction:
+  name: Human-GEM
+  path: data/raw/Human-GEM/model/Human-GEM.xml   # pin the release tag in docs/data_sources.md
+  recon3d_identifier_map: data/raw/Human-GEM/model/reactions.tsv
+layers:
+  signaling: true          # OmniPath: binds, activates, inhibits
+  transcription: true      # CollecTRI: regulates_transcription_of
+  pharmacology: true       # ChEMBL: targets
+pharmacology:
+  minimum_pchembl: 6.0     # 1 micromolar; curated mechanism annotations are accepted regardless
+currency_metabolites:
+  degree_quantile_threshold: 0.995
+  use_default_name_list: true
+brain_expression:
+  source: human_protein_atlas_brain_consensus   # alternative: gtex_brain_median_tpm
+  as_filter: false          # weights are node attributes, never filters, in version 1
+hard_structural_constraints:
+  allowed_relation_types: [substrate_of, product_of, catalyzed_by, transports_between, binds, activates, inhibits, regulates_transcription_of, targets]
+  forbid_symptom_to_symptom_edges: true
+  forbid_disease_nodes: true
+  compartment_change_only_via_transport: true
+output_directory: data/processed/graph

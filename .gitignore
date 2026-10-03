@@ -1,0 +1,14 @@
+data/raw/
+data/processed/
+data/cache/
+runs/
+checkpoints/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.parquet
+*.h5ad
+slurm-*.out
+.env

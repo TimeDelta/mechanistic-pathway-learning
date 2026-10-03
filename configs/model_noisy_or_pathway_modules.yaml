@@ -1,0 +1,29 @@
+# Proposed model B6 (design section 5)
+encoder:
+  route: concatenate_propagation_and_flux   # alternatives: propagation_only, flux_only
+  node_state_dim: 64
+  num_message_passing_layers: 3
+  flux_feature_cache: data/cache/flux_perturbation
+head:
+  num_pathway_modules_candidates: [4, 8, 16, 32]   # selected by minimum description length
+  num_relation_types: 2                            # induces, relieves
+  gate_temperature: 0.6667
+  gate_initial_log_alpha: -1.0
+  initial_link_logit: -3.0
+  initial_leak_logit: -4.0
+description_length:
+  node_cost: log_num_graph_nodes_nats
+  link_cost: 1.0
+soft_constraints:
+  outcome_level: {enabled: true, positive_target: 0.99}
+  link_anchor: {enabled: false, prior_strength: 0.99}      # ablation arm: the original near-hard policy
+  attribution_hinge: {enabled: false}                        # version 2
+hard_symptom_constraints: false   # never true in the default configuration
+training:
+  optimizer: adamw
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  max_epochs: 200
+  early_stopping_patience: 20
+  seeds: [0, 1, 2, 3, 4]
+  checkpoint_every_minutes: 20     # runtime-limited cluster: resumable by design

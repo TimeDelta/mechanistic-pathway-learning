@@ -1,0 +1,6 @@
+popularity: {}
+random_walk_with_restart: {restart_probability: 0.3, exclude_currency_metabolites: true}
+knowledge_graph_embedding: {models: [TransE, ComplEx, RotatE], embedding_dim: 128, negative_sampling: degree_matched}
+relational_gnn_sigmoid: {node_state_dim: 64, num_message_passing_layers: 3}
+flux_feature_logistic: {regularization: l2, flux_feature_cache: data/cache/flux_perturbation}
+language_model_zero_shot: {prompt: "Which of these symptoms does loss of {gene_or_drug} produce?", model: to_be_fixed_before_preregistration}

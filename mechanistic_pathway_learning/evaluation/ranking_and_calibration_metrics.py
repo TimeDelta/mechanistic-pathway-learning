@@ -1,0 +1,86 @@
+"""Metrics (design section 6.2): per-symptom AUROC and AUPRC with bootstrap intervals
+over perturbations, mean reciprocal rank and hits-at-k for symptom ranking per
+perturbation, and expected calibration error. Degree-bin and grade stratification
+is done by the caller passing the relevant row subset.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import warnings
+
+import numpy as np
+from sklearn.metrics import average_precision_score, roc_auc_score
+
+
+@dataclass
+class IntervalEstimate:
+    point: float
+    lower: float
+    upper: float
+
+
+def bootstrap_interval(statistic, predictions: np.ndarray, outcomes: np.ndarray, num_bootstrap: int = 1000, random_seed: int = 0, confidence: float = 0.95) -> IntervalEstimate:
+    """Percentile bootstrap over rows (perturbations) of a statistic(predictions, outcomes)."""
+    generator = np.random.default_rng(random_seed)
+    num_rows = predictions.shape[0]
+    point = statistic(predictions, outcomes)
+    resampled_values = []
+    for _ in range(num_bootstrap):
+        row_indices = generator.integers(0, num_rows, size=num_rows)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                resampled_value = statistic(predictions[row_indices], outcomes[row_indices])
+        except ValueError:  # a resample with a single class, older scikit-learn
+            continue
+        if np.isnan(resampled_value):  # a resample with a single class, newer scikit-learn
+            continue
+        resampled_values.append(resampled_value)
+    if not resampled_values:
+        return IntervalEstimate(point, float("nan"), float("nan"))
+    lower_quantile = (1.0 - confidence) / 2.0
+    return IntervalEstimate(point, float(np.quantile(resampled_values, lower_quantile)), float(np.quantile(resampled_values, 1.0 - lower_quantile)))
+
+
+def per_symptom_auroc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int) -> float:
+    return float(roc_auc_score(outcomes[:, symptom_index], predictions[:, symptom_index]))
+
+
+def per_symptom_auprc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int) -> float:
+    return float(average_precision_score(outcomes[:, symptom_index], predictions[:, symptom_index]))
+
+
+def mean_reciprocal_rank(predictions: np.ndarray, outcomes: np.ndarray) -> float:
+    """For each perturbation with at least one positive symptom, 1 / rank of the best-ranked positive."""
+    reciprocal_ranks = []
+    for row_predictions, row_outcomes in zip(predictions, outcomes):
+        if row_outcomes.sum() == 0:
+            continue
+        ranking = np.argsort(-row_predictions)
+        positive_positions = np.where(row_outcomes[ranking] > 0)[0]
+        reciprocal_ranks.append(1.0 / (positive_positions[0] + 1))
+    return float(np.mean(reciprocal_ranks)) if reciprocal_ranks else float("nan")
+
+
+def hits_at_k(predictions: np.ndarray, outcomes: np.ndarray, k: int = 3) -> float:
+    hits = []
+    for row_predictions, row_outcomes in zip(predictions, outcomes):
+        if row_outcomes.sum() == 0:
+            continue
+        top_k = np.argsort(-row_predictions)[:k]
+        hits.append(float(row_outcomes[top_k].sum() > 0))
+    return float(np.mean(hits)) if hits else float("nan")
+
+
+def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, num_bins: int = 10) -> float:
+    flat_predictions = predictions.ravel()
+    flat_outcomes = outcomes.ravel()
+    bin_edges = np.linspace(0.0, 1.0, num_bins + 1)
+    error = 0.0
+    for lower, upper in zip(bin_edges[:-1], bin_edges[1:]):
+        in_bin = (flat_predictions >= lower) & (flat_predictions < upper if upper < 1.0 else flat_predictions <= upper)
+        if in_bin.sum() == 0:
+            continue
+        error += in_bin.mean() * abs(flat_predictions[in_bin].mean() - flat_outcomes[in_bin].mean())
+    return float(error)

@@ -1,0 +1,10 @@
+# Each key overrides configs/model_noisy_or_pathway_modules.yaml (design section 5.7)
+no_soft_constraints: {soft_constraints.outcome_level.enabled: false}
+hard_lower_bounds_on: {soft_constraints.link_anchor.enabled: true, soft_constraints.link_anchor.prior_strength: 0.99}
+compartments_collapsed: {graph.collapse_compartments: true}
+no_signaling_or_transcription_layers: {graph.layers.signaling: false, graph.layers.transcription: false}
+no_flux_route: {encoder.route: propagation_only}
+no_propagation_route: {encoder.route: flux_only}
+sigmoid_head_instead_of_noisy_or: {head.output: sigmoid}
+single_module: {head.num_pathway_modules_candidates: [1]}
+currency_metabolites_retained: {graph.currency_metabolites.degree_quantile_threshold: 1.0, graph.currency_metabolites.use_default_name_list: false}

@@ -1,0 +1,17 @@
+module_id,module_name,genes,monogenic_anchors,pharmacological_anchors
+catecholamine,Catecholamine synthesis and degradation,TH;DDC;DBH;PNMT;MAOA;MAOB;COMT;SLC6A3;SLC6A2;SLC18A2,DBH;MAOA;TH;SLC6A3,amphetamines;levodopa;MAO inhibitors;D2 antagonists;VMAT2 inhibitors
+serotonin_melatonin,Serotonin and melatonin,TPH1;TPH2;DDC;MAOA;AANAT;ASMT;SLC6A4,,SSRIs;triptans;melatonin receptor agonists
+tetrahydrobiopterin,Tetrahydrobiopterin cofactor,GCH1;PTS;SPR;QDPR;PCBD1,GCH1;PTS;SPR;QDPR,sapropterin
+phenylalanine_tyrosine,Phenylalanine and tyrosine,PAH;TAT;HPD;HGD,PAH,
+tryptophan_kynurenine,Tryptophan-kynurenine,TDO2;IDO1;KMO;KYNU;HAAO;KYAT1;KYAT3,,interferon alfa
+gaba_glutamate,GABA and glutamate,GAD1;GAD2;ABAT;ALDH5A1;GLUL;GLS;SLC1A2,ALDH5A1;ABAT;GLUL,benzodiazepines;vigabatrin;ketamine;memantine;phencyclidine
+one_carbon_homocysteine,One-carbon folate and homocysteine,MTHFR;MTR;MTRR;CBS;CTH;MAT1A;AHCY;MTHFD1;SLC19A1;FOLR1,MTHFR;MTR;MTRR;CBS;FOLR1,methotrexate;folinic acid
+urea_cycle,Urea cycle and ammonia,CPS1;OTC;ASS1;ASL;ARG1;NAGS;SLC25A15;SLC25A13,OTC;CPS1;ASS1;ASL;ARG1,valproate
+heme_porphyrin,Heme and porphyrin,ALAS1;ALAD;HMBS;UROS;UROD;CPOX;PPOX;FECH,HMBS;PPOX;CPOX,barbiturates
+copper_metal,Copper and metal handling,ATP7B;ATP7A;CP,ATP7B,penicillamine
+sterol_lysosomal_lipid,Sterol bile acid and lysosomal lipid,CYP27A1;NPC1;NPC2;DHCR7;GBA1;ARSA;HEXA;HEXB;ABCD1,CYP27A1;NPC1;NPC2;DHCR7;GBA1;ARSA;HEXA;ABCD1,chenodeoxycholic acid;miglustat
+creatine_energy,Creatine and energy metabolism,GAMT;GATM;SLC6A8;SLC2A1;PDHA1;POLG,GAMT;GATM;SLC6A8;SLC2A1;PDHA1;POLG,
+purine_pyrimidine,Purine and pyrimidine,HPRT1;ADA;ADSL;DPYD,HPRT1;ADSL,allopurinol
+acetylcholine_histamine_adenosine,Acetylcholine histamine and adenosine,CHAT;ACHE;SLC5A7;HDC;HNMT;ADORA1;ADORA2A,,anticholinergics;cholinesterase inhibitors;H1 antagonists;caffeine
+steroid_thyroid,Steroid and thyroid hormone,CYP21A2;CYP11B1;HSD11B1;DIO2;DIO3;SLC16A2,CYP21A2;SLC16A2,corticosteroids;levothyroxine
+vitamin_cofactor_transport,Vitamin cofactor transport,SLC19A3;BTD;TCN2;SLC52A2,SLC19A3;BTD;TCN2;SLC52A2,vitamin repletion

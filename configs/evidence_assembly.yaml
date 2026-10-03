@@ -1,0 +1,27 @@
+# Perturbation-symptom evidence (design sections 4.2 and 4.3)
+symptom_crosswalk: docs/symptom_crosswalk.csv
+curated_pathway_modules: docs/curated_pathway_modules.csv
+monogenic:
+  hpo_annotations: data/raw/hpo/genes_to_phenotype.txt
+  hpo_ontology: data/raw/hpo/hp.obo
+  grade_a_requires: {independent_case_series_count: 2, or_omim_clinical_synopsis: true}
+pharmacological:
+  sider_directory: data/raw/sider_4.1          # time slice: labels to 2015
+  onsides_directory: data/raw/onsides          # time slice: current labels
+  require_cns_penetration: true
+  dominant_target_affinity_margin_fold: 10
+  include_relieves_relation: true              # indications as relief evidence; decision pending (open question 5)
+literature:
+  sources: [pubtator3, ctd]                    # semmeddb once a UMLS license is in place
+  role: soft_prior_only
+genetics:
+  role: validation_only                        # version 2: soft prior
+  gwas_summary_statistics: data/raw/gwas/symptom_level/
+grade_weights: {A: 1.0, B: 0.6, C: 0.0, D: 0.2, E: 0.05}
+predication_weights: {CAUSES: 0.10, DISRUPTS: 0.08, PREDISPOSES: 0.08, AFFECTS: 0.08, ASSOCIATED_WITH: 0.05, COMENTION: 0.02}
+positive_target: 0.99        # label smoothing for observed links: the "0.99 no-change" policy
+negative_sampling:
+  degree_matched: true
+  negatives_per_positive: 5
+  negative_weight: 0.2       # unobserved pairs are not confirmed negatives
+output_directory: data/processed/evidence
