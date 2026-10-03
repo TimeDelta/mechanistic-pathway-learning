@@ -22,7 +22,8 @@ indices, ranking and calibration metrics, the label-permutation and rewiring con
 loader, the SIDER-to-ChEMBL mapping, the physiology graph build (Human-GEM with subsystems plus the
 OmniPath, small-molecule and CollecTRI layers when their files are present), the evidence table with
 disease clusters, popularity and random-walk baselines, a resumable training harness with
-validation early stopping, a batch driver, an aggregator and a module-analysis script.
+validation early stopping, a batch driver, an aggregator with paired bootstrap comparisons, a
+module-analysis script with the sufficiency test, and mechanism cards.
 
 Measured so far: docs/phase1_counts.md (counts), docs/hpo_term_audit.md (what each HPO term
 contributes to each symptom), docs/phase2_baselines.md and docs/phase2_baselines_disease_cluster.md

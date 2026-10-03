@@ -1,12 +1,21 @@
-# Each key overrides configs/model_noisy_or_pathway_modules.yaml (design section 5.7)
-no_soft_constraints: {soft_constraints.outcome_level.enabled: false}
-hard_lower_bounds_on: {soft_constraints.link_anchor.enabled: true, soft_constraints.link_anchor.prior_strength: 0.99}
-compartments_collapsed: {graph.collapse_compartments: true}
-no_signaling_or_transcription_layers: {graph.layers.signaling: false, graph.layers.transcription: false}
-no_flux_route: {encoder.route: propagation_only}
-no_propagation_route: {encoder.route: flux_only}
-sigmoid_head_instead_of_noisy_or: {head.output: sigmoid}
-single_module: {head.num_pathway_modules_candidates: [1]}
-currency_metabolites_retained: {graph.currency_metabolites.degree_quantile_threshold: 1.0, graph.currency_metabolites.use_default_name_list: false}
-fixed_grade_weights_instead_of_learned: {evidence.weighting.mode: fixed_grades}
-no_rubric_features: {evidence.weighting.reliability_model.use_rubric_features: false}
+# Ablation arms (design section 5.7). Named configurations in experiments/run_main_model_batch.py implement the
+# arms marked with a configuration name; the rest wait on data layers that are not built yet.
+absolute_field_mean_pooling: {configuration: b6_absolute_mean, note: the version 0.3 reading of the encoder}
+single_module: {configuration: b6_k1}
+sixteen_modules: {configuration: b6_k16}
+no_description_length_penalty: {configuration: b6_no_description_length}
+leak_initialized_at_base_rate: {configuration: b6_leak_init}
+frequency_as_target: {configuration: b6_frequency_target, note: open question 8}
+two_distinct_entries_grade_policy: {configuration: b6_two_entries_grade_policy, evidence_dir: data/processed/evidence_two_entries}
+sigmoid_head_instead_of_noisy_or: {configuration: b3_sigmoid}
+sigmoid_head_absolute_field: {configuration: b3_sigmoid_absolute}
+labels_permuted_within_degree_strata: {configurations: [b6_default_permuted, b3_sigmoid_permuted], note: negative control}
+no_soft_constraints: {pending: true, override: {soft_constraints.outcome_level.enabled: false}}
+hard_lower_bounds_on: {pending: true, override: {soft_constraints.link_anchor.enabled: true, soft_constraints.link_anchor.prior_strength: 0.99}}
+compartments_collapsed: {pending: true}
+no_signaling_or_transcription_layers: {pending: true, note: needs the OmniPath and CollecTRI layers present first}
+no_flux_route: {pending: true, note: needs the flux cache}
+no_propagation_route: {pending: true, note: needs the flux cache}
+currency_metabolites_retained: {pending: true}
+fixed_grade_weights_instead_of_learned: {pending: true, note: needs the pharmacological class for a third source}
+no_rubric_features: {pending: true}

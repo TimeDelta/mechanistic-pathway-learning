@@ -1,29 +1,38 @@
-# Proposed model B6 (design section 5)
+# Proposed model B6 (design section 5); the training harness is experiments/run_main_model.py and the
+# named configurations (including ablation arms) are in experiments/run_main_model_batch.py
 encoder:
-  route: concatenate_propagation_and_flux   # alternatives: propagation_only, flux_only
-  node_state_dim: 64
-  num_message_passing_layers: 3
+  route: propagation_only                   # concatenate_propagation_and_flux once the flux cache exists; flux_only
+  field: difference                         # perturbed minus unperturbed node-state field (default from v0.4); absolute is the ablation
+  node_state_dim: 32
+  num_message_passing_layers: 2
   flux_feature_cache: data/cache/flux_perturbation
 head:
-  num_pathway_modules_candidates: [4, 8, 16, 32]   # selected by minimum description length
-  num_relation_types: 2                            # induces, relieves
+  pooling: sum                              # gated sum over the support (default from v0.4); mean is the ablation
+  num_pathway_modules_candidates: [1, 8, 16]   # selected by minimum description length; 8 is the default run
+  num_relation_types: 2                     # induces, relieves
   gate_temperature: 0.6667
   gate_initial_log_alpha: -1.0
   initial_link_logit: -3.0
   initial_leak_logit: -4.0
+  init_leak_from_base_rate: false           # b6_leak_init arm starts each symptom's leak at its training base rate
 description_length:
   node_cost: log_num_graph_nodes_nats
   link_cost: 1.0
+  coefficient: 1.0e-6
 soft_constraints:
-  outcome_level: {enabled: true, positive_target: 0.99}
+  outcome_level: {enabled: true, positive_target: 0.99, positive_target_from_frequency: false}   # open question 8
   link_anchor: {enabled: false, prior_strength: 0.99}      # ablation arm: the original near-hard policy
   attribution_hinge: {enabled: false}                        # version 2
 hard_symptom_constraints: false   # never true in the default configuration
 training:
   optimizer: adamw
-  learning_rate: 0.001
+  learning_rate: 0.002
   weight_decay: 0.0001
-  max_epochs: 200
-  early_stopping_patience: 20
+  batch_size: 16
+  max_epochs: 60
+  validation_fraction: 0.15                 # grouped subset of the training perturbations
+  selection_metric: loss                    # validation evidence-weighted BCE; auprc is too noisy on small validation sets
+  early_stopping_patience: 8
+  negative_weight: 0.2                      # unobserved pairs are unlabelled, not negative
   seeds: [0, 1, 2, 3, 4]
-  checkpoint_every_minutes: 20     # runtime-limited cluster: resumable by design
+  checkpoint_every_minutes: 20              # runtime-limited cluster: resumable by design
