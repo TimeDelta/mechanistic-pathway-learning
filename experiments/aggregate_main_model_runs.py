@@ -134,12 +134,12 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
                 rows_by_name[name] = np.load(rows_path) if rows_path.exists() else np.ones(len(data.perturbation_ids), dtype=bool)
     comparisons = []
     names = list(predictions_by_name)
-    for first in names:
-        for second in names:
-            if first == second or (first not in aggregated and second not in aggregated and not include_baseline_pairs):
+    for position, first in enumerate(names):
+        for second in names[position + 1:]:
+            if first not in aggregated and second not in aggregated and not include_baseline_pairs:
                 continue
             if first not in aggregated and second in aggregated:
-                continue  # each run-versus-baseline pair is reported once, with the run as A
+                first, second = second, first  # a run-versus-baseline pair is reported once, with the run as A
             rows = rows_by_name[first] & rows_by_name[second]
             auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap)
             auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap)
