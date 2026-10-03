@@ -385,3 +385,6 @@ Proposed model and sigmoid baseline (docs/phase3_main_model.md). B6 (difference 
 [26] C. Louizos, M. Welling and D. P. Kingma, "Learning sparse neural networks through L0 regularization," in Proc. ICLR, 2018. arXiv:1712.01312.
 [27] A. P. Dawid and A. M. Skene, "Maximum likelihood estimation of observer error-rates using the EM algorithm," J. R. Stat. Soc. C (Appl. Stat.), vol. 28, no. 1, pp. 20-28, 1979. DOI 10.2307/2346806.
 [28] V. C. Raykar et al., "Learning from crowds," J. Mach. Learn. Res., vol. 11, pp. 1297-1322, 2010.
+[29] Y. Tanaka et al., "OnSIDES database: Extracting adverse drug events from drug labels using natural language processing models," Med, vol. 6, no. 7, p. 100642, 2025. DOI 10.1016/j.medj.2025.100642
+[30] L. Garcia-Alonso, C. H. Holland, M. M. Ibrahim, D. Turei and J. Saez-Rodriguez, "Benchmark and integration of resources for the estimation of human transcription factor activities," Genome Res., vol. 29, no. 8, pp. 1363-1375, 2019. DOI 10.1101/gr.240663.118
+[31] GTEx Consortium, "The GTEx Consortium atlas of genetic regulatory effects across human tissues," Science, vol. 369, no. 6509, pp. 1318-1330, 2020. DOI 10.1126/science.aaz1776

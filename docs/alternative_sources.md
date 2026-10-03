@@ -68,8 +68,10 @@ Fetched on 2026-10-03 by a workflow that ran while the environment's network pol
 
 ## What is kept for version 1
 
-- OnSIDES v3.1.1 (CC BY 4.0) as the later label time slice of evidence class E2: 6,928,666 label-event mentions over 41,119 labels and 1,866 ingredients; the measured name bridge maps 861 ingredients to 909 SIDER PubChem identifiers, to be replaced by a UniChem bridge now that ebi.ac.uk is reachable. OnSIDES carries no label dates, so the later slice is dated by its release, not per label.
-- GTEx v10 median gene TPM (59,033 genes, 13 brain tissues) for the brain expression weight on gene nodes (design 4.1) and the transcription-factor restriction (3.3).
+- OnSIDES v3.1.1 [29] (CC BY 4.0) as the later label time slice of evidence class E2: 6,928,666 label-event mentions over 41,119 labels and 1,866 ingredients; the measured name bridge maps 861 ingredients to 909 SIDER PubChem identifiers, to be replaced by a UniChem bridge now that ebi.ac.uk is reachable. OnSIDES carries no label dates, so the later slice is dated by its release, not per label.
+- GTEx v10 median gene TPM [31] (59,033 genes, 13 brain tissues) for the brain expression weight on gene nodes (design 4.1) and the transcription-factor restriction (3.3).
 - EFO v3.94.0 for the nervous-system indication proxy (MONDO:0005071 closure, 4,413 terms) and the Open Targets target-safety curation (Apache 2.0) as a candidate soft prior.
-- DoRothEA stays as a comparison regulon set only; CollecTRI from OmniPath is the transcription layer.
+- DoRothEA [30] stays as a comparison regulon set only; CollecTRI from OmniPath is the transcription layer.
 - DrugBank-derived tables are excluded on license grounds (CC BY-NC).
+
+Reference numbers are those of docs/experiment_design.md and docs/references.bib.
