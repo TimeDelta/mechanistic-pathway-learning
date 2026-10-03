@@ -25,6 +25,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     bootstrap_interval,
     expected_calibration_error,
     hits_at_k,
+    macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
     per_symptom_auprc,
     per_symptom_auroc,
@@ -95,6 +96,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
         "per_fold_macro_auroc_mean": float(np.mean(fold_aurocs)) if fold_aurocs else float("nan"), "per_fold_macro_auroc_sd": float(np.std(fold_aurocs)) if fold_aurocs else float("nan"),
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes), "hits_at_3": hits_at_k(predictions, outcomes, 3),
         "expected_calibration_error": expected_calibration_error(predictions, outcomes),
+        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees[scored]),
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
     }
@@ -143,6 +145,12 @@ def main() -> None:
         lines.append(summary_row(name, {**entry, "expected_calibration_error": float("nan")}))
     for name, entry in aggregated.items():
         lines.append(summary_row(name, entry))
+    if aggregated:
+        degree_bins = list(next(iter(aggregated.values()))["macro_auprc_by_degree_bin"])
+        lines += ["", "Macro AUPRC by perturbation degree tercile (pooled predictions):", "", "| model | " + " | ".join(degree_bins) + " |", "|---|" + "---|" * len(degree_bins)]
+        for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
+            bins = entry.get("macro_auprc_by_degree_bin", {})
+            lines.append(f"| {name} | " + " | ".join(f"{bins[b]:.3f}" if b in bins else "n/a" for b in degree_bins) + " |")
     lines += ["", "## Configurations", "", "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():
         a = entry["arguments"]

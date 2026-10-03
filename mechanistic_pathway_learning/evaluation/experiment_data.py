@@ -39,6 +39,7 @@ class ExperimentData:
     weights: np.ndarray  # [num_perturbations, num_symptoms]
     in_metabolic_layer: np.ndarray
     node_subsystem: np.ndarray | None = None  # reconstruction subsystem per node ("" for non-reactions or when absent)
+    frequencies: np.ndarray | None = None  # [num_perturbations, num_symptoms] reported frequency of a positive pair, NaN when unknown or negative
 
     @property
     def perturbation_degrees(self) -> np.ndarray:
@@ -74,11 +75,15 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     perturbation_position = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
     outcomes = np.zeros((len(perturbation_ids), len(symptoms)))
     weights = np.zeros_like(outcomes)
+    frequencies = np.full_like(outcomes, np.nan)
+    has_frequency_column = "label_frequency" in evidence.columns
     labels, types, groups, seeds, signs, magnitudes, metabolic = {}, {}, {}, {}, {}, {}, {}
     for row in evidence.itertuples(index=False):
         position = perturbation_position[row.perturbation_id]
         outcomes[position, symptom_index[row.symptom]] = 1.0
         weights[position, symptom_index[row.symptom]] = max(weights[position, symptom_index[row.symptom]], float(row.weight))
+        if has_frequency_column and row.label_frequency is not None and not (isinstance(row.label_frequency, float) and np.isnan(row.label_frequency)):
+            frequencies[position, symptom_index[row.symptom]] = np.nanmax([frequencies[position, symptom_index[row.symptom]], float(row.label_frequency)])
         labels[row.perturbation_id] = row.perturbation_label
         types[row.perturbation_id] = row.perturbation_type
         groups[row.perturbation_id] = getattr(row, group_column)
@@ -110,4 +115,5 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         weights=weights,
         in_metabolic_layer=np.array([metabolic[p] for p in perturbation_ids]),
         node_subsystem=nodes.subsystem.fillna("").to_numpy().astype(str) if "subsystem" in nodes.columns else None,
+        frequencies=frequencies,
     )

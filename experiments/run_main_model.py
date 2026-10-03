@@ -172,6 +172,9 @@ def main() -> None:
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--max-epochs", type=int, default=60)
     parser.add_argument("--positive-target", type=float, default=0.99)
+    parser.add_argument("--positive-target-from-frequency", action="store_true",
+                        help="open question 8: use the reported HPO or label frequency (floored at --minimum-frequency-target) as the target of a positive pair instead of --positive-target")
+    parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
     parser.add_argument("--negative-weight", type=float, default=0.2)
     parser.add_argument("--description-length-coefficient", type=float, default=1e-6)
     parser.add_argument("--checkpoint-every-minutes", type=float, default=20.0)
@@ -210,6 +213,11 @@ def main() -> None:
 
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
     weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
+    positive_targets = None
+    if arguments.positive_target_from_frequency:
+        frequency = np.where(np.isnan(data.frequencies), arguments.positive_target, np.maximum(data.frequencies, arguments.minimum_frequency_target))
+        positive_targets = torch.as_tensor(np.where(data.outcomes > 0, frequency, 0.0), dtype=torch.float32)
+        weights = torch.as_tensor(np.where(data.outcomes > 0, 1.0, arguments.negative_weight), dtype=torch.float32)  # the frequency is the target, not the weight
     node_cost = float(np.log(len(data.node_ids)))
     started = time.time()
     last_checkpoint = time.time()
@@ -223,7 +231,10 @@ def main() -> None:
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
             field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
             output = head(field, relation_index=0)
-            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
+            if positive_targets is not None:
+                bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0)
+            else:
+                bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
             penalty = arguments.description_length_coefficient * head.description_length_penalty(node_cost=node_cost)
             loss = bce + penalty
             optimizer.zero_grad()

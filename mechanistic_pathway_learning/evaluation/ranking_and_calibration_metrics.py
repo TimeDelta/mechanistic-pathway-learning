@@ -84,3 +84,25 @@ def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, nu
             continue
         error += in_bin.mean() * abs(flat_predictions[in_bin].mean() - flat_outcomes[in_bin].mean())
     return float(error)
+
+
+def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, perturbation_degrees: np.ndarray, num_bins: int = 3, minimum_positives: int = 5) -> dict[str, float]:
+    """Macro AUPRC over symptoms inside each degree bin of the perturbations (design section 6.2, assumption A9).
+
+    Bins are degree quantiles over the rows given; a symptom is scored inside a bin when it has at least
+    minimum_positives positives and one negative there. Hub-driven predictors score well in the top bin only.
+    """
+    edges = np.quantile(perturbation_degrees, np.linspace(0.0, 1.0, num_bins + 1))
+    bin_of_row = np.clip(np.searchsorted(edges, perturbation_degrees, side="right") - 1, 0, num_bins - 1)
+    result: dict[str, float] = {}
+    for bin_index in range(num_bins):
+        rows = np.where(bin_of_row == bin_index)[0]
+        values = []
+        for symptom_index in range(outcomes.shape[1]):
+            positives = outcomes[rows, symptom_index].sum()
+            if positives < minimum_positives or positives == len(rows):
+                continue
+            values.append(float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index])))
+        label = f"degree_bin_{bin_index}_[{edges[bin_index]:.0f},{edges[bin_index + 1]:.0f}]_n{len(rows)}"
+        result[label] = float(np.mean(values)) if values else float("nan")
+    return result

@@ -46,6 +46,7 @@ from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
     hits_at_k,
+    macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
     per_symptom_auprc,
     per_symptom_auroc,
@@ -105,6 +106,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
 
 
 def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray, per_fold: list[dict], num_bootstrap: int) -> dict:
+    degrees = data.perturbation_degrees[rows]
     predictions, outcomes = predictions[rows], outcomes[rows]
     per_symptom = {}
     for symptom_index, symptom in enumerate(data.symptoms):
@@ -130,6 +132,7 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
         "per_fold": per_fold,
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes),
         "hits_at_3": hits_at_k(predictions, outcomes, 3),
+        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, degrees),
     }
 
 
@@ -241,6 +244,12 @@ def main() -> None:
              "Unobserved pairs count as negatives (positive-unlabelled convention). Pooled metrics are computed on the pooled out-of-fold predictions; per-fold values are the mean and standard deviation over folds of the macro metric, which is immune to the base-rate artifact that pulls pooled AUROC of a constant-per-fold predictor below 0.5.", ""]
     header = ["| model | macro AUPRC (pooled) | macro AUPRC (per fold) | macro AUROC (pooled) | macro AUROC (per fold) | MRR | hits@3 | scored perturbations |", "|---|---|---|---|---|---|---|---|"]
     lines += ["## Grouped perturbation-wise split", ""] + header + [summary_row(name, entry) for name, entry in results["splits"]["grouped"].items()] + [""]
+    degree_bins = list(next(iter(results["splits"]["grouped"].values()))["macro_auprc_by_degree_bin"])
+    lines += ["Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins are [low degree, high degree] with the number of perturbations):", "",
+              "| model | " + " | ".join(degree_bins) + " |", "|---|" + "---|" * len(degree_bins)]
+    for name, entry in results["splits"]["grouped"].items():
+        lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_degree_bin'][b]:.3f}" for b in degree_bins) + " |")
+    lines.append("")
     if results["splits"]["pathway_wise"]:
         lines += holdout_section("Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)",
                                  "Per-symptom AUPRC inside one held-out module is not meaningful (sets of 4 to 8 genes with homogeneous symptom profiles), so only pooled per-symptom metrics and per-hold-out ranking metrics are shown.",
