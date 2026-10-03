@@ -29,7 +29,10 @@ contributes to each symptom), docs/phase2_baselines.md and docs/phase2_baselines
 (baselines under three splits with permutation controls), docs/phase3_main_model.md (B6 and B3).
 Two results shape the design: the gene-wise split leaks through genes that share a disease, so the
 disease-cluster grouping is the default; and the sixteen curated modules hold too few perturbations
-for a pathway-wise endpoint, so Human-GEM subsystems are proposed instead (design section 6.1).
+for a pathway-wise endpoint, so Human-GEM subsystems are proposed instead (design section 6.1). A
+monogenic time split dates each gene-symptom pair by the publication of the PubMed reference behind
+its OMIM annotation (docs/hpo_reference_publication_dates.json). docs/references.bib holds the design
+document's reference list for import into a reference manager.
 
 Still stubs: OnSIDES and literature loaders, the diagnosis proxy audit, the flux-sampling job
 (written, not yet run), the embedding and flux-feature and language-model baselines, the MAGMA
