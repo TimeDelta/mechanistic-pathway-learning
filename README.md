@@ -36,8 +36,13 @@ its OMIM annotation (docs/hpo_reference_publication_dates.json). docs/references
 document's reference list for import into a reference manager.
 
 Still stubs: OnSIDES and literature loaders, the diagnosis proxy audit, the flux-sampling job
-(written, not yet run), the flux-feature and language-model baselines, the MAGMA wrapper. The pharmacological evidence class and the signaling layers need the SIDER, ChEMBL and
-OmniPath hosts, which were not reachable from the environment that produced the current tables.
+(written, not yet run), the flux-feature and language-model baselines, the MAGMA wrapper. The pharmacological evidence class and the signaling, transcription and small-molecule layers were
+added once the environment's network policy allowed the SIDER, ChEMBL, UniChem and OmniPath hosts:
+the full graph (data/processed/graph_full) has 33,964 nodes and 261,369 typed edges, and the full
+evidence table (data/processed/evidence_full) 3,838 observations (3,034 monogenic gene rows, 804 drug-label
+rows for 72 drugs with a single ChEMBL mechanism target). Baselines and the first model configurations on
+the full data are running under runs/full; results go to docs/phase2_baselines_full_disease_cluster.md
+and docs/phase3_main_model.md when they finish.
 
 Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
 
@@ -46,7 +51,7 @@ mkdir -p data/raw/hpo data/raw/Human-GEM/model data/raw/sider_4.1 data/raw/omnip
 curl -L -o data/raw/hpo/hp.obo https://github.com/obophenotype/human-phenotype-ontology/releases/latest/download/hp.obo
 curl -L -o data/raw/hpo/genes_to_phenotype.txt https://github.com/obophenotype/human-phenotype-ontology/releases/latest/download/genes_to_phenotype.txt
 for f in Human-GEM.xml Human-GEM.yml genes.tsv metabolites.tsv reactions.tsv; do curl -L -o data/raw/Human-GEM/model/$f https://raw.githubusercontent.com/SysBioChalmers/Human-GEM/main/model/$f; done
-for f in meddra_all_se.tsv.gz meddra_freq.tsv.gz meddra_all_indications.tsv.gz drug_names.tsv drug_atc.tsv; do curl -L -o data/raw/sider_4.1/$f http://sideeffects.embl.de/media/download/$f; done
+for f in meddra_all_se.tsv.gz meddra_freq.tsv.gz meddra_all_indications.tsv.gz drug_names.tsv drug_atc.tsv; do curl -L -o data/raw/sider_4.1/$f https://sideeffects.embl.de/media/download/$f; done
 curl -L -o data/raw/omnipath/omnipath_interactions.tsv "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort,n_references&organisms=9606&format=tsv"
 curl -L -o data/raw/omnipath/collectri_interactions.tsv "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references,n_references&organisms=9606&format=tsv"
 curl -L -o data/raw/omnipath/small_molecule_protein.tsv "https://omnipathdb.org/interactions?types=small_molecule_protein&genesymbols=1&fields=sources,references,type&organisms=9606&format=tsv"
@@ -60,6 +65,17 @@ python experiments/run_main_model_batch.py --configuration b6_default --group-by
 python experiments/run_main_model_batch.py --configuration b3_sigmoid --group-by disease_cluster
 python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disease_cluster runs/b3_sigmoid_disease_cluster --baseline-results runs/baselines_disease_cluster/results.json
 python experiments/analyze_pathway_modules.py --run-dir runs/b6_default_disease_cluster
+```
+
+Full data layer (the layer files above present; the build picks them up by default; the model
+configurations run under a wall-time budget per fold and resume from checkpoints):
+
+```bash
+python -m mechanistic_pathway_learning.graph.build_physiology_graph --output-dir data/processed/graph_full
+python -m mechanistic_pathway_learning.evidence.assemble_evidence_table --graph-dir data/processed/graph_full --output-dir data/processed/evidence_full
+python experiments/run_baselines.py --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --group-by disease_cluster --with-kg-embedding --time-split-cutoff 2015-12-31 --output-dir runs/full/baselines_disease_cluster --markdown-output docs/phase2_baselines_full_disease_cluster.md
+python experiments/run_main_model_batch.py --configuration b6_mechanistic --group-by disease_cluster --run-root runs/full --extra --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --time-budget-seconds 10800 --max-epochs 40
+python experiments/run_main_model_batch.py --configuration b3_typed_nodes --group-by disease_cluster --run-root runs/full --extra --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --time-budget-seconds 10800 --max-epochs 40
 ```
 
 ## Setup
