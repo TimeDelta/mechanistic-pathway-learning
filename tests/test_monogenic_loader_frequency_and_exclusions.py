@@ -5,6 +5,7 @@ from mechanistic_pathway_learning.evidence.assemble_evidence_table import diseas
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import assign_evidence_grade, loss_weight_for_record
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
     expand_symptom_terms,
+    is_zero_patient_fraction,
     load_hpo_is_a_parents_from_obo,
     load_hpo_term_names_from_obo,
     monogenic_evidence_records,
@@ -73,6 +74,8 @@ def test_frequency_parsing() -> None:
     assert abs(parse_frequency_qualifier("25%") - 0.25) < 1e-9
     assert parse_frequency_qualifier("-") is None and parse_frequency_qualifier("") is None and parse_frequency_qualifier("0/0") is None
     assert parse_frequency_denominator("3/5") == 5 and parse_frequency_denominator("HP:0040282") is None
+    assert is_zero_patient_fraction("0/10") and not is_zero_patient_fraction("0/0") and not is_zero_patient_fraction("3/5")
+    assert not is_zero_patient_fraction("HP:0040285") and not is_zero_patient_fraction("-") and not is_zero_patient_fraction("0%")
 
 
 def test_exclusion_removes_subtree_but_keeps_terms_reachable_elsewhere(tmp_path: Path) -> None:

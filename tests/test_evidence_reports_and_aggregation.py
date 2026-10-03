@@ -11,6 +11,7 @@ from mechanistic_pathway_learning.evidence.assemble_evidence_table import (
     aggregate_reports_to_observations,
     disease_cluster_ids_from_reports,
     fit_report_reliability,
+    reliability_weights,
     summarize_reports,
 )
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import assign_evidence_grade, loss_weight_for_record
@@ -64,17 +65,36 @@ def monogenic_fixture(tmp_path: Path, hpoa_rows: list[str] | None, genes: set[st
 
 
 def test_not_qualified_and_excluded_annotations_become_negative_reports(tmp_path: Path) -> None:
-    # OTC's disease has a NOT row and an Excluded-frequency row on Dementia (a cognitive_impairment term)
+    # OTC's disease has a NOT row, an Excluded-frequency row and a 0 of 10 patients row on Dementia (a cognitive_impairment term)
     reports, *_ = monogenic_fixture(tmp_path, [
         "OMIM:311250\tOTC deficiency\tNOT\tHP:0000726\tPMID:1\tPCS\t\t\t\t\tP\tHPO:a[2012-03-04]",
         "OMIM:311250\tOTC deficiency\t\tHP:0000726\tOMIM:311250\tTAS\t\tHP:0040285\t\t\tP\tHPO:a[2013-03-04]",
+        "OMIM:311250\tOTC deficiency\t\tHP:0000726\tPMID:2\tPCS\t\t0/10\t\t\tP\tHPO:a[2014-03-04]",
     ], {"OTC"})
-    assert [report.report_value for report in reports] == [0, 0]
-    not_report, excluded_report = reports
+    assert [report.report_value for report in reports] == [0, 0, 0]
+    not_report, excluded_report, zero_of_ten_report = reports
     assert not_report.frequency is None and excluded_report.frequency == 0.0
     assert not_report.source == "HPO-OMIM" and not_report.evidence_class == "monogenic" and not_report.relation == "induces"
     assert not_report.model_description == "human loss-of-function; OMIM:311250 OTC deficiency"
     assert not_report.perturbation_nodes == json.dumps([["GENE:OTC", -1.0, 1.0]])
+    assert zero_of_ten_report.frequency == 0.0 and zero_of_ten_report.frequency_denominator == 10
+    assert "reported in 0 of 10 patients" in zero_of_ten_report.limitations and "n = 10 patients" in zero_of_ten_report.limitations
+    assert "reported in 0 of" not in excluded_report.limitations
+    assert rubric_weight(zero_of_ten_report, RubricWeightDefaults()) == pytest.approx(0.5 + 0.5 * np.log1p(10) / np.log1p(20))  # the sample-size factor applies to the absence claim
+
+
+def test_zero_of_n_pair_keeps_the_grade_weight_but_is_not_a_positive_label(tmp_path: Path) -> None:
+    # the version 0.4 loader read 0/10 as a frequency-0 row (floor weight 0.25); the report model reads it as an absence report
+    reports, rows, roots, parents, excluded = monogenic_fixture(tmp_path, [
+        "OMIM:311250\tOTC deficiency\t\tHP:0000726\tPMID:2\tPCS\t\t0/10\t\t\tP\tHPO:a[2014-03-04]",
+    ], {"OTC"})
+    table = reports_to_dataframe(reports)
+    table["rubric_weight"] = rubric_weights_for_table(table, RubricWeightDefaults())
+    row = aggregate_reports_to_observations(table, "curated_synopsis_provenance", {}, set()).iloc[0]
+    assert row.positive_report_count == 0 and row.negative_report_count == 1
+    assert row.grade == "A" and row.weight == pytest.approx(0.25) and row.label_frequency == 0.0 and row.annotation_patient_count == 10
+    fit = fit_report_reliability(table, aggregate_reports_to_observations(table, "curated_synopsis_provenance", {}, set()), RubricWeightDefaults())
+    assert fit.posterior[0] < 0.5  # the only report asserts absence
 
 
 def test_evidence_code_references_and_date_join_from_phenotype_hpoa(tmp_path: Path) -> None:
@@ -153,9 +173,10 @@ def test_all_negative_pair_is_kept_with_zero_weight(tmp_path: Path) -> None:
     assert row.disease_identifiers == "OMIM:311250" and row.omim_entry_count == 1 and pd.isna(row.label_frequency)
 
 
-def synthetic_report_table(rows: list[tuple[str, str, str, int, float]]) -> pd.DataFrame:
-    """(perturbation_id, symptom, source, report_value, rubric_weight) -> a minimal report table."""
-    table = pd.DataFrame(rows, columns=["perturbation_id", "symptom", "source", "report_value", "rubric_weight"])
+def synthetic_report_table(rows: list[tuple], with_record_ids: bool = False) -> pd.DataFrame:
+    """(perturbation_id, symptom, source, report_value, rubric_weight[, source_record_id]) -> a minimal report table."""
+    columns = ["perturbation_id", "symptom", "source", "report_value", "rubric_weight"] + (["source_record_id"] if with_record_ids else [])
+    table = pd.DataFrame(rows, columns=columns)
     table["relation"] = "induces"
     return table
 
@@ -175,6 +196,71 @@ def test_conflicting_pair_posterior_lies_strictly_between() -> None:
         posteriors.append(fit_weighted_dawid_skene(positive, negative, sources, items).posterior[-1])
     posterior_conflicting, posterior_positive, posterior_negative = posteriors
     assert posterior_negative < posterior_conflicting < posterior_positive
+
+
+def test_one_source_record_contributes_one_report_per_cell() -> None:
+    # one disease entry annotated to three descendant terms gives three reports; the cell carries the largest weight once
+    one_entry = synthetic_report_table([("g", "s", "A", 1, 0.8, "OMIM:1"), ("g", "s", "A", 1, 0.8, "OMIM:1"), ("g", "s", "A", 1, 0.6, "OMIM:1")], with_record_ids=True)
+    positive, negative, _ = report_count_matrices(one_entry, [("g", "s", "induces")], ["A"])
+    assert positive.tolist() == [[0.8]] and negative.tolist() == [[0.0]]
+    # two entries sum; the positive and negative sides of one entry are reduced separately
+    two_entries = synthetic_report_table([("g", "s", "A", 1, 0.8, "OMIM:1"), ("g", "s", "A", 1, 1.0, "ORPHA:2"), ("g", "s", "A", 0, 0.7, "ORPHA:2"), ("g", "s", "A", 0, 0.5, "ORPHA:2")], with_record_ids=True)
+    positive, negative, _ = report_count_matrices(two_entries, [("g", "s", "induces")], ["A"])
+    assert positive.tolist() == [[1.8]] and negative.tolist() == [[0.7]]
+    # without a source_record_id column every report is its own record, as the earlier synthetic tables assume
+    positive, negative, _ = report_count_matrices(synthetic_report_table([("g", "s", "A", 1, 0.8), ("g", "s", "A", 1, 0.8)]), [("g", "s", "induces")], ["A"])
+    assert positive.tolist() == [[1.6]]
+
+
+def test_silence_only_source_keeps_prior_specificity_and_never_counts_a_positive_against() -> None:
+    rng = np.random.default_rng(2)
+    rows = []
+    for index in range(80):
+        truth = rng.random() < 0.6
+        rows.append((f"p{index}", "s", "A", int(truth if rng.random() < 0.9 else not truth), 1.0))  # A reports both values
+        if truth and rng.random() < 0.7:
+            rows.append((f"p{index}", "s", "B", 1, 0.8))  # B reports presence only; its negatives are silence
+        else:
+            rows.append((f"p{index}", "other", "B", 1, 0.8))  # keeps B covering the perturbation
+    items = [(f"p{index}", "s", "induces") for index in range(80)]
+    positive, negative, coverage = report_count_matrices(synthetic_report_table(rows), items, ["A", "B"])
+    explicit_negative = np.array([(negative[:, 0] > 0).any(), False])
+    fit = fit_weighted_dawid_skene(positive, negative, ["A", "B"], items, estimate_specificity=explicit_negative)
+    assert fit.specificity_hold_reasons == {"B": "no_explicit_negatives"} and fit.specificity_held_at_prior.tolist() == [False, True]
+    assert fit.specificity[1] == pytest.approx(0.8) and fit.sensitivity[1] / (1 - fit.specificity[1]) >= 1.0
+    assert fit.degenerate_sources == [] and fit.sensitivity[0] + fit.specificity[0] > 1
+
+
+def test_inverted_source_is_held_at_prior_then_flagged_and_reliability_weighting_refused() -> None:
+    # A and B agree; C reports the opposite, so its free estimate has sensitivity + specificity below 1
+    rows = []
+    for index in range(100):
+        truth = index < 70
+        rows += [(f"p{index}", "s", "A", int(truth), 1.0), (f"p{index}", "s", "B", int(truth), 1.0), (f"p{index}", "s", "C", int(not truth), 1.0)]
+    items = [(f"p{index}", "s", "induces") for index in range(100)]
+    positive, negative, _ = report_count_matrices(synthetic_report_table(rows), items, ["A", "B", "C"])
+    fit = fit_weighted_dawid_skene(positive, negative, ["A", "B", "C"], items)
+    assert fit.specificity_hold_reasons == {"C": "degenerate_when_estimated"} and fit.specificity[2] == pytest.approx(0.8)
+    assert fit.degenerate_sources == ["C"] and fit.sensitivity[2] + fit.specificity[2] <= 1.0
+    assert fit.sensitivity[0] + fit.specificity[0] > 1 and fit.sensitivity[1] + fit.specificity[1] > 1
+    observations = pd.DataFrame({"positive_report_count": [1] * 100})
+    with pytest.raises(ValueError, match="degenerate"):
+        reliability_weights(fit, observations, 1.0)
+    well_behaved = fit_weighted_dawid_skene(positive[:, :2], negative[:, :2], ["A", "B"], items)
+    assert well_behaved.degenerate_sources == [] and np.allclose(reliability_weights(well_behaved, observations, 2.0), 2.0 * well_behaved.posterior)
+
+
+def test_prevalence_is_fitted_per_item_group() -> None:
+    rows = [(f"g{index}", "s", "A", int(index % 10 < 8), 1.0) for index in range(50)] + [(f"d{index}", "s", "B", int(index % 10 < 2), 1.0) for index in range(50)]
+    rows += [(f"g{index}", "s", "C", int(index % 10 < 8), 1.0) for index in range(50)] + [(f"d{index}", "s", "D", int(index % 10 < 2), 1.0) for index in range(50)]
+    items = [(f"g{index}", "s", "induces") for index in range(50)] + [(f"d{index}", "s", "induces") for index in range(50)]
+    positive, negative, _ = report_count_matrices(synthetic_report_table(rows), items, ["A", "B", "C", "D"])
+    fit = fit_weighted_dawid_skene(positive, negative, ["A", "B", "C", "D"], items, item_groups=["monogenic"] * 50 + ["pharmacological"] * 50)
+    assert set(fit.prevalence_by_group) == {"monogenic", "pharmacological"}
+    assert fit.prevalence_by_group["monogenic"] > 0.6 > 0.4 > fit.prevalence_by_group["pharmacological"]
+    assert fit.prevalence_by_group["pharmacological"] < fit.prevalence < fit.prevalence_by_group["monogenic"]
+    pooled = fit_weighted_dawid_skene(positive, negative, ["A", "B", "C", "D"], items)
+    assert pooled.prevalence_by_group == {"all": pytest.approx(pooled.prevalence)}
 
 
 def test_weighted_fit_reduces_to_dawid_skene_on_unit_weights() -> None:
@@ -264,9 +350,13 @@ def test_fit_report_reliability_and_summary_over_a_small_table(tmp_path: Path) -
     assert fit.item_keys == [("HMBS", "psychosis", "induces"), ("OTC", "cognitive_impairment", "induces")]
     assert fit.per_source_summary["HPO-OMIM"]["items_covered"] == 2 and fit.per_source_summary["HPO-Orphanet"]["items_covered"] == 1
     assert fit.per_source_summary["HPO-Orphanet"]["implicit_negative_cells"] == 0 and fit.per_source_summary["HPO-OMIM"]["implicit_negative_cells"] == 0
+    assert fit.per_source_summary["HPO-Orphanet"]["specificity_held_at_prior"] == "no_explicit_negatives" and fit.per_source_summary["HPO-Orphanet"]["specificity"] == pytest.approx(0.8)
+    assert fit.per_source_summary["HPO-OMIM"]["explicit_negative_weight"] == pytest.approx(1.0) and set(fit.prevalence_by_group) == {"monogenic"}
     summary = summarize_reports(table, fit, defaults, observations, reports_dropped_unknown_provenance=0)
     assert summary["reports"]["rows"] == 4 and summary["reports"]["pairs_conflicting"] == 1 and summary["reports"]["pairs_all_negative"] == 0
     assert summary["reports"]["by_source_and_value"] == {"HPO-OMIM|0": 1, "HPO-OMIM|1": 2, "HPO-Orphanet|1": 1}
     assert summary["reliability"]["weakly_identified"] and summary["reliability"]["posterior_quantiles"]["conflicting"]["pairs"] == 1
     assert summary["reliability"]["rubric_weight_defaults"]["implicit_negative_weight"] == 1.0
+    assert summary["reliability"]["prevalence_by_evidence_class"] == {"monogenic": pytest.approx(fit.prevalence)} and summary["reliability"]["degenerate_sources"] == []
+    assert summary["reliability"]["per_source"]["HPO-OMIM"]["degenerate"] is False
     json.dumps(summary)  # serializable

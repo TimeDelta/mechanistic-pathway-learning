@@ -58,8 +58,15 @@ prevalence; prevalence_by_group holds them and prevalence the pooled value.
 Degeneracy. Clipping keeps sensitivity and specificity inside (0, 1) but not their sum
 above 1, and EM can settle on the label-switched optimum for one source, where a positive
 report lowers the posterior (likelihood ratio sensitivity / (1 - specificity) below 1) and
-silence raises it. A source whose fitted sensitivity + specificity is at most 1 is listed
-in degenerate_sources; the assembler refuses --weighting reliability on such a fit.
+silence raises it. When an EM pass ends with sensitivity + specificity at most 1 for an
+estimated source, that source's specificity is held at the prior mean as well and EM runs
+again, until no estimated source is inverted (at most one pass per source;
+specificity_hold_reasons records which sources were held and why). On the HPO table this
+holds both provenances in turn: whichever of OMIM and Orphanet is estimated last is
+inverted by the other's silence, which is the two-source non-identifiability showing up
+as a sign. A source whose sum is still at most 1 after the holds (its sensitivity is
+below 1 minus the prior mean) is listed in degenerate_sources; the assembler refuses
+--weighting reliability on such a fit.
 
 Identifiability. A two-class latent model needs three conditionally independent
 sources covering the same items. The report table has two HPO provenances on gene
@@ -126,8 +133,9 @@ class ReportReliabilityFit:
     log_likelihood_trace: list[float] = field(default_factory=list)
     per_source_summary: dict[str, dict] = field(default_factory=dict)
     prevalence_by_group: dict[str, float] = field(default_factory=dict)  # one prevalence per item group (evidence class); prevalence is the pooled value
-    specificity_held_at_prior: np.ndarray | None = None  # [num_sources] True where specificity was not estimated (no explicit negative report)
-    degenerate_sources: list[str] = field(default_factory=list)  # sources with fitted sensitivity + specificity <= 1
+    specificity_held_at_prior: np.ndarray | None = None  # [num_sources] True where specificity was held at the prior mean
+    specificity_hold_reasons: dict[str, str] = field(default_factory=dict)  # held source -> "no_explicit_negatives" or "degenerate_when_estimated"
+    degenerate_sources: list[str] = field(default_factory=list)  # sources with sensitivity + specificity <= 1 after the hold
 
 
 def report_count_matrices(
@@ -232,8 +240,9 @@ def fit_weighted_dawid_skene(
     item_groups, one label per item, gives each group its own prevalence (the E-step reads the item's group);
     None pools every item. estimate_specificity, one boolean per source, holds the specificity of a source at
     the prior mean a / (a + b) where False (a source without explicit negative reports, module docstring);
-    None estimates every source. A source whose fitted sensitivity + specificity is at most 1 is listed in
-    degenerate_sources.
+    None estimates every source. An estimated source whose fitted sensitivity + specificity is at most 1
+    after a pass has its specificity held at the prior mean too and EM runs again, until no estimated source
+    is inverted; a source still at or below 1 after the holds is listed in degenerate_sources.
     """
     positive_weights = np.asarray(positive_weights, dtype=float)
     negative_weights = np.asarray(negative_weights, dtype=float)
@@ -251,40 +260,55 @@ def fit_weighted_dawid_skene(
     total_weights = positive_weights + negative_weights
     covering_sources_per_item = (total_weights > 0).sum(axis=1)
     weakly_identified = bool(num_items == 0 or covering_sources_per_item.max() < 3)
-    sensitivity = np.full(num_sources, 0.8)
-    specificity = np.full(num_sources, 0.8)
-    prevalence = 0.5
-    prevalence_per_group = np.full(len(distinct_groups), 0.5)
-    trace: list[float] = []
+    group_sizes = np.bincount(group_index, minlength=len(distinct_groups))
     item_total = total_weights.sum(axis=1)
-    posterior = np.where(item_total > 0, positive_weights.sum(axis=1) / np.maximum(item_total, PROBABILITY_EPSILON), 0.5)
-    posterior = _clip(posterior)
-    converged = False
-    iterations_run = 0
-    for iterations_run in range(1, num_iterations + 1):
-        prevalence = (posterior.sum() + prevalence_prior_counts[0]) / (num_items + sum(prevalence_prior_counts))
-        group_posterior_sums = np.bincount(group_index, weights=posterior, minlength=len(distinct_groups))
-        group_sizes = np.bincount(group_index, minlength=len(distinct_groups))
-        prevalence_per_group = (group_posterior_sums + prevalence_prior_counts[0]) / (group_sizes + sum(prevalence_prior_counts))
-        sensitivity = (posterior[:, None] * positive_weights).sum(axis=0) + sensitivity_prior_counts[0] - 1.0
-        sensitivity = sensitivity / ((posterior[:, None] * total_weights).sum(axis=0) + sum(sensitivity_prior_counts) - 2.0)
-        specificity = ((1.0 - posterior)[:, None] * negative_weights).sum(axis=0) + specificity_prior_counts[0] - 1.0
-        specificity = specificity / (((1.0 - posterior)[:, None] * total_weights).sum(axis=0) + sum(specificity_prior_counts) - 2.0)
-        specificity = np.where(specificity_estimated, specificity, specificity_prior_mean)
-        sensitivity, specificity = _clip(sensitivity), _clip(specificity)
-        prevalence_per_item = prevalence_per_group[group_index]
-        new_posterior = weighted_posterior_truth_probability(positive_weights, negative_weights, prevalence_per_item, sensitivity, specificity)
-        trace.append(weighted_marginal_log_likelihood(positive_weights, negative_weights, prevalence_per_item, sensitivity, specificity))
-        converged = bool(np.max(np.abs(new_posterior - posterior)) < convergence_tolerance) if num_items else True
-        posterior = new_posterior
-        if converged:
+    majority_vote = _clip(np.where(item_total > 0, positive_weights.sum(axis=1) / np.maximum(item_total, PROBABILITY_EPSILON), 0.5))
+
+    def run_expectation_maximization(specificity_estimated: np.ndarray) -> tuple:
+        sensitivity = np.full(num_sources, 0.8)
+        specificity = np.full(num_sources, 0.8)
+        prevalence = 0.5
+        prevalence_per_group = np.full(len(distinct_groups), 0.5)
+        trace: list[float] = []
+        posterior = majority_vote
+        converged = False
+        iterations_run = 0
+        for iterations_run in range(1, num_iterations + 1):
+            prevalence = (posterior.sum() + prevalence_prior_counts[0]) / (num_items + sum(prevalence_prior_counts))
+            group_posterior_sums = np.bincount(group_index, weights=posterior, minlength=len(distinct_groups))
+            prevalence_per_group = (group_posterior_sums + prevalence_prior_counts[0]) / (group_sizes + sum(prevalence_prior_counts))
+            sensitivity = (posterior[:, None] * positive_weights).sum(axis=0) + sensitivity_prior_counts[0] - 1.0
+            sensitivity = sensitivity / ((posterior[:, None] * total_weights).sum(axis=0) + sum(sensitivity_prior_counts) - 2.0)
+            specificity = ((1.0 - posterior)[:, None] * negative_weights).sum(axis=0) + specificity_prior_counts[0] - 1.0
+            specificity = specificity / (((1.0 - posterior)[:, None] * total_weights).sum(axis=0) + sum(specificity_prior_counts) - 2.0)
+            specificity = np.where(specificity_estimated, specificity, specificity_prior_mean)
+            sensitivity, specificity = _clip(sensitivity), _clip(specificity)
+            prevalence_per_item = prevalence_per_group[group_index]
+            new_posterior = weighted_posterior_truth_probability(positive_weights, negative_weights, prevalence_per_item, sensitivity, specificity)
+            trace.append(weighted_marginal_log_likelihood(positive_weights, negative_weights, prevalence_per_item, sensitivity, specificity))
+            converged = bool(np.max(np.abs(new_posterior - posterior)) < convergence_tolerance) if num_items else True
+            posterior = new_posterior
+            if converged:
+                break
+        return sensitivity, specificity, prevalence, prevalence_per_group, posterior, trace, iterations_run, converged
+
+    def sources_at_or_below_unit_sum(sensitivity: np.ndarray, specificity: np.ndarray) -> list[str]:
+        return [name for name, source_sensitivity, source_specificity in zip(source_names, sensitivity, specificity) if source_sensitivity + source_specificity <= 1.0]
+
+    hold_reasons = {name: "no_explicit_negatives" for name, estimated in zip(source_names, specificity_estimated) if not estimated}
+    for _ in range(num_sources + 1):
+        sensitivity, specificity, prevalence, prevalence_per_group, posterior, trace, iterations_run, converged = run_expectation_maximization(specificity_estimated)
+        degenerate_when_estimated = [name for name in sources_at_or_below_unit_sum(sensitivity, specificity) if name not in hold_reasons]
+        if not degenerate_when_estimated:
             break
-    degenerate_sources = [name for name, source_sensitivity, source_specificity in zip(source_names, sensitivity, specificity) if source_sensitivity + source_specificity <= 1.0]
+        hold_reasons.update({name: "degenerate_when_estimated" for name in degenerate_when_estimated})
+        specificity_estimated = np.array([name not in hold_reasons for name in source_names], dtype=bool)
     return ReportReliabilityFit(
         source_names=list(source_names), prevalence=float(prevalence), sensitivity=sensitivity, specificity=specificity, item_keys=keys, posterior=posterior,
         num_iterations=iterations_run, converged=converged, weakly_identified=weakly_identified, log_likelihood_trace=trace,
         prevalence_by_group={label: float(value) for label, value in zip(distinct_groups, prevalence_per_group)},
-        specificity_held_at_prior=~specificity_estimated, degenerate_sources=degenerate_sources,
+        specificity_held_at_prior=~specificity_estimated, specificity_hold_reasons=hold_reasons,
+        degenerate_sources=sources_at_or_below_unit_sum(sensitivity, specificity),
     )
 
 

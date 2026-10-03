@@ -320,7 +320,7 @@ def fit_report_reliability(reports: pd.DataFrame, observations: pd.DataFrame, de
             "implicit_negative_cells": int((coverage[:, column] * (~explicit_cells[:, column])).sum()),
             "sensitivity": float(fit.sensitivity[column]),
             "specificity": float(fit.specificity[column]),
-            "specificity_held_at_prior": bool(fit.specificity_held_at_prior[column]),
+            "specificity_held_at_prior": fit.specificity_hold_reasons.get(source),
             "degenerate": source in fit.degenerate_sources,
         }
     return fit
