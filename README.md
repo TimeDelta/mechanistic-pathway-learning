@@ -11,13 +11,15 @@ docs/experiment_design.md. Read that first.
 
 ## Status
 
-Scaffold only. Implemented and tested: the noisy-OR pathway module head, soft constraint
+Scaffold plus the first Phase 1 measurements (docs/phase1_counts.md). Implemented and tested: the noisy-OR pathway module head, soft constraint
 losses, a pure-PyTorch relational message passing encoder, grouped and pathway-wise and
 time splits, evidence grading, currency metabolite tagging, equifinality indices, ranking
-and calibration metrics and two negative controls. Everything that touches real data is a
-stub with a written contract (see the docstring at the top of each file).
+and calibration metrics, two negative controls, the HPO and SIDER loaders and the
+SIDER-to-ChEMBL drug-target mapping. The graph build, OnSIDES and literature loaders,
+baselines, MAGMA wrapper and mechanism cards are stubs with written contracts (see the
+docstring at the top of each file).
 
-Next step: Phase 1 of the design (graph build, evidence assembly, go/no-go counts).
+Next step: the physiology graph build and the evidence reliability model.
 
 ## Setup
 

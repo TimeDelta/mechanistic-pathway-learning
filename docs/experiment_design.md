@@ -1,6 +1,6 @@
-# Mechanistic pathway learning: experiment design, version 0.2
+# Mechanistic pathway learning: experiment design, version 0.3
 
-Status: 2 October 2026. Version 0.1 was written from the project notes before the repository was public; version 0.2 incorporates the decisions taken since (no hard symptom-level constraints, with strong evidence expressed as a 0.99 target; the earlier in-house literature knowledge graph is not used; compute is a runtime-limited GPU cluster) and matches the scaffold committed alongside it. Nothing beyond the scaffold is implemented. Every number marked "estimate" is to be replaced by a measured count in Phase 1. Numbered citations are in order of first appearance; PMIDs and DOIs are given in the reference list for import.
+Status: 2 October 2026. Version 0.1 was written from the project notes before the repository was public; version 0.2 incorporated the decisions taken since (no hard symptom-level constraints, with strong evidence expressed as a 0.99 target; the earlier in-house literature knowledge graph is not used; compute is a runtime-limited GPU cluster). Version 0.3 replaces the Phase 1 estimates with measured counts from the HPO 2026-09-01 release, Human-GEM 2.0.1, SIDER 4.1 and ChEMBL 37 (docs/phase1_counts.md) and verifies the HPO identifiers in the symptom crosswalk. Numbered citations are in order of first appearance; PMIDs and DOIs are given in the reference list for import.
 
 Implemented and unit-tested in the scaffold: the noisy-OR pathway module head with hard-concrete supports, the soft constraint losses, a pure-PyTorch relational message passing encoder, grouped and pathway-wise and time splits, the evidence grading rules, currency metabolite tagging, the equifinality indices, ranking and calibration metrics with bootstrap intervals and two of the negative controls. Stubbed with written contracts: the graph build, the HPO loader (parsing implemented, OMIM grading lookup not), the drug-label and literature loaders, the flux-sampling array job, the baselines, the MAGMA wrapper and the mechanism cards.
 
@@ -40,7 +40,7 @@ A6. Multiple independent pathways lead to the same symptom. Equifinality is plau
 
 A7. Removing diagnosis labels makes the learning diagnosis-free. Diagnosis leaks through proxies: monogenic phenotype annotations are attached to disease entries, antipsychotic labels track their indication and symptom GWAS cohorts are population samples with diagnosed subgroups. Design response: no disease nodes in the graph, symptom terms only as targets and a proxy audit in Phase 1 that tests whether drug class or disease identity can be predicted from the evidence features.
 
-A8. Experiments are tractable with existing data. Computation is not the constraint; curation is. Estimate, to be measured in Phase 1: on the order of 150-300 metabolic genes with at least one psychiatric phenotype annotation and on the order of 200-400 CNS drugs with a dominant target and at least one symptom-level label event. If counts fall below the thresholds in section 9, the symptom set shrinks rather than the evidence bar.
+A8. Experiments are tractable with existing data. Computation is not the constraint; curation is. Measured (docs/phase1_counts.md): 473 Human-GEM genes carry at least one HPO annotation in a target symptom, and 65 SIDER drugs pass the version 1 pharmacological bar (a single ChEMBL mechanism target and an ATC nervous-system code). Ten of twelve symptoms clear the go/no-go threshold on these two classes alone; anhedonia (0 genes, 0 drugs) and psychomotor retardation (0 genes, 4 drugs) do not. The 65-drug count is small because most centrally acting drugs have several mechanism targets; relaxing the rule to two targets (section 4.2) is the first lever if the pharmacological class needs to be larger, and the symptom set shrinks rather than the evidence bar.
 
 A9. Hub nodes are a nuisance to be handled later. Currency metabolites (ATP, NADH, water, protons) and hub symptoms dominate any propagation- or embedding-based model, and biomedical knowledge-graph embeddings are known to produce "densely connected entities being highly ranked no matter the context" [8]. Design response: currency metabolites are removed from path-based features (kept for flux computations), negatives are degree-matched and all metrics are reported by degree bin.
 
@@ -48,24 +48,24 @@ A9. Hub nodes are a nuisance to be handled later. Currency metabolites (ATP, NAD
 
 ### 3.1 Symptom set
 
-Twelve symptoms chosen for availability across all three evidence sources and for coverage of RDoC domains. Each symptom is a target with a crosswalk to the vocabularies used by the evidence sources. Ontology identifiers are to be verified against the current HPO and MedDRA releases before use.
+Twelve symptoms chosen for availability across all three evidence sources and for coverage of RDoC domains. Each symptom is a target with a crosswalk to the vocabularies used by the evidence sources (docs/symptom_crosswalk.csv). HPO identifiers were verified against the 2026-09-01 release: Anhedonia is HP:0012154; Agitation is HP:0000713 (with Restlessness HP:0000711); Hypersomnia (HP:0100786) is obsolete and replaced by Excessive daytime somnolence (HP:0001262); Psychomotor retardation (HP:0025356) was retired into Global developmental delay (HP:0001263), which is a different construct, so that symptom has no monogenic channel. Measured evidence per symptom is in docs/phase1_counts.md.
 
 | Symptom (target) | HPO term | MedDRA preferred terms (examples) | Questionnaire item | RDoC domain |
 |---|---|---|---|---|
 | Depressed mood | Depression (HP:0000716) | Depressed mood; Depression | PHQ-9 item 2 | Negative valence |
-| Anhedonia | Anhedonia (verify ID) | Anhedonia | PHQ-9 item 1 | Positive valence |
+| Anhedonia | Anhedonia (HP:0012154); no Human-GEM gene annotated | Anhedonia | PHQ-9 item 1 | Positive valence |
 | Anxiety | Anxiety (HP:0000739) | Anxiety; Nervousness | GAD-7 items | Negative valence |
 | Irritability or aggression | Irritability (HP:0000737); Aggressive behavior (HP:0000718) | Irritability; Aggression; Agitation | none | Negative valence; arousal |
 | Insomnia | Insomnia (HP:0100785) | Insomnia; Initial insomnia | PHQ-9 item 3 | Arousal and regulatory |
-| Somnolence or hypersomnia | Hypersomnia (HP:0100786) | Somnolence; Hypersomnia | PHQ-9 item 3 | Arousal and regulatory |
+| Somnolence or hypersomnia | Excessive daytime somnolence (HP:0001262) | Somnolence; Hypersomnia | PHQ-9 item 3 | Arousal and regulatory |
 | Fatigue | Fatigue (HP:0012378) | Fatigue; Asthenia | PHQ-9 item 4 | Arousal and regulatory |
-| Psychomotor agitation | Agitation (verify ID) | Psychomotor hyperactivity; Agitation; Restlessness | PHQ-9 item 8 | Arousal |
-| Psychomotor retardation | Psychomotor retardation (verify ID) | Psychomotor retardation; Bradyphrenia | PHQ-9 item 8 | Arousal |
-| Psychosis | Psychosis (HP:0000709); Hallucinations (HP:0000738); Delusions (HP:0000746) | Psychotic disorder; Hallucination; Delusion | none | Cognitive systems; perception |
+| Psychomotor agitation | Agitation (HP:0000713); Restlessness (HP:0000711) | Psychomotor hyperactivity; Agitation; Restlessness | PHQ-9 item 8 | Arousal |
+| Psychomotor retardation | none (term retired in HPO) | Psychomotor retardation; Bradyphrenia | PHQ-9 item 8 | Arousal |
+| Psychosis | Psychosis (HP:0000709); Hallucinations (HP:0000738); Delusion (HP:0000746) | Psychotic disorder; Hallucination; Delusion | none | Cognitive systems; perception |
 | Cognitive impairment | Cognitive impairment (HP:0100543) | Memory impairment; Disturbance in attention; Confusional state | PHQ-9 item 7 | Cognitive systems |
 | Elevated mood or mania | Mania (HP:0100754) | Mania; Hypomania; Euphoric mood | none | Positive valence; arousal |
 
-Excluded in version 1: suicidal ideation (label events are dominated by class-wide boxed warnings rather than mechanism, so pharmacological evidence is uninformative) and appetite change (peripheral mechanisms dominate). Both are candidates for version 2 with genetics-only supervision.
+Excluded in version 1: suicidal ideation (label events are dominated by class-wide boxed warnings rather than mechanism, so pharmacological evidence is uninformative) and appetite change (peripheral mechanisms dominate). Both are candidates for version 2 with genetics-only supervision. After the Phase 1 counts, anhedonia and psychomotor retardation stay in the crosswalk but are flagged as genetics-only targets: they have no grade A or B supervision, so they cannot be primary endpoints and enter only the GWAS enrichment analysis (section 6.4).
 
 ### 3.2 Pathway modules with perturbation anchors
 
@@ -106,7 +106,7 @@ Hard structural constraints encoded in the graph: (1) no edges other than those 
 
 Evidence class E1, monogenic (grade A). HPO gene-to-phenotype annotations [17] restricted to genes present in the graph and to phenotypes in the symptom set or their descendants. Each gene is a loss-of-function perturbation; its label is the set of annotated symptoms, with HPO frequency qualifiers kept as weights where present.
 
-Evidence class E2, pharmacological (grade B). Drug-adverse event pairs from SIDER [18], which holds "1430 drugs, 5880 ADRs and 140 064 drug-ADR pairs" from labels current to 2015, for the earlier time slice, and from OnSIDES [19], which holds "3.6 million drug-ADE pairs for 3,233 unique drug ingredient combinations" from current labels, for the later slice. Drug indications from the same sources supply the relief relation. Inclusion filters: CNS penetration; a dominant target (one target with at least a tenfold affinity margin over the next, or a curated primary mechanism); event term maps to the symptom set. Drug, target and graph node define the perturbation, with sign from the action type.
+Evidence class E2, pharmacological (grade B). Drug-adverse event pairs from SIDER [18], which holds "1430 drugs, 5880 ADRs and 140 064 drug-ADR pairs" from labels current to 2015, for the earlier time slice, and from OnSIDES [19], which holds "3.6 million drug-ADE pairs for 3,233 unique drug ingredient combinations" from current labels, for the later slice. Drug indications from the same sources supply the relief relation; in SIDER only indications found by its NLP_indication method are kept, since text_mention rows include conditions that are merely named in the label. Drugs are mapped to ChEMBL through UniChem (PubChem identifier, stereo forms as fallback, salt forms resolved to parent molecules) and to their mechanism targets from the ChEMBL mechanism table; targets carry gene symbols and an action type that sets the sign of the perturbation (experiments/fetch_chembl_drug_targets.py). Inclusion filters, version 1: a single ChEMBL mechanism target (a protein-family target such as the GABA-A receptor counts as one), an ATC nervous-system code as a crude proxy for central action until a measured blood-brain barrier flag replaces it, and an event term that maps to the symptom set. The affinity-margin definition of dominance is deferred until ChEMBL activities are joined. Measured with these filters: 1,168 of 1,430 SIDER drugs map to ChEMBL, 580 have a mechanism annotation and 65 pass the single-target, ATC N filter with at least one target-symptom event.
 
 Evidence class E3, literature (grades C to E; soft prior only). The earlier in-house psychiatric literature knowledge graph is not used; its quality was judged insufficient. E3 is derived from public resources instead, in order of preference: PubTator3 entity annotations and extracted relations (associate, cause, treat, inhibit, stimulate and correlation types) queried by target symptom MeSH descriptor and by graph gene symbol, with PMID and year kept for the time split; CTD curated chemical-disease associations with a therapeutic-versus-marker direction, for chemicals with known targets and MeSH symptom descriptors; and SemMedDB predications [20] (CAUSES, AFFECTS, DISRUPTS, PREDISPOSES, ASSOCIATED_WITH) once a UMLS license is in place, which is free for academic use. Weights follow predication type, count and recency. A targeted large-language-model extraction over the symptom-by-module space is a version 2 option only if it is validated against a hand-labelled gold set first. E3 never enters any test set.
 
@@ -126,7 +126,7 @@ Evidence class E5, metabolomics (validation only; optional). Published metabolit
 
 ### 4.4 Access and licensing
 
-Public without registration: Human-GEM, Recon3D (VMH and BiGG), HPO, OnSIDES, SIDER, ChEMBL, OmniPath, CollecTRI, PubTator3, CTD and GWAS summary statistics (GWAS Catalog). Registration: OMIM, for clinical synopses. License required: UMLS (free for academic use), for SemMedDB and MedDRA mappings; MedDRA term redistribution is restricted, so the public repository commits mappings to target symptoms, not MedDRA tables. Not required in version 1: individual-level cohort data. The pinned version of each source is recorded in docs/data_sources.md and becomes part of the pre-registration.
+Public without registration: Human-GEM, Recon3D (VMH and BiGG), HPO, OnSIDES, SIDER, ChEMBL, UniChem, OmniPath, CollecTRI, PubTator3, CTD and GWAS summary statistics (GWAS Catalog). Registration: OMIM, for clinical synopses. License required: UMLS (free for academic use), for SemMedDB and MedDRA mappings; MedDRA term redistribution is restricted, so the public repository commits mappings to target symptoms, not MedDRA tables. Not required in version 1: individual-level cohort data. Pinned so far (docs/data_sources.md): HPO release 2026-09-01, Human-GEM 2.0.1, SIDER 4.1 (2015-10-21), ChEMBL 37 (2026-05-01); the pins become part of the pre-registration.
 
 ## 5. Model
 
@@ -235,7 +235,7 @@ Compute is a university cluster with GPUs whose binding limit is job wall time, 
 
 Phase 0 (two weeks): freeze symptom set and crosswalk; data access inventory; pre-registration draft.
 
-Phase 1 (four weeks): graph build with quality checks (connectivity, compartment counts, currency tagging); evidence assembly; counts per symptom and grade; proxy audit (A7). Go/no-go: at least 15 grade A or B perturbations for at least eight symptoms; otherwise drop symptoms.
+Phase 1 (four weeks): graph build with quality checks (connectivity, compartment counts, currency tagging); evidence assembly; counts per symptom and grade; proxy audit (A7). Go/no-go: at least 15 grade A or B perturbations for at least eight symptoms; otherwise drop symptoms. Status: E1 and E2 counts are measured (docs/phase1_counts.md) and ten symptoms pass; the graph build, the OMIM grade A lookup, the OnSIDES slice and the proxy audit remain.
 
 Phase 2 (four weeks): baselines B0 to B5, evaluation harness, negative controls; metrics frozen.
 
@@ -317,7 +317,9 @@ Open:
 2. Should the relieves relation be in version 1 or deferred? The scaffold supports both (separate link matrix per relation); including it doubles the evidence assembly work for drug indications.
 3. Which language model and prompt fix baseline B5 before pre-registration.
 4. Whether the cluster's wall-time limit is short enough that flux sampling should use fewer samples per gene (2,000 is the default) or a coarser flux variability summary alone.
-5. Phase 1 counts: the go/no-go threshold (15 grade A or B perturbations for at least eight symptoms) is a proposal, not a measurement.
+5. Whether to relax the dominant-target rule from one to two ChEMBL targets, which would raise the pharmacological class above 65 drugs at the cost of less clean mechanism attribution.
+6. Whether anhedonia and psychomotor retardation stay as genetics-only targets or are dropped from version 1.
+7. The relief relation is thin at the symptom level in SIDER (one to ten drugs per symptom) because indications are recorded as diagnoses (major depressive disorder) rather than symptoms; decide whether diagnosis-level indications are admissible for the relieves relation only, which would reintroduce diagnosis labels on one side of the model.
 
 ## References
 
