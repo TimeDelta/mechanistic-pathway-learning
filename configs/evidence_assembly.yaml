@@ -4,7 +4,9 @@ curated_pathway_modules: docs/curated_pathway_modules.csv
 monogenic:
   hpo_annotations: data/raw/hpo/genes_to_phenotype.txt
   hpo_ontology: data/raw/hpo/hp.obo
-  grade_a_requires: {independent_case_series_count: 2, or_omim_clinical_synopsis: true}
+  grade_a_policy: curated_synopsis_provenance   # assemble_evidence_table.py --grade-a-policy; two_distinct_disease_entries is the version 0.3 proxy kept for the ablation
+  frequency_scale: 4.0                          # weight = base * clip(frequency * scale, floor, 1); not read by the assembler, documented here
+  frequency_floor: 0.25
 pharmacological:
   sider_directory: data/raw/sider_4.1          # time slice: labels to 2015
   onsides_directory: data/raw/onsides          # time slice: current labels

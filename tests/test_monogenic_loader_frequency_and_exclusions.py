@@ -249,3 +249,20 @@ def test_annotation_rows_reader_matches_dates_and_references(tmp_path: Path) -> 
     assert load_hpo_annotation_dates(hpoa) == {("OMIM:176000", "HP:0000709"): date(2009, 2, 17)}
     assert load_hpo_annotation_dates(hpoa, publication_dates_by_pmid={"1": date(1990, 1, 1)}) == {("OMIM:176000", "HP:0000709"): date(1990, 1, 1)}
     assert load_hpo_annotation_references(hpoa) == {("OMIM:176000", "HP:0000709"): {"PMID:1", "OMIM:176000"}, ("ORPHA:79276", "HP:0000709"): {"ORPHA:79276"}}
+
+
+def test_obo_parser_ignores_typedef_stanzas_and_obsolete_terms(tmp_path: Path) -> None:
+    obo = tmp_path / "hp.obo"
+    obo.write_text("\n".join([
+        "format-version: 1.2", "", "[Term]", "id: HP:0000001", "name: All", "",
+        "[Term]", "id: HP:0000002", "name: Child", "is_a: HP:0000001 ! All", "",
+        "[Typedef]", "id: part_of", "name: part of", "is_a: RO:0000000", "",
+        "[Term]", "id: HP:0000003", "name: Gone", "is_obsolete: true", "is_a: HP:0000001 ! All", "",
+    ]) + "\n")
+    parents = load_hpo_is_a_parents_from_obo(obo)
+    assert parents["HP:0000002"] == {"HP:0000001"}
+    assert "RO:0000000" not in parents["HP:0000002"]  # the Typedef's is_a line must not attach to the preceding term
+    assert "HP:0000003" not in parents  # obsolete terms leave the hierarchy
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import load_hpo_term_names_from_obo
+    names = load_hpo_term_names_from_obo(obo)
+    assert names["HP:0000002"] == "Child" and "part of" not in names.values()

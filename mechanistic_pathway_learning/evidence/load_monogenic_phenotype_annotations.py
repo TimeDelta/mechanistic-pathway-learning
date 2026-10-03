@@ -85,14 +85,19 @@ def load_hpo_is_a_parents_from_obo(obo_path: Path) -> dict[str, set[str]]:
     """Return term id -> set of direct parent ids from an OBO file (is_a lines only)."""
     parents_by_term: dict[str, set[str]] = defaultdict(set)
     current_term: str | None = None
+    inside_term_stanza = False
     with open(obo_path, encoding="utf-8") as obo_file:
         for raw_line in obo_file:
             line = raw_line.strip()
-            if line == "[Term]":
+            if line.startswith("["):  # any stanza header ([Term], [Typedef], [Instance]) ends the previous term
+                inside_term_stanza = line == "[Term]"
                 current_term = None
-            elif line.startswith("id: HP:"):
+            elif inside_term_stanza and line.startswith("id: HP:"):
                 current_term = line[len("id: "):]
                 parents_by_term.setdefault(current_term, set())
+            elif inside_term_stanza and line == "is_obsolete: true" and current_term is not None:
+                parents_by_term.pop(current_term, None)  # obsolete terms are not part of the hierarchy
+                current_term = None
             elif line.startswith("is_a:") and current_term is not None:
                 parent_id = line[len("is_a:"):].strip().split(" ")[0]
                 parents_by_term[current_term].add(parent_id)
@@ -103,12 +108,14 @@ def load_hpo_term_names_from_obo(obo_path: Path) -> dict[str, str]:
     """Return term id -> name from an OBO file."""
     names_by_term: dict[str, str] = {}
     current_term: str | None = None
+    inside_term_stanza = False
     with open(obo_path, encoding="utf-8") as obo_file:
         for raw_line in obo_file:
             line = raw_line.strip()
-            if line == "[Term]":
+            if line.startswith("["):
+                inside_term_stanza = line == "[Term]"
                 current_term = None
-            elif line.startswith("id: HP:"):
+            elif inside_term_stanza and line.startswith("id: HP:"):
                 current_term = line[len("id: "):]
             elif line.startswith("name:") and current_term is not None:
                 names_by_term[current_term] = line[len("name:"):].strip()
