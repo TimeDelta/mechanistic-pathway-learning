@@ -147,17 +147,60 @@ class RelationalMessagePassingEncoder(nn.Module):
         perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
         return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
 
+    def stacked_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor]:
+        """All present relation adjacencies stacked vertically into one sparse matrix of shape
+        [num_present_relations * num_graph_nodes, num_graph_nodes], plus the present relation indices.
+
+        One sparse product with the stacked matrix aggregates every relation at once; the result is
+        viewed as [num_present_relations, num_graph_nodes, ...] with no copy. The stack is cached per
+        adjacency list (keyed by the identity of its tensors) because the harness reuses one list.
+        """
+        cache_key = tuple(id(adjacency) for adjacency in relation_adjacencies)
+        cached = getattr(self, "_stacked_adjacency_cache", None)
+        if cached is not None and cached[0] == cache_key:
+            return cached[1], cached[2]
+        present_relations = [index for index, adjacency in enumerate(relation_adjacencies) if adjacency is not None]
+        indices, values = [], []
+        for stack_position, relation_index in enumerate(present_relations):
+            adjacency = relation_adjacencies[relation_index].coalesce()
+            shifted = adjacency.indices().clone()
+            shifted[0] += stack_position * self.num_graph_nodes
+            indices.append(shifted)
+            values.append(adjacency.values())
+        device = relation_adjacencies[present_relations[0]].device if present_relations else next(self.parameters()).device
+        if present_relations:
+            stacked = torch.sparse_coo_tensor(torch.cat(indices, dim=1), torch.cat(values), (len(present_relations) * self.num_graph_nodes, self.num_graph_nodes)).coalesce()
+        else:
+            stacked = torch.sparse_coo_tensor(torch.zeros((2, 0), dtype=torch.long, device=device), torch.zeros(0, device=device), (0, self.num_graph_nodes))
+        present_index = torch.tensor(present_relations, dtype=torch.long, device=device)
+        self._stacked_adjacency_cache = (cache_key, stacked, present_index)
+        return stacked, present_index
+
     def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None]) -> Tensor:
+        """L rounds of typed mean aggregation; returns the field as [batch_size, num_graph_nodes, node_state_dim].
+
+        Per layer the new state is relu(X W_self + sum_r A_r X W_r + b). The states are kept node-major,
+        [num_graph_nodes, batch_size, node_state_dim], so the sparse product reads them as a
+        [num_graph_nodes, batch_size * node_state_dim] view without the permute-and-copy that a batch-major
+        layout needs; all relations are aggregated by one sparse product with the stacked adjacency and
+        transformed by one batched matrix product, using A_r (X W_r) = (A_r X) W_r. On the metabolic slice
+        this halves the memory traffic of the batch-major, per-relation loop it replaces (profiling in
+        docs/experiment_design.md section 8); the output is identical up to floating point rounding.
+        """
         batch_size = node_state_field.shape[0]
+        stacked_adjacency, present_relations = self.stacked_relation_adjacency(relation_adjacencies)
+        num_present = int(present_relations.numel())
+        node_major_state = node_state_field.permute(1, 0, 2).contiguous()  # [N, B, D]
         for layer_index in range(self.num_message_passing_layers):
-            aggregated_messages = torch.zeros_like(node_state_field)
-            for relation_index, adjacency in enumerate(relation_adjacencies):
-                if adjacency is None:
-                    continue
-                messages = node_state_field @ self.relation_weight[layer_index, relation_index]  # [B, N, D]
-                flattened = messages.permute(1, 0, 2).reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
-                aggregated = torch.sparse.mm(adjacency.to(flattened.device), flattened)
-                aggregated_messages = aggregated_messages + aggregated.reshape(self.num_graph_nodes, batch_size, self.node_state_dim).permute(1, 0, 2)
-            self_messages = node_state_field @ self.self_weight[layer_index]
-            node_state_field = torch.relu(self_messages + aggregated_messages + self.layer_bias[layer_index])
-        return node_state_field
+            self_messages = node_major_state @ self.self_weight[layer_index]
+            if num_present:
+                flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
+                aggregated = torch.sparse.mm(stacked_adjacency.to(flattened.device), flattened)  # [R_present * N, B * D]
+                aggregated = aggregated.view(num_present, self.num_graph_nodes * batch_size, self.node_state_dim)
+                relation_messages = torch.bmm(aggregated, self.relation_weight[layer_index, present_relations]).sum(dim=0)
+                relation_messages = relation_messages.view(self.num_graph_nodes, batch_size, self.node_state_dim)
+                pre_activation = self_messages + relation_messages + self.layer_bias[layer_index]
+            else:
+                pre_activation = self_messages + self.layer_bias[layer_index]
+            node_major_state = torch.relu(pre_activation)
+        return node_major_state.permute(1, 0, 2).contiguous()
