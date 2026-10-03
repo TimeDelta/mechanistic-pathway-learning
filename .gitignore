@@ -12,3 +12,8 @@ __pycache__/
 *.h5ad
 slurm-*.out
 .env
+
+# versioned releases of the processed tables are committed (mechanistic_pathway_learning/data_release.py)
+!data/releases/
+!data/releases/**
+!data/releases/**/*.parquet

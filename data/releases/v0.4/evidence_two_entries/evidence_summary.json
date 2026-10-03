@@ -1,0 +1,148 @@
+{
+ "observations": 861,
+ "unmapped": 0,
+ "by_class_and_relation": {
+  "monogenic|induces": 861
+ },
+ "distinct_perturbations": 451,
+ "distinct_groups": 451,
+ "distinct_disease_clusters": 340,
+ "largest_disease_cluster_genes": 27,
+ "by_symptom": {
+  "anxiety": 117,
+  "cognitive_impairment": 202,
+  "depressed_mood": 103,
+  "elevated_mood_or_mania": 1,
+  "fatigue": 101,
+  "insomnia": 23,
+  "irritability_or_aggression": 180,
+  "psychomotor_agitation": 38,
+  "psychosis": 67,
+  "somnolence_or_hypersomnia": 29
+ },
+ "by_grade": {
+  "A": 453,
+  "C": 408
+ },
+ "weight_quantiles": {
+  "0.1": 0.0,
+  "0.25": 0.0,
+  "0.5": 0.68,
+  "0.75": 1.0,
+  "0.9": 1.0
+ },
+ "monogenic_rows_with_frequency": 754,
+ "monogenic_rows_with_date": 408,
+ "monogenic_rows_dated_after_2015": 144,
+ "disease_cluster_concentration_by_symptom": {
+  "anxiety": {
+   "positive_genes": 117,
+   "clusters": 70,
+   "largest_cluster_share": 0.08547008547008547,
+   "top_3_share": 0.23931623931623933,
+   "top_clusters": {
+    "cluster:ABCC9": 10,
+    "cluster:AARS1": 9,
+    "cluster:GCLC": 9
+   }
+  },
+  "cognitive_impairment": {
+   "positive_genes": 202,
+   "clusters": 134,
+   "largest_cluster_share": 0.12871287128712872,
+   "top_3_share": 0.2079207920792079,
+   "top_clusters": {
+    "cluster:AARS1": 26,
+    "cluster:MT-CO1": 8,
+    "cluster:MT-ATP8": 8
+   }
+  },
+  "depressed_mood": {
+   "positive_genes": 103,
+   "clusters": 67,
+   "largest_cluster_share": 0.08737864077669903,
+   "top_3_share": 0.21359223300970873,
+   "top_clusters": {
+    "cluster:GCLC": 9,
+    "cluster:MT-CO1": 7,
+    "cluster:MT-ATP8": 6
+   }
+  },
+  "elevated_mood_or_mania": {
+   "positive_genes": 1,
+   "clusters": 1,
+   "largest_cluster_share": 1.0,
+   "top_3_share": 1.0,
+   "top_clusters": {
+    "cluster:SLC25A13": 1
+   }
+  },
+  "fatigue": {
+   "positive_genes": 101,
+   "clusters": 67,
+   "largest_cluster_share": 0.16831683168316833,
+   "top_3_share": 0.26732673267326734,
+   "top_clusters": {
+    "cluster:ABCC9": 17,
+    "cluster:DAO": 6,
+    "cluster:MT-ATP8": 4
+   }
+  },
+  "insomnia": {
+   "positive_genes": 23,
+   "clusters": 20,
+   "largest_cluster_share": 0.13043478260869565,
+   "top_3_share": 0.2608695652173913,
+   "top_clusters": {
+    "cluster:ABCB11": 3,
+    "cluster:AARS1": 2,
+    "cluster:CPOX": 1
+   }
+  },
+  "irritability_or_aggression": {
+   "positive_genes": 180,
+   "clusters": 157,
+   "largest_cluster_share": 0.05555555555555555,
+   "top_3_share": 0.12222222222222222,
+   "top_clusters": {
+    "cluster:AARS1": 10,
+    "cluster:NUP107": 8,
+    "cluster:ABCC9": 4
+   }
+  },
+  "psychomotor_agitation": {
+   "positive_genes": 38,
+   "clusters": 37,
+   "largest_cluster_share": 0.05263157894736842,
+   "top_3_share": 0.10526315789473684,
+   "top_clusters": {
+    "cluster:AARS1": 2,
+    "cluster:ABCC8": 1,
+    "cluster:ACAT1": 1
+   }
+  },
+  "psychosis": {
+   "positive_genes": 67,
+   "clusters": 48,
+   "largest_cluster_share": 0.1044776119402985,
+   "top_3_share": 0.23880597014925373,
+   "top_clusters": {
+    "cluster:MT-CO1": 7,
+    "cluster:AARS1": 5,
+    "cluster:CMPK2": 4
+   }
+  },
+  "somnolence_or_hypersomnia": {
+   "positive_genes": 29,
+   "clusters": 25,
+   "largest_cluster_share": 0.06896551724137931,
+   "top_3_share": 0.20689655172413793,
+   "top_clusters": {
+    "cluster:B3GALNT2": 2,
+    "cluster:NUP88": 2,
+    "cluster:PIK3CA": 2
+   }
+  }
+ },
+ "grade_a_policy": "two_distinct_disease_entries"
+}

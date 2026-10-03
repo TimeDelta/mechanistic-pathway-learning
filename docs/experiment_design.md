@@ -136,7 +136,7 @@ Grade A policy. Version 0.3 approximated "two independent case series" by the nu
 
 Public without registration: Human-GEM, Recon3D (VMH and BiGG), HPO, OnSIDES, SIDER, ChEMBL, UniChem, OmniPath, CollecTRI, PubTator3, CTD and GWAS summary statistics (GWAS Catalog). Registration: OMIM, for clinical synopses. License required: UMLS (free for academic use), for SemMedDB and MedDRA mappings; MedDRA term redistribution is restricted, so the public repository commits mappings to target symptoms, not MedDRA tables. Not required in version 1: individual-level cohort data. Pinned so far (docs/data_sources.md): HPO release 2026-09-01, Human-GEM 2.0.1, SIDER 4.1 (2015-10-21), ChEMBL 37 (2026-05-01); the pins become part of the pre-registration.
 
-Licensing posture (3 October 2026). The project excludes commercial use of its derived data. SIDER 4.1 is released under CC BY-NC-SA, so every evidence table, mechanism card and weight file derived from its label events carries non-commercial and share-alike conditions; OnSIDES is CC BY 4.0, ChEMBL CC BY-SA, CollecTRI CC BY 4.0, PubTator3 and CTD public, and the MedDRA term names inside SIDER and OnSIDES are not redistributed. Under that posture a non-commercial source adds no new restriction, so substitutes are judged on currency, provenance and redundancy (docs/alternative_sources.md); a DrugBank parse of 2016 is a candidate secondary target source rather than excluded. The repository carries no code license yet; that choice belongs to its owner.
+Licensing posture (3 October 2026). The project excludes commercial use of its derived data. SIDER 4.1 is released under CC BY-NC-SA, so every evidence table, mechanism card and weight file derived from its label events carries non-commercial and share-alike conditions; OnSIDES is CC BY 4.0, ChEMBL CC BY-SA, CollecTRI CC BY 4.0, PubTator3 and CTD public, and the MedDRA term names inside SIDER and OnSIDES are not redistributed. Under that posture a non-commercial source adds no new restriction, so substitutes are judged on currency, provenance and redundancy (docs/alternative_sources.md); a DrugBank parse of 2016 is a candidate secondary target source rather than excluded. The processed tables are committed as versioned releases (data/releases/<version>/, mechanistic_pathway_learning/data_release.py) with checksummed manifests, MedDRA term names blanked on label-derived report rows; raw downloads are never committed. The repository carries no code license yet; that choice belongs to its owner.
 
 ## 5. Model
 
@@ -280,6 +280,7 @@ mechanistic-pathway-learning/
     baselines/*.yaml
     ablations/*.yaml
   data/
+    releases/<version>/   committed processed tables with MANIFEST.json (checksums, pins, license); graph_full, graph, evidence_full, evidence_slice_sweeps, evidence_two_entries
     raw/                                      (gitignored; downloaded by scripts)
     processed/                                (gitignored; graph and evidence tables)
       evidence_reports.parquet                (one row per report; evidence_records.parquet aggregates it)

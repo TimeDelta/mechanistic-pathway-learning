@@ -76,6 +76,8 @@ python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disea
 python experiments/analyze_pathway_modules.py --run-dir runs/b6_default_disease_cluster
 ```
 
+Data releases. The processed tables of each design version are committed under data/releases/<version>/ with MANIFEST.json (SHA-256, size and row count per file, the producing commit, the source pins and the license statement), so a checkout trains and evaluates without any download: `python experiments/run_main_model.py --graph-dir data/releases/v0.4/graph_full --evidence-dir data/releases/v0.4/evidence_full ...`; `python experiments/make_data_release.py --version v0.4 --verify-only` recomputes the checksums. MedDRA term names are blanked on label-derived report rows before release; raw downloads are never committed (docs/data_sources.md pins them).
+
 Full data layer (the layer files above present; the build picks them up by default; the model
 configurations run under a wall-time budget per fold and resume from checkpoints):
 

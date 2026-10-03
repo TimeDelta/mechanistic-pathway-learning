@@ -1,0 +1,32 @@
+{
+ "nodes_by_type": {
+  "reaction": 12877,
+  "metabolite": 8460,
+  "gene": 2848
+ },
+ "gene_nodes_in_metabolic_layer": 2848,
+ "edges_by_relation": {
+  "product_of": 36051,
+  "substrate_of": 34791,
+  "catalyzed_by": 23944
+ },
+ "metabolites_by_compartment": {
+  "c": 3339,
+  "e": 1660,
+  "r": 971,
+  "m": 939,
+  "x": 506,
+  "l": 452,
+  "g": 361,
+  "n": 212,
+  "i": 20
+ },
+ "currency_metabolites": 229,
+ "transport_reactions": 4688,
+ "reversible_reactions": 5714,
+ "reactions_without_gene": 5101,
+ "largest_component_fraction_all": 0.9921025428984908,
+ "largest_component_fraction_without_currency": 0.9661462681582902,
+ "reactions_with_subsystem": 12877,
+ "distinct_subsystems": 146
+}

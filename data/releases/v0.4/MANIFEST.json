@@ -1,0 +1,222 @@
+{
+ "version": "v0.4",
+ "created": "2026-10-03",
+ "git_commit": "751ed170530323df1af7f1fd708a2928ef39cd8e",
+ "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
+ "licensed_term_labels_blanked": 1727,
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler (3,606 observations, 3,593 positives, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on (assembled before negated and 0 of N annotations were recognised); evidence_two_entries is the version 0.3 grade-A proxy ablation table.",
+ "source_pins": [
+  {
+   "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
+   "use": "base reconstruction (SBML for stoichiometry and gene rules; yml for reaction subsystems)",
+   "pinned_version": "2.0.1 (model date 2026-03-26; main fetched 2026-10-02 and 2026-10-03)"
+  },
+  {
+   "source": "Recon3D (vmh.life; BiGG)",
+   "use": "identifier cross-reference",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "Human Phenotype Ontology (hpo.jax.org)",
+   "use": "E1 monogenic gene-phenotype annotations with frequency qualifiers and OMIM or Orphanet provenance; hp.obo for the is_a closure",
+   "pinned_version": "release 2026-09-01 (genes_to_phenotype.txt, 333,983 rows)"
+  },
+  {
+   "source": "OMIM (omim.org)",
+   "use": "clinical synopses for the grade A bar",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "SIDER 4.1 (sideeffects.embl.de, HTTPS)",
+   "use": "E2 label events, 2015 time slice",
+   "pinned_version": "4.1 (files dated 2015-10-21; fetched 2026-10-02 and 2026-10-03)"
+  },
+  {
+   "source": "OnSIDES (github.com/tatonetti-lab/onsides)",
+   "use": "E2 label events, current slice",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "ChEMBL (ebi.ac.uk/chembl)",
+   "use": "drug mechanisms, targets, pChEMBL",
+   "pinned_version": "ChEMBL_37 (2026-05-01)"
+  },
+  {
+   "source": "UniChem (ebi.ac.uk/unichem)",
+   "use": "PubChem to ChEMBL identifier mapping for SIDER drugs",
+   "pinned_version": "queried 2026-10-03; 1,177 of 1,430 SIDER drugs mapped; 7,561 ChEMBL mechanisms; 337 targets with gene symbols"
+  },
+  {
+   "source": "OmniPath (omnipathdb.org)",
+   "use": "signaling edges with signs (datasets omnipath, pathwayextra, ligrecextra) and small_molecule_protein interactions",
+   "pinned_version": "web service queried 2026-10-02 (first build) and 2026-10-03 (this build); 126,124 interaction rows, 6,553 small-molecule rows"
+  },
+  {
+   "source": "GTEx v10 median gene TPM (storage.googleapis.com/adult-gtex, public bucket)",
+   "use": "brain expression attribute on gene and reaction nodes; regulon restriction to brain-expressed transcription factors (design 3.3, 4.1)",
+   "pinned_version": "GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz, object date 2024-11-08, 59,033 genes, 13 brain tissues; threshold median TPM 1.0"
+  },
+  {
+   "source": "CollecTRI (via OmniPath, dataset collectri)",
+   "use": "transcription factor regulons with signs",
+   "pinned_version": "queried 2026-10-03; 64,515 regulon rows"
+  },
+  {
+   "source": "Human Protein Atlas; GTEx",
+   "use": "brain expression weights",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "PubTator3 (ncbi.nlm.nih.gov/research/pubtator3)",
+   "use": "E3 literature relations",
+   "pinned_version": "query date"
+  },
+  {
+   "source": "CTD (ctdbase.org)",
+   "use": "E3 chemical-symptom associations with direction",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "SemMedDB (NLM)",
+   "use": "E3 predications with predicate types",
+   "pinned_version": "optional"
+  },
+  {
+   "source": "GWAS summary statistics (GWAS Catalog)",
+   "use": "E4 symptom-level genetics for validation",
+   "pinned_version": "to pin"
+  },
+  {
+   "source": "MAGMA (cncr.nl/research/magma)",
+   "use": "gene-set enrichment",
+   "pinned_version": "to pin"
+  }
+ ],
+ "files": {
+  "evidence_full/evidence_records.csv": {
+   "sha256": "74a5dd399096ede7b22f2c3e70e14795214bb8a577ea94e3887ed592caac6bdf",
+   "bytes": 993241,
+   "rows": 3606
+  },
+  "evidence_full/evidence_records.parquet": {
+   "sha256": "6d39db15821016eea32768ccf2ab4c8e7f40ad392727378ce8dcbb40beaa938c",
+   "bytes": 155697,
+   "rows": 3606
+  },
+  "evidence_full/evidence_reports.csv": {
+   "sha256": "42e1b77d72356a91aecee655e1fbde2f14b364211ba107bb74cd45248945d335",
+   "bytes": 3551170,
+   "rows": 6344
+  },
+  "evidence_full/evidence_reports.parquet": {
+   "sha256": "d6de8e0dd0da786aef329e8284bf7f6ea90911e7dcfe1cb80aeb993016d1e191",
+   "bytes": 316059,
+   "rows": 6344
+  },
+  "evidence_full/evidence_summary.json": {
+   "sha256": "c39e496ae54cbd04101c9de996840b44bcaaeb4bfb1db1e5e95ac428201e0afc",
+   "bytes": 8059,
+   "rows": null
+  },
+  "evidence_full/unmapped_records.csv": {
+   "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "bytes": 1,
+   "rows": 0
+  },
+  "evidence_full/unmapped_records.parquet": {
+   "sha256": "8b67fb02ed63cfcf022800db6620efeab96f816e75acdf7d89e6642268562a66",
+   "bytes": 636,
+   "rows": 0
+  },
+  "evidence_slice_sweeps/evidence_records.csv": {
+   "sha256": "1a01230ef6c236046e67c3a304615c6baed377691c0399b4bdd7303fd68215d5",
+   "bytes": 170749,
+   "rows": 861
+  },
+  "evidence_slice_sweeps/evidence_records.parquet": {
+   "sha256": "c978821f33b4b5dbcf7cebfff61b93d30a455ed22af6a74a9059749c36242978",
+   "bytes": 49538,
+   "rows": 861
+  },
+  "evidence_slice_sweeps/evidence_summary.json": {
+   "sha256": "bf7e63252162ccf0c7887093d1d735306ab6a9c228c48fe26e0133029485282b",
+   "bytes": 3374,
+   "rows": null
+  },
+  "evidence_slice_sweeps/unmapped_records.csv": {
+   "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "bytes": 1,
+   "rows": 0
+  },
+  "evidence_slice_sweeps/unmapped_records.parquet": {
+   "sha256": "8b67fb02ed63cfcf022800db6620efeab96f816e75acdf7d89e6642268562a66",
+   "bytes": 636,
+   "rows": 0
+  },
+  "evidence_two_entries/evidence_records.csv": {
+   "sha256": "9926262de8b26cbc51183e45da37a1b7d21286cfda7008cb52a9ae608efba98b",
+   "bytes": 170549,
+   "rows": 861
+  },
+  "evidence_two_entries/evidence_records.parquet": {
+   "sha256": "474035bab810b784595f1c9154e47110bcfff4b0535179109c12904a0f879362",
+   "bytes": 49692,
+   "rows": 861
+  },
+  "evidence_two_entries/evidence_summary.json": {
+   "sha256": "8167715f9a11f410c65e50b620194d40a652a17d30c629a31515598344ecab89",
+   "bytes": 3386,
+   "rows": null
+  },
+  "evidence_two_entries/unmapped_records.csv": {
+   "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "bytes": 1,
+   "rows": 0
+  },
+  "evidence_two_entries/unmapped_records.parquet": {
+   "sha256": "8b67fb02ed63cfcf022800db6620efeab96f816e75acdf7d89e6642268562a66",
+   "bytes": 636,
+   "rows": 0
+  },
+  "graph/edges.parquet": {
+   "sha256": "57cd1d3f5278cee5d2acf1e0f2a29686204e910e085a1285635a7f639a1729db",
+   "bytes": 564657,
+   "rows": 94786
+  },
+  "graph/graph_summary.json": {
+   "sha256": "44b62fe387f36cbcdf1b11d900246ff57e4bbbc26ea68f503a99f75f4d0c5a64",
+   "bytes": 681,
+   "rows": null
+  },
+  "graph/nodes.parquet": {
+   "sha256": "e47c2d8d8a9b46fca20490217bead06d1a11749b22ac2677a374d4b2ab2a86b6",
+   "bytes": 585568,
+   "rows": 24185
+  },
+  "graph/relation_types.json": {
+   "sha256": "7afdb40c78d2f5d6cfbc100569728db45ca0963599f700697d3baf5a44dd88d1",
+   "bytes": 121,
+   "rows": null
+  },
+  "graph_full/edges.parquet": {
+   "sha256": "ae59ed71f3f722567dc4e8652c264777dd1e403268aeb118882f8166f2e6f33f",
+   "bytes": 1274653,
+   "rows": 255367
+  },
+  "graph_full/graph_summary.json": {
+   "sha256": "d58ea84824d0bf82c85206ffe7209a7e1bd0f6f763418f216b4a490996f117b3",
+   "bytes": 1191,
+   "rows": null
+  },
+  "graph_full/nodes.parquet": {
+   "sha256": "cd5b381a6390734a818ed2f6d9e3749f8e6dfdd34bbd48d7d0b18bee80f7cf34",
+   "bytes": 934808,
+   "rows": 33964
+  },
+  "graph_full/relation_types.json": {
+   "sha256": "7afdb40c78d2f5d6cfbc100569728db45ca0963599f700697d3baf5a44dd88d1",
+   "bytes": 121,
+   "rows": null
+  }
+ }
+}

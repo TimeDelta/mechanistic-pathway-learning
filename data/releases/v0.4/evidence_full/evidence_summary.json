@@ -1,0 +1,323 @@
+{
+ "observations": 3606,
+ "unmapped": 0,
+ "by_class_and_relation": {
+  "monogenic|induces": 3034,
+  "pharmacological|induces": 543,
+  "pharmacological|relieves": 29
+ },
+ "distinct_perturbations": 1585,
+ "distinct_groups": 1543,
+ "distinct_disease_clusters": 933,
+ "largest_disease_cluster_genes": 174,
+ "by_symptom": {
+  "anxiety": 527,
+  "cognitive_impairment": 745,
+  "depressed_mood": 445,
+  "elevated_mood_or_mania": 49,
+  "fatigue": 543,
+  "insomnia": 134,
+  "irritability_or_aggression": 549,
+  "psychomotor_agitation": 175,
+  "psychomotor_retardation": 4,
+  "psychosis": 282,
+  "somnolence_or_hypersomnia": 153
+ },
+ "by_grade": {
+  "A": 3033,
+  "B": 572,
+  "C": 1
+ },
+ "weight_quantiles": {
+  "0.1": 0.5714285714285714,
+  "0.25": 0.68,
+  "0.5": 1.0,
+  "0.75": 1.0,
+  "0.9": 1.0
+ },
+ "monogenic_rows_with_frequency": 2770,
+ "monogenic_rows_with_date": 1180,
+ "monogenic_rows_with_zero_pubmed_references": 2267,
+ "monogenic_rows_with_two_or_more_pubmed_references": 75,
+ "monogenic_rows_dated_after_2015": 588,
+ "disease_cluster_concentration_by_symptom": {
+  "anxiety": {
+   "positive_genes": 458,
+   "clusters": 209,
+   "largest_cluster_share": 0.19213973799126638,
+   "top_3_share": 0.3624454148471616,
+   "top_clusters": {
+    "cluster:ABCA3": 88,
+    "cluster:ARNT2": 46,
+    "cluster:BAZ1B": 32
+   }
+  },
+  "cognitive_impairment": {
+   "positive_genes": 684,
+   "clusters": 368,
+   "largest_cluster_share": 0.1301169590643275,
+   "top_3_share": 0.25292397660818716,
+   "top_clusters": {
+    "cluster:ABCA3": 89,
+    "cluster:ADH1C": 57,
+    "cluster:BCL2": 27
+   }
+  },
+  "depressed_mood": {
+   "positive_genes": 408,
+   "clusters": 163,
+   "largest_cluster_share": 0.13725490196078433,
+   "top_3_share": 0.31862745098039214,
+   "top_clusters": {
+    "cluster:ABCA3": 56,
+    "cluster:ARNT2": 38,
+    "cluster:ADH1C": 36
+   }
+  },
+  "elevated_mood_or_mania": {
+   "positive_genes": 5,
+   "clusters": 4,
+   "largest_cluster_share": 0.4,
+   "top_3_share": 0.8,
+   "top_clusters": {
+    "cluster:GNAS": 2,
+    "cluster:ARHGEF15": 1,
+    "cluster:BCL2": 1
+   }
+  },
+  "fatigue": {
+   "positive_genes": 481,
+   "clusters": 236,
+   "largest_cluster_share": 0.19750519750519752,
+   "top_3_share": 0.32432432432432434,
+   "top_clusters": {
+    "cluster:ABCA3": 95,
+    "cluster:BCL2": 39,
+    "cluster:ADH1C": 22
+   }
+  },
+  "insomnia": {
+   "positive_genes": 74,
+   "clusters": 37,
+   "largest_cluster_share": 0.1891891891891892,
+   "top_3_share": 0.43243243243243246,
+   "top_clusters": {
+    "cluster:BAZ1B": 14,
+    "cluster:ADH1C": 10,
+    "cluster:ABCA3": 8
+   }
+  },
+  "irritability_or_aggression": {
+   "positive_genes": 502,
+   "clusters": 356,
+   "largest_cluster_share": 0.13745019920318724,
+   "top_3_share": 0.21115537848605578,
+   "top_clusters": {
+    "cluster:ABCA3": 69,
+    "cluster:ARNT2": 21,
+    "cluster:BCL2": 16
+   }
+  },
+  "psychomotor_agitation": {
+   "positive_genes": 113,
+   "clusters": 73,
+   "largest_cluster_share": 0.22123893805309736,
+   "top_3_share": 0.34513274336283184,
+   "top_clusters": {
+    "cluster:ADH1C": 25,
+    "cluster:BCL2": 9,
+    "cluster:ARNT2": 5
+   }
+  },
+  "psychosis": {
+   "positive_genes": 227,
+   "clusters": 96,
+   "largest_cluster_share": 0.19383259911894274,
+   "top_3_share": 0.43171806167400884,
+   "top_clusters": {
+    "cluster:ABCA3": 44,
+    "cluster:ADH1C": 38,
+    "cluster:BCL2": 16
+   }
+  },
+  "somnolence_or_hypersomnia": {
+   "positive_genes": 82,
+   "clusters": 29,
+   "largest_cluster_share": 0.1951219512195122,
+   "top_3_share": 0.5365853658536586,
+   "top_clusters": {
+    "cluster:ABCA3": 16,
+    "cluster:BCL2": 16,
+    "cluster:ATP10A": 12
+   }
+  }
+ },
+ "disease_entries_not_linking_clusters": {
+  "ORPHA:442835": 49,
+  "ORPHA:154": 45,
+  "ORPHA:536": 30,
+  "ORPHA:803": 29,
+  "ORPHA:656": 26,
+  "ORPHA:334": 23
+ },
+ "pairs_all_negative": 13,
+ "pairs_conflicting": 21,
+ "grade_a_policy": "curated_synopsis_provenance",
+ "weighting": "grade",
+ "reliability_global_scale": 1.0,
+ "reports": {
+  "rows": 6344,
+  "by_source_and_value": {
+   "HPO-OMIM|0": 31,
+   "HPO-OMIM|1": 1425,
+   "HPO-Orphanet|0": 5,
+   "HPO-Orphanet|1": 3156,
+   "SIDER-indication|1": 30,
+   "SIDER-label|1": 1697
+  },
+  "by_evidence_code": {
+   "IEA": 365,
+   "PCS": 870,
+   "TAS": 3382,
+   "frequency": 405,
+   "label_text": 351,
+   "placebo_controlled_frequency": 971
+  },
+  "reports_without_hpoa_row": 0,
+  "reports_dropped_unknown_provenance": 0,
+  "pairs_all_negative": 13,
+  "pairs_conflicting": 21,
+  "rubric_weight_quantiles": {
+   "0.1": 0.727670248696953,
+   "0.25": 0.8,
+   "0.5": 0.8,
+   "0.75": 0.9,
+   "0.9": 1.0
+  }
+ },
+ "reliability": {
+  "source_names": [
+   "HPO-OMIM",
+   "HPO-Orphanet",
+   "SIDER-label",
+   "SIDER-indication"
+  ],
+  "prevalence": 0.9992628840898767,
+  "prevalence_by_evidence_class": {
+   "monogenic": 0.9992290407374784,
+   "pharmacological": 0.9977022963716629
+  },
+  "num_iterations": 28,
+  "converged": true,
+  "weakly_identified": true,
+  "degenerate_sources": [],
+  "rubric_weight_defaults": {
+   "evidence_code_factors": {
+    "PCS": 1.0,
+    "TAS": 0.8,
+    "IEA": 0.6,
+    "other": 0.7,
+    "placebo_controlled_frequency": 1.0,
+    "frequency": 0.9,
+    "label_text": 0.8
+   },
+   "sample_size_reference": 20,
+   "sample_size_unknown_factor": 1.0,
+   "minimum_rubric_weight": 0.1,
+   "implicit_negative_weight": 1.0
+  },
+  "posterior_quantiles": {
+   "covered_by_two_positive_in_both": {
+    "pairs": 337,
+    "mean": 0.9999312173777367,
+    "0.1": 0.9998915873699763,
+    "0.25": 0.9998934187245915,
+    "0.5": 0.9999172724257107,
+    "0.75": 0.99996810036518,
+    "0.9": 0.9999903674489956
+   },
+   "positive_in_one_silent_in_other": {
+    "pairs": 589,
+    "mean": 0.9986910142309212,
+    "0.1": 0.9962513618179513,
+    "0.25": 0.9976668184004441,
+    "0.5": 0.9994232502804609,
+    "0.75": 0.9994232502804609,
+    "0.9": 0.9994232502804609
+   },
+   "covered_by_one_source_positive": {
+    "pairs": 2646,
+    "mean": 0.9996963468346214,
+    "0.1": 0.9994582753435345,
+    "0.25": 0.999631621434846,
+    "0.5": 0.9997730446598188,
+    "0.75": 0.9997730446598188,
+    "0.9": 0.9997730446598188
+   },
+   "conflicting": {
+    "pairs": 21,
+    "mean": 0.999354497128437,
+    "0.1": 0.998537696629802,
+    "0.25": 0.9994416150707425,
+    "0.5": 0.9995370454882702,
+    "0.75": 0.9998247932214516,
+    "0.9": 0.999868324304463
+   },
+   "all_negative": {
+    "pairs": 13,
+    "mean": 0.9962878176985733,
+    "0.1": 0.9898645705007556,
+    "0.25": 0.9980424432797996,
+    "0.5": 0.9981808809278211,
+    "0.75": 0.998345227445311,
+    "0.9": 0.998481001247051
+   }
+  },
+  "per_source": {
+   "HPO-OMIM": {
+    "items_covered": 1593,
+    "items_with_explicit_reports": 1180,
+    "explicit_positive_weight": 948.0954797156924,
+    "explicit_negative_weight": 24.582893658809063,
+    "implicit_negative_cells": 413,
+    "sensitivity": 0.6853041424781637,
+    "specificity": 0.8,
+    "specificity_held_at_prior": "degenerate_when_estimated",
+    "degenerate": false
+   },
+   "HPO-Orphanet": {
+    "items_covered": 2386,
+    "items_with_explicit_reports": 2208,
+    "explicit_positive_weight": 2179.2000000000003,
+    "explicit_negative_weight": 4.0,
+    "implicit_negative_cells": 178,
+    "sensitivity": 0.9229735302128692,
+    "specificity": 0.8,
+    "specificity_held_at_prior": "degenerate_when_estimated",
+    "degenerate": false
+   },
+   "SIDER-label": {
+    "items_covered": 543,
+    "items_with_explicit_reports": 543,
+    "explicit_positive_weight": 485.1000000000001,
+    "explicit_negative_weight": 0.0,
+    "implicit_negative_cells": 0,
+    "sensitivity": 0.9979709247074047,
+    "specificity": 0.8,
+    "specificity_held_at_prior": "no_explicit_negatives",
+    "degenerate": false
+   },
+   "SIDER-indication": {
+    "items_covered": 29,
+    "items_with_explicit_reports": 29,
+    "explicit_positive_weight": 23.200000000000006,
+    "explicit_negative_weight": 0.0,
+    "implicit_negative_cells": 0,
+    "sensitivity": 0.9679331745173351,
+    "specificity": 0.8,
+    "specificity_held_at_prior": "no_explicit_negatives",
+    "degenerate": false
+   }
+  }
+ }
+}

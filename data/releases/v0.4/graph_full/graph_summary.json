@@ -1,0 +1,46 @@
+{
+ "nodes_by_type": {
+  "reaction": 12877,
+  "gene": 12627,
+  "metabolite": 8460
+ },
+ "gene_nodes_in_metabolic_layer": 2848,
+ "edges_by_relation": {
+  "activates": 69569,
+  "regulates_transcription_of": 41804,
+  "product_of": 36051,
+  "substrate_of": 34791,
+  "binds": 31118,
+  "catalyzed_by": 23944,
+  "inhibits": 18090
+ },
+ "metabolites_by_compartment": {
+  "c": 3339,
+  "e": 1660,
+  "r": 971,
+  "m": 939,
+  "x": 506,
+  "l": 452,
+  "g": 361,
+  "n": 212,
+  "i": 20
+ },
+ "currency_metabolites": 229,
+ "transport_reactions": 4688,
+ "reversible_reactions": 5714,
+ "reactions_without_gene": 5101,
+ "largest_component_fraction_all": 0.9905782593334118,
+ "largest_component_fraction_without_currency": 0.9828071735586187,
+ "reactions_with_subsystem": 12877,
+ "distinct_subsystems": 146,
+ "brain_expression": {
+  "transcription_edges_before": 47806,
+  "transcription_edges_dropped_factor_not_brain_expressed": 6002,
+  "transcription_edges_kept_factor_expression_unknown": 69,
+  "transcription_factors_dropped": 215,
+  "transcription_factors_expression_unknown": 3,
+  "brain_expression_minimum_tpm": 1.0,
+  "gene_nodes_with_brain_expression_known": 12460,
+  "gene_nodes_brain_expressed": 10399
+ }
+}
