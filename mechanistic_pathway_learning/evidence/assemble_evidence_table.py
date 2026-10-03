@@ -65,6 +65,7 @@ from mechanistic_pathway_learning.evidence.evidence_reliability_model import (
 )
 from mechanistic_pathway_learning.evidence.evidence_reports import (
     SIDER_FREQUENCY_EVIDENCE_CODES,
+    REPORT_COLUMNS,
     SOURCE_NAMES,
     UNJOINED_EVIDENCE_CODE,
     EvidenceReport,
@@ -186,6 +187,7 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
     """
     first = pair_reports.iloc[0]
     positive = grade_weighting_rows(pair_reports)
+    positive = positive[positive.evidence_class == first.evidence_class]  # the grade reads the pair's primary class only; external classes (literature) enter the reliability fit, not the grade
     if first.evidence_class == "monogenic":
         disease_ids = sorted(set(positive.source_record_id))
         frequencies = positive.frequency.dropna()
@@ -208,18 +210,49 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
             evidence_date_source=str(positive.loc[positive.evidence_date == min(dates), "evidence_date_source"].iloc[0]) if len(dates) and "evidence_date_source" in positive.columns else "",
             distinct_reference_count=len(cited), distinct_pubmed_reference_count=sum(1 for reference in cited if reference.startswith("PMID:")),
         )
+    if first.evidence_class == "literature":
+        return EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "literature", source=";".join(sorted(set(positive.source))) if len(positive) else str(first.source),
+                              predication_type=predication_type_for_literature_sources(set(positive.source), first.relation))
+    source_label = pharmacological_source_label(positive.source) if len(positive) else "SIDER 4.1"
     if not len(positive):
-        return EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source="SIDER 4.1", cns_penetrant=False, has_dominant_target=False)
+        return EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source=source_label, cns_penetrant=False, has_dominant_target=False)
     best_record: EvidenceRecord | None = None
     best_weight = -1.0
     for _, term_reports in positive.groupby("source_term_id", sort=False):
         term_frequencies = [float(value) for value in term_reports[term_reports.evidence_code.isin(SIDER_FREQUENCY_EVIDENCE_CODES)].frequency if not pd.isna(value)]
         term_frequency = sum(term_frequencies) / len(term_frequencies) if term_frequencies else None
-        record = EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source="SIDER 4.1", cns_penetrant=True, has_dominant_target=True, label_event_frequency=term_frequency)
+        record = EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source=source_label, cns_penetrant=True, has_dominant_target=True, label_event_frequency=term_frequency)
         weight = loss_weight_for_record(record)
         if weight > best_weight:
             best_record, best_weight = record, weight
     return best_record
+
+
+def pharmacological_source_label(sources) -> str:
+    """"SIDER 4.1" when every source is a SIDER table (the string earlier revisions wrote), otherwise the sorted source names joined."""
+    names = sorted(set(str(source) for source in sources))
+    return "SIDER 4.1" if names and all(name.startswith("SIDER") for name in names) else ";".join(names)
+
+
+def predication_type_for_literature_sources(sources: set[str], relation: str) -> str:
+    """The soft-prior weight class of assign_evidence_grades.DEFAULT_PREDICATION_WEIGHTS for a literature-only pair."""
+    names = {source.split("-", 1)[1].lower() if "-" in source else source.lower() for source in sources}
+    if "cause" in names or ("curated" in names and relation == "induces"):
+        return "CAUSES"
+    if names & {"treat", "prevent", "curated"}:
+        return "AFFECTS"
+    if names & {"positive_correlation", "negative_correlation", "positive_correlate", "negative_correlate"}:
+        return "ASSOCIATED_WITH"
+    return "COMENTION"
+
+
+def targets_from_report_descriptions(pair_reports: pd.DataFrame) -> str:
+    """The "CHEMBLid:ACTION;..." target string an external drug report carries in its model_description, for drugs the SIDER map does not know."""
+    for description in pair_reports.model_description.astype(str):
+        marker = "ChEMBL targets "
+        if marker in description:
+            return description.split(marker, 1)[1].strip()
+    return ""
 
 
 def pharmacological_label_frequency(positive: pd.DataFrame) -> float | None:
@@ -283,12 +316,12 @@ def aggregate_reports_to_observations(
                 "evidence_date_source": record.evidence_date_source or None,
             })
         else:
-            targets = (drug_targets_by_perturbation or {}).get(perturbation_id, "")
+            targets = (drug_targets_by_perturbation or {}).get(perturbation_id, "") or targets_from_report_descriptions(pair_reports)
             group_id = "|".join(part.split(":")[0] for part in targets.split(";") if part) if targets else perturbation_id
             row.update({
                 "group_id": group_id, "disease_cluster_id": group_id,
                 "label_frequency": pharmacological_label_frequency(graded),
-                "source": "SIDER 4.1; targets " + targets,
+                "source": pharmacological_source_label(pair_reports.source) + "; targets " + targets,
                 "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
                 "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None, "evidence_date_source": None,
             })
@@ -297,6 +330,29 @@ def aggregate_reports_to_observations(
                     "label_frequency", "source", "in_metabolic_layer", "omim_entry_count", "orpha_entry_count", "annotation_row_count", "annotation_patient_count", "disease_identifiers",
                     "distinct_reference_count", "distinct_pubmed_reference_count", "evidence_date", "evidence_date_source", "perturbation_nodes", "report_count", "positive_report_count", "negative_report_count"]
     return pd.DataFrame(rows, columns=column_order)
+
+
+def append_external_reports(reports: pd.DataFrame, path: Path, defaults: RubricWeightDefaults) -> pd.DataFrame:
+    """Append a report table produced outside the assembler (OnSIDES label statements, literature reports).
+
+    Rows with a qualifies column are kept only when it is true. The shared columns are taken as they are, missing
+    shared columns get their defaults, rubric_ feature columns are kept, and a rubric_weight the table already
+    carries (the literature appraisal computes its own) is kept, otherwise the defaults apply. The appended rows
+    enter the report table and the reliability fit as their own sources; whether they become labels is decided
+    downstream by grade and label_grades.
+    """
+    external = pd.read_parquet(path)
+    if "qualifies" in external.columns:
+        external = external[external.qualifies == True]  # noqa: E712
+    kept = [column for column in external.columns if column in REPORT_COLUMNS or column.startswith("rubric_")]
+    external = external[kept].copy()
+    for column in REPORT_COLUMNS:
+        if column not in external.columns:
+            external[column] = 0.0 if column.startswith("rubric_") else ("" if column not in ("frequency", "frequency_denominator", "onset", "sex", "evidence_date") else None)
+    computed = rubric_weights_for_table(external, defaults)
+    external["rubric_weight"] = external["rubric_weight"].where(external["rubric_weight"].notna(), computed) if "rubric_weight" in external.columns else computed
+    external = external[[column for column in reports.columns if column in external.columns] + [column for column in external.columns if column not in reports.columns]]
+    return pd.concat([reports, external], ignore_index=True, sort=False)
 
 
 def fit_report_reliability(reports: pd.DataFrame, observations: pd.DataFrame, defaults: RubricWeightDefaults) -> ReportReliabilityFit:
@@ -310,7 +366,7 @@ def fit_report_reliability(reports: pd.DataFrame, observations: pd.DataFrame, de
     item_keys = [(perturbation_id, symptom, relation) for perturbation_id, symptom, relation in zip(observations.perturbation_id, observations.symptom, observations.relation)] if len(observations) else []
     item_groups = [str(evidence_class) for evidence_class in observations.evidence_class] if len(observations) else []
     present_sources = set(reports.source) if len(reports) else set()
-    source_names = [source for source in SOURCE_NAMES if source in present_sources]
+    source_names = [source for source in SOURCE_NAMES if source in present_sources] + sorted(present_sources - set(SOURCE_NAMES))  # external sources (OnSIDES, literature) follow the built-in ones
     positive_weights, negative_weights, coverage = report_count_matrices(reports, item_keys, source_names, defaults.implicit_negative_weight)
     explicit_cells = explicit_report_cells(reports, item_keys, source_names)
     explicit_negative_weight = (negative_weights - defaults.implicit_negative_weight * coverage * (~explicit_cells)).sum(axis=0)
@@ -434,6 +490,7 @@ def assemble(
     weighting: str = DEFAULT_WEIGHTING,
     rubric_weight_defaults: RubricWeightDefaults | None = None,
     reliability_global_scale: float = 1.0,
+    extra_report_paths: list[Path] | None = None,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations."""
     if weighting not in WEIGHTINGS:
@@ -497,6 +554,8 @@ def assemble(
 
     reports = reports_to_dataframe(report_list)
     reports["rubric_weight"] = rubric_weights_for_table(reports, rubric_weight_defaults)
+    for extra_path in extra_report_paths or []:
+        reports = append_external_reports(reports, extra_path, rubric_weight_defaults)
     cluster_by_gene = disease_cluster_ids_from_reports(reports, disease_cluster_max_genes)
     observations = aggregate_reports_to_observations(reports, grade_a_policy, cluster_by_gene, metabolic_node_ids, drug_targets_by_perturbation)
     reliability_fit = fit_report_reliability(reports, observations, rubric_weight_defaults)
@@ -587,11 +646,13 @@ def main() -> None:
     parser.add_argument("--report-rubric-weights", type=Path, default=None, help="JSON overriding any field of RubricWeightDefaults (evidence-code factors, sample-size reference, minimum weight, implicit-negative weight)")
     parser.add_argument("--reliability-global-scale", type=float, default=1.0, help="multiplier on the posterior under --weighting reliability")
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
+    parser.add_argument("--extra-reports", type=Path, nargs="*", default=[], help="report tables produced outside the assembler (OnSIDES label statements, literature reports) appended to the report table and the reliability fit")
     arguments = parser.parse_args()
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
                          arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
-                         arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale)
+                         arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale,
+                         extra_report_paths=list(arguments.extra_reports))
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
