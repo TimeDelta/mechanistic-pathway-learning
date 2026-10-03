@@ -27,6 +27,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     hits_at_k,
     macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
+    paired_bootstrap_macro_difference,
     per_symptom_auprc,
     per_symptom_auroc,
 )
@@ -74,6 +75,8 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
             expected_support_sizes.append(results.get("module_expected_support_sizes", []))
             symptoms_per_module.append((links > 0.5).sum(axis=1).tolist())
     outcomes, predictions = data.outcomes[scored], pooled_predictions[scored]
+    np.save(run_directory / "pooled_predictions.npy", pooled_predictions)
+    np.save(run_directory / "pooled_scored_rows.npy", scored)
     per_symptom = {}
     for symptom_index, symptom in enumerate(data.symptoms):
         positives = outcomes[:, symptom_index].sum()
@@ -113,6 +116,35 @@ def collect_time_split_runs(run_directories: list[Path]) -> list[dict]:
     return rows
 
 
+def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int) -> list[dict]:
+    """Paired bootstrap of the pooled macro AUPRC and AUROC difference between every run and every baseline (and between runs) on the rows both scored."""
+    predictions_by_name: dict[str, np.ndarray] = {}
+    rows_by_name: dict[str, np.ndarray] = {}
+    for run_directory in run_directories:
+        if run_directory.name in aggregated and (run_directory / "pooled_predictions.npy").exists():
+            predictions_by_name[run_directory.name] = np.load(run_directory / "pooled_predictions.npy")
+            rows_by_name[run_directory.name] = np.load(run_directory / "pooled_scored_rows.npy")
+    if baseline_directory is not None and (baseline_directory / "perturbation_ids.json").exists():
+        baseline_ids = json.loads((baseline_directory / "perturbation_ids.json").read_text())
+        if baseline_ids == data.perturbation_ids:
+            rows_path = baseline_directory / f"scored_rows_{baseline_split}.npy"
+            for prediction_path in sorted(baseline_directory.glob(f"predictions_{baseline_split}_*.npy")):
+                name = prediction_path.stem[len(f"predictions_{baseline_split}_"):]
+                predictions_by_name[name] = np.load(prediction_path)
+                rows_by_name[name] = np.load(rows_path) if rows_path.exists() else np.ones(len(data.perturbation_ids), dtype=bool)
+    comparisons = []
+    names = list(predictions_by_name)
+    for first in names:
+        for second in names:
+            if first == second or first not in aggregated:
+                continue
+            rows = rows_by_name[first] & rows_by_name[second]
+            auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap)
+            auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap)
+            comparisons.append({"a": first, "b": second, "rows": int(rows.sum()), "macro_auprc": auprc, "macro_auroc": auroc})
+    return comparisons
+
+
 def summary_row(name: str, entry: dict) -> str:
     return (f"| {name} | {entry['macro_auprc']:.3f} | {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f} | {entry['macro_auroc']:.3f} | "
             f"{entry['per_fold_macro_auroc_mean']:.3f} ± {entry['per_fold_macro_auroc_sd']:.3f} | {entry['mean_reciprocal_rank']:.3f} | {entry['hits_at_3']:.3f} | "
@@ -143,10 +175,16 @@ def main() -> None:
         print(f"{run_directory.name:40s} splits {entry['num_splits']}  macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
               f"macro AUROC {entry['macro_auroc']:.3f}  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}  ECE {entry['expected_calibration_error']:.3f}")
     baseline_entries = {}
+    baseline_directory = None
     if arguments.baseline_results and arguments.baseline_results.exists():
         baseline_entries = json.loads(arguments.baseline_results.read_text())["splits"].get(arguments.baseline_split, {})
+        baseline_directory = arguments.baseline_results.parent
+    comparisons = paired_comparisons(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data, arguments.num_bootstrap)
+    for comparison in comparisons:
+        print(f"{comparison['a']:34s} vs {comparison['b']:28s} macro AUPRC diff {comparison['macro_auprc']['difference']:+.3f} [{comparison['macro_auprc']['lower']:+.3f}, {comparison['macro_auprc']['upper']:+.3f}]  "
+              f"macro AUROC diff {comparison['macro_auroc']['difference']:+.3f} [{comparison['macro_auroc']['lower']:+.3f}, {comparison['macro_auroc']['upper']:+.3f}]")
     arguments.json_output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.json_output.write_text(json.dumps(aggregated, indent=1))
+    arguments.json_output.write_text(json.dumps({"runs": aggregated, "paired_comparisons": comparisons}, indent=1))
 
     lines = [f"# {arguments.title} (generated by experiments/aggregate_main_model_runs.py)", "",
              f"{len(data.perturbation_ids)} perturbations, {len(data.symptoms)} symptoms, leakage groups by {arguments.group_by}. Out-of-split predictions pooled; per-fold values are mean ± standard deviation over splits. "
@@ -162,6 +200,12 @@ def main() -> None:
         for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
             bins = entry.get("macro_auprc_by_degree_bin", {})
             lines.append(f"| {name} | " + " | ".join(f"{bins[b]:.3f}" if b in bins else "n/a" for b in degree_bins) + " |")
+    if comparisons:
+        lines += ["", "## Paired bootstrap comparisons (design section 7)", "", "Difference in pooled macro AUPRC and macro AUROC between two models on the rows both scored; 95 percent percentile interval of the paired bootstrap over perturbations. The pre-registered primary endpoint asks for a difference of at least 0.05 with an interval excluding zero.", "",
+                  "| A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | macro AUROC A - B [95% CI] |", "|---|---|---|---|---|---|"]
+        for comparison in comparisons:
+            a, r = comparison["macro_auprc"], comparison["macro_auroc"]
+            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {a['difference']:+.3f} [{a['lower']:+.3f}, {a['upper']:+.3f}] | {a['fraction_resamples_favoring_a']:.2f} | {r['difference']:+.3f} [{r['lower']:+.3f}, {r['upper']:+.3f}] |")
     lines += ["", "## Configurations", "", "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():
         a = entry["arguments"]

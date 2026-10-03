@@ -108,3 +108,36 @@ def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, per
         label = f"degree_bin_{bin_index}_[{edges[0]:.0f},{edges[1]:.0f}]_n{len(rows)}"
         result[label] = float(np.mean(values)) if values else float("nan")
     return result
+
+
+def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, statistic=per_symptom_auprc, num_bootstrap: int = 1000,
+                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5) -> dict[str, float]:
+    """Paired bootstrap over perturbations of macro(statistic of A) - macro(statistic of B) on the same rows (design section 7).
+
+    Both prediction matrices are resampled with the same row indices, so the interval is for the paired
+    difference; symptoms with fewer than minimum_positives positives or no negatives in a resample are skipped.
+    """
+    generator = np.random.default_rng(random_seed)
+
+    def macro(predictions: np.ndarray, resampled_outcomes: np.ndarray) -> float:
+        values = []
+        for symptom_index in range(resampled_outcomes.shape[1]):
+            positives = resampled_outcomes[:, symptom_index].sum()
+            if positives < minimum_positives or positives == resampled_outcomes.shape[0]:
+                continue
+            values.append(statistic(predictions, resampled_outcomes, symptom_index))
+        return float(np.mean(values)) if values else float("nan")
+
+    point = macro(predictions_a, outcomes) - macro(predictions_b, outcomes)
+    differences = []
+    for _ in range(num_bootstrap):
+        rows = generator.integers(0, outcomes.shape[0], size=outcomes.shape[0])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            difference = macro(predictions_a[rows], outcomes[rows]) - macro(predictions_b[rows], outcomes[rows])
+        if not np.isnan(difference):
+            differences.append(difference)
+    lower_quantile = (1.0 - confidence) / 2.0
+    return {"difference": float(point), "lower": float(np.quantile(differences, lower_quantile)) if differences else float("nan"),
+            "upper": float(np.quantile(differences, 1.0 - lower_quantile)) if differences else float("nan"),
+            "fraction_resamples_favoring_a": float(np.mean(np.array(differences) > 0)) if differences else float("nan"), "num_resamples": len(differences)}
