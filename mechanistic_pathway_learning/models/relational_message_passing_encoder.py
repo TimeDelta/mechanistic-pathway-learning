@@ -64,30 +64,56 @@ class RelationalMessagePassingEncoder(nn.Module):
         )
         return node_state_field
 
+    @staticmethod
+    def build_relation_adjacencies(edge_index: Tensor, edge_relation_type: Tensor, num_graph_nodes: int, num_relation_types: int) -> list[Tensor | None]:
+        """One sparse, in-degree-normalized adjacency per relation: entry [destination, source] = 1 / in_degree(destination)."""
+        adjacencies: list[Tensor | None] = []
+        for relation_index in range(num_relation_types):
+            edges_of_relation = edge_relation_type == relation_index
+            if not torch.any(edges_of_relation):
+                adjacencies.append(None)
+                continue
+            source = edge_index[0][edges_of_relation]
+            destination = edge_index[1][edges_of_relation]
+            in_degree = torch.zeros(num_graph_nodes, dtype=torch.float32).index_add(0, destination, torch.ones(len(destination)))
+            values = 1.0 / in_degree[destination]
+            adjacency = torch.sparse_coo_tensor(torch.stack([destination, source]), values, (num_graph_nodes, num_graph_nodes)).coalesce()
+            adjacencies.append(adjacency)
+        return adjacencies
+
     def forward(
         self,
         perturbation_node_index: Tensor,
         perturbation_sign_and_magnitude: Tensor,
-        edge_index: Tensor,
-        edge_relation_type: Tensor,
+        edge_index: Tensor | None = None,
+        edge_relation_type: Tensor | None = None,
+        relation_adjacencies: list[Tensor | None] | None = None,
     ) -> Tensor:
+        """Either pass edge arrays (adjacencies are built and cached) or precomputed relation_adjacencies.
+
+        Aggregation uses one sparse matrix product per relation and layer over the whole batch
+        (states reshaped to [num_graph_nodes, batch_size * node_state_dim]), which avoids the
+        per-edge intermediate of size batch x edges x dim.
+        """
+        if relation_adjacencies is None:
+            if edge_index is None or edge_relation_type is None:
+                raise ValueError("pass edge_index and edge_relation_type or relation_adjacencies")
+            cache_key = (int(edge_index.shape[1]), int(edge_relation_type.sum()))
+            if getattr(self, "_adjacency_cache_key", None) != cache_key:
+                self._cached_adjacencies = self.build_relation_adjacencies(edge_index, edge_relation_type, self.num_graph_nodes, self.num_relation_types)
+                self._adjacency_cache_key = cache_key
+            relation_adjacencies = self._cached_adjacencies
         node_state_field = self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude)
-        source_index, destination_index = edge_index[0], edge_index[1]
+        batch_size = node_state_field.shape[0]
         for layer_index in range(self.num_message_passing_layers):
             aggregated_messages = torch.zeros_like(node_state_field)
-            for relation_index in range(self.num_relation_types):
-                edges_of_relation = edge_relation_type == relation_index
-                if not torch.any(edges_of_relation):
+            for relation_index, adjacency in enumerate(relation_adjacencies):
+                if adjacency is None:
                     continue
-                relation_source = source_index[edges_of_relation]
-                relation_destination = destination_index[edges_of_relation]
-                source_states = node_state_field[:, relation_source, :]
-                messages = source_states @ self.relation_weight[layer_index, relation_index]
-                relation_sum = torch.zeros_like(node_state_field).index_add(1, relation_destination, messages)
-                in_degree = torch.zeros(self.num_graph_nodes, device=node_state_field.device).index_add(
-                    0, relation_destination, torch.ones_like(relation_destination, dtype=node_state_field.dtype)
-                )
-                aggregated_messages = aggregated_messages + relation_sum / in_degree.clamp_min(1.0)[None, :, None]
+                messages = node_state_field @ self.relation_weight[layer_index, relation_index]  # [B, N, D]
+                flattened = messages.permute(1, 0, 2).reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
+                aggregated = torch.sparse.mm(adjacency.to(flattened.device), flattened)
+                aggregated_messages = aggregated_messages + aggregated.reshape(self.num_graph_nodes, batch_size, self.node_state_dim).permute(1, 0, 2)
             self_messages = node_state_field @ self.self_weight[layer_index]
             node_state_field = torch.relu(self_messages + aggregated_messages + self.layer_bias[layer_index])
         return node_state_field
