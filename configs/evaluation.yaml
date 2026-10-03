@@ -1,25 +1,41 @@
-# Evaluation protocol (design sections 6 and 7)
+# Evaluation protocol (design sections 6 and 7), as implemented in experiments/run_baselines.py,
+# experiments/run_main_model.py and experiments/aggregate_main_model_runs.py
 splits:
-  grouped_perturbation_wise: {num_folds: 5, group_by: {drug: dominant_target, gene: gene_symbol}}
-  pathway_wise: {hold_out_each_curated_module: true}
-  time_split: {training_cutoff: "2015-12-31", test_drugs_first_approved_after: "2016-01-01"}
+  grouped_perturbation_wise:
+    num_folds: 5
+    group_by: disease_cluster               # default from v0.4; gene-wise grouping leaks through genes sharing a disease (design 6.1)
+    alternatives: [gene]
+  pathway_wise:
+    definitions: [human_gem_subsystems, curated_modules]   # subsystems proposed for the primary endpoint; curated modules hold 37 perturbations on the monogenic slice
+    catch_all_subsystems_excluded: [Transport reactions, Exchange/demand reactions, Isolated, Miscellaneous, Artificial reactions, Pool reactions]
+    min_holdout_positives: 10
+    min_holdout_size_for_macro_metrics: 20
+  time_split:
+    monogenic_cutoff: "2015-12-31"
+    pair_date: publication_of_cited_reference_else_biocuration   # docs/hpo_reference_publication_dates.json; Orphanet-only pairs undated and excluded
+    drug_test_first_approved_after: "2016-01-01"                   # OnSIDES slice, pending
 metrics: [auroc, auprc, mean_reciprocal_rank, hits_at_3, expected_calibration_error]
-stratify_by: [evidence_grade, node_degree_bin]
-bootstrap: {num_resamples: 1000, confidence: 0.95}
+reporting:
+  pooled_and_per_fold: true                 # pooled for bootstrap and ranking metrics; per-fold mean and sd to avoid the constant-predictor artifact
+  stratify_by: [node_degree_tercile, evidence_grade]
+  bootstrap: {num_resamples: 1000, confidence: 0.95}
+  paired_bootstrap_between_models: true     # design section 7 primary endpoint test
 negative_controls: [label_permutation_within_degree_strata, degree_preserving_rewiring, grade_shuffle, peripheral_event_control]
 orthogonal_validation:
   gwas_gene_set: {top_n_genes: 50, exclude_training_genes: true, random_set_matches: 1000}
   metabolomics_rank_enrichment: true
 equifinality:
   link_threshold: 0.5
+  support_threshold: 0.5                    # deterministic gate; top 25 gates when fewer exceed it
   downstream_hops: 3
+  sufficiency_test: {min_group_size: 8, min_positives: 3}
   expected_multi_module_symptoms: [psychosis, cognitive_impairment, depressed_mood, anxiety]
   expected_single_module_symptoms: [psychomotor_retardation]
 primary_endpoint:
   metric: macro_auprc
-  split: pathway_wise
+  split: pathway_wise                       # proposed definition: human_gem_subsystems (to confirm before pre-registration)
   comparator: best_of [network_proximity, knowledge_graph_embedding, relational_gnn_sigmoid]
   minimum_difference: 0.05
   seeds_by_folds: [5, 5]
 multiple_comparisons: benjamini_hochberg
-failure_criterion: "B6 must beat popularity and network proximity under the gene-wise split before ablations run"
+failure_criterion: "B6 must beat popularity and network proximity under the disease-cluster grouped split before ablations run"

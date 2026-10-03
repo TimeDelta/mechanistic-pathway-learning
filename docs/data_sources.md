@@ -5,9 +5,9 @@ versions are part of the pre-registration. Raw downloads live under data/raw/ (g
 
 | Source | Use | Access | License note | Pinned version |
 |---|---|---|---|---|
-| Human-GEM (github.com/SysBioChalmers/Human-GEM) | base reconstruction | public | open | 2.0.1 (main, 2026-10-02) |
+| Human-GEM (github.com/SysBioChalmers/Human-GEM) | base reconstruction (SBML for stoichiometry and gene rules; yml for reaction subsystems) | public | open | 2.0.1 (model date 2026-03-26; main fetched 2026-10-02 and 2026-10-03) |
 | Recon3D (vmh.life; BiGG) | identifier cross-reference | public | open for academic use | to pin |
-| Human Phenotype Ontology (hpo.jax.org) | E1 monogenic gene-phenotype annotations; hp.obo | public | open | release 2026-09-01 |
+| Human Phenotype Ontology (hpo.jax.org) | E1 monogenic gene-phenotype annotations with frequency qualifiers and OMIM or Orphanet provenance; hp.obo for the is_a closure | public | open | release 2026-09-01 (genes_to_phenotype.txt, 333,983 rows) |
 | OMIM (omim.org) | clinical synopses for the grade A bar | registration | academic use | to pin |
 | SIDER 4.1 (sideeffects.embl.de) | E2 label events, 2015 time slice | public | MedDRA terms inside are licensed; do not redistribute term tables | 4.1 (files dated 2015-10-21) |
 | OnSIDES (github.com/tatonetti-lab/onsides) | E2 label events, current slice | public | same MedDRA note | to pin |

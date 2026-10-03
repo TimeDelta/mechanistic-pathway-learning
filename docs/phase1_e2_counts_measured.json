@@ -1,0 +1,18 @@
+{
+ "provenance": "Measured 2026-10-02 with SIDER 4.1 (labels to 2015), ChEMBL 37 mechanisms via experiments/fetch_chembl_drug_targets.py, single-target and ATC N filter, crosswalk MedDRA terms of version 0.3. Used by experiments/run_phase1_counts.py when the SIDER or ChEMBL files are not present (their hosts are not reachable from every environment).",
+ "distinct_qualifying_e2_drugs": 65,
+ "per_symptom": {
+  "depressed_mood": {"e2_inducing_drugs": 30, "e2_inducing_drugs_target_in_human_gem": 13, "e2_relieving_drugs": 1},
+  "anhedonia": {"e2_inducing_drugs": 0, "e2_inducing_drugs_target_in_human_gem": 0, "e2_relieving_drugs": 0},
+  "anxiety": {"e2_inducing_drugs": 53, "e2_inducing_drugs_target_in_human_gem": 25, "e2_relieving_drugs": 9},
+  "irritability_or_aggression": {"e2_inducing_drugs": 41, "e2_inducing_drugs_target_in_human_gem": 16, "e2_relieving_drugs": 1},
+  "insomnia": {"e2_inducing_drugs": 44, "e2_inducing_drugs_target_in_human_gem": 22, "e2_relieving_drugs": 10},
+  "somnolence_or_hypersomnia": {"e2_inducing_drugs": 63, "e2_inducing_drugs_target_in_human_gem": 29, "e2_relieving_drugs": 1},
+  "fatigue": {"e2_inducing_drugs": 55, "e2_inducing_drugs_target_in_human_gem": 27, "e2_relieving_drugs": 0},
+  "psychomotor_agitation": {"e2_inducing_drugs": 55, "e2_inducing_drugs_target_in_human_gem": 24, "e2_relieving_drugs": 2},
+  "psychomotor_retardation": {"e2_inducing_drugs": 4, "e2_inducing_drugs_target_in_human_gem": 1, "e2_relieving_drugs": 0},
+  "psychosis": {"e2_inducing_drugs": 50, "e2_inducing_drugs_target_in_human_gem": 22, "e2_relieving_drugs": 1},
+  "cognitive_impairment": {"e2_inducing_drugs": 54, "e2_inducing_drugs_target_in_human_gem": 25, "e2_relieving_drugs": 0},
+  "elevated_mood_or_mania": {"e2_inducing_drugs": 38, "e2_inducing_drugs_target_in_human_gem": 16, "e2_relieving_drugs": 2}
+ }
+}

@@ -8,6 +8,19 @@ head reads locally. The encoder uses only torch so the scaffold runs without
 PyTorch Geometric; swapping in a library implementation later only has to keep
 the forward signature.
 
+Two readings of the field are available. The absolute field carries the learned base state of
+every node plus the propagated perturbation, so a readout can memorize node identity. The
+difference field, forward(perturbed) minus forward(unperturbed), carries only what the
+perturbation changed; a module that reads it responds to the propagated perturbation and not to
+which nodes exist, which is the mechanism reading the design asks for (section 5.2) and the
+default of the training harness. The unperturbed field is one extra batch-of-one pass.
+
+Node states start from a learned embedding per node (identity; the default) or, when a fixed
+feature matrix is given, from a linear map of structural node features (type, compartment, degree,
+flags). The second form has no node identity at all: whatever it predicts for a held-out gene comes
+from the structure around it, which is the inductive reading the mechanism claim needs and the
+ablation that separates structure from memorized identity.
+
 Edges are shared across the batch and given once as edge_index [2, num_edges]
 (source row, destination row) with edge_relation_type [num_edges]. Messages are
 mean-aggregated per relation type at the destination node. Compartment changes
@@ -31,13 +44,23 @@ class RelationalMessagePassingEncoder(nn.Module):
         num_relation_types: int,
         node_state_dim: int,
         num_message_passing_layers: int = 3,
+        node_features: Tensor | None = None,
     ) -> None:
         super().__init__()
         self.num_graph_nodes = num_graph_nodes
         self.num_relation_types = num_relation_types
         self.node_state_dim = node_state_dim
         self.num_message_passing_layers = num_message_passing_layers
-        self.base_node_state = nn.Embedding(num_graph_nodes, node_state_dim)
+        if node_features is None:
+            self.base_node_state = nn.Embedding(num_graph_nodes, node_state_dim)
+            self.register_buffer("node_features", None)
+            self.feature_projection = None
+        else:
+            if node_features.shape[0] != num_graph_nodes:
+                raise ValueError("node_features must have one row per graph node")
+            self.base_node_state = None
+            self.register_buffer("node_features", node_features.to(torch.float32))
+            self.feature_projection = nn.Linear(node_features.shape[1], node_state_dim)
         self.perturbation_injection = nn.Linear(PERTURBATION_FEATURE_DIM, node_state_dim)
         scale = 1.0 / math.sqrt(node_state_dim)
         self.relation_weight = nn.Parameter(
@@ -53,7 +76,8 @@ class RelationalMessagePassingEncoder(nn.Module):
         perturbation_sign_and_magnitude: [batch_size, max_perturbed_nodes, 2].
         """
         batch_size = perturbation_node_index.shape[0]
-        node_state_field = self.base_node_state.weight[None, :, :].expand(batch_size, -1, -1).clone()
+        base_state = self.base_node_state.weight if self.base_node_state is not None else self.feature_projection(self.node_features)
+        node_state_field = base_state[None, :, :].expand(batch_size, -1, -1).clone()
         valid_mask = perturbation_node_index >= 0
         injected_state = self.perturbation_injection(perturbation_sign_and_magnitude) * valid_mask[:, :, None]
         safe_index = perturbation_node_index.clamp_min(0)
@@ -104,6 +128,26 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self._adjacency_cache_key = cache_key
             relation_adjacencies = self._cached_adjacencies
         node_state_field = self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude)
+        return self.propagate(node_state_field, relation_adjacencies)
+
+    def unperturbed_node_state_field(self, relation_adjacencies: list[Tensor | None]) -> Tensor:
+        """Field of shape [1, num_graph_nodes, node_state_dim] with no perturbation written on it."""
+        device = next(self.parameters()).device
+        empty_index = torch.full((1, 1), -1, dtype=torch.long, device=device)
+        empty_injection = torch.zeros((1, 1, PERTURBATION_FEATURE_DIM), device=device)
+        return self.forward(empty_index, empty_injection, relation_adjacencies=relation_adjacencies)
+
+    def perturbation_difference_field(
+        self,
+        perturbation_node_index: Tensor,
+        perturbation_sign_and_magnitude: Tensor,
+        relation_adjacencies: list[Tensor | None],
+    ) -> Tensor:
+        """forward(perturbed) - forward(unperturbed): the propagated change caused by the perturbation."""
+        perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
+        return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
+
+    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None]) -> Tensor:
         batch_size = node_state_field.shape[0]
         for layer_index in range(self.num_message_passing_layers):
             aggregated_messages = torch.zeros_like(node_state_field)

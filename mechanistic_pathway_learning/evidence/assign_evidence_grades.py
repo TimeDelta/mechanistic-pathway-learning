@@ -5,20 +5,35 @@ decides the role (training label, soft prior or validation only) and the loss
 weight. Grades are deliberately coarse; the weights are the initial values from
 the design and are overridden by configs/evidence_assembly.yaml.
 
-Grade A  human loss of function in a graph gene with the symptom documented in
-         at least two independent case series or an OMIM clinical synopsis
+Grade A  human loss of function in a graph gene with the symptom in a curated clinical
+         synopsis (OMIM or Orphanet provenance of the HPO annotation) or documented in at
+         least two independent case series
 Grade B  CNS-penetrant drug with a dominant target and the event on the label
 Grade C  human association (gene-level GWAS statistic, metabolomic association,
          or a monogenic report below the grade A bar); validation only in version 1
 Grade D  animal perturbation with a symptom analogue; soft prior
 Grade E  literature predication or co-mention; soft prior, weight by predication type
+
+Grade A policies. "curated_synopsis_provenance" (default) accepts any HPO annotation with an
+OMIM or Orphanet disease entry, because both are curated clinical synopses, and lets the
+frequency qualifier set the weight. "two_distinct_disease_entries" is the version 0.3 proxy
+(two distinct disease identifiers or an OMIM entry); it is kept for comparison because it
+counted an OMIM entry and its Orphanet counterpart as independent case series and zeroed
+single-entry genes such as HMBS (acute intermittent porphyria).
+
+Frequency scaling. Grade A weights are scaled by the largest HPO frequency reported for the
+pair, and grade B weights by the label frequency, with the same shape: weight = base *
+clip(frequency * scale, floor, 1). Unknown frequency keeps the base weight.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 EvidenceGrade = str  # "A", "B", "C", "D" or "E"
+
+GRADE_A_POLICIES = ("curated_synopsis_provenance", "two_distinct_disease_entries")
+DEFAULT_GRADE_A_POLICY = "curated_synopsis_provenance"
 
 DEFAULT_PREDICATION_WEIGHTS: dict[str, float] = {
     "CAUSES": 0.10,
@@ -37,6 +52,13 @@ DEFAULT_GRADE_WEIGHTS: dict[EvidenceGrade, float] = {
     "E": 0.05,
 }
 
+# HPO frequency 25 percent or more keeps the full weight; Occasional (midpoint 0.17) -> 0.68; Very rare -> floor
+MONOGENIC_FREQUENCY_SCALE = 4.0
+MONOGENIC_FREQUENCY_FLOOR = 0.25
+# label frequency 10 percent or more keeps the full weight; floor avoids zeroing rare but real events
+LABEL_FREQUENCY_SCALE = 10.0
+LABEL_FREQUENCY_FLOOR = 0.25
+
 
 @dataclass
 class EvidenceRecord:
@@ -52,11 +74,27 @@ class EvidenceRecord:
     has_dominant_target: bool = False
     label_event_frequency: float | None = None  # fraction in [0, 1] when the label reports it
     predication_type: str | None = None
+    disease_identifiers: list[str] = field(default_factory=list)  # OMIM:/ORPHA: entries behind a monogenic record
+    omim_entry_count: int = 0
+    orpha_entry_count: int = 0
+    annotation_row_count: int = 0
+    max_annotation_frequency: float | None = None  # largest HPO frequency midpoint across the pair's annotations
+    annotation_patient_count: int | None = None  # patients behind n/m fractions, summed, when reported
 
 
-def assign_evidence_grade(record: EvidenceRecord) -> EvidenceGrade:
+def frequency_scaled_weight(base_weight: float, frequency: float | None, scale: float, floor: float) -> float:
+    if frequency is None:
+        return base_weight
+    return base_weight * max(floor, min(1.0, frequency * scale))
+
+
+def assign_evidence_grade(record: EvidenceRecord, grade_a_policy: str = DEFAULT_GRADE_A_POLICY) -> EvidenceGrade:
+    if grade_a_policy not in GRADE_A_POLICIES:
+        raise ValueError(f"unknown grade_a_policy {grade_a_policy!r}; choose from {GRADE_A_POLICIES}")
     if record.evidence_class == "monogenic":
         if record.independent_case_series_count >= 2 or record.has_omim_clinical_synopsis:
+            return "A"
+        if grade_a_policy == "curated_synopsis_provenance" and (record.omim_entry_count > 0 or record.orpha_entry_count > 0):
             return "A"
         return "C"
     if record.evidence_class == "pharmacological":
@@ -76,15 +114,18 @@ def loss_weight_for_record(
     record: EvidenceRecord,
     grade_weights: dict[EvidenceGrade, float] | None = None,
     predication_weights: dict[str, float] | None = None,
+    grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
+    scale_by_frequency: bool = True,
 ) -> float:
     """Loss weight for one observation; zero means the observation is not trained on."""
     grade_weights = grade_weights or DEFAULT_GRADE_WEIGHTS
     predication_weights = predication_weights or DEFAULT_PREDICATION_WEIGHTS
-    grade = assign_evidence_grade(record)
+    grade = assign_evidence_grade(record, grade_a_policy)
     base_weight = grade_weights[grade]
-    if grade == "B" and record.label_event_frequency is not None:
-        # frequency scaling keeps common label events heavier than rare ones; floor avoids zeroing rare but real events
-        return base_weight * max(0.25, min(1.0, record.label_event_frequency * 10.0))
+    if grade == "A" and record.evidence_class == "monogenic" and scale_by_frequency:
+        return frequency_scaled_weight(base_weight, record.max_annotation_frequency, MONOGENIC_FREQUENCY_SCALE, MONOGENIC_FREQUENCY_FLOOR)
+    if grade == "B" and scale_by_frequency:
+        return frequency_scaled_weight(base_weight, record.label_event_frequency, LABEL_FREQUENCY_SCALE, LABEL_FREQUENCY_FLOOR)
     if grade == "E" and record.predication_type is not None:
         return predication_weights.get(record.predication_type.upper(), predication_weights["COMENTION"])
     return base_weight

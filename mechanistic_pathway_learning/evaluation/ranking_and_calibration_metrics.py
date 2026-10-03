@@ -84,3 +84,60 @@ def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, nu
             continue
         error += in_bin.mean() * abs(flat_predictions[in_bin].mean() - flat_outcomes[in_bin].mean())
     return float(error)
+
+
+def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, perturbation_degrees: np.ndarray, num_bins: int = 3, minimum_positives: int = 5) -> dict[str, float]:
+    """Macro AUPRC over symptoms inside each degree bin of the perturbations (design section 6.2, assumption A9).
+
+    Bins are degree quantiles over the rows given; a symptom is scored inside a bin when it has at least
+    minimum_positives positives and one negative there. Hub-driven predictors score well in the top bin only.
+    """
+    order = np.argsort(perturbation_degrees, kind="stable")  # equal-count bins; ties broken by position so no bin is empty
+    bin_of_row = np.empty(len(perturbation_degrees), dtype=int)
+    bin_of_row[order] = np.minimum(np.arange(len(perturbation_degrees)) * num_bins // max(1, len(perturbation_degrees)), num_bins - 1)
+    result: dict[str, float] = {}
+    for bin_index in range(num_bins):
+        rows = np.where(bin_of_row == bin_index)[0]
+        edges = [perturbation_degrees[rows].min() if len(rows) else float("nan"), perturbation_degrees[rows].max() if len(rows) else float("nan")]
+        values = []
+        for symptom_index in range(outcomes.shape[1]):
+            positives = outcomes[rows, symptom_index].sum()
+            if positives < minimum_positives or positives == len(rows):
+                continue
+            values.append(float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index])))
+        label = f"degree_bin_{bin_index}_[{edges[0]:.0f},{edges[1]:.0f}]_n{len(rows)}"
+        result[label] = float(np.mean(values)) if values else float("nan")
+    return result
+
+
+def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, statistic=per_symptom_auprc, num_bootstrap: int = 1000,
+                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5) -> dict[str, float]:
+    """Paired bootstrap over perturbations of macro(statistic of A) - macro(statistic of B) on the same rows (design section 7).
+
+    Both prediction matrices are resampled with the same row indices, so the interval is for the paired
+    difference; symptoms with fewer than minimum_positives positives or no negatives in a resample are skipped.
+    """
+    generator = np.random.default_rng(random_seed)
+
+    def macro(predictions: np.ndarray, resampled_outcomes: np.ndarray) -> float:
+        values = []
+        for symptom_index in range(resampled_outcomes.shape[1]):
+            positives = resampled_outcomes[:, symptom_index].sum()
+            if positives < minimum_positives or positives == resampled_outcomes.shape[0]:
+                continue
+            values.append(statistic(predictions, resampled_outcomes, symptom_index))
+        return float(np.mean(values)) if values else float("nan")
+
+    point = macro(predictions_a, outcomes) - macro(predictions_b, outcomes)
+    differences = []
+    for _ in range(num_bootstrap):
+        rows = generator.integers(0, outcomes.shape[0], size=outcomes.shape[0])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            difference = macro(predictions_a[rows], outcomes[rows]) - macro(predictions_b[rows], outcomes[rows])
+        if not np.isnan(difference):
+            differences.append(difference)
+    lower_quantile = (1.0 - confidence) / 2.0
+    return {"difference": float(point), "lower": float(np.quantile(differences, lower_quantile)) if differences else float("nan"),
+            "upper": float(np.quantile(differences, 1.0 - lower_quantile)) if differences else float("nan"),
+            "fraction_resamples_favoring_a": float(np.mean(np.array(differences) > 0)) if differences else float("nan"), "num_resamples": len(differences)}

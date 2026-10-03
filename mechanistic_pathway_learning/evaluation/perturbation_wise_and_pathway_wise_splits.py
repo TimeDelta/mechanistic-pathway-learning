@@ -79,3 +79,81 @@ def time_split(
         else:
             test_identifiers.append(observation_identifier)
     return training_identifiers, test_identifiers
+
+
+def read_curated_modules(curated_modules_path) -> dict[str, list[str]]:
+    """docs/curated_pathway_modules.csv -> module id -> gene symbols (the scaffolding of design section 3.2)."""
+    import csv
+
+    genes_by_module: dict[str, list[str]] = {}
+    with open(curated_modules_path, encoding="utf-8") as modules_file:
+        for row in csv.DictReader(modules_file):
+            genes_by_module[row["module_id"]] = [symbol.strip() for symbol in (row.get("genes") or "").split(";") if symbol.strip()]
+    return genes_by_module
+
+
+def perturbations_anchored_in_module(perturbation_seed_node_indices: Sequence, module_node_indices: set[int]) -> list[bool]:
+    """True for every perturbation that writes onto at least one node of the module (a module gene, or a drug targeting one).
+
+    This is the pathway-wise hold-out set: all of them leave the training data together.
+    """
+    return [any(int(node_index) in module_node_indices for node_index in seeds) for seeds in perturbation_seed_node_indices]
+
+
+CATCH_ALL_SUBSYSTEMS: frozenset[str] = frozenset({
+    "Transport reactions", "Exchange/demand reactions", "Isolated", "Miscellaneous", "Artificial reactions", "Pool reactions",
+})
+
+
+def primary_subsystem_by_gene_node(
+    node_subsystem: Sequence[str],
+    edge_source: Sequence[int],
+    edge_target: Sequence[int],
+    edge_relation: Sequence[int],
+    catalyzed_by_relation_index: int,
+    ignored_subsystems: frozenset[str] = CATCH_ALL_SUBSYSTEMS,
+) -> dict[int, str]:
+    """Gene node index -> the subsystem most of its catalyzed reactions belong to (ties broken alphabetically).
+
+    Reconstruction subsystems (Human-GEM) partition the reactions into pathways such as "Tryptophan
+    metabolism"; holding out every gene whose primary subsystem is S is a pathway-wise split that is
+    populated far more evenly than the sixteen hand-curated modules of design section 3.2. Catch-all
+    subsystems (transport, exchange, isolated reactions) are not pathways: a gene is assigned to its most
+    frequent pathway subsystem when it has one, and to the catch-all only when it has nothing else, so
+    that a transporter of the urea cycle is held out with the urea cycle and not with every transporter.
+    """
+    from collections import Counter, defaultdict
+
+    counts_by_gene: dict[int, Counter] = defaultdict(Counter)
+    for source, target, relation in zip(edge_source, edge_target, edge_relation):
+        if relation != catalyzed_by_relation_index:
+            continue
+        subsystem = node_subsystem[target]
+        if subsystem:
+            counts_by_gene[int(source)][subsystem] += 1
+    primary: dict[int, str] = {}
+    for gene_node, counts in counts_by_gene.items():
+        pathway_counts = {name: count for name, count in counts.items() if name not in ignored_subsystems} or dict(counts)
+        best_count = max(pathway_counts.values())
+        primary[gene_node] = sorted(name for name, count in pathway_counts.items() if count == best_count)[0]
+    return primary
+
+
+def subsystem_holdout_masks(
+    perturbation_seed_node_indices: Sequence,
+    primary_subsystem: Mapping[int, str],
+    outcomes_per_perturbation: Sequence[float],
+    min_holdout_positives: int,
+) -> dict[str, list[bool]]:
+    """Subsystem -> mask of perturbations whose seed nodes include a gene of that primary subsystem, keeping subsystems with enough positives."""
+    nodes_by_subsystem: dict[str, set[int]] = defaultdict(set)
+    for gene_node, subsystem in primary_subsystem.items():
+        nodes_by_subsystem[subsystem].add(gene_node)
+    masks: dict[str, list[bool]] = {}
+    for subsystem, node_set in sorted(nodes_by_subsystem.items()):
+        if subsystem in CATCH_ALL_SUBSYSTEMS:
+            continue
+        mask = perturbations_anchored_in_module(perturbation_seed_node_indices, node_set)
+        if sum(outcome for outcome, held_out in zip(outcomes_per_perturbation, mask) if held_out) >= min_holdout_positives:
+            masks[subsystem] = mask
+    return masks

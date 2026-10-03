@@ -71,3 +71,27 @@ def test_equifinality_indices() -> None:
     assert convergence_index(supports, ["heme", "copper"], adjacency, max_hops=1) == 0.0
     assert convergence_index(supports, ["heme", "copper"], adjacency, max_hops=2) > 0.0
     assert active_modules_for_symptom({"heme": 0.8, "copper": 0.4}, link_threshold=0.5) == ["heme"]
+
+
+def test_primary_subsystem_routes_catch_all_bins_to_pathways_and_holdout_masks() -> None:
+    from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
+        perturbations_anchored_in_module,
+        primary_subsystem_by_gene_node,
+        subsystem_holdout_masks,
+    )
+
+    # nodes 0-2 genes, 3-6 reactions; relation 2 is catalyzed_by
+    node_subsystem = ["", "", "", "Transport reactions", "Urea cycle", "Urea cycle", "Porphyrin metabolism"]
+    edge_source = [0, 0, 1, 2, 2]
+    edge_target = [3, 4, 5, 6, 3]
+    edge_relation = [2, 2, 2, 2, 2]
+    primary = primary_subsystem_by_gene_node(node_subsystem, edge_source, edge_target, edge_relation, catalyzed_by_relation_index=2)
+    assert primary[0] == "Urea cycle"  # one transport and one urea cycle reaction: the pathway wins over the catch-all
+    assert primary[1] == "Urea cycle" and primary[2] == "Porphyrin metabolism"
+    seeds = [[0], [1], [2], [0, 2]]
+    positives = [2.0, 3.0, 5.0, 1.0]
+    masks = subsystem_holdout_masks(seeds, primary, positives, min_holdout_positives=5)
+    assert masks["Urea cycle"] == [True, True, False, True]  # a drug writing onto a urea cycle gene leaves with the pathway
+    assert masks["Porphyrin metabolism"] == [False, False, True, True]
+    assert perturbations_anchored_in_module(seeds, {1}) == [False, True, False, False]
+    assert "Transport reactions" not in subsystem_holdout_masks(seeds, {0: "Transport reactions", 1: "Transport reactions", 2: "Transport reactions"}, positives, 1)

@@ -84,11 +84,33 @@ def gene_symbols_from_table(genes_table_path: Path | None) -> dict[str, str]:
     return symbol_by_ensembl
 
 
-def subsystem_by_reaction(model) -> dict[str, str]:
+def subsystem_by_reaction(model, model_yaml_path: Path | None = None) -> dict[str, str]:
+    """Reaction id -> subsystem. SBML groups when the file has them; else the Human-GEM yml, whose reaction
+    entries carry a subsystem list (the first entry is kept), parsed line by line to avoid loading the whole document."""
     subsystems: dict[str, str] = {}
     for group in getattr(model, "groups", []):
         for member in group.members:
             subsystems.setdefault(member.id, group.name)
+    if subsystems or model_yaml_path is None or not model_yaml_path.exists():
+        return subsystems
+    current_reaction: str | None = None
+    in_subsystem_list = False
+    with open(model_yaml_path, encoding="utf-8") as yaml_file:
+        for raw_line in yaml_file:
+            line = raw_line.strip()
+            if line.startswith("- id:"):
+                current_reaction = line[len("- id:"):].strip().strip('"').strip("'")
+                in_subsystem_list = False
+            elif line.startswith("- subsystem:") or line.startswith("subsystem:"):
+                remainder = line.split(":", 1)[1].strip()
+                in_subsystem_list = remainder == ""
+                if remainder and current_reaction is not None:
+                    subsystems.setdefault(current_reaction, remainder.strip("[]").split(",")[0].strip().strip('"').strip("'"))
+            elif in_subsystem_list and line.startswith("- ") and current_reaction is not None:
+                subsystems.setdefault(current_reaction, line[2:].strip().strip('"').strip("'"))
+                in_subsystem_list = False
+            elif in_subsystem_list and not line.startswith("- "):
+                in_subsystem_list = False
     return subsystems
 
 
@@ -96,8 +118,8 @@ def gene_node_id(symbol: str) -> str:
     return f"GENE:{symbol}"
 
 
-def build_metabolic_layer(model, symbol_by_ensembl: dict[str, str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    subsystems = subsystem_by_reaction(model)
+def build_metabolic_layer(model, symbol_by_ensembl: dict[str, str], model_yaml_path: Path | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    subsystems = subsystem_by_reaction(model, model_yaml_path)
     node_rows: list[dict] = []
     edge_rows: list[dict] = []
 
@@ -303,9 +325,10 @@ def build_physiology_graph(
     transcription_regulons_path: Path | None = None,
     small_molecule_path: Path | None = None,
     metabolites_table_path: Path | None = None,
+    model_yaml_path: Path | None = None,
 ) -> dict:
     model = load_human_gem(model_path)
-    nodes, edges = build_metabolic_layer(model, gene_symbols_from_table(genes_table_path))
+    nodes, edges = build_metabolic_layer(model, gene_symbols_from_table(genes_table_path), model_yaml_path)
     edge_tables = [edges]
     if signaling_interactions_path is not None and signaling_interactions_path.exists():
         nodes, signaling_edges = build_signaling_layer(nodes, signaling_interactions_path)
@@ -323,10 +346,16 @@ def build_physiology_graph(
     nodes["degree"] = nodes.node_id.map(degree).fillna(0).astype(int)
     nodes = tag_currency(nodes, degree_quantile_threshold)
     output_directory.mkdir(parents=True, exist_ok=True)
-    nodes.to_parquet(output_directory / "nodes.parquet", index=False)
-    edges.to_parquet(output_directory / "edges.parquet", index=False)
+    import os
+
+    for name, table in (("nodes.parquet", nodes), ("edges.parquet", edges)):  # atomic replace so a concurrent reader never sees a partial file
+        table.to_parquet(output_directory / (name + ".tmp"), index=False)
+        os.replace(output_directory / (name + ".tmp"), output_directory / name)
     (output_directory / "relation_types.json").write_text(json.dumps(RELATION_TYPES))
     summary = summarize(nodes, edges)
+    reactions = nodes[nodes.node_type == "reaction"]
+    summary["reactions_with_subsystem"] = int((reactions.subsystem.fillna("") != "").sum())
+    summary["distinct_subsystems"] = int(reactions.subsystem.fillna("").replace("", pd.NA).nunique())
     (output_directory / "graph_summary.json").write_text(json.dumps(summary, indent=1))
     return summary
 
@@ -341,9 +370,10 @@ def main() -> None:
     parser.add_argument("--transcription", type=Path, default=Path("data/raw/omnipath/collectri_interactions.tsv"))
     parser.add_argument("--small-molecule", type=Path, default=Path("data/raw/omnipath/small_molecule_protein.tsv"))
     parser.add_argument("--metabolites-table", type=Path, default=Path("data/raw/Human-GEM/model/metabolites.tsv"))
+    parser.add_argument("--model-yaml", type=Path, default=Path("data/raw/Human-GEM/model/Human-GEM.yml"), help="source of reaction subsystems when the SBML has no groups")
     arguments = parser.parse_args()
     summary = build_physiology_graph(arguments.model_path, arguments.output_dir, arguments.genes_table, arguments.degree_quantile_threshold,
-                                     arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table)
+                                     arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table, arguments.model_yaml)
     print(json.dumps(summary, indent=1))
 
 
