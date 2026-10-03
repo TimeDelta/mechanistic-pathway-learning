@@ -114,7 +114,11 @@ Evidence class E4, symptom-level genetics (validation only in version 1). Gene-l
 
 Evidence class E5, metabolomics (validation only; optional). Published metabolite-symptom association tables. No new cohort access is required.
 
-### 4.3 Evidence grading
+### 4.3 Evidence grading and learned weighting
+
+The grade table below is the fallback weighting and one ablation arm. The default weighting is learned: every source is treated as a noisy sensor of the true perturbation-symptom link with its own sensitivity and specificity, estimated by expectation-maximization from the pattern of agreement across sources (a Dawid-Skene model with Beta priors; evidence_reliability_model.py). The posterior probability that a link is real is the observation's soft label and loss weight, and a link anchor's pseudo-observation count is read off that posterior (0.99 maps to 99) rather than set by hand. One global scale on the weights is the only hyperparameter left to validation-set tuning. A two-class latent model needs at least three conditionally independent sources to be identified, which the monogenic, label and literature classes supply. Weights learned as bare multipliers on the training loss would collapse to zero; weights learned as noise parameters inside the likelihood of the reports do not, which is why the model is specified this way.
+
+Strength of findings enters through features rather than counts. A document-grounded language-model appraisal (llm_evidence_appraisal.py) extracts a structured rubric from each supporting document: study design, species, sample size, measurement level (symptom item versus diagnosis), effect direction, cohort identity and mechanistic specificity. The rubric is never a judgment of whether the link is true. Its fields become features of the reliability model, so sensitivity and specificity vary by study design within a source (the feature-dependent form of the model), and independence is counted by cohort rather than by mention. Before any appraisal enters training it is scored against a gold set rated by two humans, field by field with Cohen's kappa; the model name, prompt version and temperature are pinned, outputs are cached by content hash, and the time-split leakage audit in section 6.4 checks whether appraisal features help post-cutoff predictions more than within-period ones.
 
 | Grade | Definition | Role | Initial loss weight |
 |---|---|---|---|
@@ -158,7 +162,7 @@ Hard: the graph itself (section 4.1). Nothing else is hard in the default config
 
 Soft, version 1 implementation, outcome level: every observation enters a weighted binary cross-entropy with its grade weight (section 4.3); observed positives are smoothed to a target of 0.99, so the model is asked to keep strong links near certain rather than certain. Unobserved pairs are sampled as degree-matched negatives at reduced weight because they are unlabelled, not negative.
 
-Soft, version 1 implementation, parameter level: a designated module-to-symptom link can be anchored to a prior probability with a Bernoulli KL penalty whose coefficient is a pseudo-observation count; a prior strength of 0.99 is 99 pseudo-observations. Disabled by default.
+Soft, version 1 implementation, parameter level: a designated module-to-symptom link can be anchored to a prior probability with a Bernoulli KL penalty whose coefficient is a pseudo-observation count; a prior strength of 0.99 is 99 pseudo-observations. With learned weighting the count comes from the reliability posterior (section 4.3). Disabled by default.
 
 Soft, version 2 implementation: for each literature triple (entity e, symptom s, weight w), a hinge penalty max(0, tau * w - A(e, s)) on the attribution A from node e to output s. This nudges the explanation locally without fixing a pathway.
 
@@ -180,7 +184,7 @@ B6, the proposed model.
 
 ### 5.7 Ablations
 
-No soft constraints; hard lower bounds on; compartments collapsed; signaling and transcription layers removed; flux route removed; propagation route removed; sigmoid head instead of noisy-OR; K = 1; currency metabolites retained in path features.
+No soft constraints; hard lower bounds on; compartments collapsed; signaling and transcription layers removed; flux route removed; propagation route removed; sigmoid head instead of noisy-OR; K = 1; currency metabolites retained in path features; fixed grade weights instead of learned reliability; learned reliability without rubric features.
 
 ## 6. Evaluation
 

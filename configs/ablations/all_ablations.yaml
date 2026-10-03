@@ -8,3 +8,5 @@ no_propagation_route: {encoder.route: flux_only}
 sigmoid_head_instead_of_noisy_or: {head.output: sigmoid}
 single_module: {head.num_pathway_modules_candidates: [1]}
 currency_metabolites_retained: {graph.currency_metabolites.degree_quantile_threshold: 1.0, graph.currency_metabolites.use_default_name_list: false}
+fixed_grade_weights_instead_of_learned: {evidence.weighting.mode: fixed_grades}
+no_rubric_features: {evidence.weighting.reliability_model.use_rubric_features: false}

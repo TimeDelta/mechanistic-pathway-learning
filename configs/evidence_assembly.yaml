@@ -17,8 +17,25 @@ literature:
 genetics:
   role: validation_only                        # version 2: soft prior
   gwas_summary_statistics: data/raw/gwas/symptom_level/
-grade_weights: {A: 1.0, B: 0.6, C: 0.0, D: 0.2, E: 0.05}
-predication_weights: {CAUSES: 0.10, DISRUPTS: 0.08, PREDISPOSES: 0.08, AFFECTS: 0.08, ASSOCIATED_WITH: 0.05, COMENTION: 0.02}
+weighting:
+  mode: learned_reliability          # or fixed_grades (fallback and ablation arm)
+  reliability_model:                 # evidence_reliability_model.py: Dawid-Skene with Beta priors
+    sources: [hpo_monogenic, sider_label, onsides_label, pubtator3, ctd, semmeddb]
+    sensitivity_prior_counts: [8, 2]
+    specificity_prior_counts: [8, 2]
+    use_rubric_features: true        # Raykar-style per-item sensitivity from the LLM appraisal rubric
+    global_scale: 1.0                # the only weight hyperparameter tuned on validation folds
+    anchor_maximum_pseudo_count: 99  # posterior 0.99 -> 99 pseudo-observations
+  llm_appraisal:                     # llm_evidence_appraisal.py: document-grounded rubric, never a truth judgment
+    model_name: to_be_pinned_before_preregistration
+    prompt_version: appraisal-rubric-v1
+    temperature: 0.0
+    cache_directory: data/cache/llm_appraisal
+    gold_set: docs/appraisal_gold_set.csv   # two human raters; kappa per field reported before use
+    minimum_kappa_to_use_field: 0.6
+  fixed_grades:                      # used when mode is fixed_grades
+    grade_weights: {A: 1.0, B: 0.6, C: 0.0, D: 0.2, E: 0.05}
+    predication_weights: {CAUSES: 0.10, DISRUPTS: 0.08, PREDISPOSES: 0.08, AFFECTS: 0.08, ASSOCIATED_WITH: 0.05, COMENTION: 0.02}
 positive_target: 0.99        # label smoothing for observed links: the "0.99 no-change" policy
 negative_sampling:
   degree_matched: true
