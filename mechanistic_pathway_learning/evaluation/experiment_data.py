@@ -42,6 +42,7 @@ class ExperimentData:
     node_subsystem: np.ndarray | None = None  # reconstruction subsystem per node ("" for non-reactions or when absent)
     frequencies: np.ndarray | None = None  # [num_perturbations, num_symptoms] reported frequency of a positive pair, NaN when unknown or negative
     evidence_dates: np.ndarray | None = None  # [num_perturbations, num_symptoms] proleptic Gregorian ordinal of the earliest dated evidence behind a positive pair, 0 when undated or negative
+    evidence_date_is_publication: np.ndarray | None = None  # [num_perturbations, num_symptoms] True when the earliest date is a cited publication date rather than an HPO curation date (review v0.4, finding 7)
     node_compartment: np.ndarray | None = None  # compartment string per node ("" when none; "c;m" for a transport reaction)
     node_is_transport: np.ndarray | None = None
     node_is_reversible: np.ndarray | None = None
@@ -125,6 +126,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     evidence_dates = np.zeros(outcomes.shape, dtype=np.int64)
     has_frequency_column = "label_frequency" in evidence.columns
     has_date_column = "evidence_date" in evidence.columns
+    has_date_source_column = "evidence_date_source" in evidence.columns
+    evidence_date_is_publication = np.zeros(outcomes.shape, dtype=bool)
     labels, types, groups, seeds, signs, magnitudes, metabolic = {}, {}, {}, {}, {}, {}, {}
     for row in evidence.itertuples(index=False):
         position = perturbation_position[row.perturbation_id]
@@ -136,6 +139,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             ordinal = date.fromisoformat(row.evidence_date).toordinal()
             current = evidence_dates[position, symptom_index[row.symptom]]
             evidence_dates[position, symptom_index[row.symptom]] = ordinal if current == 0 else min(current, ordinal)
+            if has_date_source_column and (current == 0 or ordinal <= current):
+                evidence_date_is_publication[position, symptom_index[row.symptom]] = str(row.evidence_date_source) == "publication"
         labels[row.perturbation_id] = row.perturbation_label
         types[row.perturbation_id] = row.perturbation_type
         groups[row.perturbation_id] = getattr(row, group_column)
@@ -169,6 +174,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_subsystem=nodes.subsystem.fillna("").to_numpy().astype(str) if "subsystem" in nodes.columns else None,
         frequencies=frequencies,
         evidence_dates=evidence_dates,
+        evidence_date_is_publication=evidence_date_is_publication if has_date_source_column else None,
         node_compartment=nodes.compartment.fillna("").to_numpy().astype(str) if "compartment" in nodes.columns else None,
         node_is_transport=(nodes.is_transport == True).to_numpy() if "is_transport" in nodes.columns else None,  # noqa: E712 - NaN rows become False
         node_is_reversible=(nodes.reversible == True).to_numpy() if "reversible" in nodes.columns else None,  # noqa: E712

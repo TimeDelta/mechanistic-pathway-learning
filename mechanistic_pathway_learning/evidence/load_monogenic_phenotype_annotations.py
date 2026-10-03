@@ -291,14 +291,30 @@ def hpoa_row_availability_date(
     Publication precedes curation, so with the lookup present the date is the publication date. Orphanet rows
     get None by default because their biocuration date is the release import date.
     """
+    availability_date, _ = hpoa_row_availability_date_and_source(row, dated_provenance_prefixes, publication_dates_by_pmid)
+    return availability_date
+
+
+def hpoa_row_availability_date_and_source(
+    row: HpoaAnnotationRow,
+    dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",),
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+) -> tuple[date | None, str]:
+    """The availability date of hpoa_row_availability_date together with its source: "publication" when the
+    earliest candidate is a cited PubMed publication date, "biocuration" when it is an HPO curation date (an
+    upper bound on when the observation existed; review v0.4, finding 7), "" when the row is undated."""
     if not row.disease_id.startswith(dated_provenance_prefixes):
-        return None
-    candidates = list(row.biocuration_dates)
+        return None, ""
+    candidates: list[tuple[date, str]] = [(biocuration_date, "biocuration") for biocuration_date in row.biocuration_dates]
     if publication_dates_by_pmid:
         for reference in row.references:
             if reference.startswith("PMID:") and reference[5:] in publication_dates_by_pmid:
-                candidates.append(publication_dates_by_pmid[reference[5:]])
-    return min(candidates) if candidates else None
+                candidates.append((publication_dates_by_pmid[reference[5:]], "publication"))
+    if not candidates:
+        return None, ""
+    earliest_date = min(candidate_date for candidate_date, _ in candidates)
+    sources = {source for candidate_date, source in candidates if candidate_date == earliest_date}
+    return earliest_date, "publication" if "publication" in sources else "biocuration"
 
 
 def load_hpo_annotation_dates(
@@ -508,7 +524,7 @@ def evidence_report_from_hpoa_row(
     frequency = 0.0 if hpoa_row.frequency.strip() == EXCLUDED_FREQUENCY_QUALIFIER else parse_frequency_qualifier(hpoa_row.frequency)
     denominator = parse_frequency_denominator(hpoa_row.frequency)
     references = ";".join(hpoa_row.references)
-    availability_date = None if unjoined else hpoa_row_availability_date(hpoa_row, publication_dates_by_pmid=publication_dates_by_pmid)
+    availability_date, date_source = (None, "") if unjoined else hpoa_row_availability_date_and_source(hpoa_row, publication_dates_by_pmid=publication_dates_by_pmid)
     entry_reference = hpoa_row.disease_id
     association_label, association_causal = (association_types or {}).get((gene_symbol, hpoa_row.disease_id), ("unknown", None))
     report = EvidenceReport(
@@ -532,6 +548,7 @@ def evidence_report_from_hpoa_row(
         rubric_placebo_controlled=0.0,
         rubric_curated_synopsis=1.0 if entry_reference in hpoa_row.references else 0.0,
         association_type=association_label, rubric_causal_association=1.0 if association_causal else 0.0,
+        evidence_date_source=date_source,
     )
     report.limitations = limitations_text(report)
     return report

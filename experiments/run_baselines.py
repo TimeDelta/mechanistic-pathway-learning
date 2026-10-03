@@ -216,15 +216,25 @@ def holdout_section(title: str, description: str, entries: dict, control_entries
     return lines + [""]
 
 
-def time_split_evaluation(data, cutoff: date, model_name: str, restart_probability: float, normalized_adjacency, seed: int) -> dict | None:
-    """Train on pairs dated on or before the cutoff; score the pairs that could still become positive."""
+def time_split_evaluation(data, cutoff: date, model_name: str, restart_probability: float, normalized_adjacency, seed: int, require_publication_date: bool = False) -> dict | None:
+    """Train on pairs dated on or before the cutoff; score the pairs that could still become positive.
+
+    With require_publication_date, a pair counts as a new positive only when its date is a cited publication date;
+    a pair whose only post-cutoff date is an HPO curation date (an upper bound on when the observation existed,
+    review v0.4, finding 7) is excluded from scoring like an undated pair. Training positives are unchanged: a
+    curation date on or before the cutoff proves the evidence existed by then.
+    """
     if data.evidence_dates is None or (data.evidence_dates > 0).sum() == 0:
+        return None
+    if require_publication_date and data.evidence_date_is_publication is None:
         return None
     cutoff_ordinal = cutoff.toordinal()
     dated = data.evidence_dates > 0
     training_outcomes = ((data.outcomes > 0) & dated & (data.evidence_dates <= cutoff_ordinal)).astype(float)
-    new_positive = ((data.outcomes > 0) & dated & (data.evidence_dates > cutoff_ordinal)).astype(float)
-    undated_positive = (data.outcomes > 0) & ~dated
+    after_cutoff = (data.outcomes > 0) & dated & (data.evidence_dates > cutoff_ordinal)
+    curation_dated_after_cutoff = after_cutoff & ~data.evidence_date_is_publication if require_publication_date else np.zeros_like(after_cutoff)
+    new_positive = (after_cutoff & ~curation_dated_after_cutoff).astype(float)
+    undated_positive = ((data.outcomes > 0) & ~dated) | curation_dated_after_cutoff
     scored_pairs = ~(training_outcomes > 0) & ~undated_positive
     all_rows = np.ones(len(data.perturbation_ids), dtype=bool)
     predictions = fit_and_predict(data, training_outcomes, all_rows, all_rows, model_name, restart_probability, normalized_adjacency)
@@ -250,6 +260,7 @@ def time_split_evaluation(data, cutoff: date, model_name: str, restart_probabili
     return {
         "cutoff": cutoff.isoformat(), "training_positive_pairs": int(training_outcomes.sum()), "new_positive_pairs": int(new_positive.sum()),
         "undated_positive_pairs": int(undated_positive.sum()), "scored_pairs": int(scored_pairs.sum()),
+        "curation_dated_new_positives_excluded": int(curation_dated_after_cutoff.sum()), "require_publication_date": require_publication_date,
         "per_symptom": observed_table, "per_symptom_permuted": permuted_table,
         "macro_auprc": float(np.mean([e["auprc"] for e in observed_table.values()])) if observed_table else float("nan"),
         "macro_auroc": float(np.mean([e["auroc"] for e in observed_table.values()])) if observed_table else float("nan"),
@@ -340,6 +351,12 @@ def main() -> None:
         if entry is not None:
             results["time_split"][model_name] = entry
             print(f"{'time_split':26s} {model_name:26s} macro AUPRC {entry['macro_auprc']:.3f} (permuted {entry['macro_auprc_permuted']:.3f})  macro AUROC {entry['macro_auroc']:.3f} (permuted {entry['macro_auroc_permuted']:.3f})  new positives {entry['new_positive_pairs']} of {entry['scored_pairs']} scored pairs")
+    results["time_split_publication_dated"] = {}
+    for model_name in model_names:
+        entry = time_split_evaluation(data, arguments.time_split_cutoff, model_name, arguments.restart_probability, normalized_adjacency, arguments.seed, require_publication_date=True)
+        if entry is not None:
+            results["time_split_publication_dated"][model_name] = entry
+            print(f"{'time_split_pubdated':26s} {model_name:26s} macro AUPRC {entry['macro_auprc']:.3f} (permuted {entry['macro_auprc_permuted']:.3f})  macro AUROC {entry['macro_auroc']:.3f} (permuted {entry['macro_auroc_permuted']:.3f})  new positives {entry['new_positive_pairs']} (curation-dated excluded {entry['curation_dated_new_positives_excluded']})")
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     (arguments.output_dir / "results.json").write_text(json.dumps(results, indent=1))
     (arguments.output_dir / "perturbation_ids.json").write_text(json.dumps(data.perturbation_ids))
@@ -393,6 +410,13 @@ def main() -> None:
             s = first["per_symptom"].get(symptom)
             if s is not None:
                 lines.append(f"| {symptom} | {s['scored_pairs']} | {s['new_positives']} ({s['base_rate']:.3f}) | " + " | ".join(cells) + " |")
+    if results.get("time_split_publication_dated"):
+        first = next(iter(results["time_split_publication_dated"].values()))
+        lines += ["", "### Time split with publication-dated new positives only", "",
+                  f"Pairs whose only post-cutoff date is an HPO curation date are excluded from the new-positive set (review v0.4, finding 7): {first['curation_dated_new_positives_excluded']} excluded; new positives {first['new_positive_pairs']}; scored pairs {first['scored_pairs']}.", "",
+                  "| model | macro AUPRC | macro AUPRC (permuted) | macro AUROC | macro AUROC (permuted) |", "|---|---|---|---|---|"]
+        for name, entry in results["time_split_publication_dated"].items():
+            lines.append(f"| {name} | {entry['macro_auprc']:.3f} | {entry['macro_auprc_permuted']:.3f} | {entry['macro_auroc']:.3f} | {entry['macro_auroc_permuted']:.3f} |")
     arguments.markdown_output.write_text("\n".join(lines) + "\n")
 
 

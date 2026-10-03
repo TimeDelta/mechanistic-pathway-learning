@@ -73,6 +73,7 @@ class EvidenceReport:
     perturbation_nodes: str = ""  # JSON list of [node_id, sign, magnitude]; filled by the assembler
     association_type: str = ""  # gene-disease association type behind a monogenic report (MENDELIAN, POLYGENIC, an Orphadata product 6 type, unknown); "" for other classes
     rubric_causal_association: float = 0.0  # 1.0 when the association is disease-causing (MENDELIAN or an Orphanet disease-causing type)
+    evidence_date_source: str = ""  # "publication" when evidence_date is a cited PubMed publication date, "biocuration" when it is the HPO curation date, "release" for a data release date, "" when undated
 
 
 REPORT_COLUMNS: tuple[str, ...] = tuple(report_field.name for report_field in fields(EvidenceReport))

@@ -84,6 +84,7 @@ class EvidenceRecord:
     distinct_pubmed_reference_count: int = 0  # the PMID: subset of those; descriptive only, never enters the weight
     association_type_known: bool = False  # True when at least one positive report has a typed gene-disease association (genes_to_disease.txt or Orphadata product 6)
     causal_association_count: int = 0  # positive reports whose association is disease-causing (MENDELIAN or an Orphanet disease-causing type)
+    evidence_date_source: str = ""  # source of evidence_available_date: publication, biocuration, release or empty
 
 
 def frequency_scaled_weight(base_weight: float, frequency: float | None, scale: float, floor: float) -> float:

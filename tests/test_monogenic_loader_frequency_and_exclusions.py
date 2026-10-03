@@ -266,3 +266,18 @@ def test_obo_parser_ignores_typedef_stanzas_and_obsolete_terms(tmp_path: Path) -
     from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import load_hpo_term_names_from_obo
     names = load_hpo_term_names_from_obo(obo)
     assert names["HP:0000002"] == "Child" and "part of" not in names.values()
+
+
+def test_availability_date_source_is_publication_only_when_a_cited_paper_is_earliest() -> None:
+    from datetime import date
+
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import HpoaAnnotationRow, hpoa_row_availability_date_and_source
+
+    fields = dict(disease_id="OMIM:176000", disease_name="AIP", qualifier="", hpo_id="HP:0000709", evidence="PCS", onset="", frequency="", sex="", modifier="", aspect="P", ordinal=1)
+    row = HpoaAnnotationRow(**fields, references=["PMID:1", "OMIM:176000"], biocuration_dates=[date(2012, 3, 4)])
+    assert hpoa_row_availability_date_and_source(row, publication_dates_by_pmid={"1": date(1998, 7, 1)}) == (date(1998, 7, 1), "publication")
+    assert hpoa_row_availability_date_and_source(row) == (date(2012, 3, 4), "biocuration")  # no publication lookup: the curation date stands
+    later_paper = HpoaAnnotationRow(**fields, references=["PMID:2"], biocuration_dates=[date(2010, 1, 1)])
+    assert hpoa_row_availability_date_and_source(later_paper, publication_dates_by_pmid={"2": date(2015, 1, 1)}) == (date(2010, 1, 1), "biocuration")
+    orphanet = HpoaAnnotationRow(**{**fields, "disease_id": "ORPHA:79276"}, references=["ORPHA:79276"], biocuration_dates=[date(2026, 9, 2)])
+    assert hpoa_row_availability_date_and_source(orphanet) == (None, "")

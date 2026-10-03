@@ -205,6 +205,7 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
             association_type_known=bool((positive.association_type.fillna("").astype(str).isin(["", "unknown"]) == False).any()) if "association_type" in positive.columns else False,  # noqa: E712
             causal_association_count=int(positive.rubric_causal_association.fillna(0).sum()) if "rubric_causal_association" in positive.columns else 0,
             evidence_available_date=date.fromisoformat(min(dates)) if len(dates) else None,
+            evidence_date_source=str(positive.loc[positive.evidence_date == min(dates), "evidence_date_source"].iloc[0]) if len(dates) and "evidence_date_source" in positive.columns else "",
             distinct_reference_count=len(cited), distinct_pubmed_reference_count=sum(1 for reference in cited if reference.startswith("PMID:")),
         )
     if not len(positive):
@@ -279,6 +280,7 @@ def aggregate_reports_to_observations(
                 "disease_identifiers": ";".join(all_disease_ids),
                 "distinct_reference_count": record.distinct_reference_count, "distinct_pubmed_reference_count": record.distinct_pubmed_reference_count,
                 "evidence_date": record.evidence_available_date.isoformat() if record.evidence_available_date else None,
+                "evidence_date_source": record.evidence_date_source or None,
             })
         else:
             targets = (drug_targets_by_perturbation or {}).get(perturbation_id, "")
@@ -288,12 +290,12 @@ def aggregate_reports_to_observations(
                 "label_frequency": pharmacological_label_frequency(graded),
                 "source": "SIDER 4.1; targets " + targets,
                 "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
-                "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None,
+                "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None, "evidence_date_source": None,
             })
         rows.append(row)
     column_order = ["perturbation_id", "perturbation_type", "perturbation_label", "group_id", "disease_cluster_id", "symptom", "relation", "evidence_class", "grade", "weight",
                     "label_frequency", "source", "in_metabolic_layer", "omim_entry_count", "orpha_entry_count", "annotation_row_count", "annotation_patient_count", "disease_identifiers",
-                    "distinct_reference_count", "distinct_pubmed_reference_count", "evidence_date", "perturbation_nodes", "report_count", "positive_report_count", "negative_report_count"]
+                    "distinct_reference_count", "distinct_pubmed_reference_count", "evidence_date", "evidence_date_source", "perturbation_nodes", "report_count", "positive_report_count", "negative_report_count"]
     return pd.DataFrame(rows, columns=column_order)
 
 
