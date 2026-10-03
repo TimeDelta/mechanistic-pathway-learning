@@ -44,6 +44,14 @@ rows for 72 drugs with a single ChEMBL mechanism target). Baselines and the firs
 the full data are running under runs/full; results go to docs/phase2_baselines_full_disease_cluster.md
 and docs/phase3_main_model.md when they finish.
 
+The retrieval half of the literature class E3 is in place (docs/literature_survey_spec.md): the symptom
+crosswalk carries verified MeSH descriptors with a symptom-or-diagnosis level flag, every gene node has an
+NCBI Gene id through Human-GEM and HGNC (12,537 of 12,627), and two fetch scripts filter the PubTator3 bulk
+relation file and the CTD chemical-disease file to graph genes and SIDER drugs on those descriptors, writing
+one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature. The
+rows are soft priors (grades C to E) and never evaluation positives; joining them into the assembled evidence
+table and the reliability fit is the next step.
+
 Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
 
 ```
@@ -56,6 +64,7 @@ curl -L -o data/raw/omnipath/omnipath_interactions.tsv "https://omnipathdb.org/i
 curl -L -o data/raw/omnipath/collectri_interactions.tsv "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references,n_references&organisms=9606&format=tsv"
 curl -L -o data/raw/omnipath/small_molecule_protein.tsv "https://omnipathdb.org/interactions?types=small_molecule_protein&genesymbols=1&fields=sources,references,type&organisms=9606&format=tsv"
 python experiments/fetch_chembl_drug_targets.py          # UniChem and ChEMBL, cached, resumable
+OMP_NUM_THREADS=1 python experiments/fetch_pubtator_relations.py --fetch-publication-dates && OMP_NUM_THREADS=1 python experiments/fetch_ctd_chemical_disease.py --fetch-publication-dates   # literature class E3, cached, rate-limited; docs/literature_survey_spec.md
 python -m mechanistic_pathway_learning.graph.build_physiology_graph
 python experiments/audit_hpo_term_expansion.py            # docs/hpo_term_audit.md
 python -m mechanistic_pathway_learning.evidence.assemble_evidence_table

@@ -1,0 +1,92 @@
+"""Match SIDER drug names to MeSH chemical identifiers, the join key of PubTator3 and CTD chemicals (design section 4.2, E3).
+
+First pass, by name only: a SIDER drug (drug_names.tsv, STITCH flat id and name) matches a MeSH chemical when the
+MeSH descriptor name, or an entry term that the PubTator3 autocomplete reports as the matched synonym, equals the
+SIDER name case-insensitively. The method behind every match is recorded (chemical_match_method) so a later pass
+can replace name matching with a structure-based mapping (PubChem CID to MeSH through UniChem or the MeSH
+registry numbers) and measure what changed. Salts, combination products and names that MeSH spells differently
+("gamma-aminobutyric" in SIDER against "gamma-Aminobutyric Acid" in MeSH) do not match in this pass and are
+counted as unmatched, never guessed.
+"""
+from __future__ import annotations
+
+import csv
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+MATCH_METHODS: tuple[str, ...] = ("autocomplete_name", "autocomplete_synonym", "mesh_label_lookup", "ctd_chemical_name")
+SYNONYM_MATCH_PATTERN = re.compile(r"<m>(.*?)</m>")
+
+
+@dataclass(frozen=True)
+class ChemicalMatch:
+    stitch_flat_id: str
+    drug_name: str
+    chemical_mesh_id: str  # D- or C-number without the "MESH:" prefix
+    chemical_mesh_name: str
+    match_method: str
+
+
+def normalize_name(name: str) -> str:
+    return " ".join(name.strip().lower().split())
+
+
+def load_sider_drug_names(sider_directory: Path) -> dict[str, str]:
+    """STITCH flat id -> drug name from drug_names.tsv (one name per drug)."""
+    names: dict[str, str] = {}
+    with open(Path(sider_directory) / "drug_names.tsv", newline="", encoding="utf-8") as handle:
+        for row in csv.reader(handle, delimiter="\t"):
+            if len(row) >= 2 and row[0]:
+                names[row[0]] = row[1]
+    return names
+
+
+def drug_names_by_normalized_name(drug_names: dict[str, str]) -> dict[str, list[tuple[str, str]]]:
+    """Normalized name -> [(STITCH flat id, name)]; a name shared by two STITCH ids maps to both, which the caller reports."""
+    index: dict[str, list[tuple[str, str]]] = {}
+    for stitch_flat_id, drug_name in drug_names.items():
+        index.setdefault(normalize_name(drug_name), []).append((stitch_flat_id, drug_name))
+    return index
+
+
+def strip_mesh_prefix(identifier: str) -> str:
+    return identifier[5:] if identifier.upper().startswith("MESH:") else identifier
+
+
+def match_autocomplete_candidates(stitch_flat_id: str, drug_name: str, candidates: list[dict]) -> ChemicalMatch | None:
+    """The first chemical candidate of a PubTator3 autocomplete response whose name, or whose reported matched synonym,
+    equals the drug name case-insensitively. Candidates of other biotypes (a gene named like a drug) are skipped."""
+    wanted = normalize_name(drug_name)
+    for candidate in candidates:
+        if candidate.get("biotype") != "chemical" or candidate.get("db") != "ncbi_mesh":
+            continue
+        candidate_name = str(candidate.get("name", ""))
+        if normalize_name(candidate_name) == wanted:
+            return ChemicalMatch(stitch_flat_id, drug_name, strip_mesh_prefix(str(candidate["db_id"])), candidate_name, "autocomplete_name")
+    for candidate in candidates:
+        if candidate.get("biotype") != "chemical" or candidate.get("db") != "ncbi_mesh":
+            continue
+        for synonym in SYNONYM_MATCH_PATTERN.findall(str(candidate.get("match", ""))):
+            if normalize_name(synonym) == wanted:
+                return ChemicalMatch(stitch_flat_id, drug_name, strip_mesh_prefix(str(candidate["db_id"])), str(candidate.get("name", "")), "autocomplete_synonym")
+    return None
+
+
+def match_mesh_label(chemical_mesh_id: str, mesh_label: str, names_index: dict[str, list[tuple[str, str]]]) -> list[ChemicalMatch]:
+    """Every SIDER drug whose name equals a MeSH chemical's preferred label case-insensitively (method mesh_label_lookup)."""
+    hits = names_index.get(normalize_name(mesh_label), [])
+    return [ChemicalMatch(stitch_flat_id, drug_name, strip_mesh_prefix(chemical_mesh_id), mesh_label, "mesh_label_lookup") for stitch_flat_id, drug_name in hits]
+
+
+def match_ctd_chemical_name(chemical_mesh_id: str, chemical_name: str, names_index: dict[str, list[tuple[str, str]]]) -> list[ChemicalMatch]:
+    """Every SIDER drug whose name equals a CTD ChemicalName case-insensitively (method ctd_chemical_name)."""
+    hits = names_index.get(normalize_name(chemical_name), [])
+    return [ChemicalMatch(stitch_flat_id, drug_name, strip_mesh_prefix(chemical_mesh_id), chemical_name, "ctd_chemical_name") for stitch_flat_id, drug_name in hits]
+
+
+def chemical_matches_by_mesh_id(matches: list[ChemicalMatch]) -> dict[str, list[ChemicalMatch]]:
+    index: dict[str, list[ChemicalMatch]] = {}
+    for match in matches:
+        index.setdefault(match.chemical_mesh_id, []).append(match)
+    return index
