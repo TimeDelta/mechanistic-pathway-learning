@@ -9,7 +9,6 @@
 | popularity | 0.189 | 0.231 ± 0.025 | 0.420 | 0.500 ± 0.000 | 0.651 | 0.805 | 451 |
 | degree_popularity | 0.211 | 0.259 ± 0.024 | 0.491 | 0.500 ± 0.029 | 0.651 | 0.805 | 451 |
 | random_walk_with_restart | 0.245 | 0.293 ± 0.014 | 0.532 | 0.530 ± 0.012 | 0.441 | 0.532 | 451 |
-| knowledge_graph_embedding_transe | 0.213 | 0.256 ± 0.019 | 0.504 | 0.509 ± 0.028 | 0.408 | 0.488 | 451 |
 
 Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins are [low degree, high degree] with the number of perturbations):
 
@@ -18,83 +17,80 @@ Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins
 | popularity | 0.195 | 0.182 | 0.203 |
 | degree_popularity | 0.195 | 0.198 | 0.213 |
 | random_walk_with_restart | 0.278 | 0.217 | 0.268 |
-| knowledge_graph_embedding_transe | 0.228 | 0.210 | 0.246 |
 
 ## Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)
 
 Per-symptom AUPRC inside one held-out module is not meaningful (sets of 4 to 8 genes with homogeneous symptom profiles), so only pooled per-symptom metrics and per-hold-out ranking metrics are shown.
+ Raw pooled scores across hold-outs with different base rates carry the artifact of section 6.2 (review v0.4, finding 1); the rank-within-hold-out columns replace each score by its tie-averaged rank over (n + 1) inside its hold-out before pooling, and the stratified AUROC forms positive-negative pairs inside hold-outs only. The pathway-wise endpoint is defined on the rank-within-hold-out macro AUPRC.
 
 Held out (perturbations, positive pairs): catecholamine (7, 10); tetrahydrobiopterin (5, 13); urea_cycle (8, 22); heme_porphyrin (4, 19); sterol_lysosomal_lipid (7, 20); creatine_energy (6, 10).
 
-| model | macro AUPRC (pooled) | macro AUROC (pooled) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
-|---|---|---|---|---|---|---|---|
-| popularity | 0.227 | 0.206 | 0.740 | 0.973 | 0.740 | 0.976 | 37 |
-| degree_popularity | 0.359 | 0.429 | 0.740 | 0.973 | 0.740 | 0.976 | 37 |
-| random_walk_with_restart | 0.382 | 0.484 | 0.486 | 0.676 | 0.485 | 0.684 | 37 |
-| knowledge_graph_embedding_transe | 0.367 | 0.536 | 0.476 | 0.649 | 0.479 | 0.663 | 37 |
+| model | macro AUPRC (pooled, raw) | macro AUPRC (pooled, rank within hold-out) | macro AUROC (pooled, raw) | macro AUROC (rank within hold-out) | macro AUROC (stratified) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
+|---|---|---|---|---|---|---|---|---|---|---|
+| popularity | 0.227 | 0.301 | 0.206 | 0.500 | 0.500 | 0.740 | 0.973 | 0.740 | 0.976 | 37 |
+| degree_popularity | 0.359 | 0.364 | 0.429 | 0.544 | 0.553 | 0.740 | 0.973 | 0.740 | 0.976 | 37 |
+| random_walk_with_restart | 0.382 | 0.353 | 0.484 | 0.519 | 0.538 | 0.486 | 0.676 | 0.485 | 0.684 | 37 |
 
 Same split with labels permuted within degree strata:
 
-| model | macro AUPRC (pooled) | macro AUROC (pooled) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
-|---|---|---|---|---|---|---|---|
-| popularity | 0.251 | 0.265 | 0.598 | 0.703 | 0.588 | 0.668 | 37 |
-| degree_popularity | 0.376 | 0.463 | 0.598 | 0.703 | 0.588 | 0.668 | 37 |
-| random_walk_with_restart | 0.317 | 0.374 | 0.419 | 0.649 | 0.406 | 0.639 | 37 |
-| knowledge_graph_embedding_transe | 0.402 | 0.539 | 0.493 | 0.676 | 0.477 | 0.644 | 37 |
+| model | macro AUPRC (pooled, raw) | macro AUPRC (pooled, rank within hold-out) | macro AUROC (pooled, raw) | macro AUROC (rank within hold-out) | macro AUROC (stratified) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
+|---|---|---|---|---|---|---|---|---|---|---|
+| popularity | 0.251 | 0.330 | 0.265 | 0.500 | 0.500 | 0.598 | 0.703 | 0.588 | 0.668 | 37 |
+| degree_popularity | 0.376 | 0.409 | 0.463 | 0.526 | 0.539 | 0.598 | 0.703 | 0.588 | 0.668 | 37 |
+| random_walk_with_restart | 0.317 | 0.353 | 0.374 | 0.446 | 0.457 | 0.419 | 0.649 | 0.406 | 0.639 | 37 |
 
-| hold-out | perturbations | positive pairs | popularity MRR / hits@3 | degree_popularity MRR / hits@3 | random_walk_with_restart MRR / hits@3 | knowledge_graph_embedding_transe MRR / hits@3 |
-|---|---|---|---|---|---|---|
-| catecholamine | 7 | 10 | 0.58 / 0.86 | 0.58 / 0.86 | 0.35 / 0.43 | 0.45 / 0.57 |
-| tetrahydrobiopterin | 5 | 13 | 0.60 / 1.00 | 0.60 / 1.00 | 0.67 / 1.00 | 0.57 / 1.00 |
-| urea_cycle | 8 | 22 | 0.75 / 1.00 | 0.75 / 1.00 | 0.49 / 0.88 | 0.54 / 0.75 |
-| heme_porphyrin | 4 | 19 | 0.83 / 1.00 | 0.83 / 1.00 | 0.42 / 0.75 | 0.55 / 0.75 |
-| sterol_lysosomal_lipid | 7 | 20 | 0.93 / 1.00 | 0.93 / 1.00 | 0.71 / 0.71 | 0.51 / 0.57 |
-| creatine_energy | 6 | 10 | 0.75 / 1.00 | 0.75 / 1.00 | 0.27 / 0.33 | 0.27 / 0.33 |
+| hold-out | perturbations | positive pairs | popularity MRR / hits@3 | degree_popularity MRR / hits@3 | random_walk_with_restart MRR / hits@3 |
+|---|---|---|---|---|---|
+| catecholamine | 7 | 10 | 0.58 / 0.86 | 0.58 / 0.86 | 0.35 / 0.43 |
+| tetrahydrobiopterin | 5 | 13 | 0.60 / 1.00 | 0.60 / 1.00 | 0.67 / 1.00 |
+| urea_cycle | 8 | 22 | 0.75 / 1.00 | 0.75 / 1.00 | 0.49 / 0.88 |
+| heme_porphyrin | 4 | 19 | 0.83 / 1.00 | 0.83 / 1.00 | 0.42 / 0.75 |
+| sterol_lysosomal_lipid | 7 | 20 | 0.93 / 1.00 | 0.93 / 1.00 | 0.71 / 0.71 |
+| creatine_energy | 6 | 10 | 0.75 / 1.00 | 0.75 / 1.00 | 0.27 / 0.33 |
 
 ## Pathway-wise split, Human-GEM subsystems (every gene whose primary subsystem is the held-out one)
 
 Subsystems are the reconstruction's own pathway partition; they cover many more annotated genes than the curated modules and are the candidate definition of the pre-registered pathway-wise split.
+ Raw pooled scores across hold-outs with different base rates carry the artifact of section 6.2 (review v0.4, finding 1); the rank-within-hold-out columns replace each score by its tie-averaged rank over (n + 1) inside its hold-out before pooling, and the stratified AUROC forms positive-negative pairs inside hold-outs only. The pathway-wise endpoint is defined on the rank-within-hold-out macro AUPRC.
 
 Held out (perturbations, positive pairs): Alanine, aspartate and glutamate metabolism (7, 10); Arginine and proline metabolism (10, 22); Bile acid biosynthesis (5, 11); Biopterin metabolism (7, 15); Cysteine and methionine metabolism (8, 22); Glycine, serine and threonine metabolism (6, 11); Glycosphingolipid metabolism (4, 11); Inositol phosphate metabolism (16, 41); Keratan sulfate degradation (6, 12); Leukotriene metabolism (7, 14); Lysine metabolism (12, 29); N-glycan metabolism (11, 15); Nucleotide metabolism (19, 56); Oxidative phosphorylation (19, 42); Phenylalanine, tyrosine and tryptophan biosynthesis (10, 18); Porphyrin metabolism (8, 24); Purine metabolism (8, 20); Sphingolipid metabolism (11, 22); Sulfur metabolism (3, 10); Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism (5, 17).
 
-| model | macro AUPRC (pooled) | macro AUROC (pooled) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
-|---|---|---|---|---|---|---|---|
-| popularity | 0.185 | 0.222 | 0.722 | 0.907 | 0.721 | 0.910 | 182 |
-| degree_popularity | 0.290 | 0.476 | 0.722 | 0.907 | 0.721 | 0.910 | 182 |
-| random_walk_with_restart | 0.296 | 0.496 | 0.481 | 0.637 | 0.494 | 0.634 | 182 |
-| knowledge_graph_embedding_transe | 0.284 | 0.502 | 0.474 | 0.555 | 0.472 | 0.536 | 182 |
+| model | macro AUPRC (pooled, raw) | macro AUPRC (pooled, rank within hold-out) | macro AUROC (pooled, raw) | macro AUROC (rank within hold-out) | macro AUROC (stratified) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
+|---|---|---|---|---|---|---|---|---|---|---|
+| popularity | 0.185 | 0.258 | 0.222 | 0.500 | 0.500 | 0.722 | 0.907 | 0.721 | 0.910 | 182 |
+| degree_popularity | 0.290 | 0.284 | 0.476 | 0.520 | 0.498 | 0.722 | 0.907 | 0.721 | 0.910 | 182 |
+| random_walk_with_restart | 0.296 | 0.280 | 0.496 | 0.505 | 0.506 | 0.481 | 0.637 | 0.494 | 0.634 | 182 |
 
 Same split with labels permuted within degree strata:
 
-| model | macro AUPRC (pooled) | macro AUROC (pooled) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
-|---|---|---|---|---|---|---|---|
-| popularity | 0.156 | 0.243 | 0.653 | 0.813 | 0.644 | 0.806 | 182 |
-| degree_popularity | 0.236 | 0.475 | 0.653 | 0.813 | 0.644 | 0.806 | 182 |
-| random_walk_with_restart | 0.250 | 0.523 | 0.473 | 0.566 | 0.463 | 0.553 | 182 |
-| knowledge_graph_embedding_transe | 0.233 | 0.516 | 0.448 | 0.555 | 0.478 | 0.576 | 182 |
+| model | macro AUPRC (pooled, raw) | macro AUPRC (pooled, rank within hold-out) | macro AUROC (pooled, raw) | macro AUROC (rank within hold-out) | macro AUROC (stratified) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |
+|---|---|---|---|---|---|---|---|---|---|---|
+| popularity | 0.156 | 0.212 | 0.243 | 0.500 | 0.500 | 0.653 | 0.813 | 0.644 | 0.806 | 182 |
+| degree_popularity | 0.236 | 0.241 | 0.475 | 0.509 | 0.512 | 0.653 | 0.813 | 0.644 | 0.806 | 182 |
+| random_walk_with_restart | 0.250 | 0.249 | 0.523 | 0.511 | 0.508 | 0.473 | 0.566 | 0.463 | 0.553 | 182 |
 
-| hold-out | perturbations | positive pairs | popularity MRR / hits@3 | degree_popularity MRR / hits@3 | random_walk_with_restart MRR / hits@3 | knowledge_graph_embedding_transe MRR / hits@3 |
-|---|---|---|---|---|---|---|
-| Alanine, aspartate and glutamate metabolism | 7 | 10 | 0.45 / 0.86 | 0.45 / 0.86 | 0.34 / 0.29 | 0.15 / 0.00 |
-| Arginine and proline metabolism | 10 | 22 | 0.68 / 0.90 | 0.68 / 0.90 | 0.46 / 0.70 | 0.44 / 0.50 |
-| Bile acid biosynthesis | 5 | 11 | 0.90 / 1.00 | 0.90 / 1.00 | 0.58 / 0.60 | 0.59 / 0.60 |
-| Biopterin metabolism | 7 | 15 | 0.53 / 0.86 | 0.53 / 0.86 | 0.67 / 0.86 | 0.54 / 0.86 |
-| Cysteine and methionine metabolism | 8 | 22 | 0.56 / 0.75 | 0.56 / 0.75 | 0.47 / 0.88 | 0.62 / 0.75 |
-| Glycine, serine and threonine metabolism | 6 | 11 | 0.70 / 0.83 | 0.70 / 0.83 | 0.46 / 0.67 | 0.22 / 0.17 |
-| Glycosphingolipid metabolism | 4 | 11 | 1.00 / 1.00 | 1.00 / 1.00 | 0.58 / 1.00 | 0.60 / 0.50 |
-| Inositol phosphate metabolism | 16 | 41 | 0.66 / 0.81 | 0.66 / 0.81 | 0.67 / 1.00 | 0.51 / 0.56 |
-| Keratan sulfate degradation | 6 | 12 | 0.92 / 1.00 | 0.92 / 1.00 | 0.39 / 0.50 | 0.32 / 0.33 |
-| Leukotriene metabolism | 7 | 14 | 0.62 / 0.71 | 0.62 / 0.71 | 0.62 / 0.71 | 0.73 / 0.86 |
-| Lysine metabolism | 12 | 29 | 0.68 / 1.00 | 0.68 / 1.00 | 0.29 / 0.17 | 0.48 / 0.67 |
-| N-glycan metabolism | 11 | 15 | 0.61 / 0.91 | 0.61 / 0.91 | 0.32 / 0.45 | 0.26 / 0.09 |
-| Nucleotide metabolism | 19 | 56 | 0.88 / 0.95 | 0.88 / 0.95 | 0.56 / 0.79 | 0.68 / 0.89 |
-| Oxidative phosphorylation | 19 | 42 | 0.81 / 0.95 | 0.81 / 0.95 | 0.32 / 0.58 | 0.48 / 0.63 |
-| Phenylalanine, tyrosine and tryptophan biosynthesis | 10 | 18 | 0.51 / 0.80 | 0.51 / 0.80 | 0.47 / 0.40 | 0.24 / 0.20 |
-| Porphyrin metabolism | 8 | 24 | 0.73 / 0.88 | 0.73 / 0.88 | 0.30 / 0.38 | 0.44 / 0.38 |
-| Purine metabolism | 8 | 20 | 0.62 / 1.00 | 0.62 / 1.00 | 0.67 / 0.75 | 0.45 / 0.62 |
-| Sphingolipid metabolism | 11 | 22 | 1.00 / 1.00 | 1.00 / 1.00 | 0.48 / 0.64 | 0.47 / 0.64 |
-| Sulfur metabolism | 3 | 10 | 0.83 / 1.00 | 0.83 / 1.00 | 0.47 / 0.33 | 0.57 / 0.67 |
-| Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism | 5 | 17 | 0.73 / 1.00 | 0.73 / 1.00 | 0.77 / 1.00 | 0.65 / 0.80 |
+| hold-out | perturbations | positive pairs | popularity MRR / hits@3 | degree_popularity MRR / hits@3 | random_walk_with_restart MRR / hits@3 |
+|---|---|---|---|---|---|
+| Alanine, aspartate and glutamate metabolism | 7 | 10 | 0.45 / 0.86 | 0.45 / 0.86 | 0.34 / 0.29 |
+| Arginine and proline metabolism | 10 | 22 | 0.68 / 0.90 | 0.68 / 0.90 | 0.46 / 0.70 |
+| Bile acid biosynthesis | 5 | 11 | 0.90 / 1.00 | 0.90 / 1.00 | 0.58 / 0.60 |
+| Biopterin metabolism | 7 | 15 | 0.53 / 0.86 | 0.53 / 0.86 | 0.67 / 0.86 |
+| Cysteine and methionine metabolism | 8 | 22 | 0.56 / 0.75 | 0.56 / 0.75 | 0.47 / 0.88 |
+| Glycine, serine and threonine metabolism | 6 | 11 | 0.70 / 0.83 | 0.70 / 0.83 | 0.46 / 0.67 |
+| Glycosphingolipid metabolism | 4 | 11 | 1.00 / 1.00 | 1.00 / 1.00 | 0.58 / 1.00 |
+| Inositol phosphate metabolism | 16 | 41 | 0.66 / 0.81 | 0.66 / 0.81 | 0.67 / 1.00 |
+| Keratan sulfate degradation | 6 | 12 | 0.92 / 1.00 | 0.92 / 1.00 | 0.39 / 0.50 |
+| Leukotriene metabolism | 7 | 14 | 0.62 / 0.71 | 0.62 / 0.71 | 0.62 / 0.71 |
+| Lysine metabolism | 12 | 29 | 0.68 / 1.00 | 0.68 / 1.00 | 0.29 / 0.17 |
+| N-glycan metabolism | 11 | 15 | 0.61 / 0.91 | 0.61 / 0.91 | 0.32 / 0.45 |
+| Nucleotide metabolism | 19 | 56 | 0.88 / 0.95 | 0.88 / 0.95 | 0.56 / 0.79 |
+| Oxidative phosphorylation | 19 | 42 | 0.81 / 0.95 | 0.81 / 0.95 | 0.32 / 0.58 |
+| Phenylalanine, tyrosine and tryptophan biosynthesis | 10 | 18 | 0.51 / 0.80 | 0.51 / 0.80 | 0.47 / 0.40 |
+| Porphyrin metabolism | 8 | 24 | 0.73 / 0.88 | 0.73 / 0.88 | 0.30 / 0.38 |
+| Purine metabolism | 8 | 20 | 0.62 / 1.00 | 0.62 / 1.00 | 0.67 / 0.75 |
+| Sphingolipid metabolism | 11 | 22 | 1.00 / 1.00 | 1.00 / 1.00 | 0.48 / 0.64 |
+| Sulfur metabolism | 3 | 10 | 0.83 / 1.00 | 0.83 / 1.00 | 0.47 / 0.33 |
+| Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism | 5 | 17 | 0.73 / 1.00 | 0.73 / 1.00 | 0.77 / 1.00 |
 
 ## Negative control: labels permuted within degree strata (grouped split)
 
@@ -103,7 +99,6 @@ Same split with labels permuted within degree strata:
 | popularity | 0.193 | 0.225 ± 0.011 | 0.425 | 0.500 ± 0.000 | 0.651 | 0.805 | 451 |
 | degree_popularity | 0.219 | 0.261 ± 0.010 | 0.495 | 0.516 ± 0.014 | 0.651 | 0.805 | 451 |
 | random_walk_with_restart | 0.224 | 0.269 ± 0.028 | 0.529 | 0.538 ± 0.025 | 0.451 | 0.581 | 451 |
-| knowledge_graph_embedding_transe | 0.226 | 0.266 ± 0.018 | 0.523 | 0.512 ± 0.025 | 0.478 | 0.574 | 451 |
 
 ## Negative control: degree-preserving rewiring of the graph (2 swaps per edge; grouped split, random walk only)
 
@@ -115,18 +110,18 @@ Same split with labels permuted within degree strata:
 
 Point estimate with 95 percent bootstrap interval over perturbations; base rate in parentheses.
 
-| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe |
-|---|---|---|---|---|
-| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) | 0.256 [0.213, 0.324] (0.259) |
-| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) | 0.434 [0.391, 0.489] (0.448) |
-| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) | 0.227 [0.192, 0.283] (0.228) |
-| elevated_mood_or_mania | n/a | n/a | n/a | n/a |
-| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) | 0.205 [0.176, 0.259] (0.224) |
-| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) | 0.055 [0.035, 0.111] (0.051) |
-| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) | 0.406 [0.354, 0.482] (0.399) |
-| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) | 0.103 [0.070, 0.166] (0.084) |
-| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) | 0.162 [0.127, 0.227] (0.149) |
-| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) | 0.067 [0.043, 0.112] (0.064) |
+| symptom | popularity | degree_popularity | random_walk_with_restart |
+|---|---|---|---|
+| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) |
+| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) |
+| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) |
+| elevated_mood_or_mania | n/a | n/a | n/a |
+| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) |
+| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) |
+| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) |
+| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) |
+| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) |
+| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) |
 
 ## Time split, monogenic pairs by availability date (cutoff 2015-12-31)
 
@@ -137,14 +132,13 @@ Training positives: 264 pairs dated on or before the cutoff; new positives: 144 
 | popularity | 0.060 | 0.060 | 0.500 | 0.500 |
 | degree_popularity | 0.062 | 0.083 | 0.473 | 0.542 |
 | random_walk_with_restart | 0.101 | 0.076 | 0.547 | 0.514 |
-| knowledge_graph_embedding_transe | 0.056 | 0.072 | 0.429 | 0.496 |
 
-| symptom | scored pairs | new positives (base rate) | popularity AUPRC / AUROC | degree_popularity AUPRC / AUROC | random_walk_with_restart AUPRC / AUROC | knowledge_graph_embedding_transe AUPRC / AUROC |
-|---|---|---|---|---|---|---|
-| anxiety | 357 | 23 (0.064) | 0.064 / 0.500 | 0.076 / 0.489 | 0.146 / 0.614 | 0.049 / 0.370 |
-| cognitive_impairment | 274 | 25 (0.091) | 0.091 / 0.500 | 0.101 / 0.515 | 0.139 / 0.562 | 0.100 / 0.472 |
-| depressed_mood | 360 | 12 (0.033) | 0.033 / 0.500 | 0.036 / 0.469 | 0.073 / 0.632 | 0.055 / 0.605 |
-| fatigue | 365 | 15 (0.041) | 0.041 / 0.500 | 0.034 / 0.356 | 0.047 / 0.508 | 0.034 / 0.300 |
-| insomnia | 435 | 7 (0.016) | 0.016 / 0.500 | 0.021 / 0.618 | 0.018 / 0.440 | 0.014 / 0.389 |
-| irritability_or_aggression | 318 | 47 (0.148) | 0.148 / 0.500 | 0.142 / 0.471 | 0.241 / 0.614 | 0.118 / 0.409 |
-| psychomotor_agitation | 424 | 11 (0.026) | 0.026 / 0.500 | 0.022 / 0.395 | 0.043 / 0.458 | 0.024 / 0.455 |
+| symptom | scored pairs | new positives (base rate) | popularity AUPRC / AUROC | degree_popularity AUPRC / AUROC | random_walk_with_restart AUPRC / AUROC |
+|---|---|---|---|---|---|
+| anxiety | 357 | 23 (0.064) | 0.064 / 0.500 | 0.076 / 0.489 | 0.146 / 0.614 |
+| cognitive_impairment | 274 | 25 (0.091) | 0.091 / 0.500 | 0.101 / 0.515 | 0.139 / 0.562 |
+| depressed_mood | 360 | 12 (0.033) | 0.033 / 0.500 | 0.036 / 0.469 | 0.073 / 0.632 |
+| fatigue | 365 | 15 (0.041) | 0.041 / 0.500 | 0.034 / 0.356 | 0.047 / 0.508 |
+| insomnia | 435 | 7 (0.016) | 0.016 / 0.500 | 0.021 / 0.618 | 0.018 / 0.440 |
+| irritability_or_aggression | 318 | 47 (0.148) | 0.148 / 0.500 | 0.142 / 0.471 | 0.241 / 0.614 |
+| psychomotor_agitation | 424 | 11 (0.026) | 0.026 / 0.500 | 0.022 / 0.395 | 0.043 / 0.458 |
