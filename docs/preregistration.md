@@ -25,6 +25,13 @@ design section 6.1.)
 Negative controls run with every split: labels permuted within degree strata; degree-preserving
 rewiring; grade shuffle; peripheral-event control.
 
+Precision of the primary comparison on the monogenic slice (451 perturbations, disease-cluster
+grouped split): the paired-bootstrap 95 percent half-width of a pooled macro AUPRC difference between
+two models is about 0.015 to 0.02 (docs/phase3_main_model.md), so the minimum difference of 0.05 is
+detectable there; on the curated-module hold-out (37 perturbations) it is not, which is why the
+subsystem definition of the pathway split is proposed above. The full data (drug perturbations and the
+signaling layers) will shift these widths and the statement is to be recomputed before posting.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; number of flux samples per gene; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
