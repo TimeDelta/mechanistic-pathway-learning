@@ -18,10 +18,11 @@ versions are part of the pre-registration. Raw downloads live under data/raw/ (g
 | Orphadata product 6 (orphadata.com, en_product6.xml) | gene-disease association types for Orphanet entries: disease-causing versus susceptibility, candidate, modifier, biomarker or fusion (grade A rule, section 4.3) | public | CC BY 4.0 | JDBOR date 2026-06-23; 8,503 associations; downloaded 2026-10-03 |
 | OnSIDES v3.1.1 (github.com/tatonetti-lab/onsides, release asset) | E2 later label slice: current-label adverse-event statements, one report per deduplicated statement | public | CC BY 4.0 (OnSIDES); MedDRA term names inside are licensed, not redistributed | data release 3.1.1-20260422; 6,928,666 mentions, 41,119 labels, 1,866 ingredients; bridge: RxNav and UniChem queried 2026-10-03; 1277 qualifying statements |
 | RxNav (rxnav.nlm.nih.gov) | RxNorm ingredient to UNII and ATC classes | public API | open | queried 2026-10-03 for 1,866 ingredients |
+| HGNC complete set (storage.googleapis.com/public-download-files/hgnc) | gene symbol to NCBI Gene and Ensembl identifiers for non-metabolic graph genes | public | CC0 | downloaded 2026-10-03; 16963116 bytes; 12,537 of 12,627 gene nodes carry an NCBI Gene id |
 | CollecTRI (via OmniPath, dataset collectri) | transcription factor regulons with signs | public web service | CC BY 4.0 (CollecTRI); OmniPath terms apply to the service | queried 2026-10-03; 64,515 regulon rows |
 | Human Protein Atlas; GTEx | brain expression weights | public | open | to pin |
-| PubTator3 (ncbi.nlm.nih.gov/research/pubtator3) | E3 literature relations | public API | open | query date |
-| CTD (ctdbase.org) | E3 chemical-symptom associations with direction | public | academic use; cite | to pin |
+| PubTator3 (ncbi.nlm.nih.gov/research/pubtator3; bulk relation2pubtator3.gz) | E3 literature relations, document species and years | public (bulk file and API) | public domain (NLM) | bulk file 297478945 bytes, server date Mon, 17 Aug 2026 13:41:35 GMT, sha256 6fca7a4c6a7b; filtered 2026-10-03: 226,347 reports; documents for 30,000 papers fetched 2026-10-03 |
+| CTD (ctdbase.org, CTD_chemicals_diseases.tsv.gz) | E3 chemical-symptom associations with direction (DirectEvidence marker/mechanism or therapeutic) | public | free for non-commercial research with citation (reference davis2025ctd) | downloaded 2026-10-03 (162,343,480 bytes); 5,607 reports from 3,356 papers |
 | SemMedDB (NLM) | E3 predications with predicate types | UMLS license required | UMLS terms of use | optional |
 | GWAS summary statistics (GWAS Catalog) | E4 symptom-level genetics for validation | public | per study | to pin |
 | MAGMA (cncr.nl/research/magma) | gene-set enrichment | public binary | academic use | to pin |
