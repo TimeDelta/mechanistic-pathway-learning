@@ -56,7 +56,7 @@ python -m mechanistic_pathway_learning.graph.build_physiology_graph
 python experiments/audit_hpo_term_expansion.py            # docs/hpo_term_audit.md
 python -m mechanistic_pathway_learning.evidence.assemble_evidence_table
 python experiments/run_phase1_counts.py
-python experiments/run_baselines.py --group-by disease_cluster --output-dir runs/baselines_disease_cluster --markdown-output docs/phase2_baselines_disease_cluster.md
+python experiments/run_baselines.py --group-by disease_cluster --with-kg-embedding --output-dir runs/baselines_disease_cluster --markdown-output docs/phase2_baselines_disease_cluster.md
 python experiments/run_main_model_batch.py --configuration b6_default --group-by disease_cluster     # five folds, resumable
 python experiments/run_main_model_batch.py --configuration b3_sigmoid --group-by disease_cluster
 python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disease_cluster runs/b3_sigmoid_disease_cluster --baseline-results runs/baselines_disease_cluster/results.json

@@ -116,7 +116,7 @@ def collect_time_split_runs(run_directories: list[Path]) -> list[dict]:
     return rows
 
 
-def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int) -> list[dict]:
+def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int, include_baseline_pairs: bool = True) -> list[dict]:
     """Paired bootstrap of the pooled macro AUPRC and AUROC difference between every run and every baseline (and between runs) on the rows both scored."""
     predictions_by_name: dict[str, np.ndarray] = {}
     rows_by_name: dict[str, np.ndarray] = {}
@@ -136,8 +136,10 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
     names = list(predictions_by_name)
     for first in names:
         for second in names:
-            if first == second or first not in aggregated:
+            if first == second or (first not in aggregated and second not in aggregated and not include_baseline_pairs):
                 continue
+            if first not in aggregated and second in aggregated:
+                continue  # each run-versus-baseline pair is reported once, with the run as A
             rows = rows_by_name[first] & rows_by_name[second]
             auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap)
             auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap)
