@@ -58,3 +58,25 @@ def test_annotation_matches_ensembl_then_symbol_and_restricts_regulons(tmp_path:
     assert ((kept.source_id == "GENE:TFLOW") & (kept.relation_type == "activates")).any()  # only regulon edges are restricted
     with_reactions = propagate_brain_expression_to_reactions(annotated, kept)
     assert with_reactions.set_index("node_id").loc["MAR00001", "brain_median_tpm_max"] == 3.5  # largest over its genes
+
+
+def test_structural_features_carry_brain_expression_when_present() -> None:
+    import numpy as np
+
+    from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData
+
+    def make(brain_expression, brain_expressed):
+        return ExperimentData(
+            node_ids=["a", "b"], node_index={"a": 0, "b": 1}, node_types=np.array(["gene", "reaction"]), is_currency=np.array([False, False]),
+            node_degree=np.array([1.0, 3.0]), edge_source=np.array([0]), edge_target=np.array([1]), edge_relation=np.array([0]), relation_types=["catalyzed_by"],
+            symptoms=["anxiety"], perturbation_ids=["g"], perturbation_labels=["g"], perturbation_types=["gene"], group_ids=["g"],
+            perturbation_seeds=[np.array([0])], perturbation_signs=[np.array([-1.0])], perturbation_magnitudes=[np.array([1.0])],
+            outcomes=np.ones((1, 1)), weights=np.ones((1, 1)), in_metabolic_layer=np.array([True]),
+            node_brain_expression=brain_expression, node_brain_expressed=brain_expressed,
+        )
+
+    without = make(None, None).structural_node_features()
+    with_expression = make(np.log1p(np.array([3.5, 0.0])), np.array([True, False])).structural_node_features()
+    assert without.shape == with_expression.shape  # the feature width is fixed so models built on either graph have the same input size
+    assert np.all(without[:, -2:] == 0.0)
+    assert np.isclose(with_expression[0, -2], np.log1p(3.5)) and with_expression[0, -1] == 1.0 and with_expression[1, -1] == 0.0

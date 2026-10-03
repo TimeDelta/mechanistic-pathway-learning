@@ -45,9 +45,11 @@ class ExperimentData:
     node_compartment: np.ndarray | None = None  # compartment string per node ("" when none; "c;m" for a transport reaction)
     node_is_transport: np.ndarray | None = None
     node_is_reversible: np.ndarray | None = None
+    node_brain_expression: np.ndarray | None = None  # log1p of the largest GTEx brain median TPM per node (genes, and reactions through their genes); 0 when unknown
+    node_brain_expressed: np.ndarray | None = None  # median TPM at least the build threshold in one brain tissue; False when unknown
 
     def structural_node_features(self) -> np.ndarray:
-        """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags.
+        """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
 
         These are what the inductive encoder variant reads instead of a learned embedding per node, so a
         model built on them can only use graph structure and node kinds (design section 5.2, version 0.4 ablation).
@@ -55,7 +57,7 @@ class ExperimentData:
         node_types = sorted(set(self.node_types.tolist()))
         compartments = sorted({part for value in (self.node_compartment if self.node_compartment is not None else []) for part in str(value).split(";") if part})
         num_nodes = len(self.node_ids)
-        features = np.zeros((num_nodes, len(node_types) + len(compartments) + 4), dtype=np.float32)
+        features = np.zeros((num_nodes, len(node_types) + len(compartments) + 6), dtype=np.float32)
         for index, node_type in enumerate(self.node_types):
             features[index, node_types.index(node_type)] = 1.0
         if self.node_compartment is not None:
@@ -70,6 +72,10 @@ class ExperimentData:
             features[:, offset + 2] = self.node_is_transport.astype(np.float32)
         if self.node_is_reversible is not None:
             features[:, offset + 3] = self.node_is_reversible.astype(np.float32)
+        if self.node_brain_expression is not None:
+            features[:, offset + 4] = self.node_brain_expression.astype(np.float32)
+        if self.node_brain_expressed is not None:
+            features[:, offset + 5] = self.node_brain_expressed.astype(np.float32)
         return features
 
     @property
@@ -94,6 +100,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     relation_index = {name: index for index, name in enumerate(relation_types)}
     evidence = pd.read_parquet(evidence_directory / "evidence_records.parquet")
     evidence = evidence[evidence.relation == relation]
+    if "positive_report_count" in evidence.columns:  # tables written before reports existed have no such column and every row is a positive claim
+        evidence = evidence[evidence.positive_report_count > 0]
     if group_column not in evidence.columns:  # evidence tables written before disease clusters existed
         evidence = evidence.assign(**{group_column: evidence.group_id})
     if metabolic_layer_only:
@@ -157,4 +165,6 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_compartment=nodes.compartment.fillna("").to_numpy().astype(str) if "compartment" in nodes.columns else None,
         node_is_transport=(nodes.is_transport == True).to_numpy() if "is_transport" in nodes.columns else None,  # noqa: E712 - NaN rows become False
         node_is_reversible=(nodes.reversible == True).to_numpy() if "reversible" in nodes.columns else None,  # noqa: E712
+        node_brain_expression=np.log1p(pd.to_numeric(nodes.brain_median_tpm_max, errors="coerce").fillna(0.0).to_numpy(dtype=float)) if "brain_median_tpm_max" in nodes.columns else None,
+        node_brain_expressed=(nodes.brain_expressed == True).to_numpy() if "brain_expressed" in nodes.columns else None,  # noqa: E712
     )
