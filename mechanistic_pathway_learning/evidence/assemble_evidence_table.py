@@ -21,6 +21,7 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
                          reference when docs/hpo_reference_publication_dates.json has it, else the OMIM biocuration
                          date (ISO string; null when Orphanet-only); the time-split axis of design section 6.1
   omim_entry_count, orpha_entry_count, annotation_row_count, annotation_patient_count, disease_identifiers
+  distinct_reference_count, distinct_pubmed_reference_count  descriptive multiplicity of the HPO references behind a monogenic row
                          provenance of a monogenic record (null for drugs)
   source                 provenance string
 
@@ -46,6 +47,7 @@ from mechanistic_pathway_learning.evidence.assign_evidence_grades import (
 from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc, load_sider_events
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
     load_hpo_annotation_dates,
+    load_hpo_annotation_references,
     load_hpo_is_a_parents_from_obo,
     load_reference_publication_dates,
     monogenic_evidence_records,
@@ -130,7 +132,8 @@ def assemble(
     parents = load_hpo_is_a_parents_from_obo(hpo_obo_path)
     publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
     annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path, publication_dates_by_pmid=publication_dates) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
-    monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates)
+    annotation_references = load_hpo_annotation_references(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
+    monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates, annotation_references)
     cluster_by_gene = disease_cluster_ids(monogenic_records, disease_cluster_max_genes)
     for record in monogenic_records:
         node_id = node_by_symbol.get(record.perturbation_identifier)
@@ -142,6 +145,7 @@ def assemble(
             "label_frequency": record.max_annotation_frequency, "source": record.source, "in_metabolic_layer": record.perturbation_identifier in metabolic_symbols,
             "omim_entry_count": record.omim_entry_count, "orpha_entry_count": record.orpha_entry_count, "annotation_row_count": record.annotation_row_count,
             "annotation_patient_count": record.annotation_patient_count, "disease_identifiers": ";".join(record.disease_identifiers),
+            "distinct_reference_count": record.distinct_reference_count, "distinct_pubmed_reference_count": record.distinct_pubmed_reference_count,
             "evidence_date": record.evidence_available_date.isoformat() if record.evidence_available_date else None,
         }
         if node_id is None:
@@ -169,7 +173,7 @@ def assemble(
                 "evidence_class": "pharmacological", "grade": assign_evidence_grade(record), "weight": loss_weight_for_record(record),
                 "label_frequency": event.label_frequency, "source": f"{event.source}; targets " + ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in drug_targets),
                 "in_metabolic_layer": any(symbol in metabolic_symbols for target in drug_targets for symbol in target.gene_symbols),
-                "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
+                "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None, "distinct_reference_count": None, "distinct_pubmed_reference_count": None,
                 "evidence_date": None,
             }
             if not perturbation_nodes:
@@ -197,6 +201,8 @@ def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -
         "weight_quantiles": {str(q): float(observations.weight.quantile(q)) for q in (0.1, 0.25, 0.5, 0.75, 0.9)},
         "monogenic_rows_with_frequency": int(genes.label_frequency.notna().sum()) if len(genes) else 0,
         "monogenic_rows_with_date": int(genes.evidence_date.notna().sum()) if len(genes) and "evidence_date" in genes else 0,
+        "monogenic_rows_with_zero_pubmed_references": int((genes.distinct_pubmed_reference_count == 0).sum()) if len(genes) and "distinct_pubmed_reference_count" in genes else 0,
+        "monogenic_rows_with_two_or_more_pubmed_references": int((genes.distinct_pubmed_reference_count >= 2).sum()) if len(genes) and "distinct_pubmed_reference_count" in genes else 0,
         "monogenic_rows_dated_after_2015": int((genes.evidence_date.dropna() > "2015-12-31").sum()) if len(genes) and "evidence_date" in genes else 0,
         "disease_cluster_concentration_by_symptom": disease_cluster_concentration(genes) if len(genes) else {},
         "disease_entries_not_linking_clusters": non_linking_disease_entries(genes) if len(genes) else {},

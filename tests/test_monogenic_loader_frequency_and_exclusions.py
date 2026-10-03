@@ -186,3 +186,31 @@ def test_publication_dates_take_precedence_over_curation_dates(tmp_path: Path) -
     dates = load_hpo_annotation_dates(hpoa, publication_dates_by_pmid=publication_dates)
     assert dates[("OMIM:176000", "HP:0000709")] == date(1998, 7, 1)  # earliest cited publication
     assert dates[("OMIM:176000", "HP:0000726")] == date(2010, 5, 6)  # no PubMed reference: curation date stands
+
+
+def test_reference_counts_are_descriptive_and_do_not_change_weights(tmp_path: Path) -> None:
+    from mechanistic_pathway_learning.evidence.assign_evidence_grades import loss_weight_for_record
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import load_hpo_annotation_references
+
+    hpoa = tmp_path / "phenotype.hpoa"
+    hpoa.write_text("\n".join([
+        "database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration",
+        "OMIM:176000\tAIP\t\tHP:0000709\tPMID:1;OMIM:176000\tPCS\t\t\t\t\tP\tHPO:a[2012-03-04]",
+        "OMIM:176000\tAIP\t\tHP:0000709\tPMID:1\tPCS\t\t\t\t\tP\tHPO:b[2013-03-04]",
+        "OMIM:176000\tAIP\tNOT\tHP:0000709\tPMID:99\tPCS\t\t\t\t\tP\tHPO:a[2013-03-04]",
+        "ORPHA:79276\tAIP\t\tHP:0000709\tORPHA:79276\tTAS\t\t\t\t\tP\tORPHA:orphadata[2026-09-02]",
+    ]) + "\n")
+    references = load_hpo_annotation_references(hpoa)
+    assert references[("OMIM:176000", "HP:0000709")] == {"PMID:1", "OMIM:176000"}  # NOT-qualified row skipped, duplicates collapsed
+    assert references[("ORPHA:79276", "HP:0000709")] == {"ORPHA:79276"}
+    obo_path, annotations_path, crosswalk_path = write_inputs(tmp_path)
+    parents = load_hpo_is_a_parents_from_obo(obo_path)
+    crosswalk = read_crosswalk_hpo_terms(crosswalk_path)
+    roots = {symptom: terms[0] for symptom, terms in crosswalk.items()}
+    rows = parse_genes_to_phenotype(annotations_path)
+    with_references = {r.perturbation_identifier: r for r in monogenic_evidence_records(rows, roots, parents, {"HMBS", "OTC"}, annotation_references=references)}
+    without_references = {r.perturbation_identifier: r for r in monogenic_evidence_records(rows, roots, parents, {"HMBS", "OTC"})}
+    assert with_references["HMBS"].distinct_reference_count == 3 and with_references["HMBS"].distinct_pubmed_reference_count == 1  # PMID:1, OMIM:176000, ORPHA:79276 across its two disease entries
+    assert with_references["OTC"].distinct_reference_count == 0  # no phenotype.hpoa row for its disease
+    for gene in ("HMBS", "OTC"):
+        assert loss_weight_for_record(with_references[gene]) == loss_weight_for_record(without_references[gene])

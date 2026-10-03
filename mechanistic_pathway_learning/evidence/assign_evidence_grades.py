@@ -80,6 +80,8 @@ class EvidenceRecord:
     annotation_row_count: int = 0
     max_annotation_frequency: float | None = None  # largest HPO frequency midpoint across the pair's annotations
     annotation_patient_count: int | None = None  # patients behind n/m fractions, summed, when reported
+    distinct_reference_count: int = 0  # distinct reference strings (PMID:, OMIM:, ORPHA:, ...) across the pair's (disease, term) annotations in phenotype.hpoa
+    distinct_pubmed_reference_count: int = 0  # the PMID: subset of those; descriptive only, never enters the weight
 
 
 def frequency_scaled_weight(base_weight: float, frequency: float | None, scale: float, floor: float) -> float:

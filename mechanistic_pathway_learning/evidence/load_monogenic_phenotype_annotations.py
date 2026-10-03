@@ -32,6 +32,15 @@ support it. The date is when the HPO team recorded the annotation, an upper boun
 observation was published (the reference column holds the PMID for most OMIM rows), which the time
 split of design section 6.1 states as its caveat.
 
+References. An observation does not account for the number of publications behind it. The
+reference column of phenotype.hpoa names the source of each (disease, term) annotation: a PubMed
+identifier, the OMIM or Orphanet entry itself, occasionally a book or a URL. Most rows cite exactly
+one source, and an OMIM or Orphanet citation stands for the curated synopsis rather than for any
+count of studies, so a reference count measures curation style more than independent evidence.
+The distinct references behind a (gene, symptom) pair are nevertheless recorded as descriptive
+columns (distinct_reference_count, distinct_pubmed_reference_count) so multiplicity weighting can
+be tested as an ablation; neither count enters the loss weight.
+
 Output: one EvidenceRecord per (gene, target symptom) with evidence_class "monogenic".
 """
 from __future__ import annotations
@@ -230,6 +239,31 @@ def load_hpo_annotation_dates(
     return dates
 
 
+def load_hpo_annotation_references(phenotype_hpoa_path: Path) -> dict[tuple[str, str], set[str]]:
+    """(disease id, HPO term id) -> the distinct reference strings cited for that annotation, all provenances.
+
+    Rows with the NOT qualifier are skipped. Reference strings keep their prefix (PMID:, OMIM:, ORPHA:,
+    ISBN-13:, http...) so callers can count the PubMed subset separately.
+    """
+    references: dict[tuple[str, str], set[str]] = defaultdict(set)
+    with open(phenotype_hpoa_path, encoding="utf-8") as hpoa_file:
+        header: list[str] | None = None
+        for raw_line in hpoa_file:
+            if raw_line.startswith("#"):
+                continue
+            fields = raw_line.rstrip("\n").split("\t")
+            if header is None:
+                header = fields
+                column = {name: index for index, name in enumerate(header)}
+                continue
+            if fields[column["qualifier"]].strip().upper() == "NOT":
+                continue
+            cited = {reference.strip() for reference in fields[column["reference"]].split(";") if reference.strip()}
+            if cited:
+                references[(fields[column["database_id"]], fields[column["hpo_id"]])] |= cited
+    return dict(references)
+
+
 def parse_genes_to_phenotype(genes_to_phenotype_path: Path) -> list[dict[str, str]]:
     """Rows of genes_to_phenotype.txt as dictionaries keyed by the header names."""
     with open(genes_to_phenotype_path, encoding="utf-8") as annotation_file:
@@ -246,13 +280,16 @@ def monogenic_evidence_records(
     genes_in_graph: set[str],
     excluded_hpo_ids_by_symptom: Mapping[str, Iterable[str]] | None = None,
     annotation_dates: Mapping[tuple[str, str], date] | None = None,
+    annotation_references: Mapping[tuple[str, str], set[str]] | None = None,
 ) -> list[EvidenceRecord]:
     """One record per (gene symbol, target symptom) for genes present in the physiology graph.
 
     Rows whose frequency qualifier is Excluded (HP:0040285) are dropped: they assert that the
     feature is absent in that disease. A pair whose rows are all Excluded yields no record.
     With annotation_dates (load_hpo_annotation_dates), each record carries the earliest date of
-    the dated (disease, term) annotations behind it, or None when none of them is dated.
+    the dated (disease, term) annotations behind it, or None when none of them is dated. With
+    annotation_references (load_hpo_annotation_references), each record counts the distinct references
+    and the distinct PubMed references cited across its (disease, term) annotations.
     """
     symptoms_by_term = expand_symptom_terms(target_symptom_to_hpo_ids, parents_by_term, excluded_hpo_ids_by_symptom)
     disease_ids_by_pair: dict[tuple[str, str], set[str]] = defaultdict(set)
@@ -260,6 +297,7 @@ def monogenic_evidence_records(
     denominators_by_pair: dict[tuple[str, str], int] = defaultdict(int)
     rows_by_pair: dict[tuple[str, str], int] = defaultdict(int)
     dates_by_pair: dict[tuple[str, str], date] = {}
+    references_by_pair: dict[tuple[str, str], set[str]] = defaultdict(set)
     for row in annotation_rows:
         gene_symbol = row.get("gene_symbol", "")
         if gene_symbol not in genes_in_graph:
@@ -273,10 +311,13 @@ def monogenic_evidence_records(
         frequency = parse_frequency_qualifier(raw_frequency)
         denominator = parse_frequency_denominator(raw_frequency)
         annotation_date = annotation_dates.get((row.get("disease_id", ""), row.get("hpo_id", ""))) if annotation_dates else None
+        cited_references = annotation_references.get((row.get("disease_id", ""), row.get("hpo_id", ""))) if annotation_references else None
         for target_symptom in target_symptoms:
             pair = (gene_symbol, target_symptom)
             disease_ids_by_pair[pair].add(row.get("disease_id", ""))
             rows_by_pair[pair] += 1
+            if cited_references:
+                references_by_pair[pair] |= cited_references
             if annotation_date is not None and (pair not in dates_by_pair or annotation_date < dates_by_pair[pair]):
                 dates_by_pair[pair] = annotation_date
             if frequency is not None:
@@ -288,6 +329,7 @@ def monogenic_evidence_records(
         omim_entries = {disease_id for disease_id in disease_ids if disease_id.startswith("OMIM:")}
         orpha_entries = {disease_id for disease_id in disease_ids if disease_id.startswith("ORPHA:")}
         frequencies = frequencies_by_pair.get((gene_symbol, target_symptom), [])
+        cited = references_by_pair.get((gene_symbol, target_symptom), set())
         records.append(
             EvidenceRecord(
                 perturbation_identifier=gene_symbol,
@@ -304,6 +346,8 @@ def monogenic_evidence_records(
                 max_annotation_frequency=max(frequencies) if frequencies else None,
                 annotation_patient_count=denominators_by_pair.get((gene_symbol, target_symptom)) or None,
                 evidence_available_date=dates_by_pair.get((gene_symbol, target_symptom)),
+                distinct_reference_count=len(cited),
+                distinct_pubmed_reference_count=sum(1 for reference in cited if reference.startswith("PMID:")),
             )
         )
     return records
