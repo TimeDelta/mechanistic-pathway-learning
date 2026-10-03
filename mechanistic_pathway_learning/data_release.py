@@ -119,8 +119,10 @@ def build_release(
     data_sources_path: Path | None = None,
     repository_root: Path | None = None,
     notes: str = "",
+    extra_directories: dict[str, Path] | None = None,
 ) -> Path:
-    """Write data/releases/<version>/ with copies of the named graph and evidence directories and a manifest."""
+    """Write data/releases/<version>/ with copies of the named graph and evidence directories, any extra directories
+    (every parquet, csv, json and md file at their top level, with licensed term labels blanked where the columns exist) and a manifest."""
     release_directory = output_root / version
     if release_directory.exists():
         shutil.rmtree(release_directory)
@@ -146,6 +148,21 @@ def build_release(
                 written += copy_table_with_twin(source, release_directory / name / file_name, strip_and_count)
             else:
                 written += copy_table_with_twin(source, release_directory / name / file_name)
+    for name, directory in (extra_directories or {}).items():
+        if not directory.exists():
+            continue
+        for source in sorted(directory.iterdir()):
+            if source.suffix not in (".parquet", ".csv", ".json", ".md") or not source.is_file():
+                continue
+            if source.suffix == ".parquet":
+                def strip_if_present(table: pd.DataFrame) -> pd.DataFrame:
+                    nonlocal stripped_rows_total
+                    stripped, count = strip_licensed_term_labels(table)
+                    stripped_rows_total += count
+                    return stripped
+                written += copy_table_with_twin(source, release_directory / name / source.name, strip_if_present)
+            else:
+                written += copy_table_with_twin(source, release_directory / name / source.name)
     manifest = {
         "version": version,
         "created": date.today().isoformat(),

@@ -1,0 +1,68 @@
+{
+ "release": "v3.1.1",
+ "release_date": "2026-04-22",
+ "counts": {
+  "statements": 5649,
+  "ingredients_without_bridge": 0,
+  "disqualified": {
+   "no_single_mechanism_target": 2006,
+   "no_chembl_parent": 419,
+   "atc_not_nervous_system": 1919,
+   "no_graph_node": 28
+  },
+  "no_graph_node": 0,
+  "qualifying_reports": 1277,
+  "qualifying_ingredients": 153,
+  "qualifying_perturbations": 149
+ },
+ "overlap": {
+  "pairs_in_both": 281,
+  "sider_only": 262,
+  "onsides_only": 371,
+  "sider_pairs": 543,
+  "onsides_pairs": 652,
+  "onsides_only_by_symptom": {
+   "fatigue": 54,
+   "somnolence_or_hypersomnia": 50,
+   "anxiety": 46,
+   "depressed_mood": 46,
+   "insomnia": 45,
+   "psychosis": 40,
+   "psychomotor_agitation": 29,
+   "cognitive_impairment": 25,
+   "irritability_or_aggression": 22,
+   "elevated_mood_or_mania": 13,
+   "psychomotor_retardation": 1
+  }
+ },
+ "reports_by_symptom": {
+  "fatigue": 228,
+  "somnolence_or_hypersomnia": 172,
+  "anxiety": 160,
+  "depressed_mood": 142,
+  "psychosis": 132,
+  "psychomotor_agitation": 122,
+  "insomnia": 113,
+  "irritability_or_aggression": 80,
+  "cognitive_impairment": 73,
+  "elevated_mood_or_mania": 52,
+  "psychomotor_retardation": 3
+ },
+ "reports_by_country": {
+  "US": 596,
+  "UK": 281,
+  "EU": 219,
+  "JP": 181
+ },
+ "reports_by_section": {
+  "NA": 681,
+  "AR": 491,
+  "WP": 97,
+  "BW": 8
+ },
+ "reports_by_term_type": {
+  "PT": 1277
+ },
+ "qualifying_drugs_unified_with_sider": 98,
+ "qualifying_drugs_onsides_only": 51
+}

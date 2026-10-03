@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
  "created": "2026-10-03",
- "git_commit": "96c681f7dac97a15c413ff8f92e4c0d5f5bb46f8",
+ "git_commit": "56a4f85cfc1ef850e78446a4a6916ccb253ea769",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
- "licensed_term_labels_blanked": 1727,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on (assembled before negated and 0 of N annotations and association types were recognised); evidence_two_entries is the version 0.3 grade-A proxy ablation table.",
+ "licensed_term_labels_blanked": 7376,
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES v3.1.1 identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs produced so far (gene identifier map, SIDER chemical map; the filtered relation tables follow when the fetch completes).",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -60,6 +60,16 @@
    "source": "Orphadata product 6 (orphadata.com, en_product6.xml)",
    "use": "gene-disease association types for Orphanet entries: disease-causing versus susceptibility, candidate, modifier, biomarker or fusion (grade A rule, section 4.3)",
    "pinned_version": "JDBOR date 2026-06-23; 8,503 associations; downloaded 2026-10-03"
+  },
+  {
+   "source": "OnSIDES v3.1.1 (github.com/tatonetti-lab/onsides, release asset)",
+   "use": "E2 later label slice: current-label adverse-event statements, one report per deduplicated statement",
+   "pinned_version": "data release 3.1.1-20260422; 6,928,666 mentions, 41,119 labels, 1,866 ingredients; bridge: RxNav and UniChem queried 2026-10-03; 1277 qualifying statements"
+  },
+  {
+   "source": "RxNav (rxnav.nlm.nih.gov)",
+   "use": "RxNorm ingredient to UNII and ATC classes",
+   "pinned_version": "queried 2026-10-03 for 1,866 ingredients"
   },
   {
    "source": "CollecTRI (via OmniPath, dataset collectri)",
@@ -221,6 +231,46 @@
   "graph_full/relation_types.json": {
    "sha256": "7afdb40c78d2f5d6cfbc100569728db45ca0963599f700697d3baf5a44dd88d1",
    "bytes": 121,
+   "rows": null
+  },
+  "literature/gene_identifier_map.parquet": {
+   "sha256": "44ee98263b9527752354558fcabb7101a172158609aabba3a07a57cebe740080",
+   "bytes": 364319,
+   "rows": 12627
+  },
+  "literature/gene_identifier_map.summary.json": {
+   "sha256": "b29819a7aaf7cac7a5172a5171bea9ccd4d5a17aabc92b42452be7aba683487e",
+   "bytes": 414,
+   "rows": null
+  },
+  "literature/sider_chemical_mesh_map.csv": {
+   "sha256": "5d89e4cd434f01f8e5217b3538f78795cd5b7ddae8b46bbd88e3b99134cd28b0",
+   "bytes": 77012,
+   "rows": 1210
+  },
+  "literature/sider_chemical_mesh_map.parquet": {
+   "sha256": "abe8f1d41d39abb5fc63db7cd4cf43b61d7b442eb53f57ba6d6c8d4fe9756c7e",
+   "bytes": 46896,
+   "rows": 1210
+  },
+  "onsides/ingredient_identifier_bridge.json": {
+   "sha256": "5647adf7b9c0c724691763ed1ad7de802ae051a5835fedef0dc58b22ccfd1265",
+   "bytes": 1407786,
+   "rows": null
+  },
+  "onsides/onsides_reports.csv": {
+   "sha256": "700cf763583fbb327b5f65bad1bec90b7b306ed5a117844ec0c94d79acb26c9d",
+   "bytes": 4356160,
+   "rows": 5649
+  },
+  "onsides/onsides_reports.parquet": {
+   "sha256": "5de48a9e0bdcb03e40b3af12f3d9a0bd347978e669616a2bebc2a0cdaf8a5826",
+   "bytes": 407137,
+   "rows": 5649
+  },
+  "onsides/onsides_summary.json": {
+   "sha256": "6de3f476809ae55aba3d14a1093bc7fb6cfd9b25e57856318847120832bda67b",
+   "bytes": 1475,
    "rows": null
   }
  }

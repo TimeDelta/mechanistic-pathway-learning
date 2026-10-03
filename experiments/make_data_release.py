@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("--graph", nargs="*", default=["graph_full=data/processed/graph_full", "graph=data/processed/graph"], help="name=directory pairs")
     parser.add_argument("--evidence", nargs="*", default=["evidence_full=data/processed/evidence_full", "evidence_slice_sweeps=data/processed/evidence", "evidence_two_entries=data/processed/evidence_two_entries"], help="name=directory pairs")
     parser.add_argument("--data-sources", type=Path, default=Path("docs/data_sources.md"))
+    parser.add_argument("--extra", nargs="*", default=["onsides=data/processed/onsides", "literature=data/processed/literature"], help="name=directory pairs whose top-level parquet, csv, json and md files are released")
     parser.add_argument("--notes", default="")
     parser.add_argument("--verify-only", action="store_true")
     arguments = parser.parse_args()
@@ -32,7 +33,7 @@ def main() -> None:
         print("\n".join(problems) if problems else f"{release_directory}: every file matches the manifest")
         sys.exit(1 if problems else 0)
     pairs = lambda items: {item.split("=", 1)[0]: Path(item.split("=", 1)[1]) for item in items}  # noqa: E731
-    built = build_release(arguments.version, arguments.output_root, pairs(arguments.graph), pairs(arguments.evidence), arguments.data_sources, Path("."), arguments.notes)
+    built = build_release(arguments.version, arguments.output_root, pairs(arguments.graph), pairs(arguments.evidence), arguments.data_sources, Path("."), arguments.notes, pairs(arguments.extra))
     problems = verify_release(built)
     print(f"wrote {built}; files {len(list(built.rglob('*')))}; verification: {'ok' if not problems else problems}")
 

@@ -1,0 +1,20 @@
+{
+  "gene_nodes": 12627,
+  "with_ncbi_gene_id": 12537,
+  "without_ncbi_gene_id": 90,
+  "with_ensembl_gene_id": 12527,
+  "by_mapping_source": {
+    "hgnc_alias_symbol": 1,
+    "hgnc_previous_symbol": 20,
+    "hgnc_symbol": 9681,
+    "human_gem_ensembl": 2835,
+    "unmapped": 90
+  },
+  "ncbi_ids_shared_by_several_nodes": 2,
+  "nodes_on_shared_ncbi_ids": [
+    "GBA",
+    "GBA1",
+    "SLC22A18",
+    "SLC67A1"
+  ]
+}
