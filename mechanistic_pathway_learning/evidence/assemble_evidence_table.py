@@ -202,6 +202,8 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
             annotation_row_count=int(len(positive)),
             max_annotation_frequency=float(frequencies.max()) if len(frequencies) else None,
             annotation_patient_count=int(denominators.sum()) if len(denominators) else None,
+            association_type_known=bool((positive.association_type.fillna("").astype(str).isin(["", "unknown"]) == False).any()) if "association_type" in positive.columns else False,  # noqa: E712
+            causal_association_count=int(positive.rubric_causal_association.fillna(0).sum()) if "rubric_causal_association" in positive.columns else 0,
             evidence_available_date=date.fromisoformat(min(dates)) if len(dates) else None,
             distinct_reference_count=len(cited), distinct_pubmed_reference_count=sum(1 for reference in cited if reference.startswith("PMID:")),
         )
@@ -424,6 +426,8 @@ def assemble(
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
     phenotype_hpoa_path: Path | None = None,
     reference_publication_dates_path: Path | None = None,
+    genes_to_disease_path: Path | None = None,
+    orphadata_product6_path: Path | None = None,
     disease_cluster_max_genes: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES,
     weighting: str = DEFAULT_WEIGHTING,
     rubric_weight_defaults: RubricWeightDefaults | None = None,
@@ -446,9 +450,16 @@ def assemble(
     parents = load_hpo_is_a_parents_from_obo(hpo_obo_path)
     publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
     hpoa_rows_by_key = load_hpo_annotation_rows(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
+    association_types = None
+    if genes_to_disease_path is not None and genes_to_disease_path.exists():
+        from mechanistic_pathway_learning.evidence.gene_disease_association_types import association_type_for, load_omim_association_types, load_orphanet_association_types
+
+        omim_types = load_omim_association_types(genes_to_disease_path)
+        orphanet_types = load_orphanet_association_types(orphadata_product6_path) if orphadata_product6_path is not None and orphadata_product6_path.exists() else None
+        association_types = {key: association_type_for(key[0], key[1], omim_types, orphanet_types) for key in set(omim_types) | set(orphanet_types or {})}
     dropped_unknown_provenance: list[dict] = []
     report_list: list[EvidenceReport] = monogenic_evidence_reports(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded,
-                                                                   hpoa_rows_by_key, publication_dates, dropped_unknown_provenance)
+                                                                   hpoa_rows_by_key, publication_dates, dropped_unknown_provenance, association_types=association_types)
     for report in report_list:
         report.perturbation_nodes = json.dumps([[node_by_symbol[report.perturbation_id], -1.0, 1.0]])
 
@@ -559,6 +570,8 @@ def main() -> None:
     parser.add_argument("--hpo-obo", type=Path, default=Path("data/raw/hpo/hp.obo"))
     parser.add_argument("--hpo-annotations", type=Path, default=Path("data/raw/hpo/genes_to_phenotype.txt"))
     parser.add_argument("--phenotype-hpoa", type=Path, default=Path("data/raw/hpo/phenotype.hpoa"), help="disease-level annotations with biocuration dates (time split)")
+    parser.add_argument("--genes-to-disease", type=Path, default=Path("data/raw/hpo/genes_to_disease.txt"), help="OMIM association types (MENDELIAN, POLYGENIC); grade A needs a causal association when types are known")
+    parser.add_argument("--orphadata-product6", type=Path, default=Path("data/raw/orphadata/en_product6.xml"), help="Orphadata product 6 gene-disease association types")
     parser.add_argument("--reference-publication-dates", type=Path, default=Path("docs/hpo_reference_publication_dates.json"), help="PMID -> publication date lookup; dates pairs by publication rather than curation")
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"))
@@ -576,7 +589,7 @@ def main() -> None:
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
                          arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
-                         arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale)
+                         arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)

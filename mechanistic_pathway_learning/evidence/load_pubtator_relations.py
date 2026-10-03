@@ -55,14 +55,17 @@ GENE_ENTITY_TYPE = "Gene"
 CHEMICAL_ENTITY_TYPE = "Chemical"
 
 # The columns of evidence_reports.parquet (docs/evidence_reports_spec.md section 1), in order; fixed there.
-EVIDENCE_REPORT_COLUMNS: tuple[str, ...] = (
+try:  # the shared report dataclass is the authority on the column set; the literal below is the fallback
+    from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS as EVIDENCE_REPORT_COLUMNS
+except ImportError:  # pragma: no cover
+    EVIDENCE_REPORT_COLUMNS: tuple[str, ...] = (
     "report_id", "perturbation_id", "perturbation_type", "perturbation_label", "symptom", "relation", "evidence_class", "source",
     "report_value", "source_record_id", "source_record_label", "source_term_id", "source_term_label", "evidence_code",
     "model_description", "frequency", "frequency_denominator", "placebo_flag", "onset", "sex", "references",
     "pubmed_reference_count", "evidence_date", "rubric_log_sample_size", "rubric_frequency_known", "rubric_evidence_code_pcs",
     "rubric_evidence_code_tas", "rubric_evidence_code_iea", "rubric_placebo_controlled", "rubric_curated_synopsis",
     "limitations", "perturbation_nodes",
-)
+    )
 # Literature-specific columns appended after the fixed set; the assembler may ignore them.
 LITERATURE_EXTRA_COLUMNS: tuple[str, ...] = (
     "pmid", "relation_type", "entity_role", "perturbation_ncbi_gene_id", "chemical_mesh_id", "chemical_match_method",
@@ -376,6 +379,11 @@ def relation_rows_to_reports(rows: list[PubtatorRelationRow], publication_dates:
 
 def reports_dataframe(records: list[dict]) -> pd.DataFrame:
     """Stable dtypes for the literature report table, empty-safe."""
+    for column_name in EVIDENCE_REPORT_COLUMNS:  # columns added to the shared dataclass after this module was written get their defaults
+        if records and column_name not in records[0]:
+            default_value = 0.0 if column_name.startswith("rubric_") else ""
+            for record in records:
+                record.setdefault(column_name, default_value)
     table = pd.DataFrame(records, columns=list(LITERATURE_REPORT_COLUMNS))
     table["report_value"] = table.report_value.astype("int64")
     table["pubmed_reference_count"] = table.pubmed_reference_count.astype("int64")

@@ -446,6 +446,7 @@ def monogenic_evidence_reports(
     hpoa_rows_by_key: Mapping[tuple[str, str], list[HpoaAnnotationRow]] | None = None,
     publication_dates_by_pmid: Mapping[str, date] | None = None,
     dropped_unknown_provenance: list[dict[str, str]] | None = None,
+    association_types: Mapping[tuple[str, str], tuple[str, bool | None]] | None = None,
 ) -> list[EvidenceReport]:
     """One EvidenceReport per phenotype.hpoa row behind each (gene in the graph, target symptom), in file order.
 
@@ -485,7 +486,7 @@ def monogenic_evidence_reports(
             joined_rows = [HpoaAnnotationRow(disease_id, disease_id, "", hpo_id, [], UNJOINED_EVIDENCE_CODE, None, "" if raw_frequency == "-" else raw_frequency, None, "", "", [], 0)]
         for hpoa_row in joined_rows:
             for target_symptom in target_symptoms:
-                reports.append(evidence_report_from_hpoa_row(gene_symbol, target_symptom, source, hpo_name, hpoa_row, publication_dates_by_pmid))
+                reports.append(evidence_report_from_hpoa_row(gene_symbol, target_symptom, source, hpo_name, hpoa_row, publication_dates_by_pmid, association_types=association_types))
     return reports
 
 
@@ -496,6 +497,7 @@ def evidence_report_from_hpoa_row(
     hpo_name: str,
     hpoa_row: HpoaAnnotationRow,
     publication_dates_by_pmid: Mapping[str, date] | None = None,
+    association_types: Mapping[tuple[str, str], tuple[str, bool | None]] | None = None,
 ) -> EvidenceReport:
     """Column derivation of one monogenic report from one phenotype.hpoa row (or the unjoined stand-in row).
 
@@ -508,6 +510,7 @@ def evidence_report_from_hpoa_row(
     references = ";".join(hpoa_row.references)
     availability_date = None if unjoined else hpoa_row_availability_date(hpoa_row, publication_dates_by_pmid=publication_dates_by_pmid)
     entry_reference = hpoa_row.disease_id
+    association_label, association_causal = (association_types or {}).get((gene_symbol, hpoa_row.disease_id), ("unknown", None))
     report = EvidenceReport(
         report_id=f"{source}|{gene_symbol}|{hpoa_row.disease_id}|{hpoa_row.hpo_id}|{target_symptom}|{hpoa_row.ordinal}",
         perturbation_id=gene_symbol, perturbation_type="gene", perturbation_label=gene_symbol,
@@ -528,6 +531,7 @@ def evidence_report_from_hpoa_row(
         rubric_evidence_code_iea=1.0 if hpoa_row.evidence == "IEA" else 0.0,
         rubric_placebo_controlled=0.0,
         rubric_curated_synopsis=1.0 if entry_reference in hpoa_row.references else 0.0,
+        association_type=association_label, rubric_causal_association=1.0 if association_causal else 0.0,
     )
     report.limitations = limitations_text(report)
     return report

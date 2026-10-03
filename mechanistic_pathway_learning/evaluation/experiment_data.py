@@ -86,9 +86,14 @@ class ExperimentData:
 GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id"}
 
 
-def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene") -> ExperimentData:
+DEFAULT_LABEL_GRADES: tuple[str, ...] = ("A", "B")  # grades that count as positive labels; grade C (human association) and lower are soft evidence, not labels
+
+
+def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES) -> ExperimentData:
     """group_by selects the leakage group for the grouped split: "gene" (the gene itself; drugs by dominant
-    target) or "disease_cluster" (genes sharing a disease entry in HPO are held out together)."""
+    target) or "disease_cluster" (genes sharing a disease entry in HPO are held out together). label_grades restricts
+    the rows that become positive labels (default A and B; None keeps every grade, which the version 0.3 ablation
+    table of grade C weight-0 positives relies on)."""
     if group_by not in GROUPING_COLUMNS:
         raise ValueError(f"group_by must be one of {sorted(GROUPING_COLUMNS)}")
     group_column = GROUPING_COLUMNS[group_by]
@@ -102,6 +107,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     evidence = evidence[evidence.relation == relation]
     if "positive_report_count" in evidence.columns:  # tables written before reports existed have no such column and every row is a positive claim
         evidence = evidence[evidence.positive_report_count > 0]
+    if label_grades is not None and "grade" in evidence.columns:
+        evidence = evidence[evidence.grade.isin(label_grades)]
     if group_column not in evidence.columns:  # evidence tables written before disease clusters existed
         evidence = evidence.assign(**{group_column: evidence.group_id})
     if metabolic_layer_only:

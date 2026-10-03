@@ -171,6 +171,7 @@ def main() -> None:
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
+    parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--selection-metric", choices=["loss", "auprc"], default="loss",
@@ -208,7 +209,7 @@ def main() -> None:
     signal.signal(signal.SIGUSR1, request_checkpoint)
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by)
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None)
     if arguments.permute_labels:
         data.outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
     time_split = None

@@ -82,6 +82,8 @@ class EvidenceRecord:
     annotation_patient_count: int | None = None  # patients behind n/m fractions, summed, when reported
     distinct_reference_count: int = 0  # distinct reference strings (PMID:, OMIM:, ORPHA:, ...) across the pair's (disease, term) annotations in phenotype.hpoa
     distinct_pubmed_reference_count: int = 0  # the PMID: subset of those; descriptive only, never enters the weight
+    association_type_known: bool = False  # True when at least one positive report has a typed gene-disease association (genes_to_disease.txt or Orphadata product 6)
+    causal_association_count: int = 0  # positive reports whose association is disease-causing (MENDELIAN or an Orphanet disease-causing type)
 
 
 def frequency_scaled_weight(base_weight: float, frequency: float | None, scale: float, floor: float) -> float:
@@ -94,6 +96,8 @@ def assign_evidence_grade(record: EvidenceRecord, grade_a_policy: str = DEFAULT_
     if grade_a_policy not in GRADE_A_POLICIES:
         raise ValueError(f"unknown grade_a_policy {grade_a_policy!r}; choose from {GRADE_A_POLICIES}")
     if record.evidence_class == "monogenic":
+        if record.association_type_known and record.causal_association_count == 0:
+            return "C"  # polygenic locus, susceptibility factor, candidate, modifier or biomarker only: a human association, not a loss of function (review v0.4, finding 4)
         if record.independent_case_series_count >= 2 or record.has_omim_clinical_synopsis:
             return "A"
         if grade_a_policy == "curated_synopsis_provenance" and (record.omim_entry_count > 0 or record.orpha_entry_count > 0):

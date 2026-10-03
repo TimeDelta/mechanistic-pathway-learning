@@ -260,6 +260,7 @@ def main() -> None:
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--restart-probability", type=float, default=0.3)
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
+    parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
     parser.add_argument("--min-holdout-positives", type=int, default=10)
     parser.add_argument("--min-fold-size-for-macro", type=int, default=20)
     parser.add_argument("--skip-permutation-control", action="store_true")
@@ -271,7 +272,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("runs/baselines"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/phase2_baselines.md"))
     arguments = parser.parse_args()
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by)
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
     fold_of_perturbation = np.array([fold_by_perturbation[p] for p in data.perturbation_ids])
     grouped_masks = [fold_of_perturbation == fold for fold in range(arguments.num_folds)]
