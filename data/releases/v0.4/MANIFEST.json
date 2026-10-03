@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
  "created": "2026-10-03",
- "git_commit": "751ed170530323df1af7f1fd708a2928ef39cd8e",
+ "git_commit": "96c681f7dac97a15c413ff8f92e4c0d5f5bb46f8",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
  "licensed_term_labels_blanked": 1727,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler (3,606 observations, 3,593 positives, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on (assembled before negated and 0 of N annotations were recognised); evidence_two_entries is the version 0.3 grade-A proxy ablation table.",
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on (assembled before negated and 0 of N annotations and association types were recognised); evidence_two_entries is the version 0.3 grade-A proxy ablation table.",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -57,6 +57,11 @@
    "pinned_version": "GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz, object date 2024-11-08, 59,033 genes, 13 brain tissues; threshold median TPM 1.0"
   },
   {
+   "source": "Orphadata product 6 (orphadata.com, en_product6.xml)",
+   "use": "gene-disease association types for Orphanet entries: disease-causing versus susceptibility, candidate, modifier, biomarker or fusion (grade A rule, section 4.3)",
+   "pinned_version": "JDBOR date 2026-06-23; 8,503 associations; downloaded 2026-10-03"
+  },
+  {
    "source": "CollecTRI (via OmniPath, dataset collectri)",
    "use": "transcription factor regulons with signs",
    "pinned_version": "queried 2026-10-03; 64,515 regulon rows"
@@ -94,28 +99,28 @@
  ],
  "files": {
   "evidence_full/evidence_records.csv": {
-   "sha256": "74a5dd399096ede7b22f2c3e70e14795214bb8a577ea94e3887ed592caac6bdf",
-   "bytes": 993241,
+   "sha256": "c8e32d595bca67d85a324c6830f6ad42667f8fcf2c620d72f87e1587ccac7ae8",
+   "bytes": 992997,
    "rows": 3606
   },
   "evidence_full/evidence_records.parquet": {
-   "sha256": "6d39db15821016eea32768ccf2ab4c8e7f40ad392727378ce8dcbb40beaa938c",
-   "bytes": 155697,
+   "sha256": "5779b2d4de66a56624f02da07fca0ae06d70ad0ae760fb670e7ddf8065e2c414",
+   "bytes": 156509,
    "rows": 3606
   },
   "evidence_full/evidence_reports.csv": {
-   "sha256": "42e1b77d72356a91aecee655e1fbde2f14b364211ba107bb74cd45248945d335",
-   "bytes": 3551170,
+   "sha256": "f7ffe123926b3ae906c77f33d823df3cadb3065ecdd6faf0854df285ccf529ae",
+   "bytes": 3718300,
    "rows": 6344
   },
   "evidence_full/evidence_reports.parquet": {
-   "sha256": "d6de8e0dd0da786aef329e8284bf7f6ea90911e7dcfe1cb80aeb993016d1e191",
-   "bytes": 316059,
+   "sha256": "7ffd7c06471e653244a801c233f6614d03ac72650eb715ab4ce24b2ec6fdaafa",
+   "bytes": 320352,
    "rows": 6344
   },
   "evidence_full/evidence_summary.json": {
-   "sha256": "c39e496ae54cbd04101c9de996840b44bcaaeb4bfb1db1e5e95ac428201e0afc",
-   "bytes": 8059,
+   "sha256": "6a842f0e0b4610f5bba41435053e9f54cdd88e87fef21f9c495e5a8935a76243",
+   "bytes": 8062,
    "rows": null
   },
   "evidence_full/unmapped_records.csv": {
