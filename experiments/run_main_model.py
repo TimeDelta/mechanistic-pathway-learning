@@ -83,7 +83,8 @@ def build_models(data, arguments, device):
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling).to(device)
     else:
         head = NoisyOrPathwayModuleHead(len(data.node_ids), arguments.node_state_dim, arguments.num_modules, len(data.symptoms),
-                                        gate_initial_log_alpha=arguments.gate_initial_log_alpha, pooling=arguments.pooling).to(device)
+                                        gate_initial_log_alpha=arguments.gate_initial_log_alpha, pooling=arguments.pooling,
+                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init).to(device)
     return encoder, head
 
 
@@ -186,6 +187,8 @@ def main() -> None:
     parser.add_argument("--sigmoid-hidden-dim", type=int, default=64)
     parser.add_argument("--gate-initial-log-alpha", type=float, default=-1.0)
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
+    parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
+    parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)

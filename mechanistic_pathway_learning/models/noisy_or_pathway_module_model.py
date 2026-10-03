@@ -111,7 +111,12 @@ class NoisyOrPathwayModuleHead(nn.Module):
         gate_temperature: float = 2.0 / 3.0,
         gate_initial_log_alpha: float = -1.0,
         pooling: str = "sum",
+        gate_initial_log_alpha_noise: float = 0.01,
+        initial_readout_bias: float = 0.0,
     ) -> None:
+        """gate_initial_log_alpha_noise breaks the symmetry between modules (all gates start at the same
+        log-alpha otherwise, and identical modules stay identical); initial_readout_bias below zero makes a
+        module silent unless the pooled perturbation signal drives it, the off-by-default reading of a pathway."""
         super().__init__()
         if pooling not in ("sum", "mean"):
             raise ValueError("pooling must be 'sum' or 'mean'")
@@ -125,9 +130,10 @@ class NoisyOrPathwayModuleHead(nn.Module):
             num_graph_nodes,
             temperature=gate_temperature,
             initial_log_alpha=gate_initial_log_alpha,
+            initial_log_alpha_noise=gate_initial_log_alpha_noise,
         )
         self.module_readout_weight = nn.Parameter(torch.randn(num_pathway_modules, node_state_dim) / math.sqrt(node_state_dim))
-        self.module_readout_bias = nn.Parameter(torch.zeros(num_pathway_modules))
+        self.module_readout_bias = nn.Parameter(torch.full((num_pathway_modules,), float(initial_readout_bias)))
         self.module_symptom_link_logit = nn.Parameter(
             torch.full((num_relation_types, num_pathway_modules, num_symptoms), initial_link_logit)
         )
