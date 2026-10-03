@@ -76,6 +76,8 @@ python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disea
 python experiments/analyze_pathway_modules.py --run-dir runs/b6_default_disease_cluster
 ```
 
+OnSIDES later label slice. The OnSIDES v3.1.1 label statements are bridged to ChEMBL and unified with the SIDER drugs (experiments/fetch_onsides_identifier_bridge.py, experiments/build_onsides_reports.py; docs/onsides_label_slice.md): 652 drug-symptom pairs, 371 of them absent from the 2015 labels. Joining them into the assembled table and the reliability fit is the next step.
+
 Data releases. The processed tables of each design version are committed under data/releases/<version>/ with MANIFEST.json (SHA-256, size and row count per file, the producing commit, the source pins and the license statement), so a checkout trains and evaluates without any download: `python experiments/run_main_model.py --graph-dir data/releases/v0.4/graph_full --evidence-dir data/releases/v0.4/evidence_full ...`; `python experiments/make_data_release.py --version v0.4 --verify-only` recomputes the checksums. MedDRA term names are blanked on label-derived report rows before release; raw downloads are never committed (docs/data_sources.md pins them).
 
 Full data layer (the layer files above present; the build picks them up by default; the model
@@ -86,6 +88,7 @@ python -m mechanistic_pathway_learning.graph.build_physiology_graph --output-dir
 python -m mechanistic_pathway_learning.evidence.assemble_evidence_table --graph-dir data/processed/graph_full --output-dir data/processed/evidence_full
 python experiments/run_baselines.py --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --group-by disease_cluster --with-kg-embedding --time-split-cutoff 2015-12-31 --output-dir runs/full/baselines_disease_cluster --markdown-output docs/phase2_baselines_full_disease_cluster.md
 python experiments/run_main_model_batch.py --configuration b6_mechanistic --group-by disease_cluster --run-root runs/full --extra --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --time-budget-seconds 10800 --max-epochs 40
+python experiments/fetch_onsides_identifier_bridge.py && python experiments/build_onsides_reports.py   # OnSIDES later label slice
 python experiments/run_main_model_batch.py --configuration b3_typed_nodes --group-by disease_cluster --run-root runs/full --extra --graph-dir data/processed/graph_full --evidence-dir data/processed/evidence_full --time-budget-seconds 10800 --max-epochs 40
 ```
 
