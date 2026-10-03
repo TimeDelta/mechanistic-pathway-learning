@@ -165,3 +165,24 @@ def test_annotation_dates_use_omim_rows_only_and_the_earliest_curation(tmp_path:
     records = {r.perturbation_identifier: r for r in monogenic_evidence_records(parse_genes_to_phenotype(annotations_path), roots, parents, {"HMBS", "OTC"}, annotation_dates=dates)}
     assert records["HMBS"].evidence_available_date == date(2009, 2, 17)
     assert records["OTC"].evidence_available_date is None
+
+
+def test_publication_dates_take_precedence_over_curation_dates(tmp_path: Path) -> None:
+    import json
+    from datetime import date
+
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import load_hpo_annotation_dates, load_reference_publication_dates
+
+    hpoa = tmp_path / "phenotype.hpoa"
+    hpoa.write_text("\n".join([
+        "database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration",
+        "OMIM:176000\tAIP\t\tHP:0000709\tPMID:123;PMID:456\tPCS\t\t\t\t\tP\tHPO:skoehler[2012-03-04]",
+        "OMIM:176000\tAIP\t\tHP:0000726\tOMIM:176000\tTAS\t\t\t\t\tP\tHPO:skoehler[2010-05-06]",
+    ]) + "\n")
+    lookup = tmp_path / "dates.json"
+    lookup.write_text(json.dumps({"publication_dates_by_pmid": {"123": {"year": 1998, "month": 7, "day": None}, "456": {"year": 2005, "month": None}}}))
+    publication_dates = load_reference_publication_dates(lookup)
+    assert publication_dates["123"] == date(1998, 7, 1) and publication_dates["456"] == date(2005, 1, 1)
+    dates = load_hpo_annotation_dates(hpoa, publication_dates_by_pmid=publication_dates)
+    assert dates[("OMIM:176000", "HP:0000709")] == date(1998, 7, 1)  # earliest cited publication
+    assert dates[("OMIM:176000", "HP:0000726")] == date(2010, 5, 6)  # no PubMed reference: curation date stands

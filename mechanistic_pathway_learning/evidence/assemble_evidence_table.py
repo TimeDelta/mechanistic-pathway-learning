@@ -17,8 +17,9 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
                          reliability model replaces weight downstream)
   perturbation_nodes     JSON list of [node_id, sign, magnitude] in the graph
   label_frequency        SIDER frequency midpoint (E2) or largest HPO frequency midpoint (E1) when reported
-  evidence_date          earliest OMIM biocuration date behind a monogenic pair (ISO string; null when Orphanet-only),
-                         the time-split axis of design section 6.1
+  evidence_date          earliest availability date behind a monogenic pair: publication date of the cited PubMed
+                         reference when docs/hpo_reference_publication_dates.json has it, else the OMIM biocuration
+                         date (ISO string; null when Orphanet-only); the time-split axis of design section 6.1
   omim_entry_count, orpha_entry_count, annotation_row_count, annotation_patient_count, disease_identifiers
                          provenance of a monogenic record (null for drugs)
   source                 provenance string
@@ -46,6 +47,7 @@ from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nerv
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
     load_hpo_annotation_dates,
     load_hpo_is_a_parents_from_obo,
+    load_reference_publication_dates,
     monogenic_evidence_records,
     parse_genes_to_phenotype,
     read_crosswalk_hpo_terms,
@@ -102,6 +104,7 @@ def assemble(
     max_drug_targets: int = 1,
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
     phenotype_hpoa_path: Path | None = None,
+    reference_publication_dates_path: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     node_by_symbol = gene_node_lookup(nodes)
@@ -113,7 +116,8 @@ def assemble(
     unmapped: list[dict] = []
 
     parents = load_hpo_is_a_parents_from_obo(hpo_obo_path)
-    annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
+    publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
+    annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path, publication_dates_by_pmid=publication_dates) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
     monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates)
     cluster_by_gene = disease_cluster_ids(monogenic_records)
     for record in monogenic_records:
@@ -213,6 +217,7 @@ def main() -> None:
     parser.add_argument("--hpo-obo", type=Path, default=Path("data/raw/hpo/hp.obo"))
     parser.add_argument("--hpo-annotations", type=Path, default=Path("data/raw/hpo/genes_to_phenotype.txt"))
     parser.add_argument("--phenotype-hpoa", type=Path, default=Path("data/raw/hpo/phenotype.hpoa"), help="disease-level annotations with biocuration dates (time split)")
+    parser.add_argument("--reference-publication-dates", type=Path, default=Path("docs/hpo_reference_publication_dates.json"), help="PMID -> publication date lookup; dates pairs by publication rather than curation")
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"))
     parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"))
@@ -221,7 +226,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
     arguments = parser.parse_args()
     observations, unmapped = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
-                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa)
+                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     import os
 

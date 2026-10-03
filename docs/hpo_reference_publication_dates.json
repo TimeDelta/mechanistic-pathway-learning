@@ -1,0 +1,1435 @@
+{
+ "provenance": "Publication dates of the PubMed references cited by the OMIM disease annotations (phenotype.hpoa, HPO release 2026-09-01) behind the monogenic pairs of the symptom set. Retrieved from PubMed (NCBI) on 2026-10-03 through the PubMed metadata tool; each entry keeps the DOI. Used by load_hpo_annotation_dates to date a pair by publication rather than by curation.",
+ "source": "PubMed, https://pubmed.ncbi.nlm.nih.gov/",
+ "retrieved": "2026-10-03",
+ "publication_dates_by_pmid": {
+  "9007102": {
+   "year": 1996,
+   "month": 12,
+   "day": null,
+   "doi": "10.1002/ana.410400619",
+   "journal": "Ann Neurol"
+  },
+  "9398858": {
+   "year": 1997,
+   "month": 12,
+   "day": null,
+   "doi": "10.1038/ng1297-491",
+   "journal": "Nat Genet"
+  },
+  "9652497": {
+   "year": 1998,
+   "month": 5,
+   "day": null,
+   "doi": "10.1016/s0720-048x(98)00038-2",
+   "journal": "Eur J Radiol"
+  },
+  "9679779": {
+   "year": 1998,
+   "month": 7,
+   "day": null,
+   "doi": "10.1093/brain/121.7.1267",
+   "journal": "Brain"
+  },
+  "9762612": {
+   "year": 1998,
+   "month": 8,
+   "day": null,
+   "doi": "10.1023/a:1005405222252",
+   "journal": "J Inherit Metab Dis"
+  },
+  "9851430": {
+   "year": 1998,
+   "month": 12,
+   "day": null,
+   "doi": "10.1002/ana.410440604",
+   "journal": "Ann Neurol"
+  },
+  "10775536": {
+   "year": 2000,
+   "month": 5,
+   "day": null,
+   "doi": "10.1093/brain/123.5.908",
+   "journal": "Brain"
+  },
+  "10852545": {
+   "year": 2000,
+   "month": 6,
+   "day": null,
+   "doi": null,
+   "journal": "Ann Neurol"
+  },
+  "11073718": {
+   "year": 2000,
+   "month": 11,
+   "day": null,
+   "doi": "10.1006/mgme.2000.3085",
+   "journal": "Mol Genet Metab"
+  },
+  "11431687": {
+   "year": 2001,
+   "month": 7,
+   "day": null,
+   "doi": "10.1038/90038",
+   "journal": "Nat Genet"
+  },
+  "11443547": {
+   "year": 2001,
+   "month": 7,
+   "day": 6,
+   "doi": "10.1086/321970",
+   "journal": "Am J Hum Genet"
+  },
+  "11889465": {
+   "year": 2002,
+   "month": 3,
+   "day": 11,
+   "doi": "10.1038/ng857",
+   "journal": "Nat Genet"
+  },
+  "12510040": {
+   "year": 2003,
+   "month": 1,
+   "day": 2,
+   "doi": "10.1056/NEJMoa020817",
+   "journal": "N Engl J Med"
+  },
+  "12565911": {
+   "year": 2003,
+   "month": 2,
+   "day": null,
+   "doi": "10.1016/s0960-8966(02)00216-x",
+   "journal": "Neuromuscul Disord"
+  },
+  "12891654": {
+   "year": 2003,
+   "month": null,
+   "day": null,
+   "doi": "10.1002/ana.10631",
+   "journal": "Ann Neurol"
+  },
+  "12925374": {
+   "year": 2003,
+   "month": 8,
+   "day": null,
+   "doi": "10.1001/archneur.60.8.1149",
+   "journal": "Arch Neurol"
+  },
+  "15249642": {
+   "year": 2004,
+   "month": 7,
+   "day": 13,
+   "doi": "10.1212/01.wnl.0000132841.81250.b7",
+   "journal": "Neurology"
+  },
+  "15372378": {
+   "year": 2004,
+   "month": 9,
+   "day": 15,
+   "doi": "10.1086/425287",
+   "journal": "Am J Hum Genet"
+  },
+  "15455402": {
+   "year": 2004,
+   "month": 10,
+   "day": null,
+   "doi": "10.1002/ana.20229",
+   "journal": "Ann Neurol"
+  },
+  "15459825": {
+   "year": 2004,
+   "month": 7,
+   "day": 31,
+   "doi": "10.1007/s10048-004-0183-2",
+   "journal": "Neurogenetics"
+  },
+  "15502825": {
+   "year": 2004,
+   "month": 10,
+   "day": 24,
+   "doi": "10.1038/ng1460",
+   "journal": "Nat Genet"
+  },
+  "15651030": {
+   "year": 2005,
+   "month": 3,
+   "day": 1,
+   "doi": "10.1002/ajmg.a.30226",
+   "journal": "Am J Med Genet A"
+  },
+  "15781812": {
+   "year": 2005,
+   "month": 3,
+   "day": 22,
+   "doi": "10.1212/01.WNL.0000154519.10805.F7",
+   "journal": "Neurology"
+  },
+  "15805158": {
+   "year": 2005,
+   "month": 4,
+   "day": null,
+   "doi": "10.1136/jmg.2004.024646",
+   "journal": "J Med Genet"
+  },
+  "15820710": {
+   "year": 2005,
+   "month": 4,
+   "day": 15,
+   "doi": "10.1016/j.biopsych.2004.12.022",
+   "journal": "Biol Psychiatry"
+  },
+  "15877282": {
+   "year": 2005,
+   "month": 4,
+   "day": 22,
+   "doi": "10.1086/430843",
+   "journal": "Am J Hum Genet"
+  },
+  "15911822": {
+   "year": 2005,
+   "month": 5,
+   "day": 24,
+   "doi": "10.1212/01.WNL.0000161843.52641.EC",
+   "journal": "Neurology"
+  },
+  "16021469": {
+   "year": 2005,
+   "month": 7,
+   "day": 14,
+   "doi": "10.1007/s00439-005-1341-9",
+   "journal": "Hum Genet"
+  },
+  "16328510": {
+   "year": 2005,
+   "month": 11,
+   "day": 22,
+   "doi": "10.1007/s10048-005-0017-x",
+   "journal": "Neurogenetics"
+  },
+  "16434659": {
+   "year": 2006,
+   "month": 1,
+   "day": 24,
+   "doi": "10.1212/01.wnl.0000194208.08904.0c",
+   "journal": "Neurology"
+  },
+  "16685649": {
+   "year": 2006,
+   "month": 3,
+   "day": 29,
+   "doi": "10.1086/504159",
+   "journal": "Am J Hum Genet"
+  },
+  "16917947": {
+   "year": 2006,
+   "month": 10,
+   "day": null,
+   "doi": "10.1002/humu.20374",
+   "journal": "Hum Mutat"
+  },
+  "17043409": {
+   "year": 2006,
+   "month": 10,
+   "day": null,
+   "doi": "10.3346/jkms.2006.21.5.800",
+   "journal": "J Korean Med Sci"
+  },
+  "17160907": {
+   "year": 2006,
+   "month": 11,
+   "day": 30,
+   "doi": "10.1086/510725",
+   "journal": "Am J Hum Genet"
+  },
+  "17660820": {
+   "year": 2007,
+   "month": 7,
+   "day": 29,
+   "doi": "10.1038/ng2082",
+   "journal": "Nat Genet"
+  },
+  "17689125": {
+   "year": 2007,
+   "month": 8,
+   "day": 3,
+   "doi": "10.1016/j.ymgme.2007.06.007",
+   "journal": "Mol Genet Metab"
+  },
+  "17710231": {
+   "year": 2007,
+   "month": 9,
+   "day": null,
+   "doi": "10.1172/JCI31330",
+   "journal": "J Clin Invest"
+  },
+  "17919309": {
+   "year": 2007,
+   "month": 10,
+   "day": 7,
+   "doi": "10.1111/j.1399-0004.2007.00899.x",
+   "journal": "Clin Genet"
+  },
+  "17928598": {
+   "year": 2007,
+   "month": 10,
+   "day": 11,
+   "doi": "10.1056/NEJMoa066691",
+   "journal": "N Engl J Med"
+  },
+  "17968484": {
+   "year": 2007,
+   "month": 10,
+   "day": 30,
+   "doi": "10.1007/s10038-007-0211-9",
+   "journal": "J Hum Genet"
+  },
+  "17998446": {
+   "year": 2007,
+   "month": 11,
+   "day": null,
+   "doi": "10.1001/archneur.64.11.1629",
+   "journal": "Arch Neurol"
+  },
+  "18054510": {
+   "year": 2007,
+   "month": 12,
+   "day": 3,
+   "doi": "10.1016/j.ymgme.2007.09.021",
+   "journal": "Mol Genet Metab"
+  },
+  "18347598": {
+   "year": 2008,
+   "month": 4,
+   "day": null,
+   "doi": "10.1038/sj.mp.4002152",
+   "journal": "Mol Psychiatry"
+  },
+  "18439546": {
+   "year": 2008,
+   "month": 4,
+   "day": 24,
+   "doi": "10.1016/j.ajhg.2008.03.020",
+   "journal": "Am J Hum Genet"
+  },
+  "18499082": {
+   "year": 2008,
+   "month": 5,
+   "day": 22,
+   "doi": "10.1016/j.ajhg.2008.05.002",
+   "journal": "Am J Hum Genet"
+  },
+  "18570303": {
+   "year": 2009,
+   "month": 1,
+   "day": null,
+   "doi": "10.1002/ana.21415",
+   "journal": "Ann Neurol"
+  },
+  "18620775": {
+   "year": 2008,
+   "month": 6,
+   "day": 10,
+   "doi": "10.1016/j.jhep.2008.05.016",
+   "journal": "J Hepatol"
+  },
+  "19073399": {
+   "year": 2008,
+   "month": 12,
+   "day": 3,
+   "doi": null,
+   "journal": "Eur J Med Res"
+  },
+  "19185523": {
+   "year": 2009,
+   "month": 1,
+   "day": 29,
+   "doi": "10.1016/j.ymgme.2008.12.004",
+   "journal": "Mol Genet Metab"
+  },
+  "19732863": {
+   "year": 2009,
+   "month": 9,
+   "day": null,
+   "doi": "10.1016/j.ajhg.2009.08.004",
+   "journal": "Am J Hum Genet"
+  },
+  "20065143": {
+   "year": 2010,
+   "month": 1,
+   "day": null,
+   "doi": "10.1001/archneurol.2009.293",
+   "journal": "Arch Neurol"
+  },
+  "20412111": {
+   "year": 2010,
+   "month": 4,
+   "day": 19,
+   "doi": "10.1111/j.1399-0004.2010.01429.x",
+   "journal": "Clin Genet"
+  },
+  "20543203": {
+   "year": 2010,
+   "month": 6,
+   "day": 12,
+   "doi": "10.1136/jmg.2010.076836",
+   "journal": "J Med Genet"
+  },
+  "20583149": {
+   "year": 2010,
+   "month": 7,
+   "day": null,
+   "doi": "10.1002/ajmg.a.33373",
+   "journal": "Am J Med Genet A"
+  },
+  "20593214": {
+   "year": 2010,
+   "month": 7,
+   "day": 1,
+   "doi": "10.1007/s10048-010-0249-2",
+   "journal": "Neurogenetics"
+  },
+  "20855850": {
+   "year": 2010,
+   "month": 9,
+   "day": 21,
+   "doi": "10.1212/WNL.0b013e3181f39a8a",
+   "journal": "Neurology"
+  },
+  "20932945": {
+   "year": 2010,
+   "month": 10,
+   "day": 14,
+   "doi": "10.1016/j.ejmg.2010.09.013",
+   "journal": "Eur J Med Genet"
+  },
+  "21532572": {
+   "year": 2011,
+   "month": 5,
+   "day": 1,
+   "doi": "10.1038/ng.830",
+   "journal": "Nat Genet"
+  },
+  "21646632": {
+   "year": 2011,
+   "month": 6,
+   "day": 7,
+   "doi": "10.1212/WNL.0b013e31821e558b",
+   "journal": "Neurology"
+  },
+  "21700266": {
+   "year": 2011,
+   "month": 6,
+   "day": 23,
+   "doi": "10.1016/j.ajhg.2011.05.017",
+   "journal": "Am J Hum Genet"
+  },
+  "21849667": {
+   "year": 2011,
+   "month": 8,
+   "day": 17,
+   "doi": "10.1152/ajpcell.00054.2011",
+   "journal": "Am J Physiol Cell Physiol"
+  },
+  "22277967": {
+   "year": 2012,
+   "month": 1,
+   "day": 25,
+   "doi": "10.1126/scitranslmed.3003310",
+   "journal": "Sci Transl Med"
+  },
+  "22328086": {
+   "year": 2012,
+   "month": 2,
+   "day": 9,
+   "doi": "10.1093/hmg/dds035",
+   "journal": "Hum Mol Genet"
+  },
+  "22448145": {
+   "year": 2012,
+   "month": 3,
+   "day": 20,
+   "doi": "10.1371/journal.pbio.1001288",
+   "journal": "PLoS Biol"
+  },
+  "22492991": {
+   "year": 2012,
+   "month": 4,
+   "day": 5,
+   "doi": "10.1093/hmg/dds123",
+   "journal": "Hum Mol Genet"
+  },
+  "22585395": {
+   "year": 2012,
+   "month": 5,
+   "day": 14,
+   "doi": "10.1002/ajmg.a.35333",
+   "journal": "Am J Med Genet A"
+  },
+  "22795537": {
+   "year": 2012,
+   "month": 7,
+   "day": 12,
+   "doi": "10.1016/j.ajhg.2012.06.008",
+   "journal": "Am J Hum Genet"
+  },
+  "22818240": {
+   "year": 2012,
+   "month": 6,
+   "day": 30,
+   "doi": "10.1016/j.ymgme.2012.06.015",
+   "journal": "Mol Genet Metab"
+  },
+  "23043144": {
+   "year": 2012,
+   "month": 10,
+   "day": 4,
+   "doi": "10.1093/brain/aws258",
+   "journal": "Brain"
+  },
+  "23065719": {
+   "year": 2012,
+   "month": 12,
+   "day": null,
+   "doi": "10.1002/humu.22237",
+   "journal": "Hum Mutat"
+  },
+  "23176821": {
+   "year": 2012,
+   "month": 11,
+   "day": 21,
+   "doi": "10.1016/j.ajhg.2012.11.001",
+   "journal": "Am J Hum Genet"
+  },
+  "23297359": {
+   "year": 2013,
+   "month": 1,
+   "day": 7,
+   "doi": "10.1093/hmg/dds558",
+   "journal": "Hum Mol Genet"
+  },
+  "23338750": {
+   "year": 2013,
+   "month": 1,
+   "day": 22,
+   "doi": "10.1007/s00401-013-1078-9",
+   "journal": "Acta Neuropathol"
+  },
+  "23363473": {
+   "year": 2013,
+   "month": 1,
+   "day": 30,
+   "doi": "10.1056/NEJMoa1207281",
+   "journal": "N Engl J Med"
+  },
+  "23599390": {
+   "year": 2013,
+   "month": 4,
+   "day": 18,
+   "doi": "10.1093/brain/awt086",
+   "journal": "Brain"
+  },
+  "23643384": {
+   "year": 2013,
+   "month": 5,
+   "day": 2,
+   "doi": "10.1016/j.ajhg.2013.04.006",
+   "journal": "Am J Hum Genet"
+  },
+  "23656588": {
+   "year": 2013,
+   "month": 5,
+   "day": 8,
+   "doi": "10.1056/NEJMoa1215993",
+   "journal": "N Engl J Med"
+  },
+  "23733340": {
+   "year": 2013,
+   "month": 6,
+   "day": 3,
+   "doi": "10.1182/blood-2013-01-481499",
+   "journal": "Blood"
+  },
+  "23804577": {
+   "year": 2013,
+   "month": 8,
+   "day": 6,
+   "doi": "10.1002/humu.22373",
+   "journal": "Hum Mutat"
+  },
+  "23890588": {
+   "year": 2013,
+   "month": 7,
+   "day": 6,
+   "doi": "10.1016/j.ymgme.2013.06.021",
+   "journal": "Mol Genet Metab"
+  },
+  "23911318": {
+   "year": 2013,
+   "month": 8,
+   "day": 1,
+   "doi": "10.1016/j.cell.2013.07.005",
+   "journal": "Cell"
+  },
+  "24169519": {
+   "year": 2013,
+   "month": 10,
+   "day": 30,
+   "doi": "10.1038/ejhg.2013.243",
+   "journal": "Eur J Hum Genet"
+  },
+  "24312598": {
+   "year": 2013,
+   "month": 12,
+   "day": 2,
+   "doi": "10.1371/journal.pone.0081884",
+   "journal": "PLoS One"
+  },
+  "24403049": {
+   "year": 2014,
+   "month": 1,
+   "day": 8,
+   "doi": "10.1093/hmg/ddu001",
+   "journal": "Hum Mol Genet"
+  },
+  "24566669": {
+   "year": 2014,
+   "month": 2,
+   "day": 24,
+   "doi": "10.1093/brain/awu019",
+   "journal": "Brain"
+  },
+  "24598713": {
+   "year": 2014,
+   "month": 3,
+   "day": 5,
+   "doi": "10.1212/WNL.0000000000000241",
+   "journal": "Neurology"
+  },
+  "24607389": {
+   "year": 2014,
+   "month": 3,
+   "day": 6,
+   "doi": "10.1016/j.ajhg.2014.02.004",
+   "journal": "Am J Hum Genet"
+  },
+  "24782409": {
+   "year": 2014,
+   "month": 5,
+   "day": 20,
+   "doi": "10.1002/ana.24170",
+   "journal": "Ann Neurol"
+  },
+  "24852293": {
+   "year": 2014,
+   "month": 5,
+   "day": 22,
+   "doi": "10.1136/jmedgenet-2014-102402",
+   "journal": "J Med Genet"
+  },
+  "25125150": {
+   "year": 2014,
+   "month": 8,
+   "day": 14,
+   "doi": "10.1002/ajmg.a.36723",
+   "journal": "Am J Med Genet A"
+  },
+  "25196541": {
+   "year": 2014,
+   "month": 12,
+   "day": null,
+   "doi": "10.1002/humu.22689",
+   "journal": "Hum Mutat"
+  },
+  "25220016": {
+   "year": 2014,
+   "month": 9,
+   "day": 9,
+   "doi": "10.1016/j.ejmg.2014.08.008",
+   "journal": "Eur J Med Genet"
+  },
+  "25298308": {
+   "year": 2014,
+   "month": 10,
+   "day": 8,
+   "doi": "10.1212/WNL.0000000000000981",
+   "journal": "Neurology"
+  },
+  "25512002": {
+   "year": 2015,
+   "month": 3,
+   "day": null,
+   "doi": "10.1002/humu.22743",
+   "journal": "Hum Mutat"
+  },
+  "25728773": {
+   "year": 2015,
+   "month": 2,
+   "day": 26,
+   "doi": "10.1016/j.ajhg.2015.01.005",
+   "journal": "Am J Hum Genet"
+  },
+  "25728775": {
+   "year": 2015,
+   "month": 2,
+   "day": 26,
+   "doi": "10.1016/j.ajhg.2015.01.017",
+   "journal": "Am J Hum Genet"
+  },
+  "25732997": {
+   "year": 2015,
+   "month": 3,
+   "day": 3,
+   "doi": "10.1007/8904_2015_409",
+   "journal": "JIMD Rep"
+  },
+  "25810209": {
+   "year": 2015,
+   "month": 4,
+   "day": 14,
+   "doi": "10.1111/cge.12586",
+   "journal": "Clin Genet"
+  },
+  "26224535": {
+   "year": 2015,
+   "month": 8,
+   "day": 21,
+   "doi": "10.1002/ana.24496",
+   "journal": "Ann Neurol"
+  },
+  "26365382": {
+   "year": 2015,
+   "month": 9,
+   "day": 10,
+   "doi": "10.1016/j.molcel.2015.07.033",
+   "journal": "Mol Cell"
+  },
+  "26416544": {
+   "year": 2015,
+   "month": 9,
+   "day": 29,
+   "doi": "10.1038/mp.2015.150",
+   "journal": "Mol Psychiatry"
+  },
+  "26522469": {
+   "year": 2015,
+   "month": 10,
+   "day": 29,
+   "doi": "10.1016/j.ajhg.2015.09.013",
+   "journal": "Am J Hum Genet"
+  },
+  "26925370": {
+   "year": 2015,
+   "month": 12,
+   "day": null,
+   "doi": "10.1016/j.ymgmr.2015.10.006",
+   "journal": "Mol Genet Metab Rep"
+  },
+  "27058447": {
+   "year": 2016,
+   "month": 4,
+   "day": 7,
+   "doi": "10.1016/j.ajhg.2016.02.015",
+   "journal": "Am J Hum Genet"
+  },
+  "27145208": {
+   "year": 2016,
+   "month": 5,
+   "day": 4,
+   "doi": "10.1002/ajmg.a.37721",
+   "journal": "Am J Med Genet A"
+  },
+  "27231142": {
+   "year": 2016,
+   "month": 5,
+   "day": 27,
+   "doi": "10.1038/ncomms11601",
+   "journal": "Nat Commun"
+  },
+  "27558376": {
+   "year": 2016,
+   "month": 8,
+   "day": 24,
+   "doi": "10.1212/WNL.0000000000003129",
+   "journal": "Neurology"
+  },
+  "27590285": {
+   "year": 2016,
+   "month": 9,
+   "day": 2,
+   "doi": "10.1212/WNL.0000000000003179",
+   "journal": "Neurology"
+  },
+  "27672653": {
+   "year": 2016,
+   "month": 9,
+   "day": 8,
+   "doi": "10.1155/2016/4074365",
+   "journal": "Biomed Res Int"
+  },
+  "27683074": {
+   "year": 2016,
+   "month": 9,
+   "day": 28,
+   "doi": "10.1002/ajmg.a.37986",
+   "journal": "Am J Med Genet A"
+  },
+  "27824329": {
+   "year": 2016,
+   "month": 11,
+   "day": 8,
+   "doi": "10.1038/ncomms13316",
+   "journal": "Nat Commun"
+  },
+  "28003083": {
+   "year": 2017,
+   "month": 1,
+   "day": null,
+   "doi": "10.1016/j.kint.2016.09.046",
+   "journal": "Kidney Int"
+  },
+  "28051070": {
+   "year": 2017,
+   "month": 1,
+   "day": 4,
+   "doi": "10.1038/ejhg.2016.183",
+   "journal": "Eur J Hum Genet"
+  },
+  "28191889": {
+   "year": 2017,
+   "month": 2,
+   "day": 13,
+   "doi": "10.1038/ng.3792",
+   "journal": "Nat Genet"
+  },
+  "28236339": {
+   "year": 2017,
+   "month": 3,
+   "day": 23,
+   "doi": "10.1002/humu.23205",
+   "journal": "Hum Mutat"
+  },
+  "28251352": {
+   "year": 2017,
+   "month": 3,
+   "day": 1,
+   "doi": "10.1007/s00439-017-1763-1",
+   "journal": "Hum Genet"
+  },
+  "28776279": {
+   "year": 2017,
+   "month": 8,
+   "day": 3,
+   "doi": "10.1007/s11011-017-0073-6",
+   "journal": "Metab Brain Dis"
+  },
+  "28821231": {
+   "year": 2017,
+   "month": 8,
+   "day": 18,
+   "doi": "10.1186/s12881-017-0439-y",
+   "journal": "BMC Med Genet"
+  },
+  "28857146": {
+   "year": 2017,
+   "month": 12,
+   "day": 21,
+   "doi": "10.1111/cge.13126",
+   "journal": "Clin Genet"
+  },
+  "28887846": {
+   "year": 2017,
+   "month": 9,
+   "day": 29,
+   "doi": "10.1002/humu.23335",
+   "journal": "Hum Mutat"
+  },
+  "29040572": {
+   "year": 2017,
+   "month": 12,
+   "day": 15,
+   "doi": "10.1093/hmg/ddx377",
+   "journal": "Hum Mol Genet"
+  },
+  "29044765": {
+   "year": 2017,
+   "month": 11,
+   "day": 8,
+   "doi": "10.1002/humu.23345",
+   "journal": "Hum Mutat"
+  },
+  "29164086": {
+   "year": 2017,
+   "month": 11,
+   "day": 7,
+   "doi": "10.3389/fped.2017.00236",
+   "journal": "Front Pediatr"
+  },
+  "29322246": {
+   "year": 2018,
+   "month": 1,
+   "day": 10,
+   "doi": "10.1007/s00439-017-1863-y",
+   "journal": "Hum Genet"
+  },
+  "29573052": {
+   "year": 2018,
+   "month": 3,
+   "day": 30,
+   "doi": "10.1002/humu.23420",
+   "journal": "Hum Mutat"
+  },
+  "29909962": {
+   "year": 2018,
+   "month": 6,
+   "day": 14,
+   "doi": "10.1016/j.ajhg.2018.05.004",
+   "journal": "Am J Hum Genet"
+  },
+  "29981851": {
+   "year": 2018,
+   "month": 7,
+   "day": 5,
+   "doi": "10.1016/j.ejmg.2018.07.001",
+   "journal": "Eur J Med Genet"
+  },
+  "30031689": {
+   "year": 2018,
+   "month": 6,
+   "day": 15,
+   "doi": "10.1016/j.ymgme.2018.06.006",
+   "journal": "Mol Genet Metab"
+  },
+  "30104866": {
+   "year": 2018,
+   "month": 7,
+   "day": 31,
+   "doi": "10.2147/CIA.S170374",
+   "journal": "Clin Interv Aging"
+  },
+  "30221345": {
+   "year": 2018,
+   "month": 10,
+   "day": 15,
+   "doi": "10.1111/cge.13448",
+   "journal": "Clin Genet"
+  },
+  "30239721": {
+   "year": 2019,
+   "month": 1,
+   "day": 1,
+   "doi": "10.1093/hmg/ddy330",
+   "journal": "Hum Mol Genet"
+  },
+  "30245030": {
+   "year": 2018,
+   "month": 9,
+   "day": 20,
+   "doi": "10.1016/j.ajhg.2018.08.013",
+   "journal": "Am J Hum Genet"
+  },
+  "30345613": {
+   "year": 2018,
+   "month": 10,
+   "day": 22,
+   "doi": "10.1002/ajmg.a.40498",
+   "journal": "Am J Med Genet A"
+  },
+  "30381368": {
+   "year": 2018,
+   "month": 10,
+   "day": 31,
+   "doi": "10.1212/WNL.0000000000006550",
+   "journal": "Neurology"
+  },
+  "30461603": {
+   "year": 2018,
+   "month": 11,
+   "day": null,
+   "doi": "10.1097/MD.0000000000012867",
+   "journal": "Medicine (Baltimore)"
+  },
+  "30475435": {
+   "year": 2018,
+   "month": 11,
+   "day": 26,
+   "doi": "10.1002/ajmg.a.60677",
+   "journal": "Am J Med Genet A"
+  },
+  "30564627": {
+   "year": 2018,
+   "month": 10,
+   "day": 24,
+   "doi": "10.1002/acn3.677",
+   "journal": "Ann Clin Transl Neurol"
+  },
+  "30584594": {
+   "year": 2018,
+   "month": 12,
+   "day": 3,
+   "doi": "10.1212/NXG.0000000000000289",
+   "journal": "Neurol Genet"
+  },
+  "30595371": {
+   "year": 2018,
+   "month": 12,
+   "day": 27,
+   "doi": "10.1016/j.ajhg.2018.11.018",
+   "journal": "Am J Hum Genet"
+  },
+  "30723320": {
+   "year": 2019,
+   "month": 2,
+   "day": 6,
+   "doi": "10.1038/s41436-019-0445-x",
+   "journal": "Genet Med"
+  },
+  "30824121": {
+   "year": 2019,
+   "month": 2,
+   "day": 26,
+   "doi": "10.1016/j.ajhg.2019.01.006",
+   "journal": "Am J Hum Genet"
+  },
+  "31089205": {
+   "year": 2019,
+   "month": 5,
+   "day": 14,
+   "doi": "10.1038/s41431-019-0427-0",
+   "journal": "Eur J Hum Genet"
+  },
+  "31116475": {
+   "year": 2019,
+   "month": 6,
+   "day": 18,
+   "doi": "10.1002/humu.23799",
+   "journal": "Hum Mutat"
+  },
+  "31126790": {
+   "year": 2019,
+   "month": 5,
+   "day": 14,
+   "doi": "10.1016/j.parkreldis.2019.05.001",
+   "journal": "Parkinsonism Relat Disord"
+  },
+  "31127934": {
+   "year": 2019,
+   "month": 9,
+   "day": 1,
+   "doi": "10.1093/hmg/ddz109",
+   "journal": "Hum Mol Genet"
+  },
+  "31554793": {
+   "year": 2019,
+   "month": 9,
+   "day": 25,
+   "doi": "10.1038/s41467-019-12311-5",
+   "journal": "Nat Commun"
+  },
+  "31575858": {
+   "year": 2019,
+   "month": 10,
+   "day": 1,
+   "doi": "10.1038/s41467-019-12428-7",
+   "journal": "Nat Commun"
+  },
+  "31664034": {
+   "year": 2019,
+   "month": 10,
+   "day": 29,
+   "doi": "10.1038/s41467-019-12671-y",
+   "journal": "Nat Commun"
+  },
+  "31775912": {
+   "year": 2019,
+   "month": 11,
+   "day": 27,
+   "doi": "10.1186/s40478-019-0843-y",
+   "journal": "Acta Neuropathol Commun"
+  },
+  "31778857": {
+   "year": 2019,
+   "month": 11,
+   "day": 26,
+   "doi": "10.1016/j.ejmg.2019.103821",
+   "journal": "Eur J Med Genet"
+  },
+  "31855247": {
+   "year": 2020,
+   "month": 1,
+   "day": 1,
+   "doi": "10.1093/brain/awz376",
+   "journal": "Brain"
+  },
+  "32196122": {
+   "year": 2020,
+   "month": 3,
+   "day": 20,
+   "doi": "10.1002/mds.28023",
+   "journal": "Mov Disord"
+  },
+  "32201884": {
+   "year": 2020,
+   "month": 4,
+   "day": 1,
+   "doi": "10.1093/brain/awaa064",
+   "journal": "Brain"
+  },
+  "32293671": {
+   "year": 2020,
+   "month": 4,
+   "day": 1,
+   "doi": "10.1093/brain/awaa063",
+   "journal": "Brain"
+  },
+  "32346159": {
+   "year": 2020,
+   "month": 4,
+   "day": 28,
+   "doi": "10.1038/s41380-020-0725-5",
+   "journal": "Mol Psychiatry"
+  },
+  "32627353": {
+   "year": 2020,
+   "month": 7,
+   "day": 5,
+   "doi": "10.1002/acn3.51125",
+   "journal": "Ann Clin Transl Neurol"
+  },
+  "32666117": {
+   "year": 2020,
+   "month": 8,
+   "day": 1,
+   "doi": "10.1093/brain/awaa183",
+   "journal": "Brain"
+  },
+  "33015733": {
+   "year": 2020,
+   "month": 10,
+   "day": 5,
+   "doi": "10.1007/s00401-020-02223-w",
+   "journal": "Acta Neuropathol"
+  },
+  "33108101": {
+   "year": 2020,
+   "month": 10,
+   "day": 27,
+   "doi": "10.1056/NEJMoa2026834",
+   "journal": "N Engl J Med"
+  },
+  "33141179": {
+   "year": 2020,
+   "month": 12,
+   "day": 5,
+   "doi": "10.1093/brain/awaa279",
+   "journal": "Brain"
+  },
+  "33272297": {
+   "year": 2020,
+   "month": 12,
+   "day": 3,
+   "doi": "10.1186/s13023-020-01606-2",
+   "journal": "Orphanet J Rare Dis"
+  },
+  "33342467": {
+   "year": 2020,
+   "month": 9,
+   "day": 17,
+   "doi": "10.1016/j.ymgme.2020.08.003",
+   "journal": "Mol Genet Metab"
+  },
+  "33348459": {
+   "year": 2021,
+   "month": 1,
+   "day": 3,
+   "doi": "10.1002/humu.24160",
+   "journal": "Hum Mutat"
+  },
+  "33420346": {
+   "year": 2021,
+   "month": 1,
+   "day": 8,
+   "doi": "10.1038/s41436-020-01047-z",
+   "journal": "Genet Med"
+  },
+  "33704598": {
+   "year": 2021,
+   "month": 3,
+   "day": 11,
+   "doi": "10.1007/s10072-021-05152-y",
+   "journal": "Neurol Sci"
+  },
+  "33833240": {
+   "year": 2021,
+   "month": 4,
+   "day": 8,
+   "doi": "10.1038/s41467-021-22389-5",
+   "journal": "Nat Commun"
+  },
+  "33977262": {
+   "year": 2021,
+   "month": 3,
+   "day": 11,
+   "doi": "10.1093/braincomms/fcab036",
+   "journal": "Brain Commun"
+  },
+  "33979636": {
+   "year": 2021,
+   "month": 5,
+   "day": 11,
+   "doi": "10.1016/j.ajhg.2021.04.017",
+   "journal": "Am J Hum Genet"
+  },
+  "34059824": {
+   "year": 2021,
+   "month": 5,
+   "day": 31,
+   "doi": "10.1038/s41591-021-01346-1",
+   "journal": "Nat Med"
+  },
+  "34089223": {
+   "year": 2021,
+   "month": 6,
+   "day": 4,
+   "doi": "10.1002/ajmg.a.62377",
+   "journal": "Am J Med Genet A"
+  },
+  "34102099": {
+   "year": 2021,
+   "month": 6,
+   "day": 7,
+   "doi": "10.1016/j.ajhg.2021.05.007",
+   "journal": "Am J Hum Genet"
+  },
+  "34172529": {
+   "year": 2021,
+   "month": 6,
+   "day": 25,
+   "doi": "10.1136/jmedgenet-2021-107769",
+   "journal": "J Med Genet"
+  },
+  "34415322": {
+   "year": 2021,
+   "month": 10,
+   "day": 22,
+   "doi": "10.1093/brain/awab124",
+   "journal": "Brain"
+  },
+  "34631954": {
+   "year": 2021,
+   "month": 7,
+   "day": 31,
+   "doi": "10.1002/mdc3.13310",
+   "journal": "Mov Disord Clin Pract"
+  },
+  "34653363": {
+   "year": 2021,
+   "month": 10,
+   "day": 14,
+   "doi": "10.1016/j.ajhg.2021.09.012",
+   "journal": "Am J Hum Genet"
+  },
+  "34750991": {
+   "year": 2021,
+   "month": 11,
+   "day": 8,
+   "doi": "10.15252/emmm.202114397",
+   "journal": "EMBO Mol Med"
+  },
+  "34805998": {
+   "year": 2021,
+   "month": 10,
+   "day": 26,
+   "doi": "10.1093/braincomms/fcab256",
+   "journal": "Brain Commun"
+  },
+  "35202461": {
+   "year": 2022,
+   "month": 6,
+   "day": 30,
+   "doi": "10.1093/brain/awac074",
+   "journal": "Brain"
+  },
+  "35880319": {
+   "year": 2022,
+   "month": 7,
+   "day": 25,
+   "doi": "10.1002/acn3.51634",
+   "journal": "Ann Clin Transl Neurol"
+  },
+  "35887798": {
+   "year": 2022,
+   "month": 7,
+   "day": 12,
+   "doi": "10.3390/jcm11144033",
+   "journal": "J Clin Med"
+  },
+  "35904593": {
+   "year": 2022,
+   "month": 7,
+   "day": 29,
+   "doi": "10.1007/s00415-022-11302-9",
+   "journal": "J Neurol"
+  },
+  "36073542": {
+   "year": 2022,
+   "month": 9,
+   "day": 8,
+   "doi": "10.1002/ana.26485",
+   "journal": "Ann Neurol"
+  },
+  "36090556": {
+   "year": 2022,
+   "month": 8,
+   "day": 26,
+   "doi": "10.3389/fped.2022.944784",
+   "journal": "Front Pediatr"
+  },
+  "36175384": {
+   "year": 2022,
+   "month": 10,
+   "day": 3,
+   "doi": "10.1111/cge.14239",
+   "journal": "Clin Genet"
+  },
+  "36190515": {
+   "year": 2023,
+   "month": 3,
+   "day": 6,
+   "doi": "10.1093/hmg/ddac246",
+   "journal": "Hum Mol Genet"
+  },
+  "36401616": {
+   "year": 2022,
+   "month": 11,
+   "day": 19,
+   "doi": "10.1016/j.gim.2022.10.006",
+   "journal": "Genet Med"
+  },
+  "36443312": {
+   "year": 2022,
+   "month": 11,
+   "day": 29,
+   "doi": "10.1038/s41421-022-00475-2",
+   "journal": "Cell Discov"
+  },
+  "36454683": {
+   "year": 2023,
+   "month": 8,
+   "day": 1,
+   "doi": "10.1093/brain/awac453",
+   "journal": "Brain"
+  },
+  "36729635": {
+   "year": 2023,
+   "month": 7,
+   "day": 3,
+   "doi": "10.1093/brain/awad010",
+   "journal": "Brain"
+  },
+  "36917474": {
+   "year": 2023,
+   "month": 8,
+   "day": 1,
+   "doi": "10.1093/brain/awad086",
+   "journal": "Brain"
+  },
+  "37282399": {
+   "year": 2023,
+   "month": 4,
+   "day": null,
+   "doi": "10.4103/ijmr.IJMR_3568_20",
+   "journal": "Indian J Med Res"
+  },
+  "37459438": {
+   "year": 2023,
+   "month": 11,
+   "day": 2,
+   "doi": "10.1093/brain/awad235",
+   "journal": "Brain"
+  },
+  "37481223": {
+   "year": 2023,
+   "month": 7,
+   "day": 20,
+   "doi": "10.1016/j.exer.2023.109600",
+   "journal": "Exp Eye Res"
+  },
+  "37660254": {
+   "year": 2023,
+   "month": 9,
+   "day": 3,
+   "doi": "10.1016/j.xhgg.2023.100236",
+   "journal": "HGG Adv"
+  },
+  "38480682": {
+   "year": 2024,
+   "month": 3,
+   "day": 13,
+   "doi": "10.1038/s41467-024-46354-0",
+   "journal": "Nat Commun"
+  },
+  "39003500": {
+   "year": 2024,
+   "month": 7,
+   "day": 14,
+   "doi": "10.1016/j.xhgg.2024.100327",
+   "journal": "HGG Adv"
+  },
+  "39013458": {
+   "year": 2024,
+   "month": 7,
+   "day": 15,
+   "doi": "10.1016/j.ajhg.2024.06.008",
+   "journal": "Am J Hum Genet"
+  },
+  "39073169": {
+   "year": 2024,
+   "month": 7,
+   "day": 29,
+   "doi": "10.1002/ana.27037",
+   "journal": "Ann Neurol"
+  },
+  "39230499": {
+   "year": 2024,
+   "month": 9,
+   "day": 4,
+   "doi": "10.1002/ana.27071",
+   "journal": "Ann Neurol"
+  },
+  "39279645": {
+   "year": 2025,
+   "month": 2,
+   "day": 3,
+   "doi": "10.1093/brain/awae268",
+   "journal": "Brain"
+  },
+  "39315527": {
+   "year": 2024,
+   "month": 9,
+   "day": 21,
+   "doi": "10.1016/j.gim.2024.101278",
+   "journal": "Genet Med"
+  },
+  "39721588": {
+   "year": 2024,
+   "month": 12,
+   "day": 24,
+   "doi": "10.1016/j.ajhg.2024.11.009",
+   "journal": "Am J Hum Genet"
+  },
+  "39925707": {
+   "year": 2024,
+   "month": 12,
+   "day": 26,
+   "doi": "10.1016/j.gimo.2024.101958",
+   "journal": "Genet Med Open"
+  },
+  "40856104": {
+   "year": 2025,
+   "month": 8,
+   "day": 23,
+   "doi": "10.1016/j.gim.2025.101569",
+   "journal": "Genet Med"
+  }
+ }
+}

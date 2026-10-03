@@ -172,11 +172,33 @@ def parse_frequency_denominator(raw_frequency: str | None) -> int | None:
 BIOCURATION_DATE_PATTERN = re.compile(r"\[(\d{4})-(\d{2})-(\d{2})\]")
 
 
-def load_hpo_annotation_dates(phenotype_hpoa_path: Path, dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",)) -> dict[tuple[str, str], date]:
-    """(disease id, HPO term id) -> earliest biocuration date, for annotations from the dated provenances.
+def load_reference_publication_dates(publication_dates_path: Path) -> dict[str, date]:
+    """PMID -> publication date from docs/hpo_reference_publication_dates.json (PubMed metadata; month or day may be missing)."""
+    import json
 
-    Rows with the NOT qualifier are skipped. Orphanet rows are excluded by default because their
-    biocuration date is the release import date.
+    payload = json.loads(Path(publication_dates_path).read_text())
+    entries = payload.get("publication_dates_by_pmid", payload)
+    dates: dict[str, date] = {}
+    for pmid, entry in entries.items():
+        year = entry.get("year")
+        if not year:
+            continue
+        dates[str(pmid)] = date(int(year), int(entry.get("month") or 1), int(entry.get("day") or 1))
+    return dates
+
+
+def load_hpo_annotation_dates(
+    phenotype_hpoa_path: Path,
+    dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",),
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+) -> dict[tuple[str, str], date]:
+    """(disease id, HPO term id) -> earliest availability date, for annotations from the dated provenances.
+
+    The availability date of one annotation row is the earliest of its biocuration dates and, when the
+    reference column cites PubMed identifiers found in publication_dates_by_pmid, the publication dates of
+    those references; publication precedes curation, so with the lookup present the date is the
+    publication date. Rows with the NOT qualifier are skipped. Orphanet rows are excluded by default
+    because their biocuration date is the release import date.
     """
     dates: dict[tuple[str, str], date] = {}
     with open(phenotype_hpoa_path, encoding="utf-8") as hpoa_file:
@@ -193,9 +215,15 @@ def load_hpo_annotation_dates(phenotype_hpoa_path: Path, dated_provenance_prefix
             if not disease_id.startswith(dated_provenance_prefixes) or fields[column["qualifier"]].strip().upper() == "NOT":
                 continue
             matches = BIOCURATION_DATE_PATTERN.findall(fields[column["biocuration"]])
-            if not matches:
+            candidates = [date(int(year), int(month), int(day)) for year, month, day in matches]
+            if publication_dates_by_pmid:
+                for reference in fields[column["reference"]].split(";"):
+                    reference = reference.strip()
+                    if reference.startswith("PMID:") and reference[5:] in publication_dates_by_pmid:
+                        candidates.append(publication_dates_by_pmid[reference[5:]])
+            if not candidates:
                 continue
-            earliest = min(date(int(year), int(month), int(day)) for year, month, day in matches)
+            earliest = min(candidates)
             key = (disease_id, fields[column["hpo_id"]])
             if key not in dates or earliest < dates[key]:
                 dates[key] = earliest
