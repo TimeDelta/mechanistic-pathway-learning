@@ -1,6 +1,9 @@
-"""Phase 2: baselines B0 (popularity, degree-scaled popularity) and B1 (random walk with restart)
-under the grouped perturbation-wise split and the pathway-wise split (design sections 5.6 and 6.1),
-with the label-permutation negative control (section 6.3).
+"""Phase 2: baselines B0 (popularity, degree-scaled popularity), B1 (random walk with restart) and,
+with --with-kg-embedding, B2 (TransE knowledge-graph embedding over the graph plus training evidence
+triples) under the grouped perturbation-wise split and the pathway-wise splits (design sections 5.6
+and 6.1), with the label-permutation negative control (section 6.3). B2 is trained once per split
+(seconds to a minute on CPU) and, unless --kg-embedding-all-splits is given, only for the grouped
+split, its permutation control and the time split.
 
 Scoring. Out-of-fold predictions are pooled and scored per symptom (AUPRC, AUROC with bootstrap
 intervals over perturbations) plus mean reciprocal rank and hits-at-3 per perturbation. Pooling
@@ -64,6 +67,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     per_symptom_auroc,
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
+from mechanistic_pathway_learning.models.baselines.knowledge_graph_embedding_baseline import KnowledgeGraphEmbeddingBaseline
 from mechanistic_pathway_learning.models.baselines.popularity_baseline import PopularityBaseline
 from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_baseline import (
     RandomWalkWithRestartBaseline,
@@ -71,6 +75,8 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
 )
 
 BASELINE_NAMES = ("popularity", "degree_popularity", "random_walk_with_restart")
+KG_EMBEDDING_NAME = "knowledge_graph_embedding_transe"
+KG_EMBEDDING_SETTINGS = {"model_name": "TransE", "embedding_dim": 64, "num_epochs": 30, "batch_size": 4096, "learning_rate": 0.01, "margin": 1.0, "negatives_per_positive": 4}
 MINIMUM_POSITIVES_TO_SCORE = 5
 
 
@@ -82,6 +88,12 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
     if model_name == "random_walk_with_restart":
         model = RandomWalkWithRestartBaseline(restart_probability=restart_probability).fit(
             normalized_adjacency, [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
+        )
+        return model.predict([data.perturbation_seeds[i] for i in np.where(test)[0]])
+    if model_name == KG_EMBEDDING_NAME:
+        model = KnowledgeGraphEmbeddingBaseline(**KG_EMBEDDING_SETTINGS).fit(
+            len(data.node_ids), data.edge_source, data.edge_target, data.edge_relation, len(data.relation_types),
+            [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
         )
         return model.predict([data.perturbation_seeds[i] for i in np.where(test)[0]])
     raise ValueError(model_name)
@@ -253,6 +265,8 @@ def main() -> None:
     parser.add_argument("--skip-permutation-control", action="store_true")
     parser.add_argument("--rewiring-swaps-per-edge", type=int, default=2, help="degree-preserving rewiring control for the random walk; 0 skips it")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
+    parser.add_argument("--with-kg-embedding", action="store_true", help="also run baseline B2 (TransE over graph plus training evidence triples)")
+    parser.add_argument("--kg-embedding-all-splits", action="store_true", help="run B2 on the pathway hold-outs too (many fits)")
     parser.add_argument("--metabolic-layer-only", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/baselines"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/phase2_baselines.md"))
@@ -271,6 +285,7 @@ def main() -> None:
     results = {
         "num_perturbations": len(data.perturbation_ids), "num_genes": num_genes, "num_drugs": num_drugs, "num_symptoms": len(data.symptoms), "symptoms": data.symptoms,
         "group_by": arguments.group_by, "num_groups": len(set(data.group_ids)), "num_folds": arguments.num_folds,
+        "kg_embedding_settings": KG_EMBEDDING_SETTINGS if arguments.with_kg_embedding else None,
         "pathway_wise_modules": pathway_module_ids, "pathway_wise_holdout_sizes": [int(mask.sum()) for mask in pathway_masks],
         "pathway_wise_positives": [int(data.outcomes[mask].sum()) for mask in pathway_masks],
         "subsystem_wise_subsystems": subsystem_labels, "subsystem_wise_holdout_sizes": [int(mask.sum()) for mask in subsystem_masks],
@@ -285,9 +300,12 @@ def main() -> None:
         entry = results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"]
         print(f"{'grouped_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
     split_plan = [("grouped", grouped_masks, [str(fold) for fold in range(arguments.num_folds)]), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
-    for model_name in BASELINE_NAMES:
+    model_names = list(BASELINE_NAMES) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else [])
+    for model_name in model_names:
         for split_name, masks, labels in split_plan:
             if not masks:
+                continue
+            if model_name == KG_EMBEDDING_NAME and split_name != "grouped" and not arguments.kg_embedding_all_splits:
                 continue
             predictions, rows, per_fold = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels)
             results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap)
@@ -303,7 +321,7 @@ def main() -> None:
                 print(f"{split_name:26s} {model_name:26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
                       f"macro AUROC {entry['macro_auroc']:.3f} (per fold {entry['per_fold_macro_auroc_mean']:.3f})  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}")
     results["time_split"] = {}
-    for model_name in BASELINE_NAMES:
+    for model_name in model_names:
         entry = time_split_evaluation(data, arguments.time_split_cutoff, model_name, arguments.restart_probability, normalized_adjacency, arguments.seed)
         if entry is not None:
             results["time_split"][model_name] = entry
