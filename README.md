@@ -36,8 +36,7 @@ its OMIM annotation (docs/hpo_reference_publication_dates.json). docs/references
 document's reference list for import into a reference manager.
 
 Still stubs: OnSIDES and literature loaders, the diagnosis proxy audit, the flux-sampling job
-(written, not yet run), the embedding and flux-feature and language-model baselines, the MAGMA
-wrapper. The pharmacological evidence class and the signaling layers need the SIDER, ChEMBL and
+(written, not yet run), the flux-feature and language-model baselines, the MAGMA wrapper. The pharmacological evidence class and the signaling layers need the SIDER, ChEMBL and
 OmniPath hosts, which were not reachable from the environment that produced the current tables.
 
 Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
