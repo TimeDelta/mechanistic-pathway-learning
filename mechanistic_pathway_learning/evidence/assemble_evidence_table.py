@@ -13,8 +13,9 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
   symptom                target symptom from docs/symptom_crosswalk.csv
   relation               "induces" or "relieves"
   evidence_class         "monogenic" or "pharmacological"
-  grade, weight          from assign_evidence_grades (fixed-grade fallback; the learned
-                         reliability model replaces weight downstream)
+  grade, weight          from assign_evidence_grades over the pair's positive reports (--weighting grade, the
+                         default) or reliability_global_scale x reliability_posterior (--weighting reliability);
+                         0 for a pair with no positive report
   perturbation_nodes     JSON list of [node_id, sign, magnitude] in the graph
   label_frequency        SIDER frequency midpoint (E2) or largest HPO frequency midpoint (E1) when reported
   evidence_date          earliest availability date behind a monogenic pair: publication date of the cited PubMed
@@ -24,17 +25,27 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
   distinct_reference_count, distinct_pubmed_reference_count  descriptive multiplicity of the HPO references behind a monogenic row
                          provenance of a monogenic record (null for drugs)
   source                 provenance string
+  report_count, positive_report_count, negative_report_count
+                         explicit reports behind the pair (evidence_reports.parquet), with value 1 and 0
+  reliability_posterior  P(link real | reports) from the report-level Dawid-Skene fit, on every row whatever the weighting
+  weighting              "grade" or "reliability", the same on every row
 
-Rows whose perturbation has no node in the graph are written to a separate
-unmapped table so the gap is visible rather than silently dropped.
+The table is an aggregation of evidence_reports.parquet, one row per report (evidence_reports.py), written
+next to it: a pair is present when it has at least one explicit report, positive or negative, and absent
+otherwise (unobserved pairs are unlabelled, not negative). Rows whose perturbation has no node in the
+graph are written to a separate unmapped table so the gap is visible rather than silently dropped.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import (
@@ -44,13 +55,28 @@ from mechanistic_pathway_learning.evidence.assign_evidence_grades import (
     assign_evidence_grade,
     loss_weight_for_record,
 )
-from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc, load_sider_events
+from mechanistic_pathway_learning.evidence.evidence_reliability_model import (
+    ReportReliabilityFit,
+    fit_weighted_dawid_skene,
+    observation_weights_from_posterior,
+    report_count_matrices,
+)
+from mechanistic_pathway_learning.evidence.evidence_reports import (
+    SIDER_FREQUENCY_EVIDENCE_CODES,
+    SOURCE_NAMES,
+    UNJOINED_EVIDENCE_CODE,
+    EvidenceReport,
+    RubricWeightDefaults,
+    load_rubric_weight_defaults,
+    reports_to_dataframe,
+    rubric_weights_for_table,
+)
+from mechanistic_pathway_learning.evidence.load_drug_label_events import drug_label_reports, is_nervous_system_atc, load_sider_events
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
-    load_hpo_annotation_dates,
-    load_hpo_annotation_references,
+    load_hpo_annotation_rows,
     load_hpo_is_a_parents_from_obo,
     load_reference_publication_dates,
-    monogenic_evidence_records,
+    monogenic_evidence_reports,
     parse_genes_to_phenotype,
     read_crosswalk_hpo_terms,
 )
@@ -107,6 +133,245 @@ def disease_cluster_ids(records: list[EvidenceRecord], max_genes_per_linking_ent
     return {gene: "cluster:" + find(gene) for gene in list(parent)}
 
 
+WEIGHTINGS = ("grade", "reliability")
+DEFAULT_WEIGHTING = "grade"
+POSTERIOR_QUANTILES = (0.1, 0.25, 0.5, 0.75, 0.9)
+
+
+@dataclass
+class AssembledEvidence:
+    observations: pd.DataFrame  # evidence_records.parquet
+    unmapped: pd.DataFrame  # unmapped_records.parquet
+    reports: pd.DataFrame  # evidence_reports.parquet, rubric_weight filled
+    reliability_fit: ReportReliabilityFit
+    reports_dropped_unknown_provenance: int = 0  # genes_to_phenotype rows whose disease prefix is neither OMIM: nor ORPHA:
+
+
+def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linking_entry: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, str]:
+    """disease_cluster_ids over the monogenic reports: every disease entry of a gene links it, positive and negative reports alike."""
+    diseases_by_gene: dict[str, set[str]] = defaultdict(set)
+    monogenic = reports[reports.evidence_class == "monogenic"] if len(reports) else reports
+    for gene_symbol, disease_id in zip(monogenic.perturbation_id, monogenic.source_record_id):
+        diseases_by_gene[gene_symbol].add(disease_id)
+    records = [EvidenceRecord(gene_symbol, "", "induces", "monogenic", disease_identifiers=sorted(disease_ids)) for gene_symbol, disease_ids in diseases_by_gene.items()]
+    return disease_cluster_ids(records, max_genes_per_linking_entry)
+
+
+def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> EvidenceRecord:
+    """The EvidenceRecord that assign_evidence_grade and loss_weight_for_record read for one pair, from its positive reports.
+
+    Monogenic: provenance counts, the clinical-synopsis flag and the version 0.3 case-series proxy over the
+    positive reports' disease entries, the largest positive frequency, the summed patient denominators, the
+    distinct references and the earliest date. Pharmacological: one label event per preferred term; the record
+    carries the label frequency (mean of that term's frequency reports) of the term with the largest grade
+    weight, because the downstream loader took the maximum weight over the one-row-per-term table of earlier
+    revisions and the default weighting has to reproduce it. A pair with no positive report yields a record
+    with no provenance (grade C) or, for a drug, no dominant target (grade E).
+    """
+    first = pair_reports.iloc[0]
+    positive = pair_reports[pair_reports.report_value == 1]
+    if first.evidence_class == "monogenic":
+        disease_ids = sorted(set(positive.source_record_id))
+        frequencies = positive.frequency.dropna()
+        denominators = positive.frequency_denominator.dropna()
+        cited = {reference for references in positive.references for reference in str(references).split(";") if reference}
+        dates = positive.evidence_date.dropna()
+        return EvidenceRecord(
+            perturbation_identifier=first.perturbation_id, symptom_identifier=first.symptom, relation=first.relation, evidence_class="monogenic",
+            source="HPO genes_to_phenotype; diseases=" + ";".join(disease_ids),
+            independent_case_series_count=len(disease_ids), has_omim_clinical_synopsis=any(disease_id.startswith("OMIM:") for disease_id in disease_ids),
+            disease_identifiers=disease_ids,
+            omim_entry_count=sum(1 for disease_id in disease_ids if disease_id.startswith("OMIM:")),
+            orpha_entry_count=sum(1 for disease_id in disease_ids if disease_id.startswith("ORPHA:")),
+            annotation_row_count=int(len(positive)),
+            max_annotation_frequency=float(frequencies.max()) if len(frequencies) else None,
+            annotation_patient_count=int(denominators.sum()) if len(denominators) else None,
+            evidence_available_date=date.fromisoformat(min(dates)) if len(dates) else None,
+            distinct_reference_count=len(cited), distinct_pubmed_reference_count=sum(1 for reference in cited if reference.startswith("PMID:")),
+        )
+    if not len(positive):
+        return EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source="SIDER 4.1", cns_penetrant=False, has_dominant_target=False)
+    best_record: EvidenceRecord | None = None
+    best_weight = -1.0
+    for _, term_reports in positive.groupby("source_term_id", sort=False):
+        term_frequencies = [float(value) for value in term_reports[term_reports.evidence_code.isin(SIDER_FREQUENCY_EVIDENCE_CODES)].frequency if not pd.isna(value)]
+        term_frequency = sum(term_frequencies) / len(term_frequencies) if term_frequencies else None
+        record = EvidenceRecord(first.perturbation_id, first.symptom, first.relation, "pharmacological", source="SIDER 4.1", cns_penetrant=True, has_dominant_target=True, label_event_frequency=term_frequency)
+        weight = loss_weight_for_record(record)
+        if weight > best_weight:
+            best_record, best_weight = record, weight
+    return best_record
+
+
+def pharmacological_label_frequency(positive: pd.DataFrame) -> float | None:
+    """Largest over preferred terms of the mean treatment-midpoint of that term's frequency reports (what the downstream maximum over the earlier one-row-per-term table gave)."""
+    term_means = []
+    for _, term_reports in positive.groupby("source_term_id", sort=False):
+        values = [float(value) for value in term_reports[term_reports.evidence_code.isin(SIDER_FREQUENCY_EVIDENCE_CODES)].frequency if not pd.isna(value)]
+        if values:
+            term_means.append(sum(values) / len(values))
+    return max(term_means) if term_means else None
+
+
+def aggregate_reports_to_observations(
+    reports: pd.DataFrame,
+    grade_a_policy: str,
+    cluster_by_gene: dict[str, str],
+    metabolic_node_ids: set[str],
+    drug_targets_by_perturbation: dict[str, str] | None = None,
+) -> pd.DataFrame:
+    """One observation row per (perturbation_id, symptom, relation) with at least one explicit report, in order of first report.
+
+    Grade and weight come from evidence_record_from_positive_reports; a pair with no positive report has weight 0
+    and grade C (monogenic) or E (pharmacological) and stays in the table so the absence claim is visible.
+    Provenance counts and disease identifiers run over all explicit reports; label_frequency, patient count,
+    references and dates over positive reports. drug_targets_by_perturbation gives, per drug, the sorted
+    "CHEMBLid:ACTION;..." string that names its group and its source line.
+    """
+    rows: list[dict] = []
+    if not len(reports):
+        return pd.DataFrame(rows)
+    for (perturbation_id, symptom, relation), pair_reports in reports.groupby(["perturbation_id", "symptom", "relation"], sort=False):
+        first = pair_reports.iloc[0]
+        positive = pair_reports[pair_reports.report_value == 1]
+        record = evidence_record_from_positive_reports(pair_reports)
+        grade = assign_evidence_grade(record, grade_a_policy)
+        weight = loss_weight_for_record(record, grade_a_policy=grade_a_policy) if len(positive) else 0.0
+        node_ids = [node_id for node_id, _, _ in json.loads(first.perturbation_nodes)] if first.perturbation_nodes else []
+        row = {
+            "perturbation_id": perturbation_id, "perturbation_type": first.perturbation_type, "perturbation_label": first.perturbation_label,
+            "symptom": symptom, "relation": relation, "evidence_class": first.evidence_class, "grade": grade, "weight": float(weight),
+            "in_metabolic_layer": any(node_id in metabolic_node_ids for node_id in node_ids),
+            "report_count": int(len(pair_reports)), "positive_report_count": int(len(positive)), "negative_report_count": int(len(pair_reports) - len(positive)),
+            "perturbation_nodes": first.perturbation_nodes,
+        }
+        if first.evidence_class == "monogenic":
+            all_disease_ids = sorted(set(pair_reports.source_record_id))
+            denominators = positive.frequency_denominator.dropna()
+            row.update({
+                "group_id": perturbation_id, "disease_cluster_id": cluster_by_gene.get(perturbation_id, "cluster:" + perturbation_id),
+                "label_frequency": record.max_annotation_frequency,
+                "source": "HPO genes_to_phenotype; diseases=" + ";".join(all_disease_ids),
+                "omim_entry_count": sum(1 for disease_id in all_disease_ids if disease_id.startswith("OMIM:")),
+                "orpha_entry_count": sum(1 for disease_id in all_disease_ids if disease_id.startswith("ORPHA:")),
+                "annotation_row_count": int(pair_reports[["source_record_id", "source_term_id"]].drop_duplicates().shape[0]),
+                "annotation_patient_count": int(denominators.sum()) if len(denominators) else None,
+                "disease_identifiers": ";".join(all_disease_ids),
+                "distinct_reference_count": record.distinct_reference_count, "distinct_pubmed_reference_count": record.distinct_pubmed_reference_count,
+                "evidence_date": record.evidence_available_date.isoformat() if record.evidence_available_date else None,
+            })
+        else:
+            targets = (drug_targets_by_perturbation or {}).get(perturbation_id, "")
+            group_id = "|".join(part.split(":")[0] for part in targets.split(";") if part) if targets else perturbation_id
+            row.update({
+                "group_id": group_id, "disease_cluster_id": group_id,
+                "label_frequency": pharmacological_label_frequency(positive),
+                "source": "SIDER 4.1; targets " + targets,
+                "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
+                "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None,
+            })
+        rows.append(row)
+    column_order = ["perturbation_id", "perturbation_type", "perturbation_label", "group_id", "disease_cluster_id", "symptom", "relation", "evidence_class", "grade", "weight",
+                    "label_frequency", "source", "in_metabolic_layer", "omim_entry_count", "orpha_entry_count", "annotation_row_count", "annotation_patient_count", "disease_identifiers",
+                    "distinct_reference_count", "distinct_pubmed_reference_count", "evidence_date", "perturbation_nodes", "report_count", "positive_report_count", "negative_report_count"]
+    return pd.DataFrame(rows, columns=column_order)
+
+
+def fit_report_reliability(reports: pd.DataFrame, observations: pd.DataFrame, defaults: RubricWeightDefaults) -> ReportReliabilityFit:
+    """Report-level Dawid-Skene fit with the observations as items (row order) and the sources that have reports, in SOURCE_NAMES order."""
+    item_keys = [(perturbation_id, symptom, relation) for perturbation_id, symptom, relation in zip(observations.perturbation_id, observations.symptom, observations.relation)] if len(observations) else []
+    present_sources = set(reports.source) if len(reports) else set()
+    source_names = [source for source in SOURCE_NAMES if source in present_sources]
+    positive_weights, negative_weights, coverage = report_count_matrices(reports, item_keys, source_names, defaults.implicit_negative_weight)
+    fit = fit_weighted_dawid_skene(positive_weights, negative_weights, source_names, item_keys)
+    explicit_cells = explicit_report_cells(reports, item_keys, source_names)
+    for column, source in enumerate(source_names):
+        fit.per_source_summary[source] = {
+            "items_covered": int(coverage[:, column].sum()),
+            "items_with_explicit_reports": int(explicit_cells[:, column].sum()),
+            "explicit_positive_weight": float(positive_weights[:, column].sum()),
+            "explicit_negative_weight": float((negative_weights[:, column] - defaults.implicit_negative_weight * coverage[:, column] * (~explicit_cells[:, column])).sum()),
+            "implicit_negative_cells": int((coverage[:, column] * (~explicit_cells[:, column])).sum()),
+            "sensitivity": float(fit.sensitivity[column]),
+            "specificity": float(fit.specificity[column]),
+        }
+    return fit
+
+
+def explicit_report_cells(reports: pd.DataFrame, item_keys: list[tuple[str, str, str]], source_names: list[str]) -> np.ndarray:
+    """Boolean [num_items, num_sources]: the source has at least one explicit report on the item."""
+    item_index = {key: index for index, key in enumerate(item_keys)}
+    source_index = {name: index for index, name in enumerate(source_names)}
+    explicit = np.zeros((len(item_keys), len(source_names)), dtype=bool)
+    if len(reports):
+        for perturbation_id, symptom, relation, source in zip(reports.perturbation_id, reports.symptom, reports.relation, reports.source):
+            row, column = item_index.get((perturbation_id, symptom, relation)), source_index.get(source)
+            if row is not None and column is not None:
+                explicit[row, column] = True
+    return explicit
+
+
+def posterior_pair_categories(reports: pd.DataFrame, observations: pd.DataFrame, fit: ReportReliabilityFit) -> np.ndarray:
+    """Category per observation row for the posterior summary: how the covering sources speak about the pair."""
+    item_keys = [(perturbation_id, symptom, relation) for perturbation_id, symptom, relation in zip(observations.perturbation_id, observations.symptom, observations.relation)]
+    positive_weights, negative_weights, coverage = report_count_matrices(reports, item_keys, fit.source_names, 0.0)
+    categories = np.empty(len(item_keys), dtype=object)
+    for row in range(len(item_keys)):
+        has_positive, has_negative = positive_weights[row].sum() > 0, negative_weights[row].sum() > 0
+        covering, positive_sources = int(coverage[row].sum()), int((positive_weights[row] > 0).sum())
+        if has_positive and has_negative:
+            categories[row] = "conflicting"
+        elif not has_positive:
+            categories[row] = "all_negative"
+        elif covering >= 2 and positive_sources >= 2:
+            categories[row] = "covered_by_two_positive_in_both"
+        elif covering >= 2:
+            categories[row] = "positive_in_one_silent_in_other"
+        else:
+            categories[row] = "covered_by_one_source_positive"
+    return categories
+
+
+def summarize_reports(reports: pd.DataFrame, fit: ReportReliabilityFit, defaults: RubricWeightDefaults | None = None,
+                      observations: pd.DataFrame | None = None, reports_dropped_unknown_provenance: int = 0) -> dict:
+    """The "reports" and "reliability" blocks of evidence_summary.json."""
+    defaults = defaults or RubricWeightDefaults()
+    pair_values = reports.groupby(["perturbation_id", "symptom", "relation"]).report_value.agg(["min", "max"]) if len(reports) else pd.DataFrame(columns=["min", "max"])
+    posterior_quantiles: dict[str, dict] = {}
+    if observations is not None and len(observations) and len(fit.posterior) == len(observations):
+        categories = posterior_pair_categories(reports, observations, fit)
+        for category in ("covered_by_two_positive_in_both", "positive_in_one_silent_in_other", "covered_by_one_source_positive", "conflicting", "all_negative"):
+            values = fit.posterior[categories == category]
+            posterior_quantiles[category] = {"pairs": int(len(values)), "mean": float(values.mean()) if len(values) else None,
+                                             **{str(q): float(np.quantile(values, q)) for q in POSTERIOR_QUANTILES}} if len(values) else {"pairs": 0}
+    return {
+        "reports": {
+            "rows": int(len(reports)),
+            "by_source_and_value": {f"{source}|{value}": int(n) for (source, value), n in reports.groupby(["source", "report_value"]).size().items()} if len(reports) else {},
+            "by_evidence_code": {code: int(n) for code, n in reports.groupby("evidence_code").size().items()} if len(reports) else {},
+            "reports_without_hpoa_row": int((reports.evidence_code == UNJOINED_EVIDENCE_CODE).sum()) if len(reports) else 0,
+            "reports_dropped_unknown_provenance": int(reports_dropped_unknown_provenance),
+            "pairs_all_negative": int((pair_values["max"] == 0).sum()),
+            "pairs_conflicting": int(((pair_values["min"] == 0) & (pair_values["max"] == 1)).sum()),
+            "rubric_weight_quantiles": {str(q): float(reports.rubric_weight.quantile(q)) for q in POSTERIOR_QUANTILES} if len(reports) else {},
+        },
+        "reliability": {
+            "source_names": list(fit.source_names),
+            "prevalence": float(fit.prevalence),
+            "num_iterations": int(fit.num_iterations),
+            "converged": bool(fit.converged),
+            "weakly_identified": bool(fit.weakly_identified),
+            "rubric_weight_defaults": defaults.as_dict(),
+            "posterior_quantiles": posterior_quantiles,
+            "per_source": fit.per_source_summary,
+        },
+    }
+
+
+def drug_target_description(drug_targets) -> str:
+    return ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in sorted(drug_targets, key=lambda target: target.target_chembl_id))
+
+
 def assemble(
     crosswalk_path: Path,
     hpo_obo_path: Path,
@@ -119,69 +384,74 @@ def assemble(
     phenotype_hpoa_path: Path | None = None,
     reference_publication_dates_path: Path | None = None,
     disease_cluster_max_genes: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    weighting: str = DEFAULT_WEIGHTING,
+    rubric_weight_defaults: RubricWeightDefaults | None = None,
+    reliability_global_scale: float = 1.0,
+) -> AssembledEvidence:
+    """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations."""
+    if weighting not in WEIGHTINGS:
+        raise ValueError(f"unknown weighting {weighting!r}; choose from {WEIGHTINGS}")
+    rubric_weight_defaults = rubric_weight_defaults or RubricWeightDefaults()
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     node_by_symbol = gene_node_lookup(nodes)
-    metabolic_symbols = set(nodes[(nodes.node_type == "gene") & (nodes.get("in_metabolic_layer", False) == True)].gene_symbol.dropna())  # noqa: E712
+    metabolic_genes = nodes[(nodes.node_type == "gene") & (nodes.get("in_metabolic_layer", False) == True)]  # noqa: E712
+    metabolic_node_ids = set(metabolic_genes.node_id)
+    metabolic_symbols = set(metabolic_genes.gene_symbol.dropna())
     crosswalk_terms = read_crosswalk_hpo_terms(crosswalk_path)
     symptom_to_hpo = {symptom: roots for symptom, (roots, _) in crosswalk_terms.items()}
     symptom_to_excluded = {symptom: excluded for symptom, (_, excluded) in crosswalk_terms.items()}
-    rows: list[dict] = []
     unmapped: list[dict] = []
 
     parents = load_hpo_is_a_parents_from_obo(hpo_obo_path)
     publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
-    annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path, publication_dates_by_pmid=publication_dates) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
-    annotation_references = load_hpo_annotation_references(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
-    monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates, annotation_references)
-    cluster_by_gene = disease_cluster_ids(monogenic_records, disease_cluster_max_genes)
-    for record in monogenic_records:
-        node_id = node_by_symbol.get(record.perturbation_identifier)
-        base = {
-            "perturbation_id": record.perturbation_identifier, "perturbation_type": "gene", "perturbation_label": record.perturbation_identifier,
-            "group_id": record.perturbation_identifier, "disease_cluster_id": cluster_by_gene[record.perturbation_identifier],
-            "symptom": record.symptom_identifier, "relation": record.relation,
-            "evidence_class": "monogenic", "grade": assign_evidence_grade(record, grade_a_policy), "weight": loss_weight_for_record(record, grade_a_policy=grade_a_policy),
-            "label_frequency": record.max_annotation_frequency, "source": record.source, "in_metabolic_layer": record.perturbation_identifier in metabolic_symbols,
-            "omim_entry_count": record.omim_entry_count, "orpha_entry_count": record.orpha_entry_count, "annotation_row_count": record.annotation_row_count,
-            "annotation_patient_count": record.annotation_patient_count, "disease_identifiers": ";".join(record.disease_identifiers),
-            "distinct_reference_count": record.distinct_reference_count, "distinct_pubmed_reference_count": record.distinct_pubmed_reference_count,
-            "evidence_date": record.evidence_available_date.isoformat() if record.evidence_available_date else None,
-        }
-        if node_id is None:
-            unmapped.append(base)
-            continue
-        base["perturbation_nodes"] = json.dumps([[node_id, -1.0, 1.0]])
-        rows.append(base)
+    hpoa_rows_by_key = load_hpo_annotation_rows(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
+    dropped_unknown_provenance: list[dict] = []
+    report_list: list[EvidenceReport] = monogenic_evidence_reports(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded,
+                                                                   hpoa_rows_by_key, publication_dates, dropped_unknown_provenance)
+    for report in report_list:
+        report.perturbation_nodes = json.dumps([[node_by_symbol[report.perturbation_id], -1.0, 1.0]])
 
+    drug_targets_by_perturbation: dict[str, str] = {}
     if sider_directory is not None and chembl_directory is not None and (chembl_directory / "targets.json").exists():
         caches = load_chembl_caches(chembl_directory)
         for event in load_sider_events(sider_directory, crosswalk_path):
             drug_targets = drug_targets_for_pubchem_cid(event.pubchem_cid, caches)
             if not (has_dominant_target(drug_targets, max_drug_targets) and is_nervous_system_atc(event.atc_codes)):
                 continue
-            record = EvidenceRecord(event.stitch_flat_id, event.target_symptom, event.relation, "pharmacological", source=event.source,
-                                    cns_penetrant=True, has_dominant_target=True, label_event_frequency=event.label_frequency)
             perturbation_nodes = []
             for target in drug_targets:
                 mapped = [node_by_symbol[symbol] for symbol in target.gene_symbols if symbol in node_by_symbol]
                 perturbation_nodes.extend([node, target.sign, 1.0 / len(mapped)] for node in mapped)
-            group_id = "|".join(sorted(target.target_chembl_id for target in drug_targets))
-            base = {
-                "perturbation_id": event.stitch_flat_id, "perturbation_type": "drug", "perturbation_label": event.drug_name,
-                "group_id": group_id, "disease_cluster_id": group_id, "symptom": event.target_symptom, "relation": event.relation,
-                "evidence_class": "pharmacological", "grade": assign_evidence_grade(record), "weight": loss_weight_for_record(record),
-                "label_frequency": event.label_frequency, "source": f"{event.source}; targets " + ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in drug_targets),
-                "in_metabolic_layer": any(symbol in metabolic_symbols for target in drug_targets for symbol in target.gene_symbols),
-                "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None, "distinct_reference_count": None, "distinct_pubmed_reference_count": None,
-                "evidence_date": None,
-            }
+            targets = drug_target_description(drug_targets)
             if not perturbation_nodes:
-                unmapped.append(base)
+                record = EvidenceRecord(event.stitch_flat_id, event.target_symptom, event.relation, "pharmacological", source=event.source,
+                                        cns_penetrant=True, has_dominant_target=True, label_event_frequency=event.label_frequency)
+                group_id = "|".join(sorted(target.target_chembl_id for target in drug_targets))
+                unmapped.append({
+                    "perturbation_id": event.stitch_flat_id, "perturbation_type": "drug", "perturbation_label": event.drug_name,
+                    "group_id": group_id, "disease_cluster_id": group_id, "symptom": event.target_symptom, "relation": event.relation,
+                    "evidence_class": "pharmacological", "grade": assign_evidence_grade(record), "weight": loss_weight_for_record(record),
+                    "label_frequency": event.label_frequency, "source": f"{event.source}; targets " + targets,
+                    "in_metabolic_layer": any(symbol in metabolic_symbols for target in drug_targets for symbol in target.gene_symbols),
+                    "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None, "distinct_reference_count": None, "distinct_pubmed_reference_count": None,
+                    "evidence_date": None,
+                })
                 continue
-            base["perturbation_nodes"] = json.dumps(perturbation_nodes)
-            rows.append(base)
-    return pd.DataFrame(rows), pd.DataFrame(unmapped)
+            drug_targets_by_perturbation[event.stitch_flat_id] = targets
+            model_description = ("human; drug indication; " if event.relation == "relieves" else "human; drug label; ") + "ChEMBL targets " + targets
+            report_list.extend(drug_label_reports(event, model_description, json.dumps(perturbation_nodes)))
+
+    reports = reports_to_dataframe(report_list)
+    reports["rubric_weight"] = rubric_weights_for_table(reports, rubric_weight_defaults)
+    cluster_by_gene = disease_cluster_ids_from_reports(reports, disease_cluster_max_genes)
+    observations = aggregate_reports_to_observations(reports, grade_a_policy, cluster_by_gene, metabolic_node_ids, drug_targets_by_perturbation)
+    reliability_fit = fit_report_reliability(reports, observations, rubric_weight_defaults)
+    if len(observations):
+        observations["reliability_posterior"] = reliability_fit.posterior
+        if weighting == "reliability":
+            observations["weight"] = np.where(observations.positive_report_count > 0, observation_weights_from_posterior(reliability_fit.posterior, reliability_global_scale), 0.0)
+        observations["weighting"] = weighting
+    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance))
 
 
 def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -> dict:
@@ -206,6 +476,8 @@ def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -
         "monogenic_rows_dated_after_2015": int((genes.evidence_date.dropna() > "2015-12-31").sum()) if len(genes) and "evidence_date" in genes else 0,
         "disease_cluster_concentration_by_symptom": disease_cluster_concentration(genes) if len(genes) else {},
         "disease_entries_not_linking_clusters": non_linking_disease_entries(genes) if len(genes) else {},
+        "pairs_all_negative": int((observations.positive_report_count == 0).sum()) if "positive_report_count" in observations else 0,
+        "pairs_conflicting": int(((observations.positive_report_count > 0) & (observations.negative_report_count > 0)).sum()) if "negative_report_count" in observations else 0,
     }
 
 
@@ -254,19 +526,25 @@ def main() -> None:
     parser.add_argument("--grade-a-policy", choices=GRADE_A_POLICIES, default=DEFAULT_GRADE_A_POLICY)
     parser.add_argument("--disease-cluster-max-genes", type=int, default=DEFAULT_DISEASE_CLUSTER_MAX_GENES,
                         help="disease entries annotated to this many genes or more (group-level Orphanet entries) do not link disease clusters; 0 disables the cap")
+    parser.add_argument("--weighting", choices=WEIGHTINGS, default=DEFAULT_WEIGHTING,
+                        help="grade: the grade table times the frequency clip (default); reliability: reliability_global_scale x the report-level Dawid-Skene posterior")
+    parser.add_argument("--report-rubric-weights", type=Path, default=None, help="JSON overriding any field of RubricWeightDefaults (evidence-code factors, sample-size reference, minimum weight, implicit-negative weight)")
+    parser.add_argument("--reliability-global-scale", type=float, default=1.0, help="multiplier on the posterior under --weighting reliability")
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
     arguments = parser.parse_args()
-    observations, unmapped = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
-                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
-                                      arguments.disease_cluster_max_genes or None)
+    rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
+    assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
+                         arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
+                         arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
-    import os
-
-    for name, table in (("evidence_records.parquet", observations), ("unmapped_records.parquet", unmapped)):  # atomic replace for concurrent readers
+    for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
         os.replace(arguments.output_dir / (name + ".tmp"), arguments.output_dir / name)
-    summary = summarize_observations(observations, unmapped)
+    summary = summarize_observations(assembled.observations, assembled.unmapped)
     summary["grade_a_policy"] = arguments.grade_a_policy
+    summary["weighting"] = arguments.weighting
+    summary["reliability_global_scale"] = arguments.reliability_global_scale
+    summary.update(summarize_reports(assembled.reports, assembled.reliability_fit, rubric_weight_defaults, assembled.observations, assembled.reports_dropped_unknown_provenance))
     (arguments.output_dir / "evidence_summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1))
 

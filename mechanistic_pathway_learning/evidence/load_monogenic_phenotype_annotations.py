@@ -41,18 +41,31 @@ The distinct references behind a (gene, symptom) pair are nevertheless recorded 
 columns (distinct_reference_count, distinct_pubmed_reference_count) so multiplicity weighting can
 be tested as an ablation; neither count enters the loss weight.
 
-Output: one EvidenceRecord per (gene, target symptom) with evidence_class "monogenic".
+Reports. phenotype.hpoa is the per-annotation file: one row per (disease, term, reference, evidence code),
+with the qualifier (NOT asserts absence), frequency, onset, sex and biocuration dates of that row.
+genes_to_phenotype.txt collapses the rows of one (disease, term) key to a single row, keeps one of the
+frequencies and does not mark the NOT qualifier, so it cannot tell presence from asserted absence.
+monogenic_evidence_reports joins each genes_to_phenotype row back to its phenotype.hpoa rows on
+(disease_id, hpo_id) and emits one EvidenceReport per phenotype.hpoa row per target symptom, with
+report_value 0 for NOT-qualified or Excluded rows (evidence_reports.py). The aggregated
+EvidenceRecord of monogenic_evidence_records remains for the Phase 1 counts and the older tests.
+
+Output: one EvidenceRecord per (gene, target symptom) with evidence_class "monogenic", or one
+EvidenceReport per annotation row behind such a pair.
 """
 from __future__ import annotations
 
 import csv
+import math
 import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import EvidenceRecord
+from mechanistic_pathway_learning.evidence.evidence_reports import UNJOINED_EVIDENCE_CODE, EvidenceReport, limitations_text
 
 FREQUENCY_QUALIFIER_MIDPOINTS: dict[str, float] = {
     "HP:0040280": 1.0,  # Obligate, 100%
@@ -196,20 +209,33 @@ def load_reference_publication_dates(publication_dates_path: Path) -> dict[str, 
     return dates
 
 
-def load_hpo_annotation_dates(
-    phenotype_hpoa_path: Path,
-    dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",),
-    publication_dates_by_pmid: Mapping[str, date] | None = None,
-) -> dict[tuple[str, str], date]:
-    """(disease id, HPO term id) -> earliest availability date, for annotations from the dated provenances.
+@dataclass
+class HpoaAnnotationRow:
+    """One row of phenotype.hpoa; ordinal is its 1-based position within its (disease_id, hpo_id) group in file order."""
 
-    The availability date of one annotation row is the earliest of its biocuration dates and, when the
-    reference column cites PubMed identifiers found in publication_dates_by_pmid, the publication dates of
-    those references; publication precedes curation, so with the lookup present the date is the
-    publication date. Rows with the NOT qualifier are skipped. Orphanet rows are excluded by default
-    because their biocuration date is the release import date.
-    """
-    dates: dict[tuple[str, str], date] = {}
+    disease_id: str
+    disease_name: str
+    qualifier: str  # "" or "NOT"
+    hpo_id: str
+    references: list[str]  # prefixes kept: PMID:, OMIM:, ORPHA:, ISBN-13:, http
+    evidence: str  # PCS, TAS, IEA or another code verbatim
+    onset: str | None
+    frequency: str  # raw frequency column ("" when empty)
+    sex: str | None
+    modifier: str
+    aspect: str
+    biocuration_dates: list[date]
+    ordinal: int
+
+    @property
+    def is_negated(self) -> bool:
+        """True when the row asserts absence: the NOT qualifier or the Excluded frequency qualifier."""
+        return self.qualifier.strip().upper() == "NOT" or self.frequency.strip() == EXCLUDED_FREQUENCY_QUALIFIER
+
+
+def load_hpo_annotation_rows(phenotype_hpoa_path: Path) -> dict[tuple[str, str], list[HpoaAnnotationRow]]:
+    """(disease id, HPO term id) -> its phenotype.hpoa rows in file order, every provenance and qualifier kept."""
+    rows_by_key: dict[tuple[str, str], list[HpoaAnnotationRow]] = defaultdict(list)
     with open(phenotype_hpoa_path, encoding="utf-8") as hpoa_file:
         header: list[str] | None = None
         for raw_line in hpoa_file:
@@ -218,24 +244,60 @@ def load_hpo_annotation_dates(
             fields = raw_line.rstrip("\n").split("\t")
             if header is None:
                 header = fields
-                column = {name: index for index, name in enumerate(header)}
                 continue
-            disease_id = fields[column["database_id"]]
-            if not disease_id.startswith(dated_provenance_prefixes) or fields[column["qualifier"]].strip().upper() == "NOT":
+            values = {name: fields[index].strip() if index < len(fields) else "" for index, name in enumerate(header)}
+            key = (values.get("database_id", ""), values.get("hpo_id", ""))
+            matches = BIOCURATION_DATE_PATTERN.findall(values.get("biocuration", ""))
+            rows_by_key[key].append(HpoaAnnotationRow(
+                disease_id=key[0], disease_name=values.get("disease_name", ""), qualifier=values.get("qualifier", ""), hpo_id=key[1],
+                references=[reference.strip() for reference in values.get("reference", "").split(";") if reference.strip()],
+                evidence=values.get("evidence", ""), onset=values.get("onset") or None, frequency=values.get("frequency", ""), sex=values.get("sex") or None,
+                modifier=values.get("modifier", ""), aspect=values.get("aspect", ""),
+                biocuration_dates=[date(int(year), int(month), int(day)) for year, month, day in matches],
+                ordinal=len(rows_by_key[key]) + 1,
+            ))
+    return dict(rows_by_key)
+
+
+def hpoa_row_availability_date(
+    row: HpoaAnnotationRow,
+    dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",),
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+) -> date | None:
+    """Earliest of the row's biocuration dates and the publication dates of its PubMed references, for dated provenances.
+
+    Publication precedes curation, so with the lookup present the date is the publication date. Orphanet rows
+    get None by default because their biocuration date is the release import date.
+    """
+    if not row.disease_id.startswith(dated_provenance_prefixes):
+        return None
+    candidates = list(row.biocuration_dates)
+    if publication_dates_by_pmid:
+        for reference in row.references:
+            if reference.startswith("PMID:") and reference[5:] in publication_dates_by_pmid:
+                candidates.append(publication_dates_by_pmid[reference[5:]])
+    return min(candidates) if candidates else None
+
+
+def load_hpo_annotation_dates(
+    phenotype_hpoa_path: Path,
+    dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",),
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+) -> dict[tuple[str, str], date]:
+    """(disease id, HPO term id) -> earliest availability date, for annotations from the dated provenances.
+
+    The availability date of one annotation row is hpoa_row_availability_date; the key's date is the earliest
+    over its rows. Rows with the NOT qualifier are skipped. Orphanet rows are excluded by default because
+    their biocuration date is the release import date.
+    """
+    dates: dict[tuple[str, str], date] = {}
+    for key, rows in load_hpo_annotation_rows(phenotype_hpoa_path).items():
+        for row in rows:
+            if row.qualifier.strip().upper() == "NOT":
                 continue
-            matches = BIOCURATION_DATE_PATTERN.findall(fields[column["biocuration"]])
-            candidates = [date(int(year), int(month), int(day)) for year, month, day in matches]
-            if publication_dates_by_pmid:
-                for reference in fields[column["reference"]].split(";"):
-                    reference = reference.strip()
-                    if reference.startswith("PMID:") and reference[5:] in publication_dates_by_pmid:
-                        candidates.append(publication_dates_by_pmid[reference[5:]])
-            if not candidates:
-                continue
-            earliest = min(candidates)
-            key = (disease_id, fields[column["hpo_id"]])
-            if key not in dates or earliest < dates[key]:
-                dates[key] = earliest
+            availability_date = hpoa_row_availability_date(row, dated_provenance_prefixes, publication_dates_by_pmid)
+            if availability_date is not None and (key not in dates or availability_date < dates[key]):
+                dates[key] = availability_date
     return dates
 
 
@@ -245,23 +307,12 @@ def load_hpo_annotation_references(phenotype_hpoa_path: Path) -> dict[tuple[str,
     Rows with the NOT qualifier are skipped. Reference strings keep their prefix (PMID:, OMIM:, ORPHA:,
     ISBN-13:, http...) so callers can count the PubMed subset separately.
     """
-    references: dict[tuple[str, str], set[str]] = defaultdict(set)
-    with open(phenotype_hpoa_path, encoding="utf-8") as hpoa_file:
-        header: list[str] | None = None
-        for raw_line in hpoa_file:
-            if raw_line.startswith("#"):
-                continue
-            fields = raw_line.rstrip("\n").split("\t")
-            if header is None:
-                header = fields
-                column = {name: index for index, name in enumerate(header)}
-                continue
-            if fields[column["qualifier"]].strip().upper() == "NOT":
-                continue
-            cited = {reference.strip() for reference in fields[column["reference"]].split(";") if reference.strip()}
-            if cited:
-                references[(fields[column["database_id"]], fields[column["hpo_id"]])] |= cited
-    return dict(references)
+    references: dict[tuple[str, str], set[str]] = {}
+    for key, rows in load_hpo_annotation_rows(phenotype_hpoa_path).items():
+        cited = {reference for row in rows if row.qualifier.strip().upper() != "NOT" for reference in row.references}
+        if cited:
+            references[key] = cited
+    return references
 
 
 def parse_genes_to_phenotype(genes_to_phenotype_path: Path) -> list[dict[str, str]]:
@@ -351,3 +402,106 @@ def monogenic_evidence_records(
             )
         )
     return records
+
+
+HPO_PROVENANCE_SOURCES: dict[str, str] = {"OMIM:": "HPO-OMIM", "ORPHA:": "HPO-Orphanet"}
+
+
+def hpo_source_for_disease(disease_id: str) -> str | None:
+    """Report source name for a disease identifier prefix, None for a prefix the report table does not know."""
+    for prefix, source in HPO_PROVENANCE_SOURCES.items():
+        if disease_id.startswith(prefix):
+            return source
+    return None
+
+
+def monogenic_evidence_reports(
+    annotation_rows: Iterable[dict[str, str]],
+    target_symptom_to_hpo_ids: Mapping[str, Iterable[str]],
+    parents_by_term: Mapping[str, set[str]],
+    genes_in_graph: set[str],
+    excluded_hpo_ids_by_symptom: Mapping[str, Iterable[str]] | None = None,
+    hpoa_rows_by_key: Mapping[tuple[str, str], list[HpoaAnnotationRow]] | None = None,
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+    dropped_unknown_provenance: list[dict[str, str]] | None = None,
+) -> list[EvidenceReport]:
+    """One EvidenceReport per phenotype.hpoa row behind each (gene in the graph, target symptom), in file order.
+
+    Duplicate (gene_symbol, disease_id, hpo_id) triples of genes_to_phenotype.txt are read once. Each is joined
+    to its phenotype.hpoa rows on (disease_id, hpo_id); frequency, qualifier, evidence code, references, onset,
+    sex, disease name and date come from the phenotype.hpoa row. When hpoa_rows_by_key is None or has no row
+    for the key, the genes_to_phenotype row itself becomes one report with evidence_code "unjoined". A term in
+    the expansion of two target symptoms yields one report per symptom. Rows whose disease prefix is neither
+    OMIM: nor ORPHA: are dropped and, when a list is given, appended to dropped_unknown_provenance.
+    perturbation_nodes is left empty for the assembler to fill.
+    """
+    symptoms_by_term = expand_symptom_terms(target_symptom_to_hpo_ids, parents_by_term, excluded_hpo_ids_by_symptom)
+    seen_triples: set[tuple[str, str, str]] = set()
+    reports: list[EvidenceReport] = []
+    for row in annotation_rows:
+        gene_symbol = row.get("gene_symbol", "")
+        hpo_id = row.get("hpo_id", "")
+        disease_id = row.get("disease_id", "")
+        if gene_symbol not in genes_in_graph:
+            continue
+        target_symptoms = symptoms_by_term.get(hpo_id)
+        if not target_symptoms:
+            continue
+        triple = (gene_symbol, disease_id, hpo_id)
+        if triple in seen_triples:
+            continue
+        seen_triples.add(triple)
+        source = hpo_source_for_disease(disease_id)
+        if source is None:
+            if dropped_unknown_provenance is not None:
+                dropped_unknown_provenance.append(dict(row))
+            continue
+        hpo_name = row.get("hpo_name", "")
+        joined_rows = (hpoa_rows_by_key or {}).get((disease_id, hpo_id)) or []
+        if not joined_rows:
+            raw_frequency = (row.get("frequency") or "").strip()
+            joined_rows = [HpoaAnnotationRow(disease_id, disease_id, "", hpo_id, [], UNJOINED_EVIDENCE_CODE, None, "" if raw_frequency == "-" else raw_frequency, None, "", "", [], 0)]
+        for hpoa_row in joined_rows:
+            for target_symptom in target_symptoms:
+                reports.append(evidence_report_from_hpoa_row(gene_symbol, target_symptom, source, hpo_name, hpoa_row, publication_dates_by_pmid))
+    return reports
+
+
+def evidence_report_from_hpoa_row(
+    gene_symbol: str,
+    target_symptom: str,
+    source: str,
+    hpo_name: str,
+    hpoa_row: HpoaAnnotationRow,
+    publication_dates_by_pmid: Mapping[str, date] | None = None,
+) -> EvidenceReport:
+    """Column derivation of one monogenic report from one phenotype.hpoa row (or the unjoined stand-in row)."""
+    unjoined = hpoa_row.evidence == UNJOINED_EVIDENCE_CODE
+    frequency = 0.0 if hpoa_row.frequency.strip() == EXCLUDED_FREQUENCY_QUALIFIER else parse_frequency_qualifier(hpoa_row.frequency)
+    denominator = parse_frequency_denominator(hpoa_row.frequency)
+    references = ";".join(hpoa_row.references)
+    availability_date = None if unjoined else hpoa_row_availability_date(hpoa_row, publication_dates_by_pmid=publication_dates_by_pmid)
+    entry_reference = hpoa_row.disease_id
+    report = EvidenceReport(
+        report_id=f"{source}|{gene_symbol}|{hpoa_row.disease_id}|{hpoa_row.hpo_id}|{target_symptom}|{hpoa_row.ordinal}",
+        perturbation_id=gene_symbol, perturbation_type="gene", perturbation_label=gene_symbol,
+        symptom=target_symptom, relation="induces", evidence_class="monogenic", source=source,
+        report_value=0 if hpoa_row.is_negated else 1,
+        source_record_id=hpoa_row.disease_id, source_record_label=hpoa_row.disease_name,
+        source_term_id=hpoa_row.hpo_id, source_term_label=hpo_name,
+        evidence_code=hpoa_row.evidence,
+        model_description=f"human loss-of-function; {hpoa_row.disease_id} {hpoa_row.disease_name}",
+        frequency=frequency, frequency_denominator=denominator, placebo_flag=False,
+        onset=hpoa_row.onset, sex=hpoa_row.sex, references=references,
+        pubmed_reference_count=sum(1 for reference in hpoa_row.references if reference.startswith("PMID:")),
+        evidence_date=availability_date.isoformat() if availability_date else None,
+        rubric_log_sample_size=float(math.log1p(denominator)) if denominator is not None else 0.0,
+        rubric_frequency_known=1.0 if frequency is not None else 0.0,
+        rubric_evidence_code_pcs=1.0 if hpoa_row.evidence == "PCS" else 0.0,
+        rubric_evidence_code_tas=1.0 if hpoa_row.evidence == "TAS" else 0.0,
+        rubric_evidence_code_iea=1.0 if hpoa_row.evidence == "IEA" else 0.0,
+        rubric_placebo_controlled=0.0,
+        rubric_curated_synopsis=1.0 if entry_reference in hpoa_row.references else 0.0,
+    )
+    report.limitations = limitations_text(report)
+    return report

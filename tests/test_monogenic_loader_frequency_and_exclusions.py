@@ -214,3 +214,35 @@ def test_reference_counts_are_descriptive_and_do_not_change_weights(tmp_path: Pa
     assert with_references["OTC"].distinct_reference_count == 0  # no phenotype.hpoa row for its disease
     for gene in ("HMBS", "OTC"):
         assert loss_weight_for_record(with_references[gene]) == loss_weight_for_record(without_references[gene])
+
+
+def test_annotation_rows_reader_matches_dates_and_references(tmp_path: Path) -> None:
+    from datetime import date
+
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
+        hpoa_row_availability_date,
+        load_hpo_annotation_dates,
+        load_hpo_annotation_references,
+        load_hpo_annotation_rows,
+    )
+
+    hpoa = tmp_path / "phenotype.hpoa"
+    hpoa.write_text("\n".join([
+        "#description: test",
+        "database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration",
+        "OMIM:176000\tAIP\t\tHP:0000709\tPMID:1;OMIM:176000\tPCS\t\t3/5\t\t\tP\tHPO:skoehler[2012-03-04];HPO:probinson[2021-06-21]",
+        "OMIM:176000\tAIP\t\tHP:0000709\tOMIM:176000\tIEA\t\t\t\t\tP\tHPO:iea[2009-02-17]",
+        "OMIM:176000\tAIP\tNOT\tHP:0000726\tPMID:2\tPCS\t\t\t\t\tP\tHPO:skoehler[2010-01-01]",
+        "ORPHA:79276\tAIP\t\tHP:0000709\tORPHA:79276\tTAS\t\t\t\t\tP\tORPHA:orphadata[2026-09-02]",
+    ]) + "\n")
+    rows_by_key = load_hpo_annotation_rows(hpoa)
+    omim_rows = rows_by_key[("OMIM:176000", "HP:0000709")]
+    assert [row.ordinal for row in omim_rows] == [1, 2] and omim_rows[0].references == ["PMID:1", "OMIM:176000"] and omim_rows[0].frequency == "3/5"
+    assert omim_rows[0].biocuration_dates == [date(2012, 3, 4), date(2021, 6, 21)] and omim_rows[0].evidence == "PCS" and omim_rows[0].disease_name == "AIP"
+    assert rows_by_key[("OMIM:176000", "HP:0000726")][0].qualifier == "NOT" and rows_by_key[("OMIM:176000", "HP:0000726")][0].is_negated
+    assert hpoa_row_availability_date(omim_rows[0], publication_dates_by_pmid={"1": date(1990, 1, 1)}) == date(1990, 1, 1)
+    assert hpoa_row_availability_date(rows_by_key[("ORPHA:79276", "HP:0000709")][0]) is None
+    # the two older readers, now wrappers over the row reader, give the dictionaries they always gave
+    assert load_hpo_annotation_dates(hpoa) == {("OMIM:176000", "HP:0000709"): date(2009, 2, 17)}
+    assert load_hpo_annotation_dates(hpoa, publication_dates_by_pmid={"1": date(1990, 1, 1)}) == {("OMIM:176000", "HP:0000709"): date(1990, 1, 1)}
+    assert load_hpo_annotation_references(hpoa) == {("OMIM:176000", "HP:0000709"): {"PMID:1", "OMIM:176000"}, ("ORPHA:79276", "HP:0000709"): {"ORPHA:79276"}}

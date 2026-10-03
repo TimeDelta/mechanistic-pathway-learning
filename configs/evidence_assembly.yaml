@@ -17,7 +17,9 @@ literature:
 genetics:
   role: validation_only                        # version 2: soft prior
   gwas_summary_statistics: data/raw/gwas/symptom_level/
-weighting:
+weighting:                           # not read by assemble_evidence_table.py: its command line is authoritative
+                                     # (--weighting grade is the default and the fixed_grades mode below; mode learned_reliability
+                                     # is the --weighting reliability arm, with --report-rubric-weights and --reliability-global-scale)
   mode: learned_reliability          # or fixed_grades (fallback and ablation arm)
   reliability_model:                 # evidence_reliability_model.py: Dawid-Skene with Beta priors
     sources: [hpo_monogenic, sider_label, onsides_label, pubtator3, ctd, semmeddb]
