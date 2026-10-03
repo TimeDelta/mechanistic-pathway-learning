@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
  "created": "2026-10-03",
- "git_commit": "56a4f85cfc1ef850e78446a4a6916ccb253ea769",
+ "git_commit": "df788ae83d30468a811ebae343d35043e56e318a",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
  "licensed_term_labels_blanked": 7376,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES v3.1.1 identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs produced so far (gene identifier map, SIDER chemical map; the filtered relation tables follow when the fetch completes).",
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types (3,606 observations, 2,997 grade A or B positives, 609 grade C human associations excluded from labels by default, 6,344 reports); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES v3.1.1 identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs: 226,347 PubTator3 relation reports (127,866 PubMed ids), 5,607 CTD reports, publication dates, the gene identifier map and the SIDER chemical map.",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -233,6 +233,21 @@
    "bytes": 121,
    "rows": null
   },
+  "literature/ctd_relations_filtered.csv": {
+   "sha256": "2d27408477696a848321ddef614cc8dc5e57828753b03684f018c3eb8222eca6",
+   "bytes": 3914085,
+   "rows": 5607
+  },
+  "literature/ctd_relations_filtered.parquet": {
+   "sha256": "fbcd6fa7c53885b9dbdd06f60148568d9f7d922f8e0072d9c0182f101f3d4bd0",
+   "bytes": 199935,
+   "rows": 5607
+  },
+  "literature/ctd_relations_summary.json": {
+   "sha256": "ec94dd106a7947ab44924efb5aa935f09ae6d17b69845d7f29345c722a702232",
+   "bytes": 3003,
+   "rows": null
+  },
   "literature/gene_identifier_map.parquet": {
    "sha256": "44ee98263b9527752354558fcabb7101a172158609aabba3a07a57cebe740080",
    "bytes": 364319,
@@ -241,6 +256,21 @@
   "literature/gene_identifier_map.summary.json": {
    "sha256": "b29819a7aaf7cac7a5172a5171bea9ccd4d5a17aabc92b42452be7aba683487e",
    "bytes": 414,
+   "rows": null
+  },
+  "literature/pubmed_publication_dates.json": {
+   "sha256": "ac03d9e570539e5ef50299338ab742ee41424437d533637fb96ca161ec841320",
+   "bytes": 3295142,
+   "rows": null
+  },
+  "literature/pubtator_relations_filtered.parquet": {
+   "sha256": "bdcc35fc9ddd2c2c14a07a39b407098f36d85d6c4b7b5e0dd854bc8d6f839826",
+   "bytes": 9353386,
+   "rows": 226347
+  },
+  "literature/pubtator_relations_summary.json": {
+   "sha256": "6138b68fb8c8ecba7441cbd59fa9a93c7a88a7f5491547bc3391a387467cbcaf",
+   "bytes": 7685,
    "rows": null
   },
   "literature/sider_chemical_mesh_map.csv": {

@@ -141,3 +141,48 @@ def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: 
     return {"difference": float(point), "lower": float(np.quantile(differences, lower_quantile)) if differences else float("nan"),
             "upper": float(np.quantile(differences, 1.0 - lower_quantile)) if differences else float("nan"),
             "fraction_resamples_favoring_a": float(np.mean(np.array(differences) > 0)) if differences else float("nan"), "num_resamples": len(differences)}
+
+
+def rank_normalise_within_groups(predictions: np.ndarray, group_of_row: np.ndarray) -> np.ndarray:
+    """Replace each score by its tie-averaged rank divided by (group size + 1), per symptom column, inside each group.
+
+    Pooling raw scores across hold-outs whose base rates differ lets a predictor whose score scale tracks the
+    training base rate look worse or better than it is (design section 6.2; review v0.4, finding 1). Ranks
+    inside each hold-out remove the scale; the (n + 1) denominator keeps a constant predictor at the same
+    value in every hold-out, which rank / n does not. Rows with group -1 are left unchanged.
+    """
+    from scipy.stats import rankdata
+
+    normalised = np.array(predictions, dtype=float, copy=True)
+    for group in np.unique(group_of_row):
+        if group < 0:
+            continue
+        rows = np.flatnonzero(group_of_row == group)
+        if len(rows) == 0:
+            continue
+        for column in range(predictions.shape[1]):
+            normalised[rows, column] = rankdata(predictions[rows, column], method="average") / (len(rows) + 1.0)
+    return normalised
+
+
+def stratified_auroc(predictions: np.ndarray, outcomes: np.ndarray, group_of_row: np.ndarray, symptom_index: int) -> float:
+    """AUROC from positive-negative pairs formed inside each group only (a within-hold-out Mann-Whitney statistic).
+
+    Pairs that cross hold-outs never enter, so differences of base rate or score scale between hold-outs cannot
+    move it. Returns NaN when no group has both a positive and a negative.
+    """
+    concordant = 0.0
+    pairs = 0.0
+    for group in np.unique(group_of_row):
+        if group < 0:
+            continue
+        rows = np.flatnonzero(group_of_row == group)
+        scores = predictions[rows, symptom_index]
+        labels = outcomes[rows, symptom_index] > 0.5
+        positive_scores, negative_scores = scores[labels], scores[~labels]
+        if len(positive_scores) == 0 or len(negative_scores) == 0:
+            continue
+        comparison = positive_scores[:, None] - negative_scores[None, :]
+        concordant += float((comparison > 0).sum() + 0.5 * (comparison == 0).sum())
+        pairs += float(comparison.size)
+    return concordant / pairs if pairs else float("nan")

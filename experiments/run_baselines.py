@@ -59,6 +59,8 @@ from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_
     subsystem_holdout_masks,
 )
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
+    rank_normalise_within_groups,
+    stratified_auroc,
     bootstrap_interval,
     hits_at_k,
     macro_auprc_by_degree_bin,
@@ -112,10 +114,11 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray) -> tuple[float, 
 
 
 def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_name: str, restart_probability: float, normalized_adjacency,
-              min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None) -> tuple[np.ndarray, np.ndarray, list[dict]]:
+              min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
     """Fit on the complement of each test mask, predict the mask; return pooled predictions, the scored-row mask and per-fold scores."""
     predictions = np.zeros_like(outcomes)
     scored = np.zeros(outcomes.shape[0], dtype=bool)
+    fold_of_row = np.full(outcomes.shape[0], -1, dtype=int)
     per_fold = []
     for fold_index, test in enumerate(test_masks):
         train = ~test
@@ -123,16 +126,19 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
             continue
         predictions[test] = fit_and_predict(data, outcomes, train, test, model_name, restart_probability, normalized_adjacency)
         scored |= test
+        fold_of_row[test] = fold_index
         macro_auprc, macro_auroc = macro_scores(predictions[test], outcomes[test]) if test.sum() >= min_fold_size_for_macro else (float("nan"), float("nan"))
         per_fold.append({"fold": fold_index, "label": split_labels[fold_index] if split_labels else str(fold_index), "num_test": int(test.sum()), "num_positive_pairs": int(outcomes[test].sum()),
                          "macro_auprc": macro_auprc, "macro_auroc": macro_auroc,
                          "mean_reciprocal_rank": mean_reciprocal_rank(predictions[test], outcomes[test]), "hits_at_3": hits_at_k(predictions[test], outcomes[test], 3)})
-    return predictions, scored, per_fold
+    return predictions, scored, per_fold, fold_of_row
 
 
-def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray, per_fold: list[dict], num_bootstrap: int) -> dict:
+def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray, per_fold: list[dict], num_bootstrap: int, fold_of_row: np.ndarray | None = None) -> dict:
     degrees = data.perturbation_degrees[rows]
+    fold_of_scored_row = fold_of_row[rows] if fold_of_row is not None else None
     predictions, outcomes = predictions[rows], outcomes[rows]
+    normalised = rank_normalise_within_groups(predictions, fold_of_scored_row) if fold_of_scored_row is not None else None
     per_symptom = {}
     for symptom_index, symptom in enumerate(data.symptoms):
         positives = outcomes[:, symptom_index].sum()
@@ -141,6 +147,10 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
         auprc = bootstrap_interval(lambda p, y: per_symptom_auprc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap)
         auroc = bootstrap_interval(lambda p, y: per_symptom_auroc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap)
         per_symptom[symptom] = {"positives": int(positives), "auprc": auprc.__dict__, "auroc": auroc.__dict__, "base_rate": float(outcomes[:, symptom_index].mean())}
+        if normalised is not None:
+            per_symptom[symptom]["auprc_rank_normalised"] = per_symptom_auprc(normalised, outcomes, symptom_index)
+            per_symptom[symptom]["auroc_rank_normalised"] = per_symptom_auroc(normalised, outcomes, symptom_index)
+            per_symptom[symptom]["auroc_stratified"] = stratified_auroc(predictions, outcomes, fold_of_scored_row, symptom_index)
     fold_auprcs = [entry["macro_auprc"] for entry in per_fold if not np.isnan(entry["macro_auprc"])]
     fold_aurocs = [entry["macro_auroc"] for entry in per_fold if not np.isnan(entry["macro_auroc"])]
     return {
@@ -148,6 +158,9 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
         "per_symptom": per_symptom,
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
+        "macro_auprc_rank_normalised": float(np.mean([entry["auprc_rank_normalised"] for entry in per_symptom.values()])) if per_symptom and normalised is not None else float("nan"),
+        "macro_auroc_rank_normalised": float(np.mean([entry["auroc_rank_normalised"] for entry in per_symptom.values()])) if per_symptom and normalised is not None else float("nan"),
+        "macro_auroc_stratified": float(np.nanmean([entry["auroc_stratified"] for entry in per_symptom.values()])) if per_symptom and normalised is not None else float("nan"),
         "per_fold_macro_auprc_mean": float(np.mean(fold_auprcs)) if fold_auprcs else float("nan"),
         "per_fold_macro_auprc_sd": float(np.std(fold_auprcs)) if fold_auprcs else float("nan"),
         "per_fold_macro_auroc_mean": float(np.mean(fold_aurocs)) if fold_aurocs else float("nan"),
@@ -182,13 +195,13 @@ def subsystem_test_masks(data, min_holdout_positives: int) -> tuple[list[np.ndar
 
 
 def holdout_section(title: str, description: str, entries: dict, control_entries: dict, labels: list[str], masks: list[np.ndarray], outcomes: np.ndarray) -> list[str]:
-    header = ["| model | macro AUPRC (pooled) | macro AUROC (pooled) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |", "|---|---|---|---|---|---|---|---|"]
+    header = ["| model | macro AUPRC (pooled, raw) | macro AUPRC (pooled, rank within hold-out) | macro AUROC (pooled, raw) | macro AUROC (rank within hold-out) | macro AUROC (stratified) | MRR (pooled) | hits@3 (pooled) | MRR (mean over hold-outs) | hits@3 (mean over hold-outs) | scored perturbations |", "|---|---|---|---|---|---|---|---|---|---|---|"]
 
     def row(name: str, entry: dict) -> str:
-        return (f"| {name} | {entry['macro_auprc']:.3f} | {entry['macro_auroc']:.3f} | {entry['mean_reciprocal_rank']:.3f} | {entry['hits_at_3']:.3f} | "
+        return (f"| {name} | {entry['macro_auprc']:.3f} | {entry.get('macro_auprc_rank_normalised', float('nan')):.3f} | {entry['macro_auroc']:.3f} | {entry.get('macro_auroc_rank_normalised', float('nan')):.3f} | {entry.get('macro_auroc_stratified', float('nan')):.3f} | {entry['mean_reciprocal_rank']:.3f} | {entry['hits_at_3']:.3f} | "
                 f"{entry['per_fold_mrr_mean']:.3f} | {entry['per_fold_hits_at_3_mean']:.3f} | {entry['num_scored_perturbations']} |")
 
-    lines = [f"## {title}", "", description, "",
+    lines = [f"## {title}", "", description, " Raw pooled scores across hold-outs with different base rates carry the artifact of section 6.2 (review v0.4, finding 1); the rank-within-hold-out columns replace each score by its tie-averaged rank over (n + 1) inside its hold-out before pooling, and the stratified AUROC forms positive-negative pairs inside hold-outs only. The pathway-wise endpoint is defined on the rank-within-hold-out macro AUPRC.", "",
              "Held out (perturbations, positive pairs): " + "; ".join(f"{label} ({int(mask.sum())}, {int(outcomes[mask].sum())})" for label, mask in zip(labels, masks)) + ".", ""]
     lines += header + [row(name, entry) for name, entry in entries.items()] + [""]
     if control_entries:
@@ -296,8 +309,8 @@ def main() -> None:
     if arguments.rewiring_swaps_per_edge > 0:
         rewired = degree_preserving_rewiring(np.stack([data.edge_source, data.edge_target]), data.edge_relation, num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
         rewired_adjacency = build_normalized_adjacency(len(data.node_ids), rewired[0], rewired[1], np.where(data.is_currency)[0])
-        predictions, rows, per_fold = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro)
-        results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap)
+        predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro)
+        results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row)
         entry = results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"]
         print(f"{'grouped_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
     split_plan = [("grouped", grouped_masks, [str(fold) for fold in range(arguments.num_folds)]), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
@@ -308,19 +321,19 @@ def main() -> None:
                 continue
             if model_name == KG_EMBEDDING_NAME and split_name != "grouped" and not arguments.kg_embedding_all_splits:
                 continue
-            predictions, rows, per_fold = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels)
-            results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap)
+            predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels)
+            results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row)
             arguments.output_dir.mkdir(parents=True, exist_ok=True)
             np.save(arguments.output_dir / f"predictions_{split_name}_{model_name}.npy", predictions)  # pooled out-of-split predictions for paired comparisons
             np.save(arguments.output_dir / f"scored_rows_{split_name}.npy", rows)
             if not arguments.skip_permutation_control:
-                predictions, rows, per_fold = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels)
-                results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap)
+                predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels)
+                results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row)
         for split_name, entries in results["splits"].items():
             if model_name in entries:
                 entry = entries[model_name]
                 print(f"{split_name:26s} {model_name:26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
-                      f"macro AUROC {entry['macro_auroc']:.3f} (per fold {entry['per_fold_macro_auroc_mean']:.3f})  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}")
+                      f"macro AUROC {entry['macro_auroc']:.3f} (per fold {entry['per_fold_macro_auroc_mean']:.3f}; rank within hold-out AUPRC {entry.get('macro_auprc_rank_normalised', float('nan')):.3f} AUROC {entry.get('macro_auroc_rank_normalised', float('nan')):.3f} stratified {entry.get('macro_auroc_stratified', float('nan')):.3f})  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}")
     results["time_split"] = {}
     for model_name in model_names:
         entry = time_split_evaluation(data, arguments.time_split_cutoff, model_name, arguments.restart_probability, normalized_adjacency, arguments.seed)

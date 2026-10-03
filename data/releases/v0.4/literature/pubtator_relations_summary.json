@@ -1,0 +1,292 @@
+{
+  "run_started_at": "2026-10-03T15:06:05Z",
+  "descriptors": {
+    "D003863": {
+      "symptom": "depressed_mood",
+      "level": "symptom"
+    },
+    "D003866": {
+      "symptom": "depressed_mood",
+      "level": "diagnosis"
+    },
+    "D003865": {
+      "symptom": "depressed_mood",
+      "level": "diagnosis"
+    },
+    "D059445": {
+      "symptom": "anhedonia",
+      "level": "symptom"
+    },
+    "D001007": {
+      "symptom": "anxiety",
+      "level": "symptom"
+    },
+    "D001008": {
+      "symptom": "anxiety",
+      "level": "diagnosis"
+    },
+    "D007508": {
+      "symptom": "irritability_or_aggression",
+      "level": "symptom"
+    },
+    "D000374": {
+      "symptom": "irritability_or_aggression",
+      "level": "symptom"
+    },
+    "D007319": {
+      "symptom": "insomnia",
+      "level": "symptom"
+    },
+    "D000077260": {
+      "symptom": "somnolence_or_hypersomnia",
+      "level": "symptom"
+    },
+    "D006970": {
+      "symptom": "somnolence_or_hypersomnia",
+      "level": "diagnosis"
+    },
+    "D005221": {
+      "symptom": "fatigue",
+      "level": "symptom"
+    },
+    "D005222": {
+      "symptom": "fatigue",
+      "level": "symptom"
+    },
+    "D011595": {
+      "symptom": "psychomotor_agitation",
+      "level": "symptom"
+    },
+    "D006212": {
+      "symptom": "psychosis",
+      "level": "symptom"
+    },
+    "D003702": {
+      "symptom": "psychosis",
+      "level": "symptom"
+    },
+    "D011618": {
+      "symptom": "psychosis",
+      "level": "diagnosis"
+    },
+    "D060825": {
+      "symptom": "cognitive_impairment",
+      "level": "symptom"
+    },
+    "D008569": {
+      "symptom": "cognitive_impairment",
+      "level": "symptom"
+    },
+    "D003221": {
+      "symptom": "cognitive_impairment",
+      "level": "symptom"
+    },
+    "D003704": {
+      "symptom": "cognitive_impairment",
+      "level": "diagnosis"
+    },
+    "D000087122": {
+      "symptom": "elevated_mood_or_mania",
+      "level": "symptom"
+    },
+    "D001714": {
+      "symptom": "elevated_mood_or_mania",
+      "level": "diagnosis"
+    }
+  },
+  "gene_identifier_map": {
+    "gene_nodes": 12627,
+    "with_ncbi_gene_id": 12537,
+    "without_ncbi_gene_id": 90,
+    "with_ensembl_gene_id": 12527,
+    "by_mapping_source": {
+      "hgnc_alias_symbol": 1,
+      "hgnc_previous_symbol": 20,
+      "hgnc_symbol": 9681,
+      "human_gem_ensembl": 2835,
+      "unmapped": 90
+    },
+    "ncbi_ids_shared_by_several_nodes": 2,
+    "nodes_on_shared_ncbi_ids": [
+      "GBA",
+      "GBA1",
+      "SLC22A18",
+      "SLC67A1"
+    ]
+  },
+  "sider_drugs_total": 1430,
+  "autocomplete": {
+    "drugs_matched:autocomplete_name": 1073,
+    "drugs_unmatched_by_autocomplete": 220,
+    "drugs_matched:autocomplete_synonym": 137
+  },
+  "autocomplete_requests_made": 0,
+  "bulk_stream": {
+    "bulk_rows_total": 40094383,
+    "bulk_rows_by_type:associate": 18652530,
+    "bulk_rows_by_type:treat": 7316131,
+    "bulk_rows_by_type:stimulate": 788589,
+    "bulk_rows_by_type:cause": 3757055,
+    "bulk_rows_by_type:positive_correlate": 3464117,
+    "bulk_rows_by_type:negative_correlate": 4080594,
+    "bulk_rows_by_type:interact": 266057,
+    "bulk_rows_by_type:compare": 539036,
+    "bulk_rows_by_type:cotreat": 564994,
+    "bulk_rows_with_target_descriptor": 387756,
+    "bulk_rows_by_type:inhibit": 623277,
+    "bulk_rows_by_type:prevent": 34251,
+    "bulk_rows_by_type:drug_interact": 7752
+  },
+  "bulk_stream_seconds": 136.3,
+  "bulk_pin": {
+    "url": "https://ftp.ncbi.nlm.nih.gov/pub/lu/PubTator3/relation2pubtator3.gz",
+    "content_length": 297478945,
+    "last_modified": "Mon, 17 Aug 2026 13:41:35 GMT",
+    "checked_at": "2026-10-03T15:06:05Z",
+    "sha256": "6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42",
+    "bulk_rows_total": 40094383,
+    "local_file": "data/raw/pubtator3/relation2pubtator3.gz"
+  },
+  "bulk_rows_by_descriptor": {
+    "D003863": 0,
+    "D003866": 130599,
+    "D003865": 26098,
+    "D059445": 4209,
+    "D001007": 46333,
+    "D001008": 6939,
+    "D007508": 0,
+    "D000374": 0,
+    "D007319": 11501,
+    "D000077260": 1379,
+    "D006970": 5997,
+    "D005221": 27460,
+    "D005222": 367,
+    "D011595": 6853,
+    "D006212": 4818,
+    "D003702": 0,
+    "D011618": 21262,
+    "D060825": 12954,
+    "D008569": 26851,
+    "D003221": 1424,
+    "D003704": 20171,
+    "D000087122": 752,
+    "D001714": 31789
+  },
+  "chemical_ids_on_disease_rows": 9880,
+  "mesh_label_lookup": {
+    "chemical_ids_unresolved_after_autocomplete": 8897,
+    "chemical_rows_unresolved_after_autocomplete": 137110,
+    "mesh_label_lookups": 8897
+  },
+  "sider_drugs_matched_total": 1210,
+  "chemical_match_methods": {
+    "autocomplete_name": 1073,
+    "autocomplete_synonym": 137
+  },
+  "filter": {
+    "rows_kept": 226347,
+    "dropped_chemical_not_matched_to_sider": 137110,
+    "dropped_chemical_gene_relation_type:stimulate": 8629,
+    "dropped_gene_not_in_graph": 28166,
+    "dropped_partner_type:SNP": 5537,
+    "dropped_partner_type:ProteinMutation": 2969,
+    "dropped_partner_type:DNAMutation": 1957,
+    "dropped_chemical_gene_relation_type:inhibit": 5400,
+    "dropped_partner_type:Mutation": 3
+  },
+  "publication_dates": {
+    "pmids_requested": 127866,
+    "batches": 640,
+    "pmids_dated": 127786,
+    "pmids_without_date": 0,
+    "pmids_not_returned": 80
+  },
+  "esummary_requests_made": 640,
+  "output": {
+    "rows": 226347,
+    "distinct_pmids": 127866,
+    "distinct_perturbations": 5803,
+    "distinct_genes": 4741,
+    "distinct_drugs": 1062,
+    "distinct_pairs": 20779,
+    "rows_by_symptom": {
+      "anhedonia": 2106,
+      "anxiety": 24591,
+      "cognitive_impairment": 30754,
+      "depressed_mood": 87016,
+      "elevated_mood_or_mania": 29769,
+      "fatigue": 15424,
+      "insomnia": 6905,
+      "psychomotor_agitation": 5282,
+      "psychosis": 19408,
+      "somnolence_or_hypersomnia": 5092
+    },
+    "rows_by_relation": {
+      "associated_with": 76544,
+      "induces": 44328,
+      "relieves": 105475
+    },
+    "rows_by_relation_type": {
+      "associate": 76544,
+      "cause": 44328,
+      "treat": 105475
+    },
+    "rows_by_perturbation_type": {
+      "drug": 172743,
+      "gene": 53604
+    },
+    "rows_by_descriptor_level": {
+      "diagnosis": 152268,
+      "symptom": 74079
+    },
+    "rows_by_descriptor": {
+      "D000077260": 1009,
+      "D000087122": 696,
+      "D001007": 21047,
+      "D001008": 3544,
+      "D001714": 29073,
+      "D003221": 1027,
+      "D003704": 12610,
+      "D003865": 15608,
+      "D003866": 71408,
+      "D005221": 15249,
+      "D005222": 175,
+      "D006212": 3466,
+      "D006970": 4083,
+      "D007319": 6905,
+      "D008569": 10585,
+      "D011595": 5282,
+      "D011618": 15942,
+      "D059445": 2106,
+      "D060825": 6532
+    },
+    "rows_by_chemical_match_method": {
+      "autocomplete_name": 157741,
+      "autocomplete_synonym": 15002
+    },
+    "rows_dated": 226217,
+    "rows_by_symptom_and_perturbation_type": {
+      "anhedonia:drug": 1734,
+      "anhedonia:gene": 372,
+      "anxiety:drug": 18133,
+      "anxiety:gene": 6458,
+      "cognitive_impairment:drug": 18192,
+      "cognitive_impairment:gene": 12562,
+      "depressed_mood:drug": 64748,
+      "depressed_mood:gene": 22268,
+      "elevated_mood_or_mania:drug": 24202,
+      "elevated_mood_or_mania:gene": 5567,
+      "fatigue:drug": 13389,
+      "fatigue:gene": 2035,
+      "insomnia:drug": 6058,
+      "insomnia:gene": 847,
+      "psychomotor_agitation:drug": 5107,
+      "psychomotor_agitation:gene": 175,
+      "psychosis:drug": 16471,
+      "psychosis:gene": 2937,
+      "somnolence_or_hypersomnia:drug": 4709,
+      "somnolence_or_hypersomnia:gene": 383
+    }
+  },
+  "run_finished_at": "2026-10-03T15:27:42Z"
+}
