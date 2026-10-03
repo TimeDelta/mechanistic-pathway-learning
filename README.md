@@ -49,8 +49,7 @@ crosswalk carries verified MeSH descriptors with a symptom-or-diagnosis level fl
 NCBI Gene id through Human-GEM and HGNC (12,537 of 12,627), and two fetch scripts filter the PubTator3 bulk
 relation file and the CTD chemical-disease file to graph genes and SIDER drugs on those descriptors, writing
 one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature. The
-rows are soft priors (grades C to E) and never evaluation positives; joining them into the assembled evidence
-table and the reliability fit is the next step.
+rows are soft priors (grades C to E) and never evaluation positives. The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations; the tables are in the data release and join the assembled table through --extra-reports.
 
 Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
 

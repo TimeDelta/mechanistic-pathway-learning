@@ -64,6 +64,9 @@ def overlap_with_evidence(reports: pd.DataFrame, evidence_records_path: Path) ->
         "gene_pairs_with_literature": len(gene_pairs & literature_pairs), "gene_pairs": len(gene_pairs),
         "drug_pairs_with_literature": len(drug_pairs & literature_pairs), "drug_pairs": len(drug_pairs),
         "literature_pairs_new": len(literature_pairs - evidence_pairs),
+        "gene_pairs_with_literature_any_relation": len({pair[:2] for pair in gene_pairs} & {pair[:2] for pair in literature_pairs}),
+        "drug_pairs_with_literature_any_relation": len({pair[:2] for pair in drug_pairs} & {pair[:2] for pair in literature_pairs}),
+        "note": "gene literature reports are associated_with relations (PubTator3 types gene-disease relations as association or correlation), so same-relation overlap for genes is zero by construction; the any-relation overlap counts them",
     }
 
 
@@ -77,6 +80,10 @@ def main() -> None:
     reports = pd.concat(tables, ignore_index=True, sort=False)
     documents_path = arguments.literature_dir / "documents.parquet"
     documents = pd.read_parquet(documents_path) if documents_path.exists() else pd.DataFrame(columns=["pmid", "publication_types", "species_ids", "species_names"])
+    for column in REPORT_COLUMNS:  # relation tables written before a shared column existed get its default
+        if column not in reports.columns:
+            reports[column] = 0.0 if column.startswith("rubric_") else ""
+    reports["evidence_date_source"] = ["publication" if isinstance(value, str) and value else "" for value in reports.evidence_date]  # literature dates are publication dates
     appraised = appraise_reports(reports, documents)
     ordered = [column for column in REPORT_COLUMNS] + [column for column in appraised.columns if column not in REPORT_COLUMNS]
     appraised = appraised[ordered]

@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
  "created": "2026-10-03",
- "git_commit": "80fa854d22c8b5a072571c7332c1f7726de752c7",
+ "git_commit": "e519004f16138400473ffa07aefab88e8ddddde9",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
  "licensed_term_labels_blanked": 8653,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended (3,977 observations: 2,425 grade A gene pairs, 943 grade B drug pairs over 168 drugs, 609 grade C human associations excluded from labels by default; 7,621 reports from five sources); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked); literature holds the E3 retrieval outputs (226,347 PubTator3 relation reports over 127,866 papers, 5,607 CTD reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map).",
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended (3,977 observations; 7,621 reports from five sources); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked); literature holds the E3 tables: 226,347 PubTator3 relation reports, 5,607 CTD reports, 231,954 appraised literature reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map.",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -266,6 +266,16 @@
   "literature/gene_identifier_map.summary.json": {
    "sha256": "b29819a7aaf7cac7a5172a5171bea9ccd4d5a17aabc92b42452be7aba683487e",
    "bytes": 414,
+   "rows": null
+  },
+  "literature/literature_reports.parquet": {
+   "sha256": "0293aa2e2aba1f95cef0b660df12e7c0f79dc3dc1938dc03cef692f5f6356026",
+   "bytes": 9848047,
+   "rows": 231954
+  },
+  "literature/literature_summary.json": {
+   "sha256": "74b42c70b73281e6631e4792f9f84901089cf548ec84ce7d316f2d7bb602e2d5",
+   "bytes": 3031,
    "rows": null
   },
   "literature/pubmed_publication_dates.json": {
