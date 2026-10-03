@@ -12,7 +12,7 @@ versions are part of the pre-registration. Raw downloads live under data/raw/ (g
 | SIDER 4.1 (sideeffects.embl.de, HTTPS) | E2 label events, 2015 time slice | public | MedDRA terms inside are licensed; do not redistribute term tables | 4.1 (files dated 2015-10-21; fetched 2026-10-02 and 2026-10-03) |
 | OnSIDES (github.com/tatonetti-lab/onsides) | E2 label events, current slice | public | same MedDRA note | to pin |
 | ChEMBL (ebi.ac.uk/chembl) | drug mechanisms, targets, pChEMBL | public | CC BY-SA | ChEMBL_37 (2026-05-01) |
-| UniChem (ebi.ac.uk/unichem) | PubChem to ChEMBL identifier mapping for SIDER drugs | public API | open | queried 2026-10-02 |
+| UniChem (ebi.ac.uk/unichem) | PubChem to ChEMBL identifier mapping for SIDER drugs | public API | open | queried 2026-10-03; 1,177 of 1,430 SIDER drugs mapped; 7,561 ChEMBL mechanisms; 337 targets with gene symbols |
 | OmniPath (omnipathdb.org) | signaling edges with signs (datasets omnipath, pathwayextra, ligrecextra) and small_molecule_protein interactions | public web service | mixed by resource; check per-resource licenses before redistribution | web service queried 2026-10-02 (first build) and 2026-10-03 (this build); 126,124 interaction rows, 6,553 small-molecule rows |
 | CollecTRI (via OmniPath, dataset collectri) | transcription factor regulons with signs | public web service | CC BY 4.0 (CollecTRI); OmniPath terms apply to the service | queried 2026-10-03; 64,515 regulon rows |
 | Human Protein Atlas; GTEx | brain expression weights | public | open | to pin |

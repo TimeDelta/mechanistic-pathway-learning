@@ -4,19 +4,19 @@ E1: Human-GEM genes with an HPO annotation in the symptom or its descendants aft
 
 | symptom | E1 genes | E1 before exclusion | E1 with OMIM entry | E1 with frequency | E2 inducing drugs | E2 inducing, target in Human-GEM | E2 relieving drugs | grade A+B perturbations | status |
 |---|---|---|---|---|---|---|---|---|---|
-| depressed_mood | 103 | 103 | 36 | 92 | 30 | 13 | 1 | 133 | pass |
+| depressed_mood | 103 | 103 | 36 | 92 | 35 | 18 | 2 | 138 | pass |
 | anhedonia | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | below threshold |
-| anxiety | 117 | 117 | 36 | 111 | 53 | 25 | 9 | 170 | pass |
-| irritability_or_aggression | 180 | 180 | 128 | 135 | 41 | 16 | 1 | 221 | pass |
-| insomnia | 23 | 23 | 11 | 21 | 44 | 22 | 10 | 67 | pass |
-| somnolence_or_hypersomnia | 29 | 29 | 10 | 23 | 63 | 29 | 1 | 92 | pass |
-| fatigue | 101 | 101 | 34 | 93 | 55 | 27 | 0 | 156 | pass |
-| psychomotor_agitation | 38 | 39 | 22 | 34 | 55 | 24 | 2 | 93 | pass |
+| anxiety | 117 | 117 | 36 | 111 | 59 | 30 | 10 | 176 | pass |
+| irritability_or_aggression | 180 | 180 | 128 | 135 | 45 | 19 | 2 | 225 | pass |
+| insomnia | 23 | 23 | 11 | 21 | 51 | 28 | 9 | 74 | pass |
+| somnolence_or_hypersomnia | 29 | 29 | 10 | 23 | 70 | 35 | 1 | 99 | pass |
+| fatigue | 101 | 101 | 34 | 93 | 62 | 33 | 0 | 163 | pass |
+| psychomotor_agitation | 38 | 39 | 22 | 34 | 60 | 29 | 2 | 98 | pass |
 | psychomotor_retardation | 0 | 0 | 0 | 0 | 4 | 1 | 0 | 4 | below threshold |
-| psychosis | 67 | 67 | 27 | 59 | 50 | 22 | 1 | 117 | pass |
-| cognitive_impairment | 202 | 262 | 104 | 185 | 54 | 25 | 0 | 256 | pass |
-| elevated_mood_or_mania | 1 | 1 | 0 | 1 | 38 | 16 | 2 | 39 | pass |
+| psychosis | 67 | 67 | 27 | 59 | 54 | 26 | 1 | 121 | pass |
+| cognitive_impairment | 202 | 262 | 104 | 185 | 61 | 31 | 0 | 263 | pass |
+| elevated_mood_or_mania | 1 | 1 | 0 | 1 | 42 | 19 | 2 | 43 | pass |
 
-distinct Human-GEM genes with any target-symptom annotation: 451; distinct qualifying E2 drugs: 65; symptoms passing: 10 (need 8); go/no-go: go
+distinct Human-GEM genes with any target-symptom annotation: 451; distinct qualifying E2 drugs: 72; symptoms passing: 10 (need 8); go/no-go: go
 
-Sources: E1 recomputed from the HPO release and Human-GEM version pinned in docs/data_sources.md. E2 columns are the measured counts in docs/phase1_e2_counts_measured.json (Measured 2026-10-02 with SIDER 4), because the SIDER and ChEMBL files were not present when this table was generated.
+Sources: HPO release and Human-GEM version as pinned in docs/data_sources.md; SIDER 4.1 (labels to 2015); ChEMBL mechanisms via experiments/fetch_chembl_drug_targets.py.
