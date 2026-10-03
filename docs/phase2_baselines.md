@@ -9,6 +9,7 @@
 | popularity | 0.195 | 0.234 ± 0.009 | 0.440 | 0.500 ± 0.000 | 0.652 | 0.805 | 451 |
 | degree_popularity | 0.215 | 0.258 ± 0.018 | 0.497 | 0.505 ± 0.041 | 0.652 | 0.805 | 451 |
 | random_walk_with_restart | 0.292 | 0.347 ± 0.022 | 0.592 | 0.600 ± 0.027 | 0.481 | 0.579 | 451 |
+| knowledge_graph_embedding_transe | 0.220 | 0.266 ± 0.021 | 0.503 | 0.504 ± 0.032 | 0.471 | 0.557 | 451 |
 
 Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins are [low degree, high degree] with the number of perturbations):
 
@@ -17,6 +18,7 @@ Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins
 | popularity | 0.204 | 0.196 | 0.202 |
 | degree_popularity | 0.204 | 0.202 | 0.221 |
 | random_walk_with_restart | 0.347 | 0.265 | 0.277 |
+| knowledge_graph_embedding_transe | 0.227 | 0.222 | 0.247 |
 
 ## Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)
 
@@ -97,6 +99,7 @@ Same split with labels permuted within degree strata:
 | popularity | 0.198 | 0.235 ± 0.018 | 0.448 | 0.500 ± 0.000 | 0.651 | 0.805 | 451 |
 | degree_popularity | 0.222 | 0.273 ± 0.022 | 0.503 | 0.511 ± 0.042 | 0.651 | 0.805 | 451 |
 | random_walk_with_restart | 0.231 | 0.284 ± 0.025 | 0.525 | 0.537 ± 0.028 | 0.439 | 0.557 | 451 |
+| knowledge_graph_embedding_transe | 0.225 | 0.266 ± 0.008 | 0.491 | 0.492 ± 0.024 | 0.432 | 0.525 | 451 |
 
 ## Negative control: degree-preserving rewiring of the graph (2 swaps per edge; grouped split, random walk only)
 
@@ -108,18 +111,18 @@ Same split with labels permuted within degree strata:
 
 Point estimate with 95 percent bootstrap interval over perturbations; base rate in parentheses.
 
-| symptom | popularity | degree_popularity | random_walk_with_restart |
-|---|---|---|---|
-| anxiety | 0.248 [0.215, 0.295] (0.259) | 0.256 [0.213, 0.313] (0.259) | 0.421 [0.350, 0.514] (0.259) |
-| cognitive_impairment | 0.419 [0.374, 0.465] (0.448) | 0.442 [0.389, 0.497] (0.448) | 0.512 [0.454, 0.584] (0.448) |
-| depressed_mood | 0.217 [0.177, 0.256] (0.228) | 0.239 [0.197, 0.289] (0.228) | 0.275 [0.229, 0.336] (0.228) |
-| elevated_mood_or_mania | n/a | n/a | n/a |
-| fatigue | 0.198 [0.166, 0.251] (0.224) | 0.215 [0.181, 0.287] (0.224) | 0.403 [0.327, 0.497] (0.224) |
-| insomnia | 0.043 [0.027, 0.067] (0.051) | 0.078 [0.050, 0.153] (0.051) | 0.075 [0.048, 0.128] (0.051) |
-| irritability_or_aggression | 0.376 [0.330, 0.430] (0.399) | 0.396 [0.350, 0.467] (0.399) | 0.487 [0.418, 0.575] (0.399) |
-| psychomotor_agitation | 0.074 [0.051, 0.103] (0.084) | 0.088 [0.055, 0.148] (0.084) | 0.176 [0.112, 0.294] (0.084) |
-| psychosis | 0.132 [0.101, 0.169] (0.149) | 0.152 [0.123, 0.205] (0.149) | 0.190 [0.146, 0.265] (0.149) |
-| somnolence_or_hypersomnia | 0.051 [0.033, 0.073] (0.064) | 0.071 [0.038, 0.149] (0.064) | 0.091 [0.048, 0.213] (0.064) |
+| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe |
+|---|---|---|---|---|
+| anxiety | 0.248 [0.215, 0.295] (0.259) | 0.256 [0.213, 0.313] (0.259) | 0.421 [0.350, 0.514] (0.259) | 0.252 [0.204, 0.321] (0.259) |
+| cognitive_impairment | 0.419 [0.374, 0.465] (0.448) | 0.442 [0.389, 0.497] (0.448) | 0.512 [0.454, 0.584] (0.448) | 0.460 [0.406, 0.519] (0.448) |
+| depressed_mood | 0.217 [0.177, 0.256] (0.228) | 0.239 [0.197, 0.289] (0.228) | 0.275 [0.229, 0.336] (0.228) | 0.236 [0.194, 0.305] (0.228) |
+| elevated_mood_or_mania | n/a | n/a | n/a | n/a |
+| fatigue | 0.198 [0.166, 0.251] (0.224) | 0.215 [0.181, 0.287] (0.224) | 0.403 [0.327, 0.497] (0.224) | 0.208 [0.171, 0.267] (0.224) |
+| insomnia | 0.043 [0.027, 0.067] (0.051) | 0.078 [0.050, 0.153] (0.051) | 0.075 [0.048, 0.128] (0.051) | 0.056 [0.037, 0.096] (0.051) |
+| irritability_or_aggression | 0.376 [0.330, 0.430] (0.399) | 0.396 [0.350, 0.467] (0.399) | 0.487 [0.418, 0.575] (0.399) | 0.398 [0.342, 0.471] (0.399) |
+| psychomotor_agitation | 0.074 [0.051, 0.103] (0.084) | 0.088 [0.055, 0.148] (0.084) | 0.176 [0.112, 0.294] (0.084) | 0.136 [0.075, 0.238] (0.084) |
+| psychosis | 0.132 [0.101, 0.169] (0.149) | 0.152 [0.123, 0.205] (0.149) | 0.190 [0.146, 0.265] (0.149) | 0.142 [0.111, 0.196] (0.149) |
+| somnolence_or_hypersomnia | 0.051 [0.033, 0.073] (0.064) | 0.071 [0.038, 0.149] (0.064) | 0.091 [0.048, 0.213] (0.064) | 0.091 [0.053, 0.178] (0.064) |
 
 ## Time split, monogenic pairs by availability date (cutoff 2015-12-31)
 
@@ -130,13 +133,14 @@ Training positives: 264 pairs dated on or before the cutoff; new positives: 144 
 | popularity | 0.060 | 0.060 | 0.500 | 0.500 |
 | degree_popularity | 0.062 | 0.083 | 0.473 | 0.542 |
 | random_walk_with_restart | 0.101 | 0.076 | 0.547 | 0.514 |
+| knowledge_graph_embedding_transe | 0.056 | 0.072 | 0.429 | 0.496 |
 
-| symptom | scored pairs | new positives (base rate) | popularity AUPRC / AUROC | degree_popularity AUPRC / AUROC | random_walk_with_restart AUPRC / AUROC |
-|---|---|---|---|---|---|
-| anxiety | 357 | 23 (0.064) | 0.064 / 0.500 | 0.076 / 0.489 | 0.146 / 0.614 |
-| cognitive_impairment | 274 | 25 (0.091) | 0.091 / 0.500 | 0.101 / 0.515 | 0.139 / 0.562 |
-| depressed_mood | 360 | 12 (0.033) | 0.033 / 0.500 | 0.036 / 0.469 | 0.073 / 0.632 |
-| fatigue | 365 | 15 (0.041) | 0.041 / 0.500 | 0.034 / 0.356 | 0.047 / 0.508 |
-| insomnia | 435 | 7 (0.016) | 0.016 / 0.500 | 0.021 / 0.618 | 0.018 / 0.440 |
-| irritability_or_aggression | 318 | 47 (0.148) | 0.148 / 0.500 | 0.142 / 0.471 | 0.241 / 0.614 |
-| psychomotor_agitation | 424 | 11 (0.026) | 0.026 / 0.500 | 0.022 / 0.395 | 0.043 / 0.458 |
+| symptom | scored pairs | new positives (base rate) | popularity AUPRC / AUROC | degree_popularity AUPRC / AUROC | random_walk_with_restart AUPRC / AUROC | knowledge_graph_embedding_transe AUPRC / AUROC |
+|---|---|---|---|---|---|---|
+| anxiety | 357 | 23 (0.064) | 0.064 / 0.500 | 0.076 / 0.489 | 0.146 / 0.614 | 0.049 / 0.370 |
+| cognitive_impairment | 274 | 25 (0.091) | 0.091 / 0.500 | 0.101 / 0.515 | 0.139 / 0.562 | 0.100 / 0.472 |
+| depressed_mood | 360 | 12 (0.033) | 0.033 / 0.500 | 0.036 / 0.469 | 0.073 / 0.632 | 0.055 / 0.605 |
+| fatigue | 365 | 15 (0.041) | 0.041 / 0.500 | 0.034 / 0.356 | 0.047 / 0.508 | 0.034 / 0.300 |
+| insomnia | 435 | 7 (0.016) | 0.016 / 0.500 | 0.021 / 0.618 | 0.018 / 0.440 | 0.014 / 0.389 |
+| irritability_or_aggression | 318 | 47 (0.148) | 0.148 / 0.500 | 0.142 / 0.471 | 0.241 / 0.614 | 0.118 / 0.409 |
+| psychomotor_agitation | 424 | 11 (0.026) | 0.026 / 0.500 | 0.022 / 0.395 | 0.043 / 0.458 | 0.024 / 0.455 |
