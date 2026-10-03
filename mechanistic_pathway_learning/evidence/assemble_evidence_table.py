@@ -64,10 +64,19 @@ def gene_node_lookup(nodes: pd.DataFrame) -> dict[str, str]:
     return {symbol: node_id for symbol, node_id in zip(genes.gene_symbol, genes.node_id) if isinstance(symbol, str) and symbol}
 
 
-def disease_cluster_ids(records: list[EvidenceRecord]) -> dict[str, str]:
+DEFAULT_DISEASE_CLUSTER_MAX_GENES = 20
+
+
+def disease_cluster_ids(records: list[EvidenceRecord], max_genes_per_linking_entry: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, str]:
     """Gene -> cluster id, where genes sharing any disease identifier are in one cluster (union-find).
 
-    The cluster is named after its alphabetically first gene. Genes with no shared disease form singletons.
+    Disease entries annotated to max_genes_per_linking_entry or more genes among the records do not link
+    genes: on the full graph they are Orphanet group-level entries (non-specific early-onset epileptic
+    encephalopathy, familial dilated cardiomyopathy, systemic lupus erythematosus and the like), which are
+    heterogeneous groups rather than one disease, and chaining through them joined a third of all genes
+    into one cluster. Their annotations stay in the evidence; only their linking is dropped, which is
+    recorded in the summary (open question 11 of the design). The cluster is named after its
+    alphabetically first gene. Genes with no shared disease form singletons.
     """
     parent: dict[str, str] = {}
 
@@ -87,7 +96,9 @@ def disease_cluster_ids(records: list[EvidenceRecord]) -> dict[str, str]:
         find(record.perturbation_identifier)
         for disease_id in record.disease_identifiers:
             genes_by_disease[disease_id].add(record.perturbation_identifier)
-    for genes in genes_by_disease.values():
+    for disease_id, genes in genes_by_disease.items():
+        if max_genes_per_linking_entry is not None and len(genes) >= max_genes_per_linking_entry:
+            continue
         ordered = sorted(genes)
         for gene in ordered[1:]:
             union(ordered[0], gene)
@@ -105,6 +116,7 @@ def assemble(
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
     phenotype_hpoa_path: Path | None = None,
     reference_publication_dates_path: Path | None = None,
+    disease_cluster_max_genes: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     node_by_symbol = gene_node_lookup(nodes)
@@ -119,7 +131,7 @@ def assemble(
     publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
     annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path, publication_dates_by_pmid=publication_dates) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
     monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates)
-    cluster_by_gene = disease_cluster_ids(monogenic_records)
+    cluster_by_gene = disease_cluster_ids(monogenic_records, disease_cluster_max_genes)
     for record in monogenic_records:
         node_id = node_by_symbol.get(record.perturbation_identifier)
         base = {
@@ -187,7 +199,18 @@ def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -
         "monogenic_rows_with_date": int(genes.evidence_date.notna().sum()) if len(genes) and "evidence_date" in genes else 0,
         "monogenic_rows_dated_after_2015": int((genes.evidence_date.dropna() > "2015-12-31").sum()) if len(genes) and "evidence_date" in genes else 0,
         "disease_cluster_concentration_by_symptom": disease_cluster_concentration(genes) if len(genes) else {},
+        "disease_entries_not_linking_clusters": non_linking_disease_entries(genes) if len(genes) else {},
     }
+
+
+def non_linking_disease_entries(gene_observations: pd.DataFrame, max_genes: int = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, int]:
+    """Disease entries annotated to max_genes or more of the genes in the table (the group-level entries that do not link clusters)."""
+    genes_by_disease: dict[str, set[str]] = defaultdict(set)
+    for gene, identifiers in zip(gene_observations.perturbation_id, gene_observations.disease_identifiers):
+        for disease_id in str(identifiers or "").split(";"):
+            if disease_id:
+                genes_by_disease[disease_id].add(gene)
+    return {disease_id: len(genes) for disease_id, genes in sorted(genes_by_disease.items(), key=lambda item: -len(item[1])) if len(genes) >= max_genes}
 
 
 def disease_cluster_concentration(gene_observations: pd.DataFrame, top_clusters: int = 3) -> dict:
@@ -223,10 +246,13 @@ def main() -> None:
     parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"))
     parser.add_argument("--max-drug-targets", type=int, default=1)
     parser.add_argument("--grade-a-policy", choices=GRADE_A_POLICIES, default=DEFAULT_GRADE_A_POLICY)
+    parser.add_argument("--disease-cluster-max-genes", type=int, default=DEFAULT_DISEASE_CLUSTER_MAX_GENES,
+                        help="disease entries annotated to this many genes or more (group-level Orphanet entries) do not link disease clusters; 0 disables the cap")
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
     arguments = parser.parse_args()
     observations, unmapped = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
-                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates)
+                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
+                                      arguments.disease_cluster_max_genes or None)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     import os
 
