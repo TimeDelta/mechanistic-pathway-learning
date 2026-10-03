@@ -23,6 +23,9 @@ Layers and sources:
 
 Gene and protein nodes share one identifier space, GENE:<symbol>: metabolic genes with a
 symbol in genes.tsv are remapped from their Ensembl identifier, and signaling or
+Brain expression (GTEx median TPM, --brain-expression) annotates gene nodes with
+brain_median_tpm_max, brain_expression_known and brain_expressed, gives reactions the largest
+value over their genes and drops regulon edges of factors known not to be brain expressed.
 transcription participants that are not in Human-GEM become gene nodes with
 in_metabolic_layer false. Metabolic genes without a symbol keep the Ensembl identifier.
 
@@ -258,6 +261,90 @@ def build_small_molecule_layer(nodes: pd.DataFrame, small_molecule_path: Path, m
     return add_gene_nodes(nodes, symbols), pd.DataFrame(edge_rows).drop_duplicates()
 
 
+GTEX_BRAIN_TISSUE_PREFIX = "Brain_"
+
+
+def load_brain_expression(gct_path: Path) -> pd.DataFrame:
+    """Per-gene brain expression from a GTEx median-TPM GCT file (design section 4.1, reference [31]).
+
+    Returns one row per gene with ensembl_gene_id (version suffix removed), gene_symbol,
+    brain_median_tpm_max (the largest median TPM over the brain tissues), brain_median_tpm_mean and
+    brain_tissue_count. GTEx v10 has 13 brain tissues; any column whose name starts with Brain_ counts.
+    """
+    table = pd.read_csv(gct_path, sep="\t", skiprows=2)
+    brain_columns = [column for column in table.columns if column.startswith(GTEX_BRAIN_TISSUE_PREFIX)]
+    if not brain_columns:
+        raise ValueError(f"{gct_path} has no columns starting with {GTEX_BRAIN_TISSUE_PREFIX}")
+    expression = pd.DataFrame({
+        "ensembl_gene_id": table["Name"].astype(str).str.split(".").str[0],
+        "gene_symbol": table["Description"].astype(str),
+        "brain_median_tpm_max": table[brain_columns].max(axis=1).astype(float),
+        "brain_median_tpm_mean": table[brain_columns].mean(axis=1).astype(float),
+    })
+    expression["brain_tissue_count"] = len(brain_columns)
+    # a symbol can map to several Ensembl ids (and vice versa); keep the highest brain expression per key
+    return expression.sort_values("brain_median_tpm_max", ascending=False)
+
+
+def annotate_brain_expression(nodes: pd.DataFrame, expression: pd.DataFrame, minimum_tpm: float) -> pd.DataFrame:
+    """Add brain_median_tpm_max, brain_expression_known and brain_expressed to gene nodes.
+
+    A gene node is matched by its Ensembl id when it has one (metabolic genes) and by symbol otherwise
+    (signaling and transcription genes). brain_expressed is median TPM >= minimum_tpm in at least one
+    brain tissue; it is False when the gene is known and below the threshold and also False when the
+    gene is not in GTEx, with brain_expression_known separating the two cases. Reaction nodes inherit the
+    largest value over the genes that catalyze them, so a reaction's brain weight is available to readers.
+    """
+    nodes = nodes.copy()
+    by_ensembl = expression.drop_duplicates("ensembl_gene_id").set_index("ensembl_gene_id")["brain_median_tpm_max"]
+    by_symbol = expression.drop_duplicates("gene_symbol").set_index("gene_symbol")["brain_median_tpm_max"]
+    gene_mask = nodes.node_type == "gene"
+    ensembl_values = nodes.loc[gene_mask, "ensembl_gene_id"].map(by_ensembl) if "ensembl_gene_id" in nodes else pd.Series(index=nodes.index[gene_mask], dtype=float)
+    symbol_values = nodes.loc[gene_mask, "gene_symbol"].map(by_symbol)
+    brain_tpm = ensembl_values.where(ensembl_values.notna(), symbol_values)
+    nodes["brain_median_tpm_max"] = pd.NA
+    nodes.loc[gene_mask, "brain_median_tpm_max"] = brain_tpm.values
+    nodes["brain_median_tpm_max"] = pd.to_numeric(nodes["brain_median_tpm_max"], errors="coerce")
+    nodes["brain_expression_known"] = nodes["brain_median_tpm_max"].notna()
+    nodes["brain_expressed"] = nodes["brain_median_tpm_max"].fillna(-1.0) >= minimum_tpm
+    return nodes
+
+
+def propagate_brain_expression_to_reactions(nodes: pd.DataFrame, edges: pd.DataFrame) -> pd.DataFrame:
+    """Reaction nodes take the largest brain_median_tpm_max over genes linked by catalyzed_by edges."""
+    nodes = nodes.copy()
+    catalysis = edges[edges.relation_type == "catalyzed_by"]
+    gene_values = nodes.set_index("node_id")["brain_median_tpm_max"]
+    gene_side = catalysis.target_id.where(catalysis.target_id.isin(gene_values.index), catalysis.source_id)
+    reaction_side = catalysis.source_id.where(catalysis.target_id.isin(gene_values.index), catalysis.target_id)
+    per_reaction = pd.DataFrame({"reaction": reaction_side.values, "value": gene_side.map(gene_values).values}).dropna().groupby("reaction")["value"].max()
+    reaction_mask = nodes.node_type == "reaction"
+    nodes.loc[reaction_mask, "brain_median_tpm_max"] = nodes.loc[reaction_mask, "node_id"].map(per_reaction).values
+    nodes["brain_expression_known"] = nodes["brain_median_tpm_max"].notna()
+    return nodes
+
+
+def restrict_transcription_edges_to_brain_expressed(nodes: pd.DataFrame, edges: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """Drop regulates_transcription_of edges whose transcription factor is known not to be brain expressed
+    (design section 3.3). Factors absent from GTEx keep their edges, because absence from the expression
+    table is a mapping gap rather than evidence of absence; the counts of both cases are returned.
+    """
+    known = nodes.set_index("node_id")["brain_expression_known"]
+    expressed = nodes.set_index("node_id")["brain_expressed"]
+    is_transcription = edges.relation_type == "regulates_transcription_of"
+    factor_known = edges.source_id.map(known).fillna(False).astype(bool)
+    factor_expressed = edges.source_id.map(expressed).fillna(False).astype(bool)
+    dropped = is_transcription & factor_known & ~factor_expressed
+    counts = {
+        "transcription_edges_before": int(is_transcription.sum()),
+        "transcription_edges_dropped_factor_not_brain_expressed": int(dropped.sum()),
+        "transcription_edges_kept_factor_expression_unknown": int((is_transcription & ~factor_known).sum()),
+        "transcription_factors_dropped": int(edges.loc[dropped, "source_id"].nunique()),
+        "transcription_factors_expression_unknown": int(edges.loc[is_transcription & ~factor_known, "source_id"].nunique()),
+    }
+    return edges[~dropped].copy(), counts
+
+
 def tag_currency(nodes: pd.DataFrame, degree_quantile_threshold: float) -> pd.DataFrame:
     metabolites = nodes[nodes.node_type == "metabolite"]
     tagged = tag_currency_metabolites(
@@ -326,6 +413,8 @@ def build_physiology_graph(
     small_molecule_path: Path | None = None,
     metabolites_table_path: Path | None = None,
     model_yaml_path: Path | None = None,
+    brain_expression_path: Path | None = None,
+    brain_expression_minimum_tpm: float = 1.0,
 ) -> dict:
     model = load_human_gem(model_path)
     nodes, edges = build_metabolic_layer(model, gene_symbols_from_table(genes_table_path), model_yaml_path)
@@ -341,6 +430,17 @@ def build_physiology_graph(
         edge_tables.append(small_molecule_edges)
     edges = pd.concat(edge_tables, ignore_index=True).drop_duplicates()
     edges = edges[edges.source_id.isin(set(nodes.node_id)) & edges.target_id.isin(set(nodes.node_id))]
+    brain_expression_counts: dict = {}
+    if brain_expression_path is not None and brain_expression_path.exists():
+        nodes = annotate_brain_expression(nodes, load_brain_expression(brain_expression_path), brain_expression_minimum_tpm)
+        edges, brain_expression_counts = restrict_transcription_edges_to_brain_expressed(nodes, edges)
+        nodes = propagate_brain_expression_to_reactions(nodes, edges)
+        genes = nodes[nodes.node_type == "gene"]
+        brain_expression_counts.update({
+            "brain_expression_minimum_tpm": brain_expression_minimum_tpm,
+            "gene_nodes_with_brain_expression_known": int(genes.brain_expression_known.sum()),
+            "gene_nodes_brain_expressed": int(genes.brain_expressed.sum()),
+        })
     degree = pd.concat([edges.source_id, edges.target_id]).value_counts()
     nodes = nodes.copy()
     nodes["degree"] = nodes.node_id.map(degree).fillna(0).astype(int)
@@ -356,6 +456,7 @@ def build_physiology_graph(
     reactions = nodes[nodes.node_type == "reaction"]
     summary["reactions_with_subsystem"] = int((reactions.subsystem.fillna("") != "").sum())
     summary["distinct_subsystems"] = int(reactions.subsystem.fillna("").replace("", pd.NA).nunique())
+    summary["brain_expression"] = brain_expression_counts
     (output_directory / "graph_summary.json").write_text(json.dumps(summary, indent=1))
     return summary
 
@@ -371,9 +472,12 @@ def main() -> None:
     parser.add_argument("--small-molecule", type=Path, default=Path("data/raw/omnipath/small_molecule_protein.tsv"))
     parser.add_argument("--metabolites-table", type=Path, default=Path("data/raw/Human-GEM/model/metabolites.tsv"))
     parser.add_argument("--model-yaml", type=Path, default=Path("data/raw/Human-GEM/model/Human-GEM.yml"), help="source of reaction subsystems when the SBML has no groups")
+    parser.add_argument("--brain-expression", type=Path, default=Path("data/raw/gtex/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz"), help="GTEx median-TPM GCT file; gene nodes get brain expression attributes and transcription factors known not to be brain expressed lose their regulon edges")
+    parser.add_argument("--brain-expression-minimum-tpm", type=float, default=1.0, help="median TPM in at least one brain tissue that counts as brain expression evidence")
     arguments = parser.parse_args()
     summary = build_physiology_graph(arguments.model_path, arguments.output_dir, arguments.genes_table, arguments.degree_quantile_threshold,
-                                     arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table, arguments.model_yaml)
+                                     arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table, arguments.model_yaml,
+                                     arguments.brain_expression, arguments.brain_expression_minimum_tpm)
     print(json.dumps(summary, indent=1))
 
 
