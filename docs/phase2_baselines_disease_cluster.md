@@ -12,11 +12,11 @@
 
 Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins are [low degree, high degree] with the number of perturbations):
 
-| model | degree_bin_0_[1,1]_n0 | degree_bin_1_[1,3]_n283 | degree_bin_2_[3,145]_n168 |
+| model | degree_bin_0_[1,1]_n151 | degree_bin_1_[1,3]_n150 | degree_bin_2_[3,145]_n150 |
 |---|---|---|---|
-| popularity | nan | 0.182 | 0.207 |
-| degree_popularity | nan | 0.185 | 0.214 |
-| random_walk_with_restart | nan | 0.241 | 0.262 |
+| popularity | 0.195 | 0.182 | 0.203 |
+| degree_popularity | 0.195 | 0.198 | 0.213 |
+| random_walk_with_restart | 0.278 | 0.217 | 0.268 |
 
 ## Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)
 
@@ -98,6 +98,12 @@ Same split with labels permuted within degree strata:
 | degree_popularity | 0.219 | 0.261 ± 0.010 | 0.495 | 0.516 ± 0.014 | 0.651 | 0.805 | 451 |
 | random_walk_with_restart | 0.224 | 0.269 ± 0.028 | 0.529 | 0.538 ± 0.025 | 0.451 | 0.581 | 451 |
 
+## Negative control: degree-preserving rewiring of the graph (2 swaps per edge; grouped split, random walk only)
+
+| model | macro AUPRC (pooled) | macro AUPRC (per fold) | macro AUROC (pooled) | macro AUROC (per fold) | MRR | hits@3 | scored perturbations |
+|---|---|---|---|---|---|---|---|
+| random_walk_with_restart | 0.227 | 0.272 ± 0.014 | 0.523 | 0.518 ± 0.031 | 0.381 | 0.435 | 451 |
+
 ## Per-symptom AUPRC, grouped split
 
 Point estimate with 95 percent bootstrap interval over perturbations; base rate in parentheses.
@@ -114,3 +120,23 @@ Point estimate with 95 percent bootstrap interval over perturbations; base rate 
 | psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) |
 | psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) |
 | somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) |
+
+## Time split, monogenic pairs by OMIM biocuration date (cutoff 2015-12-31)
+
+Training positives: 204 pairs dated on or before the cutoff; new positives: 204 pairs dated after it; undated (Orphanet-only) positives excluded: 453; scored pairs: 3853 (every pair that is neither a training positive nor an undated positive). The biocuration date is when the HPO team recorded the annotation, an upper bound on publication, so this split measures prediction of later-curated links. Permuted: new-positive labels permuted among the scored pairs of each symptom.
+
+| model | macro AUPRC | macro AUPRC (permuted) | macro AUROC | macro AUROC (permuted) |
+|---|---|---|---|---|
+| popularity | 0.082 | 0.082 | 0.500 | 0.500 |
+| degree_popularity | 0.088 | 0.102 | 0.498 | 0.551 |
+| random_walk_with_restart | 0.126 | 0.092 | 0.541 | 0.468 |
+
+| symptom | scored pairs | new positives (base rate) | popularity AUPRC / AUROC | degree_popularity AUPRC / AUROC | random_walk_with_restart AUPRC / AUROC |
+|---|---|---|---|---|---|
+| anxiety | 360 | 26 (0.072) | 0.072 / 0.500 | 0.119 / 0.485 | 0.145 / 0.616 |
+| cognitive_impairment | 287 | 38 (0.132) | 0.132 / 0.500 | 0.136 / 0.505 | 0.198 / 0.594 |
+| depressed_mood | 363 | 15 (0.041) | 0.041 / 0.500 | 0.042 / 0.473 | 0.100 / 0.670 |
+| fatigue | 379 | 29 (0.077) | 0.077 / 0.500 | 0.074 / 0.484 | 0.069 / 0.440 |
+| insomnia | 438 | 10 (0.023) | 0.023 / 0.500 | 0.030 / 0.613 | 0.027 / 0.364 |
+| irritability_or_aggression | 335 | 64 (0.191) | 0.191 / 0.500 | 0.181 / 0.475 | 0.269 / 0.601 |
+| psychomotor_agitation | 429 | 16 (0.037) | 0.037 / 0.500 | 0.034 / 0.447 | 0.071 / 0.501 |

@@ -27,6 +27,7 @@ import copy
 import json
 import signal
 import time
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -48,6 +49,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     per_symptom_auprc,
     per_symptom_auroc,
 )
+from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
@@ -113,6 +115,17 @@ def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray) -> float:
 def split_indices(data, arguments) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
     """Return (train, validation, test) index arrays and a name for the split directory."""
     all_indices = np.arange(len(data.perturbation_ids))
+    if arguments.time_split_cutoff is not None:
+        test_mask = np.ones(len(all_indices), dtype=bool)  # every perturbation is scored at the pair level; training uses pre-cutoff positives only
+        split_name = f"time_{arguments.time_split_cutoff.isoformat()}_seed{arguments.seed}"
+        train_pool = all_indices
+        validation = np.array([], dtype=int)
+        if arguments.validation_fraction > 0:
+            num_validation_folds = max(2, int(round(1.0 / arguments.validation_fraction)))
+            validation_fold = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_validation_folds, arguments.seed + 1000)
+            validation = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] == 0])
+            train_pool = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] != 0])
+        return train_pool, validation, all_indices[test_mask], split_name
     if arguments.holdout_module:
         module_genes = read_curated_modules(arguments.curated_modules)[arguments.holdout_module]
         module_nodes = {data.node_index[f"GENE:{symbol}"] for symbol in module_genes if f"GENE:{symbol}" in data.node_index}
@@ -153,6 +166,8 @@ def main() -> None:
     parser.add_argument("--holdout-module", type=str, default="", help="pathway-wise split: curated module id to hold out instead of a grouped fold")
     parser.add_argument("--holdout-subsystem", type=str, default="", help="pathway-wise split: Human-GEM subsystem whose genes (by primary subsystem) are held out")
     parser.add_argument("--permute-labels", action="store_true", help="negative control: permute outcome rows within degree strata before training and testing")
+    parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
+                        help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
     parser.add_argument("--patience", type=int, default=8)
@@ -190,6 +205,19 @@ def main() -> None:
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by)
     if arguments.permute_labels:
         data.outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
+    time_split = None
+    if arguments.time_split_cutoff is not None:
+        if data.evidence_dates is None or (data.evidence_dates > 0).sum() == 0:
+            raise ValueError("the evidence table carries no evidence_date column; rebuild it with phenotype.hpoa present")
+        cutoff_ordinal = arguments.time_split_cutoff.toordinal()
+        dated = data.evidence_dates > 0
+        full_outcomes = data.outcomes.copy()
+        time_split = {
+            "new_positive": ((full_outcomes > 0) & dated & (data.evidence_dates > cutoff_ordinal)).astype(float),
+            "undated_positive": (full_outcomes > 0) & ~dated,
+        }
+        data.outcomes = ((full_outcomes > 0) & dated & (data.evidence_dates <= cutoff_ordinal)).astype(float)  # the model only ever sees pre-cutoff positives
+        time_split["scored_pairs"] = ~(data.outcomes > 0) & ~time_split["undated_positive"]
     train_indices, validation_indices, test_indices, split_name = split_indices(data, arguments)
     if arguments.permute_labels:
         split_name += "_permuted"
@@ -281,7 +309,38 @@ def main() -> None:
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
     test_outcomes = data.outcomes[test_indices]
     per_symptom = {}
+    time_split_results = None
+    if time_split is not None:
+        generator = np.random.default_rng(arguments.seed)
+        permuted = time_split["new_positive"].copy()
+        for symptom_index in range(permuted.shape[1]):
+            rows = np.where(time_split["scored_pairs"][:, symptom_index])[0]
+            permuted[rows, symptom_index] = time_split["new_positive"][generator.permutation(rows), symptom_index]
+        tables = {}
+        for label_name, labels in (("observed", time_split["new_positive"]), ("permuted", permuted)):
+            table = {}
+            for symptom_index, symptom in enumerate(data.symptoms):
+                mask = time_split["scored_pairs"][:, symptom_index]
+                positives = labels[mask, symptom_index].sum()
+                if positives < MINIMUM_POSITIVES_TO_SCORE or positives == mask.sum():
+                    continue
+                table[symptom] = {"scored_pairs": int(mask.sum()), "new_positives": int(positives), "base_rate": float(positives / mask.sum()),
+                                  "auprc": float(average_precision_score(labels[mask, symptom_index], predictions[mask, symptom_index])),
+                                  "auroc": float(roc_auc_score(labels[mask, symptom_index], predictions[mask, symptom_index]))}
+            tables[label_name] = table
+        time_split_results = {
+            "cutoff": arguments.time_split_cutoff.isoformat(), "training_positive_pairs": int(data.outcomes.sum()), "new_positive_pairs": int(time_split["new_positive"].sum()),
+            "undated_positive_pairs": int(time_split["undated_positive"].sum()), "scored_pairs": int(time_split["scored_pairs"].sum()),
+            "per_symptom": tables["observed"], "per_symptom_permuted": tables["permuted"],
+            "macro_auprc": float(np.mean([e["auprc"] for e in tables["observed"].values()])) if tables["observed"] else float("nan"),
+            "macro_auroc": float(np.mean([e["auroc"] for e in tables["observed"].values()])) if tables["observed"] else float("nan"),
+            "macro_auprc_permuted": float(np.mean([e["auprc"] for e in tables["permuted"].values()])) if tables["permuted"] else float("nan"),
+            "macro_auroc_permuted": float(np.mean([e["auroc"] for e in tables["permuted"].values()])) if tables["permuted"] else float("nan"),
+        }
+        test_outcomes = time_split["new_positive"]  # ranking metrics below rank the new positives
     for symptom_index, symptom in enumerate(data.symptoms):
+        if time_split is not None:
+            break
         positives = test_outcomes[:, symptom_index].sum()
         if positives < MINIMUM_POSITIVES_TO_SCORE or positives == len(test_indices):
             continue
@@ -294,7 +353,7 @@ def main() -> None:
     results = {
         "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem) else arguments.fold, "holdout_module": arguments.holdout_module or None,
         "holdout_subsystem": arguments.holdout_subsystem or None, "labels_permuted": bool(arguments.permute_labels), "seed": arguments.seed,
-        "arguments": {key: (str(value) if isinstance(value, Path) else value) for key, value in vars(arguments).items()},
+        "arguments": {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(arguments).items()},
         "num_train": int(len(train_indices)), "num_validation": int(len(validation_indices)), "num_test": int(len(test_indices)),
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
@@ -302,7 +361,10 @@ def main() -> None:
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, test_outcomes), "hits_at_3": hits_at_k(predictions, test_outcomes, 3),
         "expected_calibration_error": expected_calibration_error(predictions, test_outcomes), "per_symptom": per_symptom, "symptoms": data.symptoms,
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
+        "time_split": time_split_results,
     }
+    if time_split_results is not None:
+        results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]
     np.save(split_directory / "test_predictions.npy", predictions)
     if arguments.head == "noisy_or":
         with torch.no_grad():

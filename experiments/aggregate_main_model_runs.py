@@ -47,6 +47,7 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray) -> tuple[float, 
 
 def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> dict | None:
     split_directories = sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists() and (path / "results.json").exists())
+    split_directories = [path for path in split_directories if json.loads((path / "results.json").read_text()).get("time_split") is None]
     if not split_directories:
         return None
     position_of = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
@@ -100,6 +101,16 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
     }
+
+
+def collect_time_split_runs(run_directories: list[Path]) -> list[dict]:
+    rows = []
+    for run_directory in run_directories:
+        for split_directory in sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists()):
+            results = json.loads((split_directory / "results.json").read_text())
+            if results.get("time_split"):
+                rows.append({"run": run_directory.name, "split": results["split"], **results["time_split"]})
+    return rows
 
 
 def summary_row(name: str, entry: dict) -> str:
@@ -169,6 +180,12 @@ def main() -> None:
                       "| split | support sizes | expected support sizes | symptoms per module above 0.5 |", "|---|---|---|---|"]
             for split_entry, sizes, expected, per_module in zip(entry["per_split"], entry["module_support_sizes"], entry["module_expected_support_sizes"], entry["symptoms_per_module_above_half"]):
                 lines.append(f"| {split_entry['split']} | {sizes} | {[round(x) for x in expected] if expected else 'n/a'} | {per_module} |")
+    time_split_rows = collect_time_split_runs(arguments.run_dirs)
+    if time_split_rows:
+        lines += ["", "## Time split (monogenic pairs by OMIM biocuration date)", "", "Training positives are the pairs dated on or before the cutoff; scored pairs are those that could still become positive; permuted: new-positive labels permuted within each symptom's scored pairs.", "",
+                  "| run | split | training positives | new positives | scored pairs | macro AUPRC | macro AUPRC (permuted) | macro AUROC | macro AUROC (permuted) |", "|---|---|---|---|---|---|---|---|---|"]
+        for row in time_split_rows:
+            lines.append(f"| {row['run']} | {row['split']} | {row['training_positive_pairs']} | {row['new_positive_pairs']} | {row['scored_pairs']} | {row['macro_auprc']:.3f} | {row['macro_auprc_permuted']:.3f} | {row['macro_auroc']:.3f} | {row['macro_auroc_permuted']:.3f} |")
     lines += ["", "## Per-split macro metrics", "", "| run | split | test size | macro AUPRC | macro AUROC | MRR | hits@3 | epochs | best epoch |", "|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():
         for split_entry in entry["per_split"]:
