@@ -35,4 +35,25 @@ Nodes: 12877 reactions, 8460 compartment-specific metabolites, 2848 genes. Edges
 | largest connected component, all nodes | 0.992 |
 | largest connected component, currency metabolites removed | 0.966 |
 
-Signaling (OmniPath) and transcription (CollecTRI) layers are not yet joined.
+## Coverage of the curated pathway modules by the graph layers
+
+| module | genes listed | in metabolic layer | signaling or transcription layer only | absent from the graph |
+|---|---|---|---|---|
+| catecholamine | 10 | 10 | none | none |
+| serotonin_melatonin | 7 | 7 | none | none |
+| tetrahydrobiopterin | 5 | 5 | none | none |
+| phenylalanine_tyrosine | 4 | 4 | none | none |
+| tryptophan_kynurenine | 7 | 7 | none | none |
+| gaba_glutamate | 7 | 7 | none | none |
+| one_carbon_homocysteine | 10 | 10 | none | none |
+| urea_cycle | 8 | 8 | none | none |
+| heme_porphyrin | 8 | 8 | none | none |
+| copper_metal | 3 | 1 | ATP7B, ATP7A | none |
+| sterol_lysosomal_lipid | 9 | 7 | NPC2, GBA1 | none |
+| creatine_energy | 6 | 6 | none | none |
+| purine_pyrimidine | 4 | 4 | none | none |
+| acetylcholine_histamine_adenosine | 7 | 5 | ADORA1, ADORA2A | none |
+| steroid_thyroid | 6 | 6 | none | none |
+| vitamin_cofactor_transport | 4 | 3 | TCN2 | none |
+
+Absent anchors are the first curation gap: a monogenic perturbation whose gene is not in any layer cannot enter the model until a reaction or interaction is added for it.
