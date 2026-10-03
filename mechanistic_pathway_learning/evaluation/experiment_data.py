@@ -44,7 +44,15 @@ class ExperimentData:
         return np.array([self.node_degree[seeds].sum() if len(seeds) else 0.0 for seeds in self.perturbation_seeds])
 
 
-def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False) -> ExperimentData:
+GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id"}
+
+
+def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene") -> ExperimentData:
+    """group_by selects the leakage group for the grouped split: "gene" (the gene itself; drugs by dominant
+    target) or "disease_cluster" (genes sharing a disease entry in HPO are held out together)."""
+    if group_by not in GROUPING_COLUMNS:
+        raise ValueError(f"group_by must be one of {sorted(GROUPING_COLUMNS)}")
+    group_column = GROUPING_COLUMNS[group_by]
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     edges = pd.read_parquet(graph_directory / "edges.parquet")
     relation_types = json.loads((graph_directory / "relation_types.json").read_text())
@@ -53,6 +61,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     relation_index = {name: index for index, name in enumerate(relation_types)}
     evidence = pd.read_parquet(evidence_directory / "evidence_records.parquet")
     evidence = evidence[evidence.relation == relation]
+    if group_column not in evidence.columns:  # evidence tables written before disease clusters existed
+        evidence = evidence.assign(**{group_column: evidence.group_id})
     if metabolic_layer_only:
         evidence = evidence[evidence.in_metabolic_layer == True]  # noqa: E712
     if symptoms is None:
@@ -70,7 +80,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         weights[position, symptom_index[row.symptom]] = max(weights[position, symptom_index[row.symptom]], float(row.weight))
         labels[row.perturbation_id] = row.perturbation_label
         types[row.perturbation_id] = row.perturbation_type
-        groups[row.perturbation_id] = row.group_id
+        groups[row.perturbation_id] = getattr(row, group_column)
         metabolic[row.perturbation_id] = bool(row.in_metabolic_layer)
         if row.perturbation_id not in seeds:
             triples = json.loads(row.perturbation_nodes)

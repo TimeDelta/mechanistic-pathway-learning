@@ -79,3 +79,22 @@ def time_split(
         else:
             test_identifiers.append(observation_identifier)
     return training_identifiers, test_identifiers
+
+
+def read_curated_modules(curated_modules_path) -> dict[str, list[str]]:
+    """docs/curated_pathway_modules.csv -> module id -> gene symbols (the scaffolding of design section 3.2)."""
+    import csv
+
+    genes_by_module: dict[str, list[str]] = {}
+    with open(curated_modules_path, encoding="utf-8") as modules_file:
+        for row in csv.DictReader(modules_file):
+            genes_by_module[row["module_id"]] = [symbol.strip() for symbol in (row.get("genes") or "").split(";") if symbol.strip()]
+    return genes_by_module
+
+
+def perturbations_anchored_in_module(perturbation_seed_node_indices: Sequence, module_node_indices: set[int]) -> list[bool]:
+    """True for every perturbation that writes onto at least one node of the module (a module gene, or a drug targeting one).
+
+    This is the pathway-wise hold-out set: all of them leave the training data together.
+    """
+    return [any(int(node_index) in module_node_indices for node_index in seeds) for seeds in perturbation_seed_node_indices]

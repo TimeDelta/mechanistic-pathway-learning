@@ -3,8 +3,13 @@
 A perturbation is encoded upstream as a node-state field of shape
 [batch_size, num_graph_nodes, node_state_dim]. Each of the K pathway
 modules owns a sparse support over graph nodes (one hard-concrete gate
-per node), reads the gated field through a weighted mean pool and
-produces an activation in [0, 1]. Module activations combine with learned
+per node), reads the gated field through a gated pool and produces an
+activation in [0, 1]. Two poolings are available: "sum" (default) adds the gated node
+states, so a perturbation that reaches a few support nodes is read at full strength and
+a support that nothing reaches reads as zero; "mean" divides by the support mass, which
+with the absolute field makes the activation a property of the support rather than of
+the perturbation (the base states of thousands of gated nodes swamp a change at a few).
+The sum pooling is meant for the perturbation difference field (encoder docstring). Module activations combine with learned
 module-to-symptom link probabilities through a noisy-OR with a
 per-symptom leak term:
 
@@ -105,8 +110,12 @@ class NoisyOrPathwayModuleHead(nn.Module):
         initial_leak_logit: float = -4.0,
         gate_temperature: float = 2.0 / 3.0,
         gate_initial_log_alpha: float = -1.0,
+        pooling: str = "sum",
     ) -> None:
         super().__init__()
+        if pooling not in ("sum", "mean"):
+            raise ValueError("pooling must be 'sum' or 'mean'")
+        self.pooling = pooling
         self.num_graph_nodes = num_graph_nodes
         self.num_pathway_modules = num_pathway_modules
         self.num_symptoms = num_symptoms
@@ -131,9 +140,10 @@ class NoisyOrPathwayModuleHead(nn.Module):
         """Activation of each module for each perturbation in the batch, shape [batch_size, K]."""
         if module_support is None:
             module_support = self.support_gate()
-        gated_mean_pool = torch.einsum("kn,bnd->bkd", module_support, node_state_field)
-        gated_mean_pool = gated_mean_pool / (module_support.sum(dim=1)[None, :, None] + PROBABILITY_EPSILON)
-        activation_logit = (gated_mean_pool * self.module_readout_weight[None, :, :]).sum(dim=-1) + self.module_readout_bias
+        gated_pool = torch.einsum("kn,bnd->bkd", module_support, node_state_field)
+        if self.pooling == "mean":
+            gated_pool = gated_pool / (module_support.sum(dim=1)[None, :, None] + PROBABILITY_EPSILON)
+        activation_logit = (gated_pool * self.module_readout_weight[None, :, :]).sum(dim=-1) + self.module_readout_bias
         return torch.sigmoid(activation_logit)
 
     def link_probability(self, relation_index: int = 0) -> Tensor:

@@ -8,6 +8,13 @@ head reads locally. The encoder uses only torch so the scaffold runs without
 PyTorch Geometric; swapping in a library implementation later only has to keep
 the forward signature.
 
+Two readings of the field are available. The absolute field carries the learned base state of
+every node plus the propagated perturbation, so a readout can memorize node identity. The
+difference field, forward(perturbed) minus forward(unperturbed), carries only what the
+perturbation changed; a module that reads it responds to the propagated perturbation and not to
+which nodes exist, which is the mechanism reading the design asks for (section 5.2) and the
+default of the training harness. The unperturbed field is one extra batch-of-one pass.
+
 Edges are shared across the batch and given once as edge_index [2, num_edges]
 (source row, destination row) with edge_relation_type [num_edges]. Messages are
 mean-aggregated per relation type at the destination node. Compartment changes
@@ -104,6 +111,26 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self._adjacency_cache_key = cache_key
             relation_adjacencies = self._cached_adjacencies
         node_state_field = self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude)
+        return self.propagate(node_state_field, relation_adjacencies)
+
+    def unperturbed_node_state_field(self, relation_adjacencies: list[Tensor | None]) -> Tensor:
+        """Field of shape [1, num_graph_nodes, node_state_dim] with no perturbation written on it."""
+        device = self.base_node_state.weight.device
+        empty_index = torch.full((1, 1), -1, dtype=torch.long, device=device)
+        empty_injection = torch.zeros((1, 1, PERTURBATION_FEATURE_DIM), device=device)
+        return self.forward(empty_index, empty_injection, relation_adjacencies=relation_adjacencies)
+
+    def perturbation_difference_field(
+        self,
+        perturbation_node_index: Tensor,
+        perturbation_sign_and_magnitude: Tensor,
+        relation_adjacencies: list[Tensor | None],
+    ) -> Tensor:
+        """forward(perturbed) - forward(unperturbed): the propagated change caused by the perturbation."""
+        perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
+        return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
+
+    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None]) -> Tensor:
         batch_size = node_state_field.shape[0]
         for layer_index in range(self.num_message_passing_layers):
             aggregated_messages = torch.zeros_like(node_state_field)
