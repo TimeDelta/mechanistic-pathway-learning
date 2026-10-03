@@ -23,13 +23,24 @@ and the grade A policy in assign_evidence_grades can be applied without a separa
 The two-distinct-entries proxy used in version 0.3 counted an OMIM entry and its Orphanet
 counterpart as two independent case series; it is kept only as an alternative policy.
 
+Dates. phenotype.hpoa (the disease-level annotation file of the same release) carries a biocuration
+field with curator and date per (disease, term) annotation. OMIM-sourced annotations are dated from
+2009 onward; every Orphanet annotation carries the import date of the release, which is no date at
+all. A (gene, symptom) pair therefore gets evidence_available_date = the earliest biocuration date
+among the OMIM (disease, term) annotations behind it, and no date when only Orphanet annotations
+support it. The date is when the HPO team recorded the annotation, an upper bound on when the
+observation was published (the reference column holds the PMID for most OMIM rows), which the time
+split of design section 6.1 states as its caveat.
+
 Output: one EvidenceRecord per (gene, target symptom) with evidence_class "monogenic".
 """
 from __future__ import annotations
 
 import csv
+import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from datetime import date
 from pathlib import Path
 
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import EvidenceRecord
@@ -158,6 +169,39 @@ def parse_frequency_denominator(raw_frequency: str | None) -> int | None:
     return None
 
 
+BIOCURATION_DATE_PATTERN = re.compile(r"\[(\d{4})-(\d{2})-(\d{2})\]")
+
+
+def load_hpo_annotation_dates(phenotype_hpoa_path: Path, dated_provenance_prefixes: tuple[str, ...] = ("OMIM:",)) -> dict[tuple[str, str], date]:
+    """(disease id, HPO term id) -> earliest biocuration date, for annotations from the dated provenances.
+
+    Rows with the NOT qualifier are skipped. Orphanet rows are excluded by default because their
+    biocuration date is the release import date.
+    """
+    dates: dict[tuple[str, str], date] = {}
+    with open(phenotype_hpoa_path, encoding="utf-8") as hpoa_file:
+        header: list[str] | None = None
+        for raw_line in hpoa_file:
+            if raw_line.startswith("#"):
+                continue
+            fields = raw_line.rstrip("\n").split("\t")
+            if header is None:
+                header = fields
+                column = {name: index for index, name in enumerate(header)}
+                continue
+            disease_id = fields[column["database_id"]]
+            if not disease_id.startswith(dated_provenance_prefixes) or fields[column["qualifier"]].strip().upper() == "NOT":
+                continue
+            matches = BIOCURATION_DATE_PATTERN.findall(fields[column["biocuration"]])
+            if not matches:
+                continue
+            earliest = min(date(int(year), int(month), int(day)) for year, month, day in matches)
+            key = (disease_id, fields[column["hpo_id"]])
+            if key not in dates or earliest < dates[key]:
+                dates[key] = earliest
+    return dates
+
+
 def parse_genes_to_phenotype(genes_to_phenotype_path: Path) -> list[dict[str, str]]:
     """Rows of genes_to_phenotype.txt as dictionaries keyed by the header names."""
     with open(genes_to_phenotype_path, encoding="utf-8") as annotation_file:
@@ -173,17 +217,21 @@ def monogenic_evidence_records(
     parents_by_term: Mapping[str, set[str]],
     genes_in_graph: set[str],
     excluded_hpo_ids_by_symptom: Mapping[str, Iterable[str]] | None = None,
+    annotation_dates: Mapping[tuple[str, str], date] | None = None,
 ) -> list[EvidenceRecord]:
     """One record per (gene symbol, target symptom) for genes present in the physiology graph.
 
     Rows whose frequency qualifier is Excluded (HP:0040285) are dropped: they assert that the
     feature is absent in that disease. A pair whose rows are all Excluded yields no record.
+    With annotation_dates (load_hpo_annotation_dates), each record carries the earliest date of
+    the dated (disease, term) annotations behind it, or None when none of them is dated.
     """
     symptoms_by_term = expand_symptom_terms(target_symptom_to_hpo_ids, parents_by_term, excluded_hpo_ids_by_symptom)
     disease_ids_by_pair: dict[tuple[str, str], set[str]] = defaultdict(set)
     frequencies_by_pair: dict[tuple[str, str], list[float]] = defaultdict(list)
     denominators_by_pair: dict[tuple[str, str], int] = defaultdict(int)
     rows_by_pair: dict[tuple[str, str], int] = defaultdict(int)
+    dates_by_pair: dict[tuple[str, str], date] = {}
     for row in annotation_rows:
         gene_symbol = row.get("gene_symbol", "")
         if gene_symbol not in genes_in_graph:
@@ -196,10 +244,13 @@ def monogenic_evidence_records(
             continue
         frequency = parse_frequency_qualifier(raw_frequency)
         denominator = parse_frequency_denominator(raw_frequency)
+        annotation_date = annotation_dates.get((row.get("disease_id", ""), row.get("hpo_id", ""))) if annotation_dates else None
         for target_symptom in target_symptoms:
             pair = (gene_symbol, target_symptom)
             disease_ids_by_pair[pair].add(row.get("disease_id", ""))
             rows_by_pair[pair] += 1
+            if annotation_date is not None and (pair not in dates_by_pair or annotation_date < dates_by_pair[pair]):
+                dates_by_pair[pair] = annotation_date
             if frequency is not None:
                 frequencies_by_pair[pair].append(frequency)
             if denominator is not None:
@@ -224,6 +275,7 @@ def monogenic_evidence_records(
                 annotation_row_count=rows_by_pair[(gene_symbol, target_symptom)],
                 max_annotation_frequency=max(frequencies) if frequencies else None,
                 annotation_patient_count=denominators_by_pair.get((gene_symbol, target_symptom)) or None,
+                evidence_available_date=dates_by_pair.get((gene_symbol, target_symptom)),
             )
         )
     return records

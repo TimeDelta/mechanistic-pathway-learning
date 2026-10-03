@@ -92,17 +92,19 @@ def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, per
     Bins are degree quantiles over the rows given; a symptom is scored inside a bin when it has at least
     minimum_positives positives and one negative there. Hub-driven predictors score well in the top bin only.
     """
-    edges = np.quantile(perturbation_degrees, np.linspace(0.0, 1.0, num_bins + 1))
-    bin_of_row = np.clip(np.searchsorted(edges, perturbation_degrees, side="right") - 1, 0, num_bins - 1)
+    order = np.argsort(perturbation_degrees, kind="stable")  # equal-count bins; ties broken by position so no bin is empty
+    bin_of_row = np.empty(len(perturbation_degrees), dtype=int)
+    bin_of_row[order] = np.minimum(np.arange(len(perturbation_degrees)) * num_bins // max(1, len(perturbation_degrees)), num_bins - 1)
     result: dict[str, float] = {}
     for bin_index in range(num_bins):
         rows = np.where(bin_of_row == bin_index)[0]
+        edges = [perturbation_degrees[rows].min() if len(rows) else float("nan"), perturbation_degrees[rows].max() if len(rows) else float("nan")]
         values = []
         for symptom_index in range(outcomes.shape[1]):
             positives = outcomes[rows, symptom_index].sum()
             if positives < minimum_positives or positives == len(rows):
                 continue
             values.append(float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index])))
-        label = f"degree_bin_{bin_index}_[{edges[bin_index]:.0f},{edges[bin_index + 1]:.0f}]_n{len(rows)}"
+        label = f"degree_bin_{bin_index}_[{edges[0]:.0f},{edges[1]:.0f}]_n{len(rows)}"
         result[label] = float(np.mean(values)) if values else float("nan")
     return result

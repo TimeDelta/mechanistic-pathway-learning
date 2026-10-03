@@ -198,7 +198,7 @@ Grouped perturbation-wise cross-validation, following the disjoint-group protoco
 
 Pathway-wise split: all perturbations writing onto a pathway are held out together, which tests whether the model generalizes to an unseen mechanism rather than interpolating within a known one. Two pathway definitions are implemented. The curated modules of section 3.2 are the pre-registered definition, but on the monogenic slice only six of sixteen reach ten positive pairs and together they hold 37 perturbations, so per-symptom metrics inside one module are not interpretable (held-out sets of 4 to 8 genes with homogeneous profiles). The Human-GEM subsystems (146 in release 2.0.1; every gene whose reactions mostly belong to subsystem S is held out with S) are the reconstruction's own pathway partition and cover many more annotated genes; they are proposed as the pathway-wise split for the primary endpoint, with the curated modules kept for the interpretability overlap (section 6.6). Held-out sets are scored pooled, per-set ranking metrics are always reported, per-set macro metrics only for sets of at least 20 perturbations, and every pathway-wise result is paired with the same split on permuted labels.
 
-Time split: training on SIDER (labels to 2015) and HPO annotations released before a cutoff; testing on OnSIDES pairs for drugs first approved after 2016 and on HPO annotations added after the cutoff.
+Time split: training on SIDER (labels to 2015) and HPO annotations released before a cutoff; testing on OnSIDES pairs for drugs first approved after 2016 and on HPO annotations added after the cutoff. Implemented for the monogenic class in version 0.4 from phenotype.hpoa: each (gene, symptom) pair is dated by the earliest biocuration date of the OMIM disease annotations behind it; Orphanet annotations all carry the release import date and leave their pairs undated. On the monogenic slice 408 of 861 pairs are dated, 204 of them after 31 December 2015, and 131 of the 147 genes with a post-cutoff pair had no dated pair before it, so the split is mostly a new-gene split. Training positives are the pairs dated on or before the cutoff; the scored pairs are every pair that is neither a training positive nor an undated positive, labelled by whether it was dated afterwards, with the same evaluation on permuted new-positive labels. Caveat: the biocuration date is when the HPO team recorded the annotation (a 2009 bulk import accounts for a quarter of the dated pairs), an upper bound on when the clinical observation was published; the PMID in the reference column would give the publication year and is the planned refinement.
 
 ### 6.2 Metrics
 
@@ -207,7 +207,7 @@ Per-symptom AUROC and AUPRC with bootstrap confidence intervals over perturbatio
 ### 6.3 Negative controls
 
 1. Symptom labels permuted within degree strata (run for every model and split; the random walk kept a per-fold macro AUPRC of 0.284 against 0.235 for popularity on permuted labels, which is the degree signal the stratified permutation preserves by design).
-2. Degree-preserving rewiring of G. Performance should collapse toward B0 if the biology carries the signal.
+2. Degree-preserving rewiring of G (double-edge swaps within each relation type; run for the random walk under the grouped split). Performance should collapse toward B0 if the biology carries the signal.
 3. Evidence grades shuffled.
 4. Peripheral-event control: adverse events with no plausible central mechanism (rash, injection-site reaction). Predictions from brain modules should be at chance.
 

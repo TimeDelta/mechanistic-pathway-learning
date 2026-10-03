@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,7 @@ class ExperimentData:
     in_metabolic_layer: np.ndarray
     node_subsystem: np.ndarray | None = None  # reconstruction subsystem per node ("" for non-reactions or when absent)
     frequencies: np.ndarray | None = None  # [num_perturbations, num_symptoms] reported frequency of a positive pair, NaN when unknown or negative
+    evidence_dates: np.ndarray | None = None  # [num_perturbations, num_symptoms] proleptic Gregorian ordinal of the earliest dated evidence behind a positive pair, 0 when undated or negative
 
     @property
     def perturbation_degrees(self) -> np.ndarray:
@@ -76,7 +78,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     outcomes = np.zeros((len(perturbation_ids), len(symptoms)))
     weights = np.zeros_like(outcomes)
     frequencies = np.full_like(outcomes, np.nan)
+    evidence_dates = np.zeros(outcomes.shape, dtype=np.int64)
     has_frequency_column = "label_frequency" in evidence.columns
+    has_date_column = "evidence_date" in evidence.columns
     labels, types, groups, seeds, signs, magnitudes, metabolic = {}, {}, {}, {}, {}, {}, {}
     for row in evidence.itertuples(index=False):
         position = perturbation_position[row.perturbation_id]
@@ -84,6 +88,10 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         weights[position, symptom_index[row.symptom]] = max(weights[position, symptom_index[row.symptom]], float(row.weight))
         if has_frequency_column and row.label_frequency is not None and not (isinstance(row.label_frequency, float) and np.isnan(row.label_frequency)):
             frequencies[position, symptom_index[row.symptom]] = np.nanmax([frequencies[position, symptom_index[row.symptom]], float(row.label_frequency)])
+        if has_date_column and isinstance(row.evidence_date, str) and row.evidence_date:
+            ordinal = date.fromisoformat(row.evidence_date).toordinal()
+            current = evidence_dates[position, symptom_index[row.symptom]]
+            evidence_dates[position, symptom_index[row.symptom]] = ordinal if current == 0 else min(current, ordinal)
         labels[row.perturbation_id] = row.perturbation_label
         types[row.perturbation_id] = row.perturbation_type
         groups[row.perturbation_id] = getattr(row, group_column)
@@ -116,4 +124,5 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         in_metabolic_layer=np.array([metabolic[p] for p in perturbation_ids]),
         node_subsystem=nodes.subsystem.fillna("").to_numpy().astype(str) if "subsystem" in nodes.columns else None,
         frequencies=frequencies,
+        evidence_dates=evidence_dates,
     )

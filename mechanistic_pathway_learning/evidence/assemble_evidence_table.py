@@ -17,6 +17,8 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
                          reliability model replaces weight downstream)
   perturbation_nodes     JSON list of [node_id, sign, magnitude] in the graph
   label_frequency        SIDER frequency midpoint (E2) or largest HPO frequency midpoint (E1) when reported
+  evidence_date          earliest OMIM biocuration date behind a monogenic pair (ISO string; null when Orphanet-only),
+                         the time-split axis of design section 6.1
   omim_entry_count, orpha_entry_count, annotation_row_count, annotation_patient_count, disease_identifiers
                          provenance of a monogenic record (null for drugs)
   source                 provenance string
@@ -42,6 +44,7 @@ from mechanistic_pathway_learning.evidence.assign_evidence_grades import (
 )
 from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc, load_sider_events
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
+    load_hpo_annotation_dates,
     load_hpo_is_a_parents_from_obo,
     monogenic_evidence_records,
     parse_genes_to_phenotype,
@@ -98,6 +101,7 @@ def assemble(
     chembl_directory: Path | None,
     max_drug_targets: int = 1,
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
+    phenotype_hpoa_path: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     node_by_symbol = gene_node_lookup(nodes)
@@ -109,7 +113,8 @@ def assemble(
     unmapped: list[dict] = []
 
     parents = load_hpo_is_a_parents_from_obo(hpo_obo_path)
-    monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded)
+    annotation_dates = load_hpo_annotation_dates(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
+    monogenic_records = monogenic_evidence_records(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded, annotation_dates)
     cluster_by_gene = disease_cluster_ids(monogenic_records)
     for record in monogenic_records:
         node_id = node_by_symbol.get(record.perturbation_identifier)
@@ -121,6 +126,7 @@ def assemble(
             "label_frequency": record.max_annotation_frequency, "source": record.source, "in_metabolic_layer": record.perturbation_identifier in metabolic_symbols,
             "omim_entry_count": record.omim_entry_count, "orpha_entry_count": record.orpha_entry_count, "annotation_row_count": record.annotation_row_count,
             "annotation_patient_count": record.annotation_patient_count, "disease_identifiers": ";".join(record.disease_identifiers),
+            "evidence_date": record.evidence_available_date.isoformat() if record.evidence_available_date else None,
         }
         if node_id is None:
             unmapped.append(base)
@@ -148,6 +154,7 @@ def assemble(
                 "label_frequency": event.label_frequency, "source": f"{event.source}; targets " + ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in drug_targets),
                 "in_metabolic_layer": any(symbol in metabolic_symbols for target in drug_targets for symbol in target.gene_symbols),
                 "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
+                "evidence_date": None,
             }
             if not perturbation_nodes:
                 unmapped.append(base)
@@ -173,6 +180,8 @@ def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -
         "by_grade": {grade: int(n) for grade, n in observations.groupby("grade").size().items()},
         "weight_quantiles": {str(q): float(observations.weight.quantile(q)) for q in (0.1, 0.25, 0.5, 0.75, 0.9)},
         "monogenic_rows_with_frequency": int(genes.label_frequency.notna().sum()) if len(genes) else 0,
+        "monogenic_rows_with_date": int(genes.evidence_date.notna().sum()) if len(genes) and "evidence_date" in genes else 0,
+        "monogenic_rows_dated_after_2015": int((genes.evidence_date.dropna() > "2015-12-31").sum()) if len(genes) and "evidence_date" in genes else 0,
         "disease_cluster_concentration_by_symptom": disease_cluster_concentration(genes) if len(genes) else {},
     }
 
@@ -203,6 +212,7 @@ def main() -> None:
     parser.add_argument("--crosswalk", type=Path, default=Path("docs/symptom_crosswalk.csv"))
     parser.add_argument("--hpo-obo", type=Path, default=Path("data/raw/hpo/hp.obo"))
     parser.add_argument("--hpo-annotations", type=Path, default=Path("data/raw/hpo/genes_to_phenotype.txt"))
+    parser.add_argument("--phenotype-hpoa", type=Path, default=Path("data/raw/hpo/phenotype.hpoa"), help="disease-level annotations with biocuration dates (time split)")
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"))
     parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"))
@@ -211,10 +221,13 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
     arguments = parser.parse_args()
     observations, unmapped = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
-                                      arguments.max_drug_targets, arguments.grade_a_policy)
+                                      arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
-    observations.to_parquet(arguments.output_dir / "evidence_records.parquet", index=False)
-    unmapped.to_parquet(arguments.output_dir / "unmapped_records.parquet", index=False)
+    import os
+
+    for name, table in (("evidence_records.parquet", observations), ("unmapped_records.parquet", unmapped)):  # atomic replace for concurrent readers
+        table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
+        os.replace(arguments.output_dir / (name + ".tmp"), arguments.output_dir / name)
     summary = summarize_observations(observations, unmapped)
     summary["grade_a_policy"] = arguments.grade_a_policy
     (arguments.output_dir / "evidence_summary.json").write_text(json.dumps(summary, indent=1))

@@ -138,3 +138,30 @@ def test_disease_clusters_join_genes_sharing_a_disease(tmp_path: Path) -> None:
     clusters = disease_cluster_ids(records)
     assert clusters["ADHDGENE"] == clusters["SHAREDGENE"]  # both annotated to ORPHA:1
     assert clusters["HMBS"] != clusters["OTC"] and clusters["HMBS"] != clusters["ADHDGENE"]
+
+
+def test_annotation_dates_use_omim_rows_only_and_the_earliest_curation(tmp_path: Path) -> None:
+    from datetime import date
+
+    from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import load_hpo_annotation_dates
+
+    hpoa = tmp_path / "phenotype.hpoa"
+    hpoa.write_text("\n".join([
+        "#description: test",
+        "database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration",
+        "OMIM:176000\tAIP\t\tHP:0000709\tPMID:1\tPCS\t\t\t\t\tP\tHPO:skoehler[2012-03-04];HPO:probinson[2021-06-21]",
+        "OMIM:176000\tAIP\t\tHP:0000709\tOMIM:176000\tIEA\t\t\t\t\tP\tHPO:iea[2009-02-17]",
+        "OMIM:176000\tAIP\tNOT\tHP:0000726\tPMID:2\tPCS\t\t\t\t\tP\tHPO:skoehler[2010-01-01]",
+        "ORPHA:79276\tAIP\t\tHP:0000709\tORPHA:79276\tTAS\t\t\t\t\tP\tORPHA:orphadata[2026-09-02]",
+    ]) + "\n")
+    dates = load_hpo_annotation_dates(hpoa)
+    assert dates[("OMIM:176000", "HP:0000709")] == date(2009, 2, 17)  # earliest curation across rows and curators
+    assert ("OMIM:176000", "HP:0000726") not in dates  # NOT-qualified rows are skipped
+    assert ("ORPHA:79276", "HP:0000709") not in dates  # Orphanet rows carry the import date and are excluded
+    obo_path, annotations_path, crosswalk_path = write_inputs(tmp_path)
+    parents = load_hpo_is_a_parents_from_obo(obo_path)
+    crosswalk = read_crosswalk_hpo_terms(crosswalk_path)
+    roots = {symptom: terms[0] for symptom, terms in crosswalk.items()}
+    records = {r.perturbation_identifier: r for r in monogenic_evidence_records(parse_genes_to_phenotype(annotations_path), roots, parents, {"HMBS", "OTC"}, annotation_dates=dates)}
+    assert records["HMBS"].evidence_available_date == date(2009, 2, 17)
+    assert records["OTC"].evidence_available_date is None
