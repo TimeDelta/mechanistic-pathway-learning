@@ -42,6 +42,35 @@ class ExperimentData:
     node_subsystem: np.ndarray | None = None  # reconstruction subsystem per node ("" for non-reactions or when absent)
     frequencies: np.ndarray | None = None  # [num_perturbations, num_symptoms] reported frequency of a positive pair, NaN when unknown or negative
     evidence_dates: np.ndarray | None = None  # [num_perturbations, num_symptoms] proleptic Gregorian ordinal of the earliest dated evidence behind a positive pair, 0 when undated or negative
+    node_compartment: np.ndarray | None = None  # compartment string per node ("" when none; "c;m" for a transport reaction)
+    node_is_transport: np.ndarray | None = None
+    node_is_reversible: np.ndarray | None = None
+
+    def structural_node_features(self) -> np.ndarray:
+        """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags.
+
+        These are what the inductive encoder variant reads instead of a learned embedding per node, so a
+        model built on them can only use graph structure and node kinds (design section 5.2, version 0.4 ablation).
+        """
+        node_types = sorted(set(self.node_types.tolist()))
+        compartments = sorted({part for value in (self.node_compartment if self.node_compartment is not None else []) for part in str(value).split(";") if part})
+        num_nodes = len(self.node_ids)
+        features = np.zeros((num_nodes, len(node_types) + len(compartments) + 4), dtype=np.float32)
+        for index, node_type in enumerate(self.node_types):
+            features[index, node_types.index(node_type)] = 1.0
+        if self.node_compartment is not None:
+            for index, value in enumerate(self.node_compartment):
+                for part in str(value).split(";"):
+                    if part:
+                        features[index, len(node_types) + compartments.index(part)] = 1.0
+        offset = len(node_types) + len(compartments)
+        features[:, offset] = np.log1p(self.node_degree)
+        features[:, offset + 1] = self.is_currency.astype(np.float32)
+        if self.node_is_transport is not None:
+            features[:, offset + 2] = self.node_is_transport.astype(np.float32)
+        if self.node_is_reversible is not None:
+            features[:, offset + 3] = self.node_is_reversible.astype(np.float32)
+        return features
 
     @property
     def perturbation_degrees(self) -> np.ndarray:
@@ -125,4 +154,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_subsystem=nodes.subsystem.fillna("").to_numpy().astype(str) if "subsystem" in nodes.columns else None,
         frequencies=frequencies,
         evidence_dates=evidence_dates,
+        node_compartment=nodes.compartment.fillna("").to_numpy().astype(str) if "compartment" in nodes.columns else None,
+        node_is_transport=(nodes.is_transport == True).to_numpy() if "is_transport" in nodes.columns else None,  # noqa: E712 - NaN rows become False
+        node_is_reversible=(nodes.reversible == True).to_numpy() if "reversible" in nodes.columns else None,  # noqa: E712
     )

@@ -97,3 +97,28 @@ def test_sigmoid_head_learns_the_toy_problem() -> None:
     with torch.no_grad():
         output = head(encoder.perturbation_difference_field(perturbed_nodes, sign_and_magnitude, adjacencies))
     assert output.symptom_probability[:, 0].mean() > 0.9 and output.symptom_probability[:, 1].mean() < 0.1
+
+
+def test_encoder_with_fixed_structural_features_has_no_identity_embedding_and_learns_the_toy_problem() -> None:
+    torch.manual_seed(0)
+    num_graph_nodes, node_state_dim, num_symptoms = 10, 16, 2
+    edge_index, edge_relation_type = build_toy_graph()
+    features = torch.zeros(num_graph_nodes, 3)
+    features[:, 0] = 1.0  # one node type
+    features[:, 1] = torch.tensor([1.0, 2, 2, 2, 1, 1, 2, 2, 2, 1]).log1p()  # degree
+    features[[0, 5], 2] = 1.0  # a flag on the chain starts
+    encoder = RelationalMessagePassingEncoder(num_graph_nodes, num_relation_types=2, node_state_dim=node_state_dim, num_message_passing_layers=2, node_features=features)
+    assert encoder.base_node_state is None and sum(p.numel() for p in encoder.parameters()) < 3000
+    adjacencies = encoder.build_relation_adjacencies(edge_index, edge_relation_type, num_graph_nodes, 2)
+    head = RelationalGnnSigmoidHead(node_state_dim, num_symptoms, hidden_dim=16)
+    perturbed_nodes, sign_and_magnitude, observed_outcome, evidence_weight = toy_problem()
+    optimizer = torch.optim.Adam(list(encoder.parameters()) + list(head.parameters()), lr=0.05)
+    for _ in range(100):
+        optimizer.zero_grad()
+        output = head(encoder.perturbation_difference_field(perturbed_nodes, sign_and_magnitude, adjacencies))
+        loss = evidence_weighted_binary_cross_entropy(output.symptom_probability, observed_outcome, evidence_weight)
+        loss.backward()
+        optimizer.step()
+    with torch.no_grad():
+        output = head(encoder.perturbation_difference_field(perturbed_nodes, sign_and_magnitude, adjacencies))
+    assert output.symptom_probability[:, 0].mean() > 0.9 and output.symptom_probability[:, 1].mean() < 0.1

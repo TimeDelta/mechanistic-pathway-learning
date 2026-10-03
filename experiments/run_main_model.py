@@ -77,7 +77,8 @@ def pad_perturbations(data, indices: np.ndarray) -> tuple[torch.Tensor, torch.Te
 
 
 def build_models(data, arguments, device):
-    encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers).to(device)
+    node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
+    encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
     if arguments.head == "sigmoid":
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling).to(device)
     else:
@@ -176,6 +177,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--head", choices=["noisy_or", "sigmoid"], default="noisy_or")
     parser.add_argument("--field", choices=["difference", "absolute"], default="difference")
+    parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
+                        help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=2)
