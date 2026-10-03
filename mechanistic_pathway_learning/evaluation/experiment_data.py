@@ -38,6 +38,7 @@ class ExperimentData:
     outcomes: np.ndarray  # [num_perturbations, num_symptoms]
     weights: np.ndarray  # [num_perturbations, num_symptoms]
     in_metabolic_layer: np.ndarray
+    node_subsystem: np.ndarray | None = None  # reconstruction subsystem per node ("" for non-reactions or when absent)
 
     @property
     def perturbation_degrees(self) -> np.ndarray:
@@ -108,4 +109,5 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         outcomes=outcomes,
         weights=weights,
         in_metabolic_layer=np.array([metabolic[p] for p in perturbation_ids]),
+        node_subsystem=nodes.subsystem.fillna("").to_numpy().astype(str) if "subsystem" in nodes.columns else None,
     )

@@ -33,9 +33,11 @@ import numpy as np
 import torch
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.negative_controls import permute_symptom_labels_within_degree_strata
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
+    primary_subsystem_by_gene_node,
     read_curated_modules,
 )
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
@@ -116,6 +118,16 @@ def split_indices(data, arguments) -> tuple[np.ndarray, np.ndarray, np.ndarray, 
         module_nodes = {data.node_index[f"GENE:{symbol}"] for symbol in module_genes if f"GENE:{symbol}" in data.node_index}
         test_mask = np.array(perturbations_anchored_in_module(data.perturbation_seeds, module_nodes))
         split_name = f"module_{arguments.holdout_module}_seed{arguments.seed}"
+    elif arguments.holdout_subsystem:
+        if data.node_subsystem is None:
+            raise ValueError("the graph has no subsystem column; rebuild it with the Human-GEM yml so reaction nodes carry subsystems")
+        primary = primary_subsystem_by_gene_node(data.node_subsystem, data.edge_source, data.edge_target, data.edge_relation, data.relation_types.index("catalyzed_by"))
+        subsystem_nodes = {gene_node for gene_node, subsystem in primary.items() if subsystem == arguments.holdout_subsystem}
+        if not subsystem_nodes:
+            raise ValueError(f"no gene has primary subsystem {arguments.holdout_subsystem!r}")
+        test_mask = np.array(perturbations_anchored_in_module(data.perturbation_seeds, subsystem_nodes))
+        safe_name = "".join(character if character.isalnum() else "_" for character in arguments.holdout_subsystem)
+        split_name = f"subsystem_{safe_name}_seed{arguments.seed}"
     else:
         fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
         test_mask = np.array([fold_by_perturbation[p] == arguments.fold for p in data.perturbation_ids])
@@ -139,9 +151,13 @@ def main() -> None:
     parser.add_argument("--fold", type=int, default=0)
     parser.add_argument("--num-folds", type=int, default=5)
     parser.add_argument("--holdout-module", type=str, default="", help="pathway-wise split: curated module id to hold out instead of a grouped fold")
+    parser.add_argument("--holdout-subsystem", type=str, default="", help="pathway-wise split: Human-GEM subsystem whose genes (by primary subsystem) are held out")
+    parser.add_argument("--permute-labels", action="store_true", help="negative control: permute outcome rows within degree strata before training and testing")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
-    parser.add_argument("--validation-fraction", type=float, default=0.1)
+    parser.add_argument("--validation-fraction", type=float, default=0.15)
     parser.add_argument("--patience", type=int, default=8)
+    parser.add_argument("--selection-metric", choices=["loss", "auprc"], default="loss",
+                        help="early stopping on the validation evidence-weighted BCE (smooth on small validation sets) or on validation macro AUPRC")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--head", choices=["noisy_or", "sigmoid"], default="noisy_or")
     parser.add_argument("--field", choices=["difference", "absolute"], default="difference")
@@ -168,7 +184,11 @@ def main() -> None:
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by)
+    if arguments.permute_labels:
+        data.outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
     train_indices, validation_indices, test_indices, split_name = split_indices(data, arguments)
+    if arguments.permute_labels:
+        split_name += "_permuted"
     encoder, head = build_models(data, arguments, device)
     adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
         torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
@@ -176,7 +196,7 @@ def main() -> None:
     split_directory = arguments.run_dir / split_name
     split_directory.mkdir(parents=True, exist_ok=True)
     checkpoint_path = split_directory / "checkpoint.pt"
-    state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None}
+    state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None}
     if arguments.resume and checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         encoder.load_state_dict(checkpoint["encoder"])
@@ -197,36 +217,41 @@ def main() -> None:
     stopped_early = False
     for epoch in range(state["epoch"], arguments.max_epochs):
         order = generator.permutation(train_indices)
-        epoch_loss = 0.0
+        epoch_loss, epoch_bce, epoch_penalty = 0.0, 0.0, 0.0
         for start in range(0, len(order), arguments.batch_size):
             batch = order[start : start + arguments.batch_size]
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
             field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
             output = head(field, relation_index=0)
-            loss = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
-            loss = loss + arguments.description_length_coefficient * head.description_length_penalty(node_cost=node_cost)
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
+            penalty = arguments.description_length_coefficient * head.description_length_penalty(node_cost=node_cost)
+            loss = bce + penalty
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item() * len(batch)
+            epoch_bce += bce.item() * len(batch)
+            epoch_penalty += float(penalty) * len(batch)
             if CHECKPOINT_REQUESTED or (time.time() - last_checkpoint) / 60.0 >= arguments.checkpoint_every_minutes:
                 save_checkpoint()
                 last_checkpoint = time.time()
                 if CHECKPOINT_REQUESTED:
                     print("checkpoint written on signal; exiting for requeue")
                     return
-        entry = {"epoch": epoch, "train_loss": epoch_loss / max(1, len(order)), "elapsed_seconds": time.time() - started}
+        entry = {"epoch": epoch, "train_loss": epoch_loss / max(1, len(order)), "train_bce": epoch_bce / max(1, len(order)), "train_penalty": epoch_penalty / max(1, len(order)), "elapsed_seconds": time.time() - started}
         if len(validation_indices):
             validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
             entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices])
-            if entry["validation_macro_auprc"] > state["best_validation_auprc"] + 1e-4:
-                state.update(best_validation_auprc=entry["validation_macro_auprc"], best_epoch=epoch, epochs_without_improvement=0,
+            entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), outcomes[validation_indices], weights[validation_indices], positive_target=arguments.positive_target))
+            improved = (entry["validation_loss"] < state["best_validation_loss"] - 1e-5) if arguments.selection_metric == "loss" else (entry["validation_macro_auprc"] > state["best_validation_auprc"] + 1e-4)
+            if improved:
+                state.update(best_validation_auprc=entry["validation_macro_auprc"], best_validation_loss=entry["validation_loss"], best_epoch=epoch, epochs_without_improvement=0,
                              best_encoder=copy.deepcopy(encoder.state_dict()), best_head=copy.deepcopy(head.state_dict()))
             else:
                 state["epochs_without_improvement"] += 1
         state["history"].append(entry)
         state["epoch"] = epoch + 1
-        print(f"epoch {epoch} loss {entry['train_loss']:.4f}" + (f" validation macro AUPRC {entry['validation_macro_auprc']:.3f}" if "validation_macro_auprc" in entry else "") + f" elapsed {entry['elapsed_seconds']:.0f}s")
+        print(f"epoch {epoch} loss {entry['train_loss']:.4f} (bce {entry['train_bce']:.4f}, penalty {entry['train_penalty']:.4f})" + (f" validation loss {entry['validation_loss']:.4f} macro AUPRC {entry['validation_macro_auprc']:.3f}" if "validation_loss" in entry else "") + f" elapsed {entry['elapsed_seconds']:.0f}s", flush=True)
         save_checkpoint()
         if len(validation_indices) and state["epochs_without_improvement"] >= arguments.patience:
             stopped_early = True
@@ -253,7 +278,8 @@ def main() -> None:
             "base_rate": float(test_outcomes[:, symptom_index].mean()),
         }
     results = {
-        "split": split_name, "fold": None if arguments.holdout_module else arguments.fold, "holdout_module": arguments.holdout_module or None, "seed": arguments.seed,
+        "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem) else arguments.fold, "holdout_module": arguments.holdout_module or None,
+        "holdout_subsystem": arguments.holdout_subsystem or None, "labels_permuted": bool(arguments.permute_labels), "seed": arguments.seed,
         "arguments": {key: (str(value) if isinstance(value, Path) else value) for key, value in vars(arguments).items()},
         "num_train": int(len(train_indices)), "num_validation": int(len(validation_indices)), "num_test": int(len(test_indices)),
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
@@ -268,6 +294,7 @@ def main() -> None:
         with torch.no_grad():
             head.eval()
             support = head.module_support().cpu().numpy()
+            expected_support = head.support_gate.expected_active_node_count().cpu().numpy()
             links = head.link_probability(0).cpu().numpy()
             leaks = head.leak_probability(0).cpu().numpy()
             test_field_activations = []
@@ -277,6 +304,8 @@ def main() -> None:
                 test_field_activations.append(head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)).module_activation.cpu().numpy())
         results.update({
             "module_support_sizes": [int((support[k] > 0.5).sum()) for k in range(support.shape[0])],
+            "module_expected_support_sizes": [float(x) for x in expected_support],
+            "module_support_mass": [float(support[k].sum()) for k in range(support.shape[0])],
             "module_symptom_links": links.round(3).tolist(), "symptom_leaks": leaks.round(3).tolist(),
             "test_module_activation_mean": np.concatenate(test_field_activations, axis=0).mean(axis=0).round(3).tolist() if test_field_activations else [],
         })
