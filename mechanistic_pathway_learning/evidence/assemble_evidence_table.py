@@ -13,9 +13,11 @@ Joins the monogenic records (HPO x Human-GEM) and the pharmacological records
   symptom                target symptom from docs/symptom_crosswalk.csv
   relation               "induces" or "relieves"
   evidence_class         "monogenic" or "pharmacological"
-  grade, weight          from assign_evidence_grades over the pair's positive reports (--weighting grade, the
-                         default) or reliability_global_scale x reliability_posterior (--weighting reliability);
-                         0 for a pair with no positive report
+  grade, weight          from assign_evidence_grades over the pair's positive reports plus its 0 of N patient-fraction
+                         rows, which the version 0.4 loader counted as frequency-0 rows and which the grade weighting
+                         keeps so its weights stay comparable (--weighting grade, the default), or
+                         reliability_global_scale x reliability_posterior (--weighting reliability); 0 for a pair
+                         with no such row, and 0 under reliability weighting for a pair with no positive report
   perturbation_nodes     JSON list of [node_id, sign, magnitude] in the graph
   label_frequency        SIDER frequency midpoint (E2) or largest HPO frequency midpoint (E1) when reported
   evidence_date          earliest availability date behind a monogenic pair: publication date of the cited PubMed
@@ -157,8 +159,22 @@ def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linkin
     return disease_cluster_ids(records, max_genes_per_linking_entry)
 
 
+def grade_weighting_rows(pair_reports: pd.DataFrame) -> pd.DataFrame:
+    """The reports the grade weighting reads for one pair: positive reports plus 0 of N patient-fraction rows.
+
+    A phenotype.hpoa row stating that 0 of N patients had the symptom is an absence report (report_value 0)
+    in the report table and the reliability fit. The version 0.4 loader (monogenic_evidence_records) read the
+    same row as a presence row with frequency 0, which the frequency clip turned into the floor weight, and
+    the default weighting must reproduce those weights exactly for the running sweeps, so the grade and the
+    weight are still computed over these rows. Whether the pair is a positive label is decided by
+    positive_report_count, which counts report_value 1 only.
+    """
+    zero_fraction = (pair_reports.frequency == 0.0) & pair_reports.frequency_denominator.notna()
+    return pair_reports[(pair_reports.report_value == 1) | zero_fraction]
+
+
 def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> EvidenceRecord:
-    """The EvidenceRecord that assign_evidence_grade and loss_weight_for_record read for one pair, from its positive reports.
+    """The EvidenceRecord that assign_evidence_grade and loss_weight_for_record read for one pair, from its grade_weighting_rows.
 
     Monogenic: provenance counts, the clinical-synopsis flag and the version 0.3 case-series proxy over the
     positive reports' disease entries, the largest positive frequency, the summed patient denominators, the
@@ -169,7 +185,7 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
     with no provenance (grade C) or, for a drug, no dominant target (grade E).
     """
     first = pair_reports.iloc[0]
-    positive = pair_reports[pair_reports.report_value == 1]
+    positive = grade_weighting_rows(pair_reports)
     if first.evidence_class == "monogenic":
         disease_ids = sorted(set(positive.source_record_id))
         frequencies = positive.frequency.dropna()
@@ -222,11 +238,12 @@ def aggregate_reports_to_observations(
 ) -> pd.DataFrame:
     """One observation row per (perturbation_id, symptom, relation) with at least one explicit report, in order of first report.
 
-    Grade and weight come from evidence_record_from_positive_reports; a pair with no positive report has weight 0
-    and grade C (monogenic) or E (pharmacological) and stays in the table so the absence claim is visible.
-    Provenance counts and disease identifiers run over all explicit reports; label_frequency, patient count,
-    references and dates over positive reports. drug_targets_by_perturbation gives, per drug, the sorted
-    "CHEMBLid:ACTION;..." string that names its group and its source line.
+    Grade and weight come from evidence_record_from_positive_reports over grade_weighting_rows; a pair with no
+    such row has weight 0 and grade C (monogenic) or E (pharmacological) and stays in the table so the absence
+    claim is visible. Provenance counts and disease identifiers run over all explicit reports; label_frequency,
+    patient count, references and dates over the grade weighting rows. positive_report_count counts
+    report_value 1 only. drug_targets_by_perturbation gives, per drug, the sorted "CHEMBLid:ACTION;..." string
+    that names its group and its source line.
     """
     rows: list[dict] = []
     if not len(reports):
@@ -234,9 +251,10 @@ def aggregate_reports_to_observations(
     for (perturbation_id, symptom, relation), pair_reports in reports.groupby(["perturbation_id", "symptom", "relation"], sort=False):
         first = pair_reports.iloc[0]
         positive = pair_reports[pair_reports.report_value == 1]
+        graded = grade_weighting_rows(pair_reports)
         record = evidence_record_from_positive_reports(pair_reports)
         grade = assign_evidence_grade(record, grade_a_policy)
-        weight = loss_weight_for_record(record, grade_a_policy=grade_a_policy) if len(positive) else 0.0
+        weight = loss_weight_for_record(record, grade_a_policy=grade_a_policy) if len(graded) else 0.0
         node_ids = [node_id for node_id, _, _ in json.loads(first.perturbation_nodes)] if first.perturbation_nodes else []
         row = {
             "perturbation_id": perturbation_id, "perturbation_type": first.perturbation_type, "perturbation_label": first.perturbation_label,
@@ -247,7 +265,7 @@ def aggregate_reports_to_observations(
         }
         if first.evidence_class == "monogenic":
             all_disease_ids = sorted(set(pair_reports.source_record_id))
-            denominators = positive.frequency_denominator.dropna()
+            denominators = graded.frequency_denominator.dropna()
             row.update({
                 "group_id": perturbation_id, "disease_cluster_id": cluster_by_gene.get(perturbation_id, "cluster:" + perturbation_id),
                 "label_frequency": record.max_annotation_frequency,
@@ -265,7 +283,7 @@ def aggregate_reports_to_observations(
             group_id = "|".join(part.split(":")[0] for part in targets.split(";") if part) if targets else perturbation_id
             row.update({
                 "group_id": group_id, "disease_cluster_id": group_id,
-                "label_frequency": pharmacological_label_frequency(positive),
+                "label_frequency": pharmacological_label_frequency(graded),
                 "source": "SIDER 4.1; targets " + targets,
                 "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
                 "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None,
@@ -278,24 +296,45 @@ def aggregate_reports_to_observations(
 
 
 def fit_report_reliability(reports: pd.DataFrame, observations: pd.DataFrame, defaults: RubricWeightDefaults) -> ReportReliabilityFit:
-    """Report-level Dawid-Skene fit with the observations as items (row order) and the sources that have reports, in SOURCE_NAMES order."""
+    """Report-level Dawid-Skene fit with the observations as items (row order) and the sources that have reports, in SOURCE_NAMES order.
+
+    Prevalence is fitted per evidence class (no source covers both gene and drug items, so a pooled value would
+    hand the HPO agreement to every drug pair), and a source with no explicit negative report keeps its
+    specificity at the prior mean, since silence is the only negative it has (evidence_reliability_model
+    docstring). Both are recorded in per_source_summary and the summary JSON.
+    """
     item_keys = [(perturbation_id, symptom, relation) for perturbation_id, symptom, relation in zip(observations.perturbation_id, observations.symptom, observations.relation)] if len(observations) else []
+    item_groups = [str(evidence_class) for evidence_class in observations.evidence_class] if len(observations) else []
     present_sources = set(reports.source) if len(reports) else set()
     source_names = [source for source in SOURCE_NAMES if source in present_sources]
     positive_weights, negative_weights, coverage = report_count_matrices(reports, item_keys, source_names, defaults.implicit_negative_weight)
-    fit = fit_weighted_dawid_skene(positive_weights, negative_weights, source_names, item_keys)
     explicit_cells = explicit_report_cells(reports, item_keys, source_names)
+    explicit_negative_weight = (negative_weights - defaults.implicit_negative_weight * coverage * (~explicit_cells)).sum(axis=0)
+    fit = fit_weighted_dawid_skene(positive_weights, negative_weights, source_names, item_keys, item_groups=item_groups, estimate_specificity=explicit_negative_weight > 0)
     for column, source in enumerate(source_names):
         fit.per_source_summary[source] = {
             "items_covered": int(coverage[:, column].sum()),
             "items_with_explicit_reports": int(explicit_cells[:, column].sum()),
             "explicit_positive_weight": float(positive_weights[:, column].sum()),
-            "explicit_negative_weight": float((negative_weights[:, column] - defaults.implicit_negative_weight * coverage[:, column] * (~explicit_cells[:, column])).sum()),
+            "explicit_negative_weight": float(explicit_negative_weight[column]),
             "implicit_negative_cells": int((coverage[:, column] * (~explicit_cells[:, column])).sum()),
             "sensitivity": float(fit.sensitivity[column]),
             "specificity": float(fit.specificity[column]),
+            "specificity_held_at_prior": bool(fit.specificity_held_at_prior[column]),
+            "degenerate": source in fit.degenerate_sources,
         }
     return fit
+
+
+def reliability_weights(fit: ReportReliabilityFit, observations: pd.DataFrame, global_scale: float) -> np.ndarray:
+    """Weights under --weighting reliability: global_scale x posterior for pairs with a positive report, 0 otherwise.
+
+    Refused (ValueError) when the fit lists a degenerate source, because a positive report of such a source
+    lowers the posterior and the weights would train against the evidence.
+    """
+    if fit.degenerate_sources:
+        raise ValueError(f"--weighting reliability refused: fitted sensitivity + specificity <= 1 for {fit.degenerate_sources}; the fit is degenerate for these sources (see reliability.per_source in the summary)")
+    return np.where(observations.positive_report_count > 0, observation_weights_from_posterior(fit.posterior, global_scale), 0.0)
 
 
 def explicit_report_cells(reports: pd.DataFrame, item_keys: list[tuple[str, str, str]], source_names: list[str]) -> np.ndarray:
@@ -358,9 +397,11 @@ def summarize_reports(reports: pd.DataFrame, fit: ReportReliabilityFit, defaults
         "reliability": {
             "source_names": list(fit.source_names),
             "prevalence": float(fit.prevalence),
+            "prevalence_by_evidence_class": {group: float(value) for group, value in fit.prevalence_by_group.items()},
             "num_iterations": int(fit.num_iterations),
             "converged": bool(fit.converged),
             "weakly_identified": bool(fit.weakly_identified),
+            "degenerate_sources": list(fit.degenerate_sources),
             "rubric_weight_defaults": defaults.as_dict(),
             "posterior_quantiles": posterior_quantiles,
             "per_source": fit.per_source_summary,
@@ -449,7 +490,7 @@ def assemble(
     if len(observations):
         observations["reliability_posterior"] = reliability_fit.posterior
         if weighting == "reliability":
-            observations["weight"] = np.where(observations.positive_report_count > 0, observation_weights_from_posterior(reliability_fit.posterior, reliability_global_scale), 0.0)
+            observations["weight"] = reliability_weights(reliability_fit, observations, reliability_global_scale)
         observations["weighting"] = weighting
     return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance))
 

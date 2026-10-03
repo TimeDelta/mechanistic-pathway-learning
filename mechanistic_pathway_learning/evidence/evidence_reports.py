@@ -4,8 +4,8 @@ A report is one phenotype.hpoa annotation row behind one (gene, target symptom) 
 statement, label mention or indication behind one (drug, target symptom). Keeping the rows apart, rather
 than one aggregated row per pair, is what lets evidence be weighted differently by the model it rests on
 (human loss of function in a named disease entry, a drug label), by its evidence code and sample size,
-and lets evidence that asserts absence (the NOT qualifier, the Excluded frequency) enter as a report with
-value 0 instead of disappearing or, as before, counting as a positive. evidence_records.parquet
+and lets evidence that asserts absence (the NOT qualifier, the Excluded frequency, a 0 of N patient
+fraction) enter as a report with value 0 instead of disappearing or, as before, counting as a positive. evidence_records.parquet
 aggregates this table to one row per pair (assemble_evidence_table.aggregate_reports_to_observations).
 
 Two things in this module are fixed functions of the columns and never learned:
@@ -97,6 +97,8 @@ def limitations_text(report: EvidenceReport) -> str:
             clauses.append("no frequency reported")
         elif report.frequency_denominator is None:
             clauses.append("frequency from a curated qualifier, no patient count")
+        if report.frequency == 0.0 and report.frequency_denominator is not None:
+            clauses.append(f"reported in 0 of {report.frequency_denominator} patients")
         if report.frequency_denominator is not None and report.frequency_denominator < SMALL_SAMPLE_PATIENT_COUNT:
             clauses.append(f"n = {report.frequency_denominator} patients")
         if report.evidence_code == "IEA":

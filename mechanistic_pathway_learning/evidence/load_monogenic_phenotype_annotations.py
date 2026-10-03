@@ -47,8 +47,11 @@ genes_to_phenotype.txt collapses the rows of one (disease, term) key to a single
 frequencies and does not mark the NOT qualifier, so it cannot tell presence from asserted absence.
 monogenic_evidence_reports joins each genes_to_phenotype row back to its phenotype.hpoa rows on
 (disease_id, hpo_id) and emits one EvidenceReport per phenotype.hpoa row per target symptom, with
-report_value 0 for NOT-qualified or Excluded rows (evidence_reports.py). The aggregated
-EvidenceRecord of monogenic_evidence_records remains for the Phase 1 counts and the older tests.
+report_value 0 for NOT-qualified or Excluded rows and for rows whose frequency is a patient fraction
+with numerator 0 (0/35 is an observed absence in 35 patients, not a presence report; the fraction and
+its denominator are kept so the sample-size factor applies to the absence claim) (evidence_reports.py).
+The aggregated EvidenceRecord of monogenic_evidence_records remains for the Phase 1 counts and the older
+tests, and there a 0/N row is still a frequency-0 row, which the grade weighting of the assembler keeps.
 
 Output: one EvidenceRecord per (gene, target symptom) with evidence_class "monogenic", or one
 EvidenceReport per annotation row behind such a pair.
@@ -178,6 +181,18 @@ def parse_frequency_qualifier(raw_frequency: str | None) -> float | None:
     except ValueError:
         return None
     return None
+
+
+def is_zero_patient_fraction(raw_frequency: str | None) -> bool:
+    """True for a patient fraction with numerator 0 and a positive denominator ("0/35"): an observed absence, not a presence report."""
+    raw_frequency = (raw_frequency or "").strip()
+    if "/" not in raw_frequency:
+        return False
+    try:
+        numerator, denominator = raw_frequency.split("/", 1)
+        return float(numerator) == 0.0 and float(denominator) > 0
+    except ValueError:
+        return False
 
 
 def parse_frequency_denominator(raw_frequency: str | None) -> int | None:
@@ -475,7 +490,11 @@ def evidence_report_from_hpoa_row(
     hpoa_row: HpoaAnnotationRow,
     publication_dates_by_pmid: Mapping[str, date] | None = None,
 ) -> EvidenceReport:
-    """Column derivation of one monogenic report from one phenotype.hpoa row (or the unjoined stand-in row)."""
+    """Column derivation of one monogenic report from one phenotype.hpoa row (or the unjoined stand-in row).
+
+    report_value is 0 when the row asserts absence: the NOT qualifier, the Excluded frequency qualifier, or a
+    patient fraction with numerator 0 (module docstring, "Reports").
+    """
     unjoined = hpoa_row.evidence == UNJOINED_EVIDENCE_CODE
     frequency = 0.0 if hpoa_row.frequency.strip() == EXCLUDED_FREQUENCY_QUALIFIER else parse_frequency_qualifier(hpoa_row.frequency)
     denominator = parse_frequency_denominator(hpoa_row.frequency)
@@ -486,7 +505,7 @@ def evidence_report_from_hpoa_row(
         report_id=f"{source}|{gene_symbol}|{hpoa_row.disease_id}|{hpoa_row.hpo_id}|{target_symptom}|{hpoa_row.ordinal}",
         perturbation_id=gene_symbol, perturbation_type="gene", perturbation_label=gene_symbol,
         symptom=target_symptom, relation="induces", evidence_class="monogenic", source=source,
-        report_value=0 if hpoa_row.is_negated else 1,
+        report_value=0 if hpoa_row.is_negated or is_zero_patient_fraction(hpoa_row.frequency) else 1,
         source_record_id=hpoa_row.disease_id, source_record_label=hpoa_row.disease_name,
         source_term_id=hpoa_row.hpo_id, source_term_label=hpo_name,
         evidence_code=hpoa_row.evidence,
