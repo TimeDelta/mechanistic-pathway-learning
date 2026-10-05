@@ -12,8 +12,11 @@ Routes, in precedence order (the module's docstring has the reasons):
       ChEMBL id -> parent           https://www.ebi.ac.uk/chembl/api/data/molecule.json?molecule_chembl_id__in=...
   (b) name -> ChEMBL pref_name      https://www.ebi.ac.uk/chembl/api/data/molecule.json?pref_name__iexact=<name>
   ATC classes per RxCUI             https://rxnav.nlm.nih.gov/REST/rxclass/class/byRxcui.json?rxcui=<rxcui>&relaSource=ATC
-Mechanism targets of parents missing from data/raw/chembl/targets.json are fetched with
-fetch_chembl_drug_targets.fetch_targets, which extends that cache in place in its own format.
+Mechanisms are keyed by molecule and by parent (onsides_identifier_bridge.mechanisms_by_parent_and_molecule,
+the keying experiments/build_onsides_reports.py applies too), so a mechanism ChEMBL records on a salt form
+counts for the parent. Targets of those mechanisms missing from data/raw/chembl/targets.json are fetched with
+fetch_chembl_drug_targets.fetch_targets, which extends that cache in place in its own format; a failed fetch
+is recorded under "errors" together with the target ids still missing.
 
 Every response is cached under data/raw/onsides/v3.1.1/http_cache/<host>/ by the shared
 CachedRateLimitedClient (at most three requests per second per host, retries with backoff), so the run is
@@ -53,12 +56,14 @@ from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import (  #
     bridge_to_json_record,
     identifier_system_for_ingredient,
     mechanism_targets_for_parent,
+    mechanisms_by_parent_and_molecule,
     passes_nervous_system_rule,
     passes_single_target_rule,
     resolve_parent_from_name_route,
     resolve_parent_from_unii_route,
     rxnav_atc_classes_for_ingredient,
     rxnav_unii_codes,
+    sider_drug_cids_by_lowercase_name,
     sider_parent_molecules,
     sider_pubchem_cids_by_parent,
     stitch_flat_id_from_pubchem_cid,
@@ -289,13 +294,13 @@ def main() -> None:
 
     print("phase 5: SIDER unification, ATC codes and mechanism targets", flush=True)
     mechanisms = fetch_all_mechanisms(arguments.chembl_dir)
-    mechanisms_by_molecule: dict[str, list[dict]] = {}
-    for mechanism in mechanisms:
-        mechanisms_by_molecule.setdefault(mechanism["molecule_chembl_id"], []).append(mechanism)
+    mechanisms_by_molecule = mechanisms_by_parent_and_molecule(mechanisms)
     pubchem_to_chembl_with_parents = json.loads((arguments.chembl_dir / "pubchem_to_chembl_with_parents.json").read_text())
     molecule_parents = json.loads((arguments.chembl_dir / "molecule_parents.json").read_text()) if (arguments.chembl_dir / "molecule_parents.json").exists() else {}
-    cids_by_parent = sider_pubchem_cids_by_parent(sider_parent_molecules(pubchem_to_chembl_with_parents, molecule_parents, mechanisms))
+    sider_parents_by_cid = sider_parent_molecules(pubchem_to_chembl_with_parents, molecule_parents, mechanisms)
+    cids_by_parent = sider_pubchem_cids_by_parent(sider_parents_by_cid)
     sider_drug_names = {stitch_flat_id: names[0] for stitch_flat_id, names in read_two_column_tsv(arguments.sider_dir / "drug_names.tsv").items()}
+    cids_by_lowercase_name = sider_drug_cids_by_lowercase_name(sider_drug_names)
     sider_atc_codes = read_two_column_tsv(arguments.sider_dir / "drug_atc.tsv")
 
     bridges: dict[str, IngredientBridge] = {}
@@ -305,27 +310,36 @@ def main() -> None:
         if chembl_parent:
             chembl_ids_seen.add(chembl_parent)
             pref_name = pref_name or hierarchy.get(chembl_parent, {}).get("pref_name")
-        perturbation_id, sider_cid, collisions = unify_with_sider(ingredient_id, chembl_parent, cids_by_parent)
+        perturbation_id, sider_cid, collisions, unification_method = unify_with_sider(ingredient_id, chembl_parent, cids_by_parent, str(name), cids_by_lowercase_name)
         stitch_flat_id = stitch_flat_id_from_pubchem_cid(sider_cid) if sider_cid is not None else None
+        sider_cid_parents = sorted(sider_parents_by_cid.get(str(sider_cid), set()), key=lambda chembl_id: int(chembl_id[6:])) if sider_cid is not None else []
         bridges[ingredient_id] = IngredientBridge(
             ingredient_id=ingredient_id, ingredient_name=str(name), identifier_system=identifier_systems[ingredient_id], bridge_method=bridge_method,
             unii_codes=unii_by_rxcui.get(ingredient_id, []), chembl_ids_seen=sorted(chembl_ids_seen, key=lambda chembl_id: int(chembl_id[6:])),
             chembl_parent=chembl_parent, chembl_parent_alternatives=alternatives, chembl_pref_name=pref_name,
             atc_codes_rxnav=atc_by_rxcui.get(ingredient_id, []), atc_codes_sider=sorted(set(sider_atc_codes.get(stitch_flat_id, []))) if stitch_flat_id else [],
-            perturbation_id=perturbation_id, unified_with_sider=sider_cid is not None, sider_pubchem_cid=sider_cid,
+            perturbation_id=perturbation_id, unified_with_sider=sider_cid is not None, unification_method=unification_method, sider_pubchem_cid=sider_cid,
             sider_drug_name=sider_drug_names.get(stitch_flat_id) if stitch_flat_id else None, sider_collision_pubchem_cids=collisions,
+            sider_cid_chembl_parents=sider_cid_parents, sider_cid_merges_distinct_parents=len(sider_cid_parents) > 1,
         )
 
     parents_for_targets = sorted({bridge.chembl_parent for bridge in bridges.values() if bridge.chembl_parent})
     targets_path = arguments.chembl_dir / "targets.json"
     targets = json.loads(targets_path.read_text()) if targets_path.exists() else {}
-    target_ids_hit = {mechanism["target_chembl_id"] for parent in parents_for_targets for mechanism in mechanisms_by_molecule.get(parent, []) if mechanism.get("target_chembl_id")}
+    # fetch_targets keys mechanisms by molecule_chembl_id, so it is given every molecule (salt forms included) whose mechanisms the parent keying attributes to a bridged parent.
+    mechanisms_of_parents = [mechanism for parent in parents_for_targets for mechanism in mechanisms_by_molecule.get(parent, [])]
+    molecules_for_targets = sorted({mechanism["molecule_chembl_id"] for mechanism in mechanisms_of_parents if mechanism.get("molecule_chembl_id")})
+    target_ids_hit = {mechanism["target_chembl_id"] for mechanism in mechanisms_of_parents if mechanism.get("target_chembl_id")}
     missing_target_ids = sorted(target_ids_hit - set(targets))
     if missing_target_ids and not arguments.skip_target_fetch:
         print(f"  fetching {len(missing_target_ids)} targets missing from targets.json ({len(targets)} cached)", flush=True)
-        targets = fetch_targets({"onsides_parents": parents_for_targets}, mechanisms, arguments.chembl_dir)
-    elif missing_target_ids:
-        errors.append({"phase": "chembl_targets", "error": f"{len(missing_target_ids)} targets not in targets.json and --skip-target-fetch given"})
+        try:
+            targets = fetch_targets({"onsides_parents": molecules_for_targets}, mechanisms, arguments.chembl_dir)
+        except Exception as error:  # noqa: BLE001 - recorded, a rerun retries
+            errors.append({"phase": "chembl_targets", "error": f"target fetch failed: {str(error)[:200]}"})
+        missing_target_ids = sorted(target_ids_hit - set(targets))
+    if missing_target_ids:
+        errors.append({"phase": "chembl_targets", "error": f"{len(missing_target_ids)} targets not in targets.json" + (" and --skip-target-fetch given" if arguments.skip_target_fetch else " after the fetch"), "target_chembl_ids": missing_target_ids})
     for bridge in bridges.values():
         drug_targets = mechanism_targets_for_parent(bridge.chembl_parent, mechanisms_by_molecule, targets)
         bridge.mechanism_target_ids = sorted(target.target_chembl_id for target in drug_targets)

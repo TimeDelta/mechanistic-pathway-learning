@@ -265,7 +265,7 @@ GTEX_BRAIN_TISSUE_PREFIX = "Brain_"
 
 
 def load_brain_expression(gct_path: Path) -> pd.DataFrame:
-    """Per-gene brain expression from a GTEx median-TPM GCT file (design section 4.1, reference [31]).
+    """Per-gene brain expression from a GTEx median-TPM GCT file (design section 4.1, reference [30]).
 
     Returns one row per gene with ensembl_gene_id (version suffix removed), gene_symbol,
     brain_median_tpm_max (the largest median TPM over the brain tissues), brain_median_tpm_mean and

@@ -17,12 +17,20 @@ An OMOP extension id has no RxNav record and goes straight to (b). When a route 
 parents the lowest-numbered one is taken and the rest are kept as alternatives, so the choice is
 deterministic and visible.
 
-Unification with SIDER: an ingredient whose parent equals a parent of a SIDER drug takes that drug's
-STITCH flat identifier as its perturbation_id, the same string SIDER reports carry in the report table
-(docs/evidence_reports_spec.md), so the evidence table sees one perturbation with two label slices.
-Several SIDER drugs can share a parent (salt forms listed as separate SIDER entries); the lowest PubChem
-CID is taken and the others are recorded as a collision. An ingredient without a SIDER partner keeps
-"RXCUI:<id>" or "OMOP:<id>" as its perturbation_id and is OnSIDES-only.
+Unification with SIDER (recorded as unification_method): an ingredient whose parent is among the ChEMBL
+parents of a SIDER drug's STITCH flat identifier takes that identifier as its perturbation_id, the same
+string SIDER reports carry in the report table (docs/evidence_reports_spec.md), so the evidence table sees
+one perturbation with two label slices; otherwise an ingredient whose name equals a SIDER drug name
+(case-insensitive) takes that drug's identifier, which covers SIDER drugs whose own ChEMBL mapping
+(pubchem_to_chembl_with_parents.json) is empty or resolves to a stereo or racemate variant of the
+ingredient's parent. The join is parent-to-flat-CID, not parent-to-parent: a STITCH flat identifier drops
+stereochemistry, so one SIDER CID can carry several ChEMBL parents (enantiomers, epimers, deuterated
+forms and in a few cases distinct drugs such as betamethasone and dexamethasone). The parents of the
+chosen CID are recorded as sider_cid_chembl_parents and sider_cid_merges_distinct_parents flags a CID
+with more than one, so a unified perturbation that pools stereoisomers stays visible. Several SIDER CIDs
+can share a parent (salt forms listed as separate SIDER entries); the lowest PubChem CID is taken and the
+others are recorded as a collision. An ingredient without a SIDER partner keeps "RXCUI:<id>" or
+"OMOP:<id>" as its perturbation_id and is OnSIDES-only.
 """
 from __future__ import annotations
 
@@ -42,6 +50,13 @@ IDENTIFIER_SYSTEM_RXCUI = "RXCUI"
 IDENTIFIER_SYSTEM_OMOP = "OMOP"
 OMOP_IDENTIFIER_PREFIX = "OMOP"
 
+UNIFICATION_METHOD_CHEMBL_PARENT = "chembl_parent"
+UNIFICATION_METHOD_SIDER_DRUG_NAME = "sider_drug_name"
+UNIFICATION_METHOD_NONE = "none"
+UNIFICATION_METHODS: tuple[str, ...] = (UNIFICATION_METHOD_CHEMBL_PARENT, UNIFICATION_METHOD_SIDER_DRUG_NAME, UNIFICATION_METHOD_NONE)
+
+RXCLASS_INGREDIENT_TERM_TYPES = ("IN", "PIN")  # RxNorm ingredient and precise ingredient; MIN is a multi-ingredient concept
+
 
 @dataclass
 class IngredientBridge:
@@ -60,9 +75,12 @@ class IngredientBridge:
     atc_codes_sider: list[str] = field(default_factory=list)  # drug_atc.tsv codes of the unified SIDER drug
     perturbation_id: str = ""
     unified_with_sider: bool = False
+    unification_method: str = UNIFICATION_METHOD_NONE  # one of UNIFICATION_METHODS
     sider_pubchem_cid: int | None = None
     sider_drug_name: str | None = None
     sider_collision_pubchem_cids: list[int] = field(default_factory=list)
+    sider_cid_chembl_parents: list[str] = field(default_factory=list)  # every ChEMBL parent behind the chosen (stereo-flattened) SIDER CID
+    sider_cid_merges_distinct_parents: bool = False  # the chosen CID carries more than one ChEMBL parent
     mechanism_target_ids: list[str] = field(default_factory=list)
     single_mechanism_target: bool = False
     nervous_system_atc: bool = False
@@ -171,21 +189,54 @@ def sider_pubchem_cids_by_parent(sider_parents_by_cid: dict[str, set[str]]) -> d
     return {parent: sorted(cids) for parent, cids in cids_by_parent.items()}
 
 
-def unify_with_sider(ingredient_id: str, chembl_parent: str | None, cids_by_parent: dict[str, list[int]]) -> tuple[str, int | None, list[int]]:
-    """(perturbation_id, SIDER PubChem CID or None, colliding CIDs) for one ingredient.
+def sider_drug_cids_by_lowercase_name(sider_drug_names: dict[str, str]) -> dict[str, list[int]]:
+    """lowercase SIDER drug name -> PubChem CIDs carrying it (drug_names.tsv keyed by STITCH flat id), ascending."""
+    cids_by_name: dict[str, set[int]] = {}
+    for stitch_flat_id, drug_name in sider_drug_names.items():
+        cids_by_name.setdefault(drug_name.strip().lower(), set()).add(int(stitch_flat_id[4:]))
+    return {name: sorted(cids) for name, cids in cids_by_name.items()}
 
-    The perturbation_id of a unified ingredient is the STITCH flat identifier of the lowest CID, which is the
-    perturbation_id SIDER reports carry; the other CIDs with the same parent are returned as the collision list.
+
+def unify_with_sider(ingredient_id: str, chembl_parent: str | None, cids_by_parent: dict[str, list[int]], ingredient_name: str = "", cids_by_lowercase_name: dict[str, list[int]] | None = None) -> tuple[str, int | None, list[int], str]:
+    """(perturbation_id, SIDER PubChem CID or None, colliding CIDs, unification_method) for one ingredient.
+
+    The parent route comes first: the CIDs whose ChEMBL parents include chembl_parent. When it yields nothing the
+    name route takes the CIDs whose SIDER drug name equals the ingredient name ignoring case. Either way the
+    perturbation_id is the STITCH flat identifier of the lowest CID, which is the perturbation_id SIDER reports
+    carry, and the other CIDs of the route are returned as the collision list.
     """
     candidate_cids = cids_by_parent.get(chembl_parent, []) if chembl_parent else []
+    unification_method = UNIFICATION_METHOD_CHEMBL_PARENT
+    if not candidate_cids and cids_by_lowercase_name and ingredient_name.strip():
+        candidate_cids = cids_by_lowercase_name.get(ingredient_name.strip().lower(), [])
+        unification_method = UNIFICATION_METHOD_SIDER_DRUG_NAME
     if not candidate_cids:
-        return fallback_perturbation_id(ingredient_id), None, []
+        return fallback_perturbation_id(ingredient_id), None, [], UNIFICATION_METHOD_NONE
     chosen_cid = candidate_cids[0]
-    return stitch_flat_id_from_pubchem_cid(chosen_cid), chosen_cid, list(candidate_cids[1:])
+    return stitch_flat_id_from_pubchem_cid(chosen_cid), chosen_cid, list(candidate_cids[1:]), unification_method
 
 
-def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecule: dict[str, list[dict]], targets: dict[str, dict], human_only: bool = True) -> list[DrugTarget]:
-    """Mechanism targets of a parent molecule, one entry per ChEMBL target, as drug_targets_for_pubchem_cid builds them for SIDER."""
+def mechanisms_by_parent_and_molecule(mechanisms: list[dict]) -> dict[str, list[dict]]:
+    """ChEMBL molecule id -> its mechanisms, keyed by molecule_chembl_id and by parent_molecule_chembl_id.
+
+    ChEMBL records many mechanisms on a salt or prodrug form with the parent in parent_molecule_chembl_id, so a
+    table keyed by molecule_chembl_id alone misses them for the parent; the bridge fetch, the missing-target
+    fetch and the report builder all key the table through this function so they apply one rule.
+    """
+    by_molecule: dict[str, list[dict]] = {}
+    for mechanism in mechanisms:
+        for key in sorted({mechanism.get("molecule_chembl_id"), mechanism.get("parent_molecule_chembl_id")} - {None, ""}):
+            by_molecule.setdefault(key, []).append(mechanism)
+    return by_molecule
+
+
+def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecule: dict[str, list[dict]], targets: dict[str, dict], human_only: bool = True, missing_target_ids: set[str] | None = None) -> list[DrugTarget]:
+    """Mechanism targets of a parent molecule, one entry per ChEMBL target, as drug_targets_for_pubchem_cid builds them for SIDER.
+
+    A target id without a record in targets is kept (its organism is unknown, so the human filter cannot drop it
+    and its gene symbols are empty) and added to missing_target_ids when a set is passed, so callers can report
+    a missing record rather than a missing graph gene.
+    """
     if chembl_parent is None:
         return []
     targets_by_id: dict[str, DrugTarget] = {}
@@ -193,7 +244,11 @@ def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecu
         target_id = mechanism.get("target_chembl_id")
         if not target_id:
             continue
-        record = targets.get(target_id, {})
+        record = targets.get(target_id)
+        if record is None:
+            if missing_target_ids is not None:
+                missing_target_ids.add(target_id)
+            record = {}
         if human_only and record.get("organism") not in (None, "Homo sapiens"):
             continue
         targets_by_id[target_id] = DrugTarget(target_id, mechanism.get("action_type"), record.get("gene_symbols", []), record.get("target_type"), record.get("pref_name"))
@@ -211,14 +266,24 @@ def passes_nervous_system_rule(bridge: IngredientBridge) -> bool:
 
 
 def rxnav_atc_classes_for_ingredient(rxcui: str, rxclass_document: dict) -> list[str]:
-    """ATC classes RxNav attributes to the ingredient itself, sorted; classes of multi-ingredient concepts are dropped.
+    """ATC classes RxNav attributes to the ingredient or its precise ingredients, sorted; multi-ingredient concepts are dropped.
 
-    The byRxcui response lists every concept the ingredient belongs to, including combination products
-    (minConcept tty MIN) with their own ATC codes; only entries whose minConcept.rxcui is the queried RxCUI
-    describe the ingredient.
+    The byRxcui response lists every concept the ingredient belongs to: the ingredient itself (minConcept tty IN),
+    its salts and esters (tty PIN, for example olmesartan medoxomil under olmesartan, which is where RxClass
+    attaches the ATC class of many drugs) and combination products (tty MIN) with their own ATC codes. IN and
+    PIN entries describe the ingredient; MIN entries do not. An entry without a term type is kept only when its
+    minConcept.rxcui is the queried RxCUI.
     """
     entries = (rxclass_document.get("rxclassDrugInfoList") or {}).get("rxclassDrugInfo") or []
-    return sorted({entry["rxclassMinConceptItem"]["classId"] for entry in entries if str(entry.get("minConcept", {}).get("rxcui")) == str(rxcui) and entry.get("rxclassMinConceptItem", {}).get("classId")})
+    classes: set[str] = set()
+    for entry in entries:
+        concept = entry.get("minConcept") or {}
+        term_type = concept.get("tty")
+        describes_ingredient = term_type in RXCLASS_INGREDIENT_TERM_TYPES if term_type else str(concept.get("rxcui")) == str(rxcui)
+        class_id = (entry.get("rxclassMinConceptItem") or {}).get("classId")
+        if describes_ingredient and class_id:
+            classes.add(class_id)
+    return sorted(classes)
 
 
 def rxnav_unii_codes(property_document: dict) -> list[str]:
@@ -233,7 +298,7 @@ def unichem_chembl_ids(unichem_document: dict) -> list[str]:
 
 
 def bridge_counts(bridges: dict[str, IngredientBridge]) -> dict[str, int]:
-    """The counts the slice specification reports, computed from the bridge table alone."""
+    """The counts docs/onsides_label_slice_spec.md reports for the bridge, computed from the bridge table alone."""
     values = list(bridges.values())
     counts = {"ingredients": len(values)}
     for method in BRIDGE_METHODS:
@@ -245,7 +310,10 @@ def bridge_counts(bridges: dict[str, IngredientBridge]) -> dict[str, int]:
     counts["with_parent_alternatives"] = sum(1 for bridge in values if bridge.chembl_parent_alternatives)
     counts["unified_with_sider"] = sum(1 for bridge in values if bridge.unified_with_sider)
     counts["distinct_sider_drugs_unified"] = len({bridge.sider_pubchem_cid for bridge in values if bridge.unified_with_sider})
+    for method in UNIFICATION_METHODS:
+        counts[f"unification_{method}"] = sum(1 for bridge in values if bridge.unification_method == method)
     counts["unified_with_collision"] = sum(1 for bridge in values if bridge.sider_collision_pubchem_cids)
+    counts["unified_cid_merges_distinct_parents"] = sum(1 for bridge in values if bridge.sider_cid_merges_distinct_parents)
     counts["onsides_only"] = sum(1 for bridge in values if not bridge.unified_with_sider)
     counts["onsides_only_with_chembl_parent"] = sum(1 for bridge in values if not bridge.unified_with_sider and bridge.chembl_parent)
     counts["with_any_mechanism_target"] = sum(1 for bridge in values if bridge.mechanism_target_ids)

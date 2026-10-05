@@ -1,31 +1,31 @@
 {
- "observations": 3977,
+ "observations": 3910,
  "unmapped": 0,
  "by_class_and_relation": {
   "monogenic|induces": 3034,
-  "pharmacological|induces": 914,
+  "pharmacological|induces": 847,
   "pharmacological|relieves": 29
  },
- "distinct_perturbations": 1681,
- "distinct_groups": 1582,
- "distinct_disease_clusters": 972,
+ "distinct_perturbations": 1655,
+ "distinct_groups": 1564,
+ "distinct_disease_clusters": 954,
  "largest_disease_cluster_genes": 174,
  "by_symptom": {
-  "anxiety": 573,
-  "cognitive_impairment": 770,
-  "depressed_mood": 491,
+  "anxiety": 566,
+  "cognitive_impairment": 764,
+  "depressed_mood": 479,
   "elevated_mood_or_mania": 62,
-  "fatigue": 597,
-  "insomnia": 179,
-  "irritability_or_aggression": 571,
-  "psychomotor_agitation": 204,
+  "fatigue": 578,
+  "insomnia": 160,
+  "irritability_or_aggression": 567,
+  "psychomotor_agitation": 209,
   "psychomotor_retardation": 5,
-  "psychosis": 322,
-  "somnolence_or_hypersomnia": 203
+  "psychosis": 318,
+  "somnolence_or_hypersomnia": 202
  },
  "by_grade": {
   "A": 2425,
-  "B": 943,
+  "B": 876,
   "C": 609
  },
  "weight_quantiles": {
@@ -166,13 +166,13 @@
  "weighting": "grade",
  "reliability_global_scale": 1.0,
  "reports": {
-  "rows": 7621,
+  "rows": 7488,
   "by_source_and_value": {
    "HPO-OMIM|0": 31,
    "HPO-OMIM|1": 1425,
    "HPO-Orphanet|0": 5,
    "HPO-Orphanet|1": 3156,
-   "OnSIDES-label|1": 1277,
+   "OnSIDES-label|1": 1144,
    "SIDER-indication|1": 30,
    "SIDER-label|1": 1697
   },
@@ -180,13 +180,13 @@
    "IEA": 365,
    "PCS": 870,
    "TAS": 3382,
-   "adverse_reactions_section": 491,
-   "boxed_warning_section": 8,
+   "adverse_reactions_section": 457,
+   "boxed_warning_section": 5,
    "frequency": 405,
    "label_text": 351,
-   "other_section": 681,
+   "non_us_label_section": 598,
    "placebo_controlled_frequency": 971,
-   "warnings_precautions_section": 97
+   "warnings_precautions_section": 84
   },
   "reports_without_hpoa_row": 0,
   "reports_dropped_unknown_provenance": 0,
@@ -194,7 +194,7 @@
   "pairs_conflicting": 21,
   "rubric_weight_quantiles": {
    "0.1": 0.7,
-   "0.25": 0.7,
+   "0.25": 0.764316973409724,
    "0.5": 0.8,
    "0.75": 0.8,
    "0.9": 1.0
@@ -208,10 +208,10 @@
    "SIDER-indication",
    "OnSIDES-label"
   ],
-  "prevalence": 0.9991487108670672,
+  "prevalence": 0.9991373879997262,
   "prevalence_by_evidence_class": {
    "monogenic": 0.9992290407374784,
-   "pharmacological": 0.9978342358318945
+   "pharmacological": 0.9976834785603402
   },
   "num_iterations": 28,
   "converged": true,
@@ -234,28 +234,28 @@
   },
   "posterior_quantiles": {
    "covered_by_two_positive_in_both": {
-    "pairs": 618,
-    "mean": 0.9998726432193207,
-    "0.1": 0.9997561754461752,
-    "0.25": 0.9998216694944028,
+    "pairs": 620,
+    "mean": 0.9998660277795884,
+    "0.1": 0.9997382605289137,
+    "0.25": 0.9998092411987262,
     "0.5": 0.9998915873699763,
-    "0.75": 0.9999244991788775,
+    "0.75": 0.9999239246906543,
     "0.9": 0.9999750645009944
    },
    "positive_in_one_silent_in_other": {
-    "pairs": 760,
-    "mean": 0.9981782168737134,
-    "0.1": 0.9961871887065212,
-    "0.25": 0.9979345618180366,
+    "pairs": 751,
+    "mean": 0.9981469507796411,
+    "0.1": 0.9962513618179513,
+    "0.25": 0.997980303767835,
     "0.5": 0.9994232502804609,
     "0.75": 0.9994232502804609,
     "0.9": 0.9994232502804609
    },
    "covered_by_one_source_positive": {
-    "pairs": 2565,
-    "mean": 0.9996638825678408,
-    "0.1": 0.9991482066523605,
-    "0.25": 0.99963784265969,
+    "pairs": 2505,
+    "mean": 0.9996654854385715,
+    "0.1": 0.9990726538861003,
+    "0.25": 0.9996663476591036,
     "0.5": 0.9997730446598188,
     "0.75": 0.9997730446598188,
     "0.9": 0.9997748793976969
@@ -283,7 +283,7 @@
    "HPO-OMIM": {
     "items_covered": 1593,
     "items_with_explicit_reports": 1180,
-    "explicit_positive_weight": 948.0954797156926,
+    "explicit_positive_weight": 948.0954797156924,
     "explicit_negative_weight": 24.582893658809063,
     "implicit_negative_cells": 413,
     "sensitivity": 0.6853041424781637,
@@ -303,12 +303,12 @@
     "degenerate": false
    },
    "SIDER-label": {
-    "items_covered": 565,
+    "items_covered": 556,
     "items_with_explicit_reports": 543,
-    "explicit_positive_weight": 485.1000000000001,
+    "explicit_positive_weight": 485.1,
     "explicit_negative_weight": 0.0,
-    "implicit_negative_cells": 22,
-    "sensitivity": 0.955941312455281,
+    "implicit_negative_cells": 13,
+    "sensitivity": 0.9729876819484772,
     "specificity": 0.8,
     "specificity_held_at_prior": "no_explicit_negatives",
     "degenerate": false
@@ -319,18 +319,18 @@
     "explicit_positive_weight": 23.200000000000003,
     "explicit_negative_weight": 0.0,
     "implicit_negative_cells": 0,
-    "sensitivity": 0.9679340688500692,
+    "sensitivity": 0.9679330469305208,
     "specificity": 0.8,
     "specificity_held_at_prior": "no_explicit_negatives",
     "degenerate": false
    },
    "OnSIDES-label": {
-    "items_covered": 801,
-    "items_with_explicit_reports": 652,
-    "explicit_positive_weight": 467.59999999999997,
+    "items_covered": 736,
+    "items_with_explicit_reports": 587,
+    "explicit_positive_weight": 422.1,
     "explicit_negative_weight": 0.0,
     "implicit_negative_cells": 149,
-    "sensitivity": 0.7599997879996124,
+    "sensitivity": 0.7411145944148204,
     "specificity": 0.8,
     "specificity_held_at_prior": "no_explicit_negatives",
     "degenerate": false

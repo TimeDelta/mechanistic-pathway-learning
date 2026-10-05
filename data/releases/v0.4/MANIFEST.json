@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
- "created": "2026-10-03",
- "git_commit": "e519004f16138400473ffa07aefab88e8ddddde9",
+ "created": "2026-10-05",
+ "git_commit": "3e45f092ed77810e1b0252468e51f2b621fa85a7",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
- "licensed_term_labels_blanked": 8653,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended (3,977 observations; 7,621 reports from five sources); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked); literature holds the E3 tables: 226,347 PubTator3 relation reports, 5,607 CTD reports, 231,954 appraised literature reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map.",
+ "licensed_term_labels_blanked": 8830,
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended after the OnSIDES review of 5 October 2026 (3,910 observations; 7,488 reports from five sources; 876 drug pairs over 142 drugs); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked; 1,144 qualifying statements, no ATC waiver, combination-only statements excluded, LLT events matched through their PT, name unification with SIDER); literature holds the E3 tables: 226,347 PubTator3 relation reports, 5,607 CTD reports, 231,954 appraised literature reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map.",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -72,6 +72,11 @@
    "pinned_version": "queried 2026-10-03 for 1,866 ingredients"
   },
   {
+   "source": "HGNC complete set (storage.googleapis.com/public-download-files/hgnc)",
+   "use": "gene symbol to NCBI Gene and Ensembl identifiers for non-metabolic graph genes",
+   "pinned_version": "downloaded 2026-10-03; 16963116 bytes; 12,537 of 12,627 gene nodes carry an NCBI Gene id"
+  },
+  {
    "source": "CollecTRI (via OmniPath, dataset collectri)",
    "use": "transcription factor regulons with signs",
    "pinned_version": "queried 2026-10-03; 64,515 regulon rows"
@@ -82,14 +87,14 @@
    "pinned_version": "to pin"
   },
   {
-   "source": "PubTator3 (ncbi.nlm.nih.gov/research/pubtator3)",
-   "use": "E3 literature relations",
-   "pinned_version": "query date"
+   "source": "PubTator3 (ncbi.nlm.nih.gov/research/pubtator3; bulk relation2pubtator3.gz)",
+   "use": "E3 literature relations, document species and years",
+   "pinned_version": "bulk file 297478945 bytes, server date Mon, 17 Aug 2026 13:41:35 GMT, sha256 6fca7a4c6a7b; filtered 2026-10-03: 226,347 reports; documents for 30,000 papers fetched 2026-10-03"
   },
   {
-   "source": "CTD (ctdbase.org)",
-   "use": "E3 chemical-symptom associations with direction",
-   "pinned_version": "to pin"
+   "source": "CTD (ctdbase.org, CTD_chemicals_diseases.tsv.gz)",
+   "use": "E3 chemical-symptom associations with direction (DirectEvidence marker/mechanism or therapeutic)",
+   "pinned_version": "downloaded 2026-10-03 (162,343,480 bytes); 5,607 reports from 3,356 papers"
   },
   {
    "source": "SemMedDB (NLM)",
@@ -109,28 +114,28 @@
  ],
  "files": {
   "evidence_full/evidence_records.csv": {
-   "sha256": "fad8507ba8ba4c5937465e1f83132363585192219b23cd68212295ee73041f27",
-   "bytes": 1134686,
-   "rows": 3977
+   "sha256": "bfa3c4a300d97641c22c39e250aca9796844b835249f2a2683dead29ef41f252",
+   "bytes": 1114687,
+   "rows": 3910
   },
   "evidence_full/evidence_records.parquet": {
-   "sha256": "d74ba75539fe92c6448677723b4ae9b04a64c6cba03bd2e62e030d82c574b56f",
-   "bytes": 164963,
-   "rows": 3977
+   "sha256": "dd4e813d8f57a99ec08141ae275b3aaa95a047ad520028a1473c29dac24e430a",
+   "bytes": 163072,
+   "rows": 3910
   },
   "evidence_full/evidence_reports.csv": {
-   "sha256": "9020863fdc1f97cefb998eed366f829f44286b411aa86c56d5871a6548ed8b56",
-   "bytes": 4733107,
-   "rows": 7621
+   "sha256": "e50f1ee784c70eb1d3e8e195b655db9f6a217e77e6162f5b4db5bf817f01173a",
+   "bytes": 4668129,
+   "rows": 7488
   },
   "evidence_full/evidence_reports.parquet": {
-   "sha256": "77558038699119e54b84ff24a2628259d521874c73ff644c883bdba4cb5145c1",
-   "bytes": 383374,
-   "rows": 7621
+   "sha256": "ddc6be105cf3900846137f1f2958820040f10d320b07e2484c23f6a04218e0a0",
+   "bytes": 376023,
+   "rows": 7488
   },
   "evidence_full/evidence_summary.json": {
-   "sha256": "0c81e0803d89e70b08aecdb2cc4b1a233dad1f8ffd8c54dbc79764012b3cb4cf",
-   "bytes": 8577,
+   "sha256": "5b6d58a8f356b99bf1e0aac1256ef489569bcb3cc4375d34f8872c5597a6673a",
+   "bytes": 8575,
    "rows": null
   },
   "evidence_full/unmapped_records.csv": {
@@ -304,23 +309,23 @@
    "rows": 1210
   },
   "onsides/ingredient_identifier_bridge.json": {
-   "sha256": "5647adf7b9c0c724691763ed1ad7de802ae051a5835fedef0dc58b22ccfd1265",
-   "bytes": 1407786,
+   "sha256": "a7e5ac498b7268425663ecd6282599b0f78fc7ab6c9411054854263ffd1d30da",
+   "bytes": 1676960,
    "rows": null
   },
   "onsides/onsides_reports.csv": {
-   "sha256": "700cf763583fbb327b5f65bad1bec90b7b306ed5a117844ec0c94d79acb26c9d",
-   "bytes": 4356160,
-   "rows": 5649
+   "sha256": "bf922700345b184848b384a158e0f7438c406fb0fff5c8583410e844fabe612b",
+   "bytes": 4803143,
+   "rows": 5959
   },
   "onsides/onsides_reports.parquet": {
-   "sha256": "5de48a9e0bdcb03e40b3af12f3d9a0bd347978e669616a2bebc2a0cdaf8a5826",
-   "bytes": 407137,
-   "rows": 5649
+   "sha256": "b722238ee5f961fcd499ffa23087f914c04478b241c54e6f1794aab701c30f74",
+   "bytes": 439263,
+   "rows": 5959
   },
   "onsides/onsides_summary.json": {
-   "sha256": "6de3f476809ae55aba3d14a1093bc7fb6cfd9b25e57856318847120832bda67b",
-   "bytes": 1475,
+   "sha256": "17451c60a8d38115698b16d920646de712ff9785926ff1b1bf3473075849f3a6",
+   "bytes": 2660,
    "rows": null
   }
  }

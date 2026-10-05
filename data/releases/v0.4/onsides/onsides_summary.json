@@ -2,67 +2,109 @@
  "release": "v3.1.1",
  "release_date": "2026-04-22",
  "counts": {
-  "statements": 5649,
+  "statements": 5959,
   "ingredients_without_bridge": 0,
   "disqualified": {
-   "no_single_mechanism_target": 2006,
-   "no_chembl_parent": 419,
-   "atc_not_nervous_system": 1919,
-   "no_graph_node": 28
+   "no_single_mechanism_target": 2125,
+   "no_chembl_parent": 479,
+   "atc_not_nervous_system": 1985,
+   "combination_label_only": 96,
+   "no_atc_code": 130
   },
-  "no_graph_node": 0,
-  "qualifying_reports": 1277,
-  "qualifying_ingredients": 153,
-  "qualifying_perturbations": 149
+  "qualifying_reports": 1144,
+  "qualifying_ingredients": 127,
+  "qualifying_perturbations": 123
  },
  "overlap": {
-  "pairs_in_both": 281,
-  "sider_only": 262,
-  "onsides_only": 371,
+  "pairs_in_both": 283,
+  "sider_only": 260,
   "sider_pairs": 543,
-  "onsides_pairs": 652,
-  "onsides_only_by_symptom": {
-   "fatigue": 54,
-   "somnolence_or_hypersomnia": 50,
-   "anxiety": 46,
-   "depressed_mood": 46,
-   "insomnia": 45,
-   "psychosis": 40,
-   "psychomotor_agitation": 29,
-   "cognitive_impairment": 25,
-   "irritability_or_aggression": 22,
+  "onsides_pairs": 587,
+  "onsides_absent_from_qualified_sider_table": 304,
+  "onsides_absent_but_on_sider_labels": 204,
+  "onsides_later_slice_candidates": 100,
+  "onsides_later_slice_candidates_on_unified_perturbations": 41,
+  "onsides_later_slice_candidates_on_onsides_only_perturbations": 59,
+  "raw_sider_pairs": 5248,
+  "onsides_only": 100,
+  "onsides_absent_by_symptom": {
+   "anxiety": 39,
+   "cognitive_impairment": 19,
+   "depressed_mood": 34,
    "elevated_mood_or_mania": 13,
-   "psychomotor_retardation": 1
+   "fatigue": 35,
+   "insomnia": 26,
+   "irritability_or_aggression": 18,
+   "psychomotor_agitation": 34,
+   "psychomotor_retardation": 1,
+   "psychosis": 36,
+   "somnolence_or_hypersomnia": 49
+  },
+  "onsides_on_sider_labels_by_symptom": {
+   "anxiety": 26,
+   "cognitive_impairment": 13,
+   "depressed_mood": 17,
+   "elevated_mood_or_mania": 10,
+   "fatigue": 22,
+   "insomnia": 15,
+   "irritability_or_aggression": 14,
+   "psychomotor_agitation": 27,
+   "psychomotor_retardation": 1,
+   "psychosis": 23,
+   "somnolence_or_hypersomnia": 36
+  },
+  "onsides_only_by_symptom": {
+   "anxiety": 13,
+   "cognitive_impairment": 6,
+   "depressed_mood": 17,
+   "elevated_mood_or_mania": 3,
+   "fatigue": 13,
+   "insomnia": 11,
+   "irritability_or_aggression": 4,
+   "psychomotor_agitation": 7,
+   "psychosis": 13,
+   "somnolence_or_hypersomnia": 13
   }
  },
+ "statements_by_term_type": {
+  "PT": 5649,
+  "LLT": 310
+ },
+ "lower_level_terms_paired_through_sider": true,
  "reports_by_symptom": {
-  "fatigue": 228,
-  "somnolence_or_hypersomnia": 172,
-  "anxiety": 160,
-  "depressed_mood": 142,
-  "psychosis": 132,
-  "psychomotor_agitation": 122,
-  "insomnia": 113,
-  "irritability_or_aggression": 80,
-  "cognitive_impairment": 73,
-  "elevated_mood_or_mania": 52,
+  "somnolence_or_hypersomnia": 182,
+  "fatigue": 178,
+  "anxiety": 140,
+  "psychomotor_agitation": 134,
+  "depressed_mood": 117,
+  "psychosis": 114,
+  "insomnia": 91,
+  "irritability_or_aggression": 78,
+  "cognitive_impairment": 59,
+  "elevated_mood_or_mania": 48,
   "psychomotor_retardation": 3
  },
  "reports_by_country": {
-  "US": 596,
-  "UK": 281,
-  "EU": 219,
-  "JP": 181
+  "US": 546,
+  "UK": 254,
+  "JP": 189,
+  "EU": 155
  },
  "reports_by_section": {
-  "NA": 681,
-  "AR": 491,
-  "WP": 97,
-  "BW": 8
+  "NA": 598,
+  "AR": 457,
+  "WP": 84,
+  "BW": 5
  },
  "reports_by_term_type": {
-  "PT": 1277
+  "PT": 1075,
+  "LLT": 69
  },
- "qualifying_drugs_unified_with_sider": 98,
- "qualifying_drugs_onsides_only": 51
+ "reports_by_unification_method": {
+  "chembl_parent": 980,
+  "none": 90,
+  "sider_drug_name": 74
+ },
+ "qualifying_drugs_unified_with_sider": 102,
+ "qualifying_drugs_onsides_only": 21
 }
