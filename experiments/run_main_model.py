@@ -52,6 +52,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
+from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
@@ -82,9 +83,15 @@ def build_models(data, arguments, device):
     if arguments.encoder == "linear_response":
         if arguments.field != "difference":
             raise ValueError("the linear-response encoder is linear in its input, so its field is a difference field; use --field difference")
+        cofactor_edges = None
+        if arguments.cofactor_relations:
+            cofactor_edges = torch.as_tensor(cofactor_edge_mask(data.edge_source, data.edge_target, data.edge_relation, data.relation_types,
+                                                                data.node_base_metabolite_id, data.node_display_name, data.is_currency))
+            print(f"carrier edges given their own relations: {int(cofactor_edges.sum())}")
         encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
-                                        arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), num_propagation_steps=arguments.propagation_steps,
+                                        arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
+                                        num_propagation_steps=arguments.propagation_steps,
                                         propagation_channels=arguments.propagation_channels, damping=arguments.propagation_damping).to(device)
     else:
         node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
@@ -224,6 +231,8 @@ def main() -> None:
                         help="route 1 encoder: L layers of message passing, or the time-invariant signed linear-response state space (linear_response_encoder.py)")
     parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
+    parser.add_argument("--cofactor-relations", action="store_true",
+                        help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains")
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=2)

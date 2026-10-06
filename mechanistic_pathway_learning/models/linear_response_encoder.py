@@ -25,7 +25,12 @@ of order 1e-9.)
 
 Currency metabolites (water, protons, ATP, NAD(P)H and the like, flagged in the graph) receive the response but do
 not pass it on: through them every reaction would reach every other in two steps, which is the hub problem of design
-assumption A9 in another form.
+assumption A9 in another form. Carrier edges (cofactor_edges, mechanistic_pathway_learning/graph/cofactor_edges.py:
+biopterins, quinones, folate carriers, transamination pairs and the like) can be given relations of their own,
+cosubstrate_of, coproduct_of and depletes_cosubstrate, whose gains are learned apart from those of main substrates and
+products; without them a PAH loss raises tetrahydrobiopterin and through it tyrosine hydroxylase flux and dopamine. With
+carrier gains low, the untrained response to a PAH loss on the slice raises phenylalanine and phenylpyruvate and lowers
+tyrosine, L-dopa and dopamine, as in phenylketonuria; carrier gains therefore start low (logit offset -3) and are learned.
 
 The stoichiometric reading needs edges the graph does not store: a reaction's flux change depletes its substrates,
 so every substrate_of edge (metabolite -> reaction) gets a reverse edge reaction -> metabolite with sign -1 under its
@@ -53,8 +58,13 @@ import torch
 from torch import Tensor, nn
 
 SUBSTRATE_RELATION = "substrate_of"
+PRODUCT_RELATION = "product_of"
 DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
+COSUBSTRATE_RELATION = "cosubstrate_of"
+COPRODUCT_RELATION = "coproduct_of"
+DEPLETES_COSUBSTRATE_RELATION = "depletes_cosubstrate"
 UNSIGNED_RELATIONS = ("binds",)
+CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 
 
 class LinearResponseEncoder(nn.Module):
@@ -69,6 +79,7 @@ class LinearResponseEncoder(nn.Module):
         node_features: Tensor,
         node_state_dim: int,
         non_propagating_nodes: Tensor | None = None,
+        cofactor_edges: Tensor | None = None,
         num_propagation_steps: int = 8,
         propagation_channels: int = 4,
         damping: float = 0.5,
@@ -84,33 +95,46 @@ class LinearResponseEncoder(nn.Module):
         self.num_propagation_steps = num_propagation_steps
         self.damping = damping
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
-                                                                          non_propagating_nodes)
+                                                                          non_propagating_nodes, cofactor_edges)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         self.register_buffer("node_features", node_features.to(torch.float32), persistent=False)
         self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS for name in relation_names]), persistent=False)
         self.maximum_gain = contraction
         self.propagation_channels = propagation_channels
-        self.gain_logit = nn.Parameter(torch.randn(len(relation_names), propagation_channels))  # spread so channels start at different time scales
+        initial_gain_logit = torch.randn(len(relation_names), propagation_channels)  # spread so channels start at different time scales
+        for carrier_relation in (COSUBSTRATE_RELATION, COPRODUCT_RELATION, DEPLETES_COSUBSTRATE_RELATION):
+            if carrier_relation in relation_names:  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
+                initial_gain_logit[relation_names.index(carrier_relation)] += CARRIER_INITIAL_GAIN_LOGIT_OFFSET
+        self.gain_logit = nn.Parameter(initial_gain_logit)
         self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
         self.channel_expansion = nn.Parameter(torch.randn(propagation_channels, node_state_dim) / propagation_channels**0.5)
         self.output_gate = nn.Linear(node_features.shape[1], node_state_dim)
 
     @staticmethod
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
-                                 edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None) -> tuple[Tensor, list[str]]:
+                                 edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
+                                 cofactor_edges: Tensor | None = None) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
-        depletes_substrate relation appended and edges leaving a non-propagating node dropped; returns the matrix and
-        the relation names in stack order."""
-        sources, targets, relations, signs = [edge_source.long()], [edge_target.long()], [edge_relation.long()], [edge_sign.float()]
+        depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
+        given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order."""
+        edge_relation = edge_relation.long().clone()
         relation_names = list(relation_types)
-        if SUBSTRATE_RELATION in relation_types:
-            substrate_edges = edge_relation == relation_types.index(SUBSTRATE_RELATION)
-            relation_names.append(DEPLETES_SUBSTRATE_RELATION)
-            sources.append(edge_target[substrate_edges].long())
-            targets.append(edge_source[substrate_edges].long())
-            relations.append(torch.full((int(substrate_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
-            signs.append(-torch.ones(int(substrate_edges.sum())))
+        if cofactor_edges is not None and SUBSTRATE_RELATION in relation_types and PRODUCT_RELATION in relation_types:
+            cofactor_edges = cofactor_edges.bool()
+            for main_relation, carrier_relation in ((SUBSTRATE_RELATION, COSUBSTRATE_RELATION), (PRODUCT_RELATION, COPRODUCT_RELATION)):
+                relation_names.append(carrier_relation)
+                edge_relation[cofactor_edges & (edge_relation == relation_types.index(main_relation))] = len(relation_names) - 1
+        sources, targets, relations, signs = [edge_source.long()], [edge_target.long()], [edge_relation], [edge_sign.float()]
+        for forward_relation, depletion_relation in ((SUBSTRATE_RELATION, DEPLETES_SUBSTRATE_RELATION), (COSUBSTRATE_RELATION, DEPLETES_COSUBSTRATE_RELATION)):
+            if forward_relation not in relation_names:
+                continue
+            forward_edges = edge_relation == relation_names.index(forward_relation)
+            relation_names.append(depletion_relation)
+            sources.append(edge_target[forward_edges].long())
+            targets.append(edge_source[forward_edges].long())
+            relations.append(torch.full((int(forward_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
+            signs.append(-torch.ones(int(forward_edges.sum())))
         source, target, relation, sign = torch.cat(sources), torch.cat(targets), torch.cat(relations), torch.cat(signs)
         if non_propagating_nodes is not None:
             keep = ~non_propagating_nodes.bool()[source]
