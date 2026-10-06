@@ -162,10 +162,13 @@ class NoisyOrPathwayModuleHead(nn.Module):
             torch.full((num_relation_types, num_pathway_modules, num_symptoms), initial_link_logit)
         )
         self.symptom_leak_logit = nn.Parameter(torch.full((num_relation_types, num_symptoms), initial_leak_logit))
-        # degree_offset: each symptom's leak also depends on a per-perturbation covariate (the standardised log degree of the
-        # perturbed nodes), so the hub bias that popularity and the random walk exploit sits in the leak and the modules
-        # only have to explain what degree does not; the slope starts at zero, so the untrained model is unchanged
-        self.leak_covariate_slope = nn.Parameter(torch.zeros(num_relation_types, num_symptoms)) if degree_offset else None
+        # degree_offset: every symptom's leak also depends on a per-perturbation covariate (the standardised log degree of
+        # the perturbed nodes) through one slope shared by all symptoms, so the hub bias that popularity and the random walk
+        # exploit sits in the leak and the modules only have to explain what degree does not. The slope is shared because
+        # the hub effect belongs to the perturbation: per-symptom slopes took signs from the training folds that did not
+        # generalise (degree-only control 0.239 per fold against 0.259 for degree-scaled popularity, which ranks every
+        # symptom by degree the same way). It starts at zero, so the untrained model is unchanged.
+        self.leak_covariate_slope = nn.Parameter(torch.zeros(num_relation_types)) if degree_offset else None
 
     def module_support(self) -> Tensor:
         return self.support_gate()
@@ -203,7 +206,7 @@ class NoisyOrPathwayModuleHead(nn.Module):
         """[S], or [B, S] when the head has a degree offset and a covariate [B] is given."""
         if self.leak_covariate_slope is None or perturbation_covariate is None:
             return torch.sigmoid(self.symptom_leak_logit[relation_index])
-        return torch.sigmoid(self.symptom_leak_logit[relation_index][None, :] + perturbation_covariate[:, None] * self.leak_covariate_slope[relation_index][None, :])
+        return torch.sigmoid(self.symptom_leak_logit[relation_index][None, :] + perturbation_covariate[:, None] * self.leak_covariate_slope[relation_index])
 
     def forward(self, node_state_field: Tensor, relation_index: int = 0, perturbation_covariate: Tensor | None = None) -> NoisyOrOutput:
         module_support = self.support_gate()

@@ -24,9 +24,9 @@ class SigmoidHeadOutput:
 class RelationalGnnSigmoidHead(nn.Module):
     def __init__(self, node_state_dim: int, num_symptoms: int, hidden_dim: int = 64, pooling: str = "sum", degree_offset: bool = False) -> None:
         super().__init__()
-        # degree_offset: a per-symptom slope on a per-perturbation covariate (standardised log degree) added to each logit,
-        # the sigmoid-head counterpart of the noisy-OR head's degree-dependent leak; starts at zero
-        self.covariate_slope = nn.Parameter(torch.zeros(num_symptoms)) if degree_offset else None
+        # degree_offset: one slope, shared by all symptoms, on a per-perturbation covariate (standardised log degree) added
+        # to every logit, the sigmoid-head counterpart of the noisy-OR head's degree-dependent leak; starts at zero
+        self.covariate_slope = nn.Parameter(torch.zeros(1)) if degree_offset else None
         if pooling not in ("sum", "mean"):
             raise ValueError("pooling must be 'sum' or 'mean'")
         self.pooling = pooling
@@ -36,7 +36,7 @@ class RelationalGnnSigmoidHead(nn.Module):
         pooled = node_state_field.sum(dim=1) if self.pooling == "sum" else node_state_field.mean(dim=1)
         logits = self.readout(pooled)
         if self.covariate_slope is not None and perturbation_covariate is not None:
-            logits = logits + perturbation_covariate[:, None] * self.covariate_slope[None, :]
+            logits = logits + perturbation_covariate[:, None] * self.covariate_slope
         return SigmoidHeadOutput(symptom_probability=torch.sigmoid(logits))
 
     def description_length_penalty(self, node_cost: float = 1.0, link_cost: float = 1.0) -> Tensor:  # noqa: ARG002

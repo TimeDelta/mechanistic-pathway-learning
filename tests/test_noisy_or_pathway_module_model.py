@@ -124,6 +124,7 @@ def test_degree_offset_makes_the_leak_depend_on_the_covariate_and_starts_neutral
         head.leak_covariate_slope.fill_(1.0)
         leaks = head(field, perturbation_covariate=covariate).leak_probability
     assert leaks.shape == (2, 3)
-    assert torch.all(leaks[1] > leaks[0])  # higher degree, higher leak once the slope is positive
+    assert torch.all(leaks[1] > leaks[0])  # higher degree, higher leak for every symptom once the shared slope is positive
+    assert head.leak_covariate_slope.shape == (2,)  # one slope per relation, shared by the symptoms
     assert head.leak_covariate_slope is not None
     assert NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=2, num_symptoms=3).leak_covariate_slope is None

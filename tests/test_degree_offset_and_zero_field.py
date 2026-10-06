@@ -12,8 +12,8 @@ def test_zero_field_head_depends_only_on_the_covariate() -> None:
     field = encoder.perturbation_difference_field(torch.tensor([[0], [3]]), torch.tensor([[[-1.0, 1.0]], [[1.0, 1.0]]]))
     assert torch.count_nonzero(field) == 0
     with torch.no_grad():
-        head.covariate_slope.copy_(torch.tensor([1.0, -1.0]))
+        head.covariate_slope.fill_(1.0)
         probabilities = head(field, perturbation_covariate=torch.tensor([0.0, 1.0])).symptom_probability
-    assert probabilities[1, 0] > probabilities[0, 0] and probabilities[1, 1] < probabilities[0, 1]
+    assert torch.all(probabilities[1] > probabilities[0])  # one shared slope: higher degree raises every symptom
     same_covariate = head(field, perturbation_covariate=torch.tensor([0.5, 0.5])).symptom_probability
     assert torch.allclose(same_covariate[0], same_covariate[1])  # different perturbations, same degree: same prediction
