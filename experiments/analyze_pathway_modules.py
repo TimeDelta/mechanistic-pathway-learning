@@ -40,11 +40,12 @@ from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_
 
 
 def noisy_or_probabilities(activations: np.ndarray, links: np.ndarray, leaks: np.ndarray, ablated_module: int | None = None) -> np.ndarray:
-    """P(symptom) from activations [n, K], links [K, S] and leaks [S], with one module removed when given."""
+    """P(symptom) from activations [n, K], links [K, S] and leaks [S] or [n, S] (degree-dependent), with one module removed when given."""
     contributions = activations[:, :, None] * links[None, :, :]  # [n, K, S]
     if ablated_module is not None:
         contributions = np.delete(contributions, ablated_module, axis=1)
-    return 1.0 - (1.0 - leaks[None, :]) * np.prod(1.0 - np.clip(contributions, 0.0, 1.0 - 1e-6), axis=1)
+    leak_rows = leaks if leaks.ndim == 2 else leaks[None, :]
+    return 1.0 - (1.0 - leak_rows) * np.prod(1.0 - np.clip(contributions, 0.0, 1.0 - 1e-6), axis=1)
 
 
 def sufficiency_test(activations: np.ndarray, links: np.ndarray, leaks: np.ndarray, outcomes: np.ndarray, symptoms: list[str], min_group_size: int = 8, min_positives: int = 3, num_bootstrap: int = 500, seed: int = 0) -> list[dict]:
@@ -157,7 +158,9 @@ def main() -> None:
             activations = np.load(activations_path)
             test_rows = np.array([position_of[p] for p in results["test_perturbation_ids"] if p in position_of])
             if len(test_rows) == activations.shape[0]:
-                sufficiency_rows = sufficiency_test(activations, links, np.array(results["symptom_leaks"]), data.outcomes[test_rows], symptoms)
+                leaks_path = split_directory / "test_leaks.npy"  # per-perturbation leaks of a degree-offset run
+                leaks = np.load(leaks_path) if leaks_path.exists() else np.array(results["symptom_leaks"])
+                sufficiency_rows = sufficiency_test(activations, links, leaks, data.outcomes[test_rows], symptoms)
         split_entry = {"sufficiency_test": sufficiency_rows, "modules": {}, "symptoms": {}, "gate_summary": {f"module_{k}": {"max": float(support[k].max()), "mean": float(support[k].mean()), "above_threshold": int((support[k] > arguments.support_threshold).sum())} for k in range(support.shape[0])}}
         for module_name, module_support in supports.items():
             k = int(module_name.split("_")[1])

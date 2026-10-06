@@ -102,7 +102,7 @@ class NoisyOrOutput:
     symptom_probability: Tensor  # [batch_size, num_symptoms]
     module_activation: Tensor  # [batch_size, num_pathway_modules]
     link_probability: Tensor  # [num_pathway_modules, num_symptoms] for the requested relation
-    leak_probability: Tensor  # [num_symptoms] for the requested relation
+    leak_probability: Tensor  # [num_symptoms] for the requested relation, or [batch_size, num_symptoms] with a perturbation covariate
     module_support: Tensor  # [num_pathway_modules, num_graph_nodes]
 
     def module_contribution(self) -> Tensor:
@@ -136,6 +136,7 @@ class NoisyOrPathwayModuleHead(nn.Module):
         pooling: str = "sum",
         gate_initial_log_alpha_noise: float = 0.01,
         initial_readout_bias: float = 0.0,
+        degree_offset: bool = False,
     ) -> None:
         """gate_initial_log_alpha_noise breaks the symmetry between modules (all gates start at the same
         log-alpha otherwise, and identical modules stay identical); initial_readout_bias below zero makes a
@@ -161,6 +162,10 @@ class NoisyOrPathwayModuleHead(nn.Module):
             torch.full((num_relation_types, num_pathway_modules, num_symptoms), initial_link_logit)
         )
         self.symptom_leak_logit = nn.Parameter(torch.full((num_relation_types, num_symptoms), initial_leak_logit))
+        # degree_offset: each symptom's leak also depends on a per-perturbation covariate (the standardised log degree of the
+        # perturbed nodes), so the hub bias that popularity and the random walk exploit sits in the leak and the modules
+        # only have to explain what degree does not; the slope starts at zero, so the untrained model is unchanged
+        self.leak_covariate_slope = nn.Parameter(torch.zeros(num_relation_types, num_symptoms)) if degree_offset else None
 
     def module_support(self) -> Tensor:
         return self.support_gate()
@@ -194,14 +199,17 @@ class NoisyOrPathwayModuleHead(nn.Module):
     def link_probability(self, relation_index: int = 0) -> Tensor:
         return torch.sigmoid(self.module_symptom_link_logit[relation_index])
 
-    def leak_probability(self, relation_index: int = 0) -> Tensor:
-        return torch.sigmoid(self.symptom_leak_logit[relation_index])
+    def leak_probability(self, relation_index: int = 0, perturbation_covariate: Tensor | None = None) -> Tensor:
+        """[S], or [B, S] when the head has a degree offset and a covariate [B] is given."""
+        if self.leak_covariate_slope is None or perturbation_covariate is None:
+            return torch.sigmoid(self.symptom_leak_logit[relation_index])
+        return torch.sigmoid(self.symptom_leak_logit[relation_index][None, :] + perturbation_covariate[:, None] * self.leak_covariate_slope[relation_index][None, :])
 
-    def forward(self, node_state_field: Tensor, relation_index: int = 0) -> NoisyOrOutput:
+    def forward(self, node_state_field: Tensor, relation_index: int = 0, perturbation_covariate: Tensor | None = None) -> NoisyOrOutput:
         module_support = self.support_gate()
         module_activation = self.module_activation(node_state_field, module_support)
         link_probability = self.link_probability(relation_index)
-        leak_probability = self.leak_probability(relation_index)
+        leak_probability = self.leak_probability(relation_index, perturbation_covariate)
         symptom_probability = noisy_or_combination(module_activation, link_probability, leak_probability)
         return NoisyOrOutput(
             symptom_probability=symptom_probability,
@@ -229,5 +237,8 @@ def noisy_or_combination(module_activation: Tensor, link_probability: Tensor, le
     Computed in log space: log(1 - P) = log(1 - leak) + sum_k log(1 - link * activation).
     """
     per_module_failure = 1.0 - (module_activation[:, :, None] * link_probability[None, :, :]).clamp(max=1.0 - PROBABILITY_EPSILON)
-    log_probability_no_symptom = torch.log1p(-leak_probability.clamp(max=1.0 - PROBABILITY_EPSILON))[None, :] + torch.log(per_module_failure).sum(dim=1)
+    log_leak_failure = torch.log1p(-leak_probability.clamp(max=1.0 - PROBABILITY_EPSILON))
+    if log_leak_failure.dim() == 1:  # one leak per symptom; [B, S] when the leak depends on a perturbation covariate
+        log_leak_failure = log_leak_failure[None, :]
+    log_probability_no_symptom = log_leak_failure + torch.log(per_module_failure).sum(dim=1)
     return 1.0 - torch.exp(log_probability_no_symptom)

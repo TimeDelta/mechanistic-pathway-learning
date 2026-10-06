@@ -52,6 +52,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
+from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
@@ -79,8 +80,24 @@ def pad_perturbations(data, indices: np.ndarray) -> tuple[torch.Tensor, torch.Te
     return node_index, sign_and_magnitude
 
 
+def perturbation_covariate(data) -> np.ndarray:
+    """Standardised log1p of the summed degree of each perturbation's nodes: the hub signal that popularity and the
+    random walk exploit, given to the heads explicitly under --degree-offset. It is a property of the input graph, not
+    of the labels, so standardising over every perturbation leaks nothing."""
+    log_degree = np.log1p(data.perturbation_degrees)
+    return ((log_degree - log_degree.mean()) / max(log_degree.std(), 1e-8)).astype(np.float32)
+
+
+def covariate_of(data, batch: np.ndarray, arguments, device):
+    if not arguments.degree_offset:
+        return None
+    return torch.as_tensor(perturbation_covariate(data)[batch], device=device)
+
+
 def build_models(data, arguments, device):
-    if arguments.encoder == "linear_response":
+    if arguments.encoder == "none":
+        encoder = ZeroFieldEncoder(len(data.node_ids), arguments.node_state_dim).to(device)
+    elif arguments.encoder == "linear_response":
         if arguments.field != "difference":
             raise ValueError("the linear-response encoder is linear in its input, so its field is a difference field; use --field difference")
         cofactor_edges = None
@@ -97,11 +114,13 @@ def build_models(data, arguments, device):
         node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
     if arguments.head == "sigmoid":
-        head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling).to(device)
+        head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling,
+                                        degree_offset=arguments.degree_offset).to(device)
     else:
         head = NoisyOrPathwayModuleHead(len(data.node_ids), arguments.node_state_dim, arguments.num_modules, len(data.symptoms),
                                         gate_initial_log_alpha=arguments.gate_initial_log_alpha, pooling=arguments.pooling,
-                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init).to(device)
+                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init,
+                                        degree_offset=arguments.degree_offset).to(device)
     return encoder, head
 
 
@@ -148,7 +167,7 @@ def predict(encoder, head, data, indices: np.ndarray, adjacencies, arguments, de
             batch = indices[start : start + arguments.batch_size]
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
             field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
-            predictions.append(head(field, relation_index=0).symptom_probability.cpu().numpy())
+            predictions.append(head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device)).symptom_probability.cpu().numpy())
     encoder.train()
     head.train()
     return np.concatenate(predictions, axis=0) if predictions else np.zeros((0, len(data.symptoms)))
@@ -227,8 +246,10 @@ def main() -> None:
     parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
                         help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
-    parser.add_argument("--encoder", choices=["message_passing", "linear_response"], default="message_passing",
-                        help="route 1 encoder: L layers of message passing, or the time-invariant signed linear-response state space (linear_response_encoder.py)")
+    parser.add_argument("--encoder", choices=["message_passing", "linear_response", "none"], default="message_passing",
+                        help="route 1 encoder: L layers of message passing, the time-invariant signed linear-response state space (linear_response_encoder.py), or none (a zero field: with --degree-offset, the degree-only control)")
+    parser.add_argument("--degree-offset", action="store_true",
+                        help="give the head the standardised log degree of each perturbation: a degree-dependent leak (noisy-OR) or logit offset (sigmoid), so the field only has to explain what degree does not")
     parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
     parser.add_argument("--cofactor-relations", action="store_true",
@@ -337,7 +358,7 @@ def main() -> None:
             batch = order[start : start + arguments.batch_size]
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
             field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
-            output = head(field, relation_index=0)
+            output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
             if positive_targets is not None:
                 bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0)
             else:
@@ -449,12 +470,16 @@ def main() -> None:
             support = head.module_support().cpu().numpy()
             expected_support = head.support_gate.expected_active_node_count().cpu().numpy()
             links = head.link_probability(0).cpu().numpy()
-            leaks = head.leak_probability(0).cpu().numpy()
-            test_field_activations = []
+            leaks = head.leak_probability(0).cpu().numpy()  # at covariate zero (the mean log degree) under --degree-offset
+            test_field_activations, test_leaks = [], []
             for start in range(0, len(test_indices), arguments.batch_size):
                 batch = test_indices[start : start + arguments.batch_size]
                 node_index, sign_and_magnitude = pad_perturbations(data, batch)
-                test_field_activations.append(head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)).module_activation.cpu().numpy())
+                output = head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field), perturbation_covariate=covariate_of(data, batch, arguments, device))
+                test_field_activations.append(output.module_activation.cpu().numpy())
+                test_leaks.append(np.broadcast_to(output.leak_probability.cpu().numpy(), (len(batch), output.leak_probability.shape[-1])))
+            if arguments.degree_offset and test_leaks:
+                np.save(split_directory / "test_leaks.npy", np.concatenate(test_leaks, axis=0))  # per-perturbation leaks for the sufficiency test
         results.update({
             "module_support_sizes": [int((support[k] > 0.5).sum()) for k in range(support.shape[0])],
             "module_expected_support_sizes": [float(x) for x in expected_support],

@@ -108,3 +108,22 @@ def test_eval_mode_gate_is_the_expected_training_gate_and_time_scale_groups_are_
     assert [id(parameter) for parameter in groups["links"]] == [id(head.module_symptom_link_logit)]
     assert [id(parameter) for parameter in groups["leaks"]] == [id(head.symptom_leak_logit)]
     assert [id(parameter) for parameter in groups["module_biases"]] == [id(head.module_readout_bias)]
+
+
+def test_degree_offset_makes_the_leak_depend_on_the_covariate_and_starts_neutral() -> None:
+    torch.manual_seed(0)
+    head = NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=2, num_symptoms=3, degree_offset=True)
+    head.initialize_leak_from_base_rates(torch.tensor([0.2, 0.3, 0.4]))
+    head.eval()  # deterministic gates, so two passes differ only through the covariate
+    field = torch.randn(2, 6, 4)
+    covariate = torch.tensor([-1.0, 2.0])
+    with torch.no_grad():
+        without_covariate = head(field).symptom_probability
+        with_covariate = head(field, perturbation_covariate=covariate).symptom_probability
+        assert torch.allclose(without_covariate, with_covariate)  # zero slope at initialisation
+        head.leak_covariate_slope.fill_(1.0)
+        leaks = head(field, perturbation_covariate=covariate).leak_probability
+    assert leaks.shape == (2, 3)
+    assert torch.all(leaks[1] > leaks[0])  # higher degree, higher leak once the slope is positive
+    assert head.leak_covariate_slope is not None
+    assert NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=2, num_symptoms=3).leak_covariate_slope is None
