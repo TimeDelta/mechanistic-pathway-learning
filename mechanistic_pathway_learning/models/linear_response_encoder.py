@@ -27,10 +27,17 @@ Currency metabolites (water, protons, ATP, NAD(P)H and the like, flagged in the 
 not pass it on: through them every reaction would reach every other in two steps, which is the hub problem of design
 assumption A9 in another form. Carrier edges (cofactor_edges, mechanistic_pathway_learning/graph/cofactor_edges.py:
 biopterins, quinones, folate carriers, transamination pairs and the like) can be given relations of their own,
-cosubstrate_of, coproduct_of and depletes_cosubstrate, whose gains are learned apart from those of main substrates and
-products; without them a PAH loss raises tetrahydrobiopterin and through it tyrosine hydroxylase flux and dopamine. With
-carrier gains low, the untrained response to a PAH loss on the slice raises phenylalanine and phenylpyruvate and lowers
-tyrosine, L-dopa and dopamine, as in phenylketonuria; carrier gains therefore start low (logit offset -3) and are learned.
+cosubstrate_of (carrier -> reaction, supply) and coproduct_of (reaction -> carrier), whose gains are learned apart from
+those of main substrates and products, and carriers get no depletion edge. A carrier pool is recycled (tetrahydrobiopterin
+used by PAH is regenerated through PCBD1 and QDPR), so one consumer slowing down barely moves the pool, and the depletion
+edge made a PAH loss raise tetrahydrobiopterin and through it tyrosine hydroxylase flux, L-dopa and dopamine, the
+opposite of phenylketonuria. A synthesis defect does drain the pool, so the supply edges stay: dropping carrier edges
+altogether left a GCH1 loss lowering tetrahydrobiopterin with nothing downstream able to see it, and 14 slice genes with
+30 positive pairs make or recycle carriers (GCH1, PTS, SPR, QDPR, PCBD1, MTHFR, MTRR, SLC46A1, COQ2, COQ5, COQ7,
+ALDH7A1, SLC19A3, HLCS). Untrained on the slice, with only the depletion edge dropped, a PAH loss raises phenylalanine
+and lowers tyrosine, L-dopa and dopamine; a GCH1 loss lowers tetrahydrobiopterin, L-dopa and serotonin (dopamine still
+rises, through a route not yet traced); an MTHFR loss raises homocysteine and lowers methionine. Carrier gains start low
+(logit offset -3) and are learned.
 
 The stoichiometric reading needs edges the graph does not store: a reaction's flux change depletes its substrates,
 so every substrate_of edge (metabolite -> reaction) gets a reverse edge reaction -> metabolite with sign -1 under its
@@ -68,7 +75,6 @@ PRODUCT_RELATION = "product_of"
 DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
 COSUBSTRATE_RELATION = "cosubstrate_of"
 COPRODUCT_RELATION = "coproduct_of"
-DEPLETES_COSUBSTRATE_RELATION = "depletes_cosubstrate"
 UNSIGNED_RELATIONS = ("binds",)
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
@@ -115,7 +121,7 @@ class LinearResponseEncoder(nn.Module):
         self.response_scale = response_scale
         self.log_response_scale = nn.Parameter(torch.full((propagation_channels,), INITIAL_LOG_RESPONSE_SCALE)) if response_scale == "signed_log" else None
         initial_gain_logit = torch.randn(len(relation_names), propagation_channels)  # spread so channels start at different time scales
-        for carrier_relation in (COSUBSTRATE_RELATION, COPRODUCT_RELATION, DEPLETES_COSUBSTRATE_RELATION):
+        for carrier_relation in (COSUBSTRATE_RELATION, COPRODUCT_RELATION):
             if carrier_relation in relation_names:  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
                 initial_gain_logit[relation_names.index(carrier_relation)] += CARRIER_INITIAL_GAIN_LOGIT_OFFSET
         self.gain_logit = nn.Parameter(initial_gain_logit)
@@ -138,7 +144,7 @@ class LinearResponseEncoder(nn.Module):
                 relation_names.append(carrier_relation)
                 edge_relation[cofactor_edges & (edge_relation == relation_types.index(main_relation))] = len(relation_names) - 1
         sources, targets, relations, signs = [edge_source.long()], [edge_target.long()], [edge_relation], [edge_sign.float()]
-        for forward_relation, depletion_relation in ((SUBSTRATE_RELATION, DEPLETES_SUBSTRATE_RELATION), (COSUBSTRATE_RELATION, DEPLETES_COSUBSTRATE_RELATION)):
+        for forward_relation, depletion_relation in ((SUBSTRATE_RELATION, DEPLETES_SUBSTRATE_RELATION),):  # carriers get none (module docstring)
             if forward_relation not in relation_names:
                 continue
             forward_edges = edge_relation == relation_names.index(forward_relation)

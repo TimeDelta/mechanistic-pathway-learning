@@ -28,7 +28,7 @@ def test_carrier_list_and_recurring_pairs_mark_edges_but_not_main_pairs() -> Non
     assert (10, 7) not in marked and (7, 13) not in marked
 
 
-def test_encoder_moves_carrier_edges_to_their_own_relations() -> None:
+def test_encoder_moves_carrier_edges_to_their_own_relations_without_a_depletion_edge() -> None:
     edges = [(2, 1, "substrate_of", 1.0), (0, 1, "catalyzed_by", 1.0), (1, 3, "product_of", 1.0), (4, 1, "substrate_of", 1.0)]
     cofactor = torch.tensor([False, False, False, True])
     encoder = LinearResponseEncoder(
@@ -36,8 +36,9 @@ def test_encoder_moves_carrier_edges_to_their_own_relations() -> None:
         edge_relation=torch.tensor([RELATION_TYPES.index(e[2]) for e in edges]), edge_sign=torch.tensor([e[3] for e in edges]),
         node_features=torch.eye(5), node_state_dim=2, cofactor_edges=cofactor,
     )
-    assert encoder.relation_names == RELATION_TYPES + ["cosubstrate_of", "coproduct_of", "depletes_substrate", "depletes_cosubstrate"]
+    assert encoder.relation_names == RELATION_TYPES + ["cosubstrate_of", "coproduct_of", "depletes_substrate"]
     dense = encoder.stacked_adjacency.to_dense().view(len(encoder.relation_names), 5, 5)
     names = encoder.relation_names
     assert dense[names.index("cosubstrate_of"), 1, 4] > 0 and dense[names.index("substrate_of"), 1, 4] == 0
-    assert dense[names.index("depletes_cosubstrate"), 4, 1] < 0 and dense[names.index("depletes_substrate"), 2, 1] < 0
+    assert dense[names.index("depletes_substrate"), 2, 1] < 0  # the main substrate is depleted
+    assert torch.all(dense[:, 4, 1] == 0)  # a recycled carrier is not: no edge from the reaction back to it

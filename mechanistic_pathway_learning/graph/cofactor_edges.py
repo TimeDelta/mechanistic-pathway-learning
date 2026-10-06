@@ -5,7 +5,7 @@ it, so a linear response couples reactions through it: a PAH loss of function le
 raises it and through it raises tyrosine hydroxylase flux, L-dopa and dopamine, the opposite of what phenylketonuria
 shows. Currency metabolites (tag_currency_metabolites.py) already stop passing the response on; carriers are not
 currency (they are specific and few reactions use them), so their edges get relations of their own instead
-(cosubstrate_of, coproduct_of and the derived depletes_cosubstrate), whose gains the model learns apart from those of
+(cosubstrate_of and coproduct_of, with no depletion edge since a recycled pool barely moves when one consumer slows), whose gains the model learns apart from those of
 the main substrates and products.
 
 An edge between a metabolite and a reaction is a carrier edge when either
