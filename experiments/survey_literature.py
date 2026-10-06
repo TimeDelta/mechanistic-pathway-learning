@@ -44,7 +44,9 @@ def appraise_reports(reports: pd.DataFrame, documents: pd.DataFrame) -> pd.DataF
         species_ids = [value for value in str(document.species_ids).split(";") if value] if document is not None and isinstance(document.species_ids, str) else []
         species_names = [value for value in str(document.species_names).split(";") if value] if document is not None and isinstance(document.species_names, str) else []
         rubric = appraise_from_metadata(publication_types, species_ids, species_names, row.perturbation_type, str(getattr(row, "mesh_descriptor_level", "")), bool(row.evidence_date), metadata_available=document is not None)
-        designs.append(rubric.study_design); species_lists.append(";".join(rubric.species)); weights.append(rubric_weight_from_metadata(rubric))
+        designs.append(rubric.study_design)
+        species_lists.append(";".join(rubric.species))
+        weights.append(rubric_weight_from_metadata(rubric))
         existing = str(row.limitations or "")
         limitations.append((existing + "; " if existing else "") + rubric.limitations)
         features.append(rubric_features(rubric))
