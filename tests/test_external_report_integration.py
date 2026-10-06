@@ -52,4 +52,5 @@ def test_records_grade_by_primary_class_and_literature_only_pairs_are_soft_prior
     literature_only = pd.DataFrame([report(report_id="l", perturbation_id="GENEB", symptom="anxiety", relation="induces", evidence_class="literature", source="PubTator3-cause", evidence_code="human_case_report", source_record_id="PMID:2")])
     record = evidence_record_from_positive_reports(literature_only)
     assert record.evidence_class == "literature" and assign_evidence_grade(record) == "E" and record.predication_type == "CAUSES" and loss_weight_for_record(record) == 0.10
-    assert predication_type_for_literature_sources({"PubTator3-associate"}, "induces") == "COMENTION" and predication_type_for_literature_sources({"CTD-curated"}, "relieves") == "AFFECTS"
+    assert predication_type_for_literature_sources({"PubTator3-associate"}, "induces") == "ASSOCIATED_WITH" and predication_type_for_literature_sources({"CTD-curated"}, "relieves") == "AFFECTS"
+    assert predication_type_for_literature_sources({"PubTator3-inhibit"}, "induces") == "ASSOCIATED_WITH" and predication_type_for_literature_sources({"PubTator3"}, "induces") == "COMENTION"

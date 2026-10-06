@@ -35,7 +35,7 @@ monogenic time split dates each gene-symptom pair by the publication of the PubM
 its OMIM annotation (docs/hpo_reference_publication_dates.json). docs/references.bib holds the design
 document's reference list for import into a reference manager.
 
-Still stubs: OnSIDES and literature loaders, the diagnosis proxy audit, the flux-sampling job
+Still stubs: the SemMedDB predication loader (the OnSIDES slice and the literature class are built), the diagnosis proxy audit, the flux-sampling job
 (written, not yet run), the flux-feature and language-model baselines, the MAGMA wrapper. The pharmacological evidence class and the signaling, transcription and small-molecule layers were
 added once the environment's network policy allowed the SIDER, ChEMBL, UniChem and OmniPath hosts:
 the full graph (data/processed/graph_full) has 33,964 nodes and 261,369 typed edges, and the full
@@ -44,12 +44,12 @@ rows for 72 drugs with a single ChEMBL mechanism target). Baselines and the firs
 the full data are running under runs/full; results go to docs/phase2_baselines_full_disease_cluster.md
 and docs/phase3_main_model.md when they finish.
 
-The retrieval half of the literature class E3 is in place (docs/literature_survey_spec.md): the symptom
-crosswalk carries verified MeSH descriptors with a symptom-or-diagnosis level flag, every gene node has an
+The literature class E3 is in place (docs/literature_survey_spec.md): the symptom
+crosswalk carries verified MeSH descriptors with a symptom, diagnosis or mixed-polarity level flag, every gene node has an
 NCBI Gene id through Human-GEM and HGNC (12,537 of 12,627), and two fetch scripts filter the PubTator3 bulk
-relation file and the CTD chemical-disease file to graph genes and SIDER drugs on those descriptors, writing
-one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature. The
-rows are soft priors (grades C to E) and never evaluation positives. The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations; the tables are in the data release and join the assembled table through --extra-reports.
+relation file and the CTD chemical-disease file to graph genes and SIDER drugs on those descriptors (one SIDER drug per MeSH chemical), writing
+one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature with the source named by extraction type (PubTator3-cause, CTD-curated). The
+rows are grade E soft priors and never labels or evaluation positives (the experiment loader refuses grades D and E). The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations, species first; the tables are in the data release and join the assembled table through --extra-reports. The component was reviewed adversarially on 6 October 2026 (docs/design_review_v04.md, third table); the fixes are in the code, and the data rerun that applies them, with the source names above, is pending the re-pin of the PubTator3 bulk file, so release v0.4 still holds the 3 October tables.
 
 Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
 

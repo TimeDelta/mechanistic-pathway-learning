@@ -235,13 +235,17 @@ def pharmacological_source_label(sources) -> str:
 
 
 def predication_type_for_literature_sources(sources: set[str], relation: str) -> str:
-    """The soft-prior weight class of assign_evidence_grades.DEFAULT_PREDICATION_WEIGHTS for a literature-only pair."""
+    """The soft-prior weight class of assign_evidence_grades.DEFAULT_PREDICATION_WEIGHTS for a literature-only pair, read
+    from the extraction type the source name carries ("PubTator3-cause", "CTD-curated"): a cause or a curated
+    marker/mechanism statement is CAUSES, a treat, prevent or curated therapeutic statement AFFECTS, an extracted
+    association or correlation (associate, stimulate, inhibit, the correlation types) ASSOCIATED_WITH; COMENTION is
+    kept for a source that names no extraction type at all."""
     names = {source.split("-", 1)[1].lower() if "-" in source else source.lower() for source in sources}
     if "cause" in names or ("curated" in names and relation == "induces"):
         return "CAUSES"
     if names & {"treat", "prevent", "curated"}:
         return "AFFECTS"
-    if names & {"positive_correlation", "negative_correlation", "positive_correlate", "negative_correlate"}:
+    if names & {"associate", "association", "stimulate", "inhibit", "positive_correlation", "negative_correlation", "positive_correlate", "negative_correlate"}:
         return "ASSOCIATED_WITH"
     return "COMENTION"
 

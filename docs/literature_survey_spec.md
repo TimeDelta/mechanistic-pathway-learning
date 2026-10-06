@@ -1,15 +1,22 @@
-# Literature survey, evidence class E3: retrieval half (PubTator3 and CTD)
+# Literature survey, evidence class E3: retrieval and appraisal (PubTator3 and CTD)
 
-Status: retrieval implemented and run on 3 October 2026; the join into the assembled evidence table and the
-reliability fit is the next step. Design sections 3.1, 4.2 (E3 paragraph), 4.3 and 6.1; report schema in
-docs/evidence_reports_spec.md section 1.
+Status: both halves implemented and run on 3 October 2026. The adversarial review of the component
+(docs/design_review_v04.md, third table) produced fixes that are in the code as of 6 October 2026; the rerun that
+applies them to the data is pending the re-pin of the PubTator3 bulk file (section 7), so every count in this document
+and in release v0.4 is from the 3 October build under the rules before the review. The rule-based appraisal and the survey
+(experiments/survey_literature.py, docs/literature_survey.md) join the two relation tables with the document
+metadata into literature_reports.parquet, which enters the assembled table and the reliability fit through
+assemble_evidence_table.py --extra-reports as grade E soft priors. Design sections 3.1, 4.2 (E3 paragraph), 4.3
+and 6.1; report schema in docs/evidence_reports_spec.md section 1.
 
 Literature reports are soft priors only (grades C to E). They never become evaluation positives, a pair that no
 paper mentions is unlabelled rather than negative, and every row keeps the exact extraction model behind it
 (PubTator3 relation type, CTD direct-evidence value, descriptor level, chemical match method) so that each report can be
-weighted by the model that produced it and by its limitations, not by its count. This is a first pass: chemicals are
-matched to SIDER by name, genes by NCBI Gene id, and the only study-design information is the relation type; the
-document appraisal (llm_evidence_appraisal.py) is the step that reads the papers.
+weighted by the model that produced it and by its limitations, not by its count. Chemicals are matched to SIDER by
+name (one SIDER drug per MeSH chemical, section 4), genes by NCBI Gene id; the study design is appraised from
+PubMed publication types and PubTator3 species annotations by rule (rule_based_evidence_appraisal.py, section 6a),
+not from the text of the papers; the document-grounded language-model appraisal (llm_evidence_appraisal.py)
+remains unconfigured.
 
 ## 1. What was built
 
@@ -26,15 +33,21 @@ document appraisal (llm_evidence_appraisal.py) is the step that reads the papers
 | experiments/fetch_pubtator_relations.py | the PubTator3 fetch (section 5) |
 | mechanistic_pathway_learning/evidence/load_ctd_relations.py | CTD direct-evidence mapping and expansion to one report per cited paper |
 | experiments/fetch_ctd_chemical_disease.py | the CTD fetch (section 6) |
-| tests/test_literature_relations.py | fixtures for relation-type mapping, descriptor-level flags, gene id precedence, CTD evidence mapping, name matching, schema |
+| experiments/fetch_pubtator_documents.py | document metadata per PMID: species and year from the PubTator3 export, publication types from esummary; capped, directional PMIDs first, resumable (section 6a) |
+| mechanistic_pathway_learning/evidence/rule_based_evidence_appraisal.py | study design, species flags, rubric features and rubric weight from the document metadata (section 6a) |
+| experiments/survey_literature.py | joins relations, documents and appraisal into literature_reports.parquet, writes literature_summary.json and docs/literature_survey.md with the overlap against the assembled table |
+| tests/test_literature_relations.py | fixtures for relation-type mapping, Disease-Gene signs, mixed-polarity demotion, descriptor-level flags, gene id precedence, one drug per chemical, CTD evidence mapping, name matching, source names, schema |
+| tests/test_rule_based_evidence_appraisal.py | design precedence (review, then species, then publication types), weights, the unfetched-metadata design |
 
 The stub load_literature_predications.py stays in place; the two loaders above supersede it. SemMedDB is still
 gated on the UMLS license.
 
-Outputs (gitignored): data/processed/literature/pubtator_relations_filtered.parquet,
-ctd_relations_filtered.parquet, gene_identifier_map.parquet, sider_chemical_mesh_map.parquet,
-pubmed_publication_dates.json, pubtator_relations_summary.json, ctd_relations_summary.json; raw downloads and
-response caches under data/raw/pubtator3, data/raw/ctd and data/raw/hgnc with a pin file next to each download.
+Outputs (gitignored under data/processed/literature; released under data/releases/<version>/literature without
+article text): pubtator_relations_filtered.parquet, ctd_relations_filtered.parquet, gene_identifier_map.parquet,
+sider_chemical_mesh_map.parquet, pubmed_publication_dates.json, pubtator_relations_summary.json,
+ctd_relations_summary.json, documents.parquet (titles and abstracts stay inside data/processed), documents_summary.json,
+literature_reports.parquet and literature_summary.json; raw downloads and response caches under data/raw/pubtator3,
+data/raw/ctd and data/raw/hgnc with a pin file next to each download.
 
 ## 2. MeSH descriptors per target symptom and their verification
 
@@ -80,7 +93,7 @@ for diagnosis).
 | cognitive_impairment | D003221 | symptom | Confusion | C10.597.606.337; C23.888.592.604.339; F01.700.250 | symptom | yes | @DISEASE_Confusion |
 | cognitive_impairment | D003704 | diagnosis | Dementia | C10.228.140.380; F03.615.400 | diagnosis | yes | @DISEASE_Dementia |
 | elevated_mood_or_mania | D000087122 | symptom | Mania | C10.597.606.483; C23.888.592.604.487; F01.700.548 | symptom | yes | @DISEASE_Mania |
-| elevated_mood_or_mania | D001714 | diagnosis | Bipolar Disorder | F03.600.150.500 | diagnosis | yes | @DISEASE_Bipolar_Disorder |
+| elevated_mood_or_mania | D001714 | mixed_polarity_diagnosis | Bipolar Disorder | F03.600.150.500 | diagnosis | yes | @DISEASE_Bipolar_Disorder |
 
 Findings of the verification.
 
@@ -103,6 +116,13 @@ Findings of the verification.
   MeSH trees it under Neurocognitive Disorders; the mild-cognitive-impairment diagnosis folded into the same
   descriptor is a limitation stated here rather than hidden.
 - Psychomotor retardation has no MeSH descriptor; the crosswalk notes say so and the symptom has no E3 channel.
+- Bipolar Disorder D001714 carries the level mixed_polarity_diagnosis (added after the review): the diagnosis has
+  the opposite mood pole as a cardinal feature, so a treat or cause relation on it says nothing about the direction
+  of mania (lamotrigine, approved for bipolar depression and maintenance, had 775 "relieves mania" reports through
+  this descriptor against 11 through Mania itself). The loaders keep the rows but demote induces and relieves on
+  this descriptor to associated_with, with a count and a limitation clause; the survey table shows the
+  symptom-level, diagnosis-level and demoted shares per symptom. Depressed mood rests on diagnosis-level
+  descriptors only (Depression D003863 is outside the MEDIC vocabulary), which the same table shows.
 
 ## 3. Gene identifier map
 
@@ -111,7 +131,17 @@ complete set (pinned in section 7) supplies the rest by current symbol, then by 
 exactly one gene, then by an alias carried by exactly one gene. Human-GEM comes first because the metabolic layer
 was built from it; an ambiguous previous or alias symbol is left unmapped rather than guessed.
 
-<!-- GENE_MAP_COUNTS -->
+Build of 3 October 2026: 12,537 of 12,627 gene nodes carry an NCBI Gene id and 90 do not.
+
+| Mapping source | Gene nodes |
+|---|---|
+| hgnc_alias_symbol | 1 |
+| hgnc_previous_symbol | 20 |
+| hgnc_symbol | 9,681 |
+| human_gem_ensembl | 2,835 |
+| unmapped | 90 |
+
+Two NCBI ids are shared by two graph nodes each, a gene present under its current and its previous symbol: GBA and GBA1, SLC22A18 and SLC67A1. After the review a relation on such an id yields one report per node; in the 3 October build it reached the first node only.
 
 ## 4. SIDER drug to MeSH chemical matching (first pass, by name)
 
@@ -124,7 +154,16 @@ method is a column of every drug report. Salts, combination products and spellin
 against "gamma-Aminobutyric Acid") do not match in this pass and are counted, not guessed; a structure-based mapping
 (PubChem CID to MeSH through UniChem or MeSH registry numbers) is the second pass.
 
-<!-- CHEMICAL_MATCH_COUNTS -->
+One SIDER drug per MeSH chemical. SIDER lists brand names, salts and code names as separate drugs (olanzapine and
+Zyprexa, rizatriptan and MK-462), so one MeSH id matched several STITCH ids and every paper on it was counted under
+each (22.5 percent of the PubTator3 rows and 1,884 pairs in the 3 October build). After matching,
+sider_chemical_matching.collapse_matches_to_one_drug_per_mesh_id keeps one STITCH id per MeSH id, in this order of
+preference: the match method (exact descriptor name, then matched synonym, then label lookup, then CTD name), then a
+STITCH id with a ChEMBL mapping in data/raw/chembl/pubchem_to_chembl_with_parents.json (the drugs the assembler can
+join to targets), then the lowest PubChem CID. The dropped ids are listed in pubtator_relations_summary.json
+(collapsed_sider_drugs_by_mesh_id); filter_ctd_rows applies the same rule, preferring the id the PubTator3 map kept.
+
+Build of 3 October 2026, before the one-drug-per-chemical rule: of 1,430 SIDER drugs, 1,073 matched by descriptor name, 137 by matched synonym and 220 not at all. Of 9,880 chemical ids on rows with a target descriptor, 8,897 matched no SIDER name after the autocomplete pass; all 8,897 were looked up by label and none added a match, so 137,110 rows were dropped as chemicals without a SIDER drug.
 
 ## 5. PubTator3 bulk relations
 
@@ -136,48 +175,137 @@ section 3) or a matched SIDER drug. Relation types map as follows; nothing else 
 
 | PubTator3 relation type | Repository relation | report_value | Note |
 |---|---|---|---|
-| cause, positive_correlate | induces | 1 | |
-| treat, prevent, negative_correlate | relieves | 1 | |
+| cause | induces | 1 | on target rows the partner is a chemical, an SNP or a mutation; gene partners carry no cause rows |
+| treat, prevent | relieves | 1 | |
+| stimulate, inhibit on a Disease-Gene row | induces | 1 | the bulk file renders a gene's positive or negative correlation with a disease as these types; the perturbation sign is +1.0 for stimulate (gene activity rises with the disease) and -1.0 for inhibit (gene activity falls with the disease, the loss-of-function direction of the monogenic class); the assembler weights them as ASSOCIATED_WITH, a correlation, not a cause |
+| stimulate, inhibit on any other row | dropped | | chemical-gene relations; counted (none reach a target descriptor with a chemical partner in the pinned file) |
+| positive_correlate, negative_correlate | induces, relieves | 1 | mapped for completeness; no row of the pinned file carries them against a Disease entity |
 | associate | associated_with | 1 | kept as its own undirected relation, not merged into induces |
-| stimulate, inhibit | dropped | | chemical-gene relations; counted |
 | cotreat, compare, interact, drug_interact | dropped | | not perturbation-symptom relations; counted |
 
-Report columns follow docs/evidence_reports_spec.md section 1 (report_id
-"PubTator3|PMID:{pmid}|MESH:{descriptor}|{symptom}|{ordinal}", source "PubTator3", evidence_class "literature",
-evidence_code "pubtator3_{relation type}", references "PMID:{pmid}", rubric one-hots 0, perturbation_nodes the
-gene node with the loss-of-function sign as a documented convention or an empty list for drugs, which the assembler
-joins to ChEMBL targets by STITCH flat id as it does for SIDER rows) plus the literature columns pmid, relation_type,
-entity_role (disease_first or disease_second), perturbation_ncbi_gene_id, chemical_mesh_id, chemical_match_method,
-mesh_descriptor, mesh_descriptor_level, publication_year and direct_evidence (CTD only). Publication dates come from
-esummary (pubdate parsed to an ISO date, first of the month or year when the finer part is missing).
+A directional relation on the mixed-polarity descriptor D001714 is recorded as associated_with (section 2).
 
-<!-- PUBTATOR_COUNTS -->
+Report columns follow docs/evidence_reports_spec.md section 1 (report_id
+"PubTator3-{relation type}|PMID:{pmid}|MESH:{descriptor}|{symptom}|{ordinal}", source "PubTator3-{relation type}",
+the form assemble_evidence_table.predication_type_for_literature_sources parses (cause gives CAUSES 0.10; treat and
+prevent AFFECTS 0.08; associate, stimulate and inhibit ASSOCIATED_WITH 0.05) and which makes each extraction type its
+own sensor in the reliability fit; evidence_class "literature"; evidence_code "pubtator3_{relation type}", kept
+through the appraisal; references "PMID:{pmid}"; rubric one-hots 0; perturbation_nodes the gene node with the sign
+of the relation type for stimulate and inhibit rows and the loss-of-function sign as a documented convention
+otherwise, or an empty list for drugs, which the assembler joins to ChEMBL targets by STITCH flat id as it does for
+SIDER rows; the drug model_description carries no "ChEMBL targets" marker, so the assembler's target parser returns
+nothing for literature rows) plus the literature columns pmid, relation_type, entity_role (disease_first or
+disease_second), perturbation_ncbi_gene_id, chemical_mesh_id, chemical_match_method, mesh_descriptor,
+mesh_descriptor_level, publication_year and direct_evidence (CTD only). A gene whose NCBI id resolves to two graph
+nodes (GBA and GBA1, SLC22A18 and SLC67A1) yields one report per node. Publication dates come from esummary (pubdate
+parsed to an ISO date, first of the month or year when the finer part is missing).
+
+Build of 3 October 2026 from the bulk file pinned in section 7: 40,094,383 rows, 387,756 with a target descriptor on either side.
+
+| Relation type, whole file | Rows |
+|---|---|
+| associate | 18,652,530 |
+| treat | 7,316,131 |
+| negative_correlate | 4,080,594 |
+| cause | 3,757,055 |
+| positive_correlate | 3,464,117 |
+| stimulate | 788,589 |
+| inhibit | 623,277 |
+| cotreat | 564,994 |
+| compare | 539,036 |
+| interact | 266,057 |
+| prevent | 34,251 |
+| drug_interact | 7,752 |
+
+| Filter outcome on target-descriptor rows | Rows |
+|---|---|
+| rows kept | 226,347 |
+| dropped chemical not matched to sider | 137,110 |
+| dropped gene not in graph | 28,166 |
+| dropped chemical gene relation type:stimulate | 8,629 |
+| dropped partner type:SNP | 5,537 |
+| dropped chemical gene relation type:inhibit | 5,400 |
+| dropped partner type:ProteinMutation | 2,969 |
+| dropped partner type:DNAMutation | 1,957 |
+| dropped partner type:Mutation | 3 |
+
+Kept: 226,347 reports over 127,866 papers, 4,741 genes and 1,062 drug ids; 226,217 dated through esummary. By relation: associated_with 76,544, induces 44,328, relieves 105,475. The two dropped Disease-Gene types, stimulate and inhibit, are the rows the review restores as signed induces reports; the rerun that applies it is pending (section 7).
 
 ## 6. CTD chemical-disease statements
 
 CTD_chemicals_diseases.tsv.gz rows are kept when DiseaseID is a crosswalk descriptor and the chemical matches a SIDER
 drug (section 4). DirectEvidence marker/mechanism maps to induces and therapeutic to relieves; a row carrying both
 yields two reports; rows with empty DirectEvidence are inferred through a gene and are dropped with a count. Each
-PubMed id of a row is its own report (report_id "CTD|MESH:{chemical}|MESH:{descriptor}|{symptom}|{ordinal}",
-evidence_code "ctd_direct_evidence_{marker_mechanism|therapeutic}"); a direct-evidence row that cites no paper is one
-report with no reference. Marker/mechanism covers correlation as well as causation, which the limitations text says.
+PubMed id of a row is its own report (report_id "CTD-curated|MESH:{chemical}|MESH:{descriptor}|{symptom}|{ordinal}",
+source "CTD-curated", which the assembler reads as CAUSES for induces and AFFECTS for relieves, evidence_code
+"ctd_direct_evidence_{marker_mechanism|therapeutic}"); a direct-evidence row that cites no paper is one report with
+no reference. Marker/mechanism covers correlation as well as causation, which the limitations text says. A row that
+carries both values is counted once under rows_with_both_direct_evidence_values. Statements on the mixed-polarity
+descriptor D001714 are demoted to associated_with as in section 5, and one SIDER drug is kept per chemical (section 4).
 
-<!-- CTD_COUNTS -->
+Build of 3 October 2026: 9,903,450 CTD rows, 75,093 on a target descriptor, 14,739 of those with a SIDER chemical; 13,003 of these were inferred through a gene and dropped. Kept: 5,607 reports from 3,356 papers on 490 drug ids, marker/mechanism 3,006, therapeutic 2,601; by chemical match method autocomplete_synonym 239, ctd_chemical_name 5,368.
+
+## 6a. Documents and the rule-based appraisal
+
+experiments/fetch_pubtator_documents.py fetches, for the distinct PMIDs of both relation tables, the title, abstract,
+year, journal and species annotations from the PubTator3 biocjson export (100 PMIDs per request) and the publication
+types from E-utilities esummary (200 per request), cached per batch and resumable. The fetch is capped (--max-pmids,
+30,000): PMIDs that carry a directional relation on any of their rows in any table (cause, treat, prevent, stimulate,
+inhibit, the correlation types, CTD marker/mechanism and therapeutic) come first in first-seen order, associate-only
+PMIDs fill the rest, documents already in documents.parquet are kept without a request, and the number of PMIDs
+left without metadata is written to documents_summary.json. Titles and abstracts never leave data/processed.
+
+rule_based_evidence_appraisal.py assigns each report a study design from the metadata, in this order: a review,
+systematic review or meta-analysis publication type gives review_or_secondary; a paper whose only annotated species
+is non-human gives animal_pharmacological (drug rows) or animal_genetic_perturbation (gene rows) whatever its other
+publication types say; then Randomized Controlled Trial gives human_randomized_trial, the clinical trial, cohort,
+case-control and observational types human_cohort_or_case_control (Comparative Study and Multicenter Study describe
+scope, not design, and are not in that set), Genome-Wide Association Study or Genetic Association Studies
+human_genetic_association and Case Reports human_case_report; anything else is not_reported. A report whose PMID is
+beyond the fetch cap gets metadata_not_fetched, distinct from not_reported, so a paper nobody looked at is not
+weighted like one that was read. Weights: randomised trial 1.0, cohort or case-control 0.9, genetic association 0.8,
+case report 0.6, animal 0.5, review or secondary 0.4, not_reported 0.35, metadata_not_fetched 0.3, times 0.7 on a
+diagnosis-level or mixed-polarity descriptor, floor 0.05. The rubric features (human species, animal only, the design
+one-hots, symptom-level descriptor, publication year known, metadata available) and rubric_weight travel with the
+report into the assembled table and the reliability fit; study_design is its own column and is prefixed to
+model_description, while evidence_code keeps the extraction type.
+
+Build of 3 October 2026, under the rules before the review: document metadata for 30,000 of 129,421 papers (24,492 with species annotations, 29,991 with publication types); 231,954 reports appraised.
+
+| Study design, 3 October rules | Reports |
+|---|---|
+| not_reported | 190,724 |
+| review_or_secondary | 10,752 |
+| human_randomized_trial | 9,311 |
+| human_cohort_or_case_control | 8,208 |
+| human_case_report | 6,807 |
+| animal_pharmacological | 6,142 |
+| animal_genetic_perturbation | 10 |
+
+Under those rules not_reported merged papers never fetched with papers read and uninformative, and Comparative Study counted as a human cohort design; the review's rules split the first and put species before publication types, so these counts change at the rerun.
 
 ## 7. Pins
 
-<!-- PINS -->
+| Download | Pinned file | Notes |
+|---|---|---|
+| PubTator3 relation2pubtator3.gz | 297,478,945 bytes; Last-Modified Mon, 17 Aug 2026 13:41:35 GMT; 40,094,383 rows; sha256 6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42 | the file behind the 3 October build and release v0.4 |
+| PubTator3 relation2pubtator3.gz, replacement | 299,925,917 bytes; Last-Modified Tue, 06 Oct 2026 15:44:13 GMT; 40,411,999 rows; sha256 ffde6b53c1798363547c2fdf351c3385c21a249fcd3fe4be8dfe8dad3203cd76 | NCBI replaced the file on 6 October 2026 and no longer serves the 17 August one; the rerun of 6 October downloaded the replacement over the local copy before it was stopped, so the 3 October build cannot be regenerated byte for byte; re-pinning to the replacement is pending |
+| CTD_chemicals_diseases.tsv.gz | 162,343,480 bytes; Last-Modified Tue, 29 Sep 2026 17:21:06 GMT; report created Tue Sep 29 13:17:30 EDT 2026; 9,903,450 rows; sha256 e11e6dc36a27d36ed88576e529a92211186e3e0b3cea4271cc78dcf3d1b821ee | downloaded 3 October 2026 |
+| HGNC hgnc_complete_set.txt | 16,963,116 bytes; Last-Modified Fri, 02 Oct 2026 13:45:08 GMT; 45,187 rows; sha256 2b4224ea847df2fc6982f5b2a52804c5d92fbb8810b134afb636f6029452dc03 | downloaded 3 October 2026 |
 
-## 8. What the next step needs
+## 8. Status of the join and what is still open
 
-- Joining: the two parquet files have the evidence_reports.parquet columns in order followed by the literature
-  columns, so the assembler can concatenate them after filling perturbation_nodes for drugs from the ChEMBL mapping
-  and applying the same inclusion filters as for SIDER drugs (dominant target, ATC N). associated_with is a third
-  relation; experiment_data.py filters on relation and will ignore it until it is told what to do with it.
-- Weights: grade E with the predication weights of assign_evidence_grades (CAUSES-like 0.10 for cause and
-  positive_correlate, ASSOCIATED_WITH 0.05 for associate; treat and negative_correlate need their own entries) until
-  the reliability fit has a third source; the descriptor level and the chemical match method are the first rubric
-  features to add.
-- Time split: evidence_date is set for every dated PMID; the share of undated rows is in section 5.
-- Second pass on chemicals (structure-based mapping) and on genes (species check through the Species entity of each
-  PMID, since a human NCBI Gene id can be mentioned in an animal study).
+- Joined: literature_reports.parquet is appended to the assembled report table and the reliability fit by
+  assemble_evidence_table.py --extra-reports. A literature-only pair is a grade E record whose weight is the
+  predication weight of its extraction type (section 5); a pair that a label source also covers keeps that source's
+  grade, the literature rows counting only in the reliability fit. The experiment loader keeps grades A and B as
+  labels and refuses D and E (experiment_data.SOFT_PRIOR_ONLY_GRADES), so no literature row can become a label or an
+  evaluation positive. associated_with stays a third relation that the induces experiments never read.
+- Not yet built: the training-side use of the soft priors (when it is, literature rows must be excluded for every
+  perturbation of the evaluation fold, since a report on a held-out gene's symptom would leak its label), the
+  structure-based chemical mapping, the species check on gene rows through the Species annotations (an animal
+  paper can mention a human NCBI Gene id; the appraisal now records animal-only papers, the loader does not drop them),
+  the document-grounded language-model appraisal and the SemMedDB predications gated on the UMLS license.
+- Open question 13 of the design concerns how gene association reports should count; after this build the gene
+  rows also carry induces reports with a sign from the stimulate and inhibit types, so the question narrows to the
+  associate rows.

@@ -13,11 +13,25 @@ Gene|8813, Chemical|MESH:D005473, Variant and Species forms. It carries no publi
 E-utilities esummary when the fetch script is asked for them.
 
 Relation types are mapped to the repository's relations as follows and every drop is counted:
-  cause, positive_correlate (positive_correlation)      -> induces, report_value 1
-  treat, prevent, negative_correlate (negative_correlation) -> relieves, report_value 1
-  associate (association)                               -> associated_with, report_value 1, undirected, its own relation
-  stimulate, inhibit                                    chemical-gene relations, dropped with a count
-  cotreat, compare, interact, drug_interact             not perturbation-symptom relations, dropped with a count
+  cause                                        -> induces, report_value 1 (on target rows the partner is a chemical or a variant)
+  treat, prevent                               -> relieves, report_value 1
+  stimulate, inhibit on a Disease-Gene row     -> induces, report_value 1, perturbation sign from the type: the bulk file
+                                                  renders a gene's positive or negative correlation with a disease as
+                                                  stimulate (gene activity rises with the disease, sign +1.0) or inhibit
+                                                  (gene activity falls with the disease, sign -1.0, the loss-of-function
+                                                  direction of the monogenic class); on any other row they are chemical-gene
+                                                  relations and are dropped with a count
+  positive_correlate, negative_correlate       -> induces, relieves; mapped for completeness, no row of the pinned bulk file
+                                                  carries them against a Disease entity
+  associate (association)                      -> associated_with, report_value 1, undirected, its own relation
+  cotreat, compare, interact, drug_interact    not perturbation-symptom relations, dropped with a count
+A directional relation (induces or relieves) on a descriptor of crosswalk level mixed_polarity_diagnosis (Bipolar
+Disorder D001714, whose literature covers both mood poles) is demoted to associated_with with a count and a
+limitation clause, because "treats bipolar disorder" says nothing about the direction of the mania symptom.
+
+Source names are "PubTator3-<relation type>" so that the assembler's predication parser
+(assemble_evidence_table.predication_type_for_literature_sources) and the reliability fit see one sensor per
+extraction type.
 """
 from __future__ import annotations
 
@@ -37,6 +51,8 @@ from mechanistic_pathway_learning.evidence.sider_chemical_matching import Chemic
 PUBTATOR_SOURCE_NAME = "PubTator3"
 LITERATURE_EVIDENCE_CLASS = "literature"
 ASSOCIATED_WITH_RELATION = "associated_with"
+MIXED_POLARITY_DESCRIPTOR_LEVEL = "mixed_polarity_diagnosis"  # crosswalk level whose directional relations are demoted
+LOSS_OF_FUNCTION_SIGN = -1.0  # the perturbation sign of the monogenic class, the default for a gene mention without direction
 
 RELATION_TYPE_TO_RELATION: dict[str, str] = {
     "cause": "induces",
@@ -50,6 +66,8 @@ RELATION_TYPE_TO_RELATION: dict[str, str] = {
     "association": ASSOCIATED_WITH_RELATION,
 }
 CHEMICAL_GENE_RELATION_TYPES: tuple[str, ...] = ("stimulate", "inhibit")
+# On a Disease-Gene row these types carry the sign of the gene's correlation with the disease (see the module docstring).
+DISEASE_GENE_RELATION_TYPE_SIGNS: dict[str, float] = {"stimulate": 1.0, "inhibit": -1.0}
 DISEASE_ENTITY_TYPE = "Disease"
 GENE_ENTITY_TYPE = "Gene"
 CHEMICAL_ENTITY_TYPE = "Chemical"
@@ -74,10 +92,22 @@ LITERATURE_EXTRA_COLUMNS: tuple[str, ...] = (
 LITERATURE_REPORT_COLUMNS: tuple[str, ...] = EVIDENCE_REPORT_COLUMNS + LITERATURE_EXTRA_COLUMNS
 
 
-def map_relation_type(relation_type: str) -> tuple[str, int] | None:
-    """(relation, report_value) for a PubTator3 relation type, or None when the type is not a perturbation-symptom relation."""
-    relation = RELATION_TYPE_TO_RELATION.get(relation_type.strip().lower())
+def map_relation_type(relation_type: str, partner_entity_type: str | None = None) -> tuple[str, int] | None:
+    """(relation, report_value) for a PubTator3 relation type, or None when the type is not a perturbation-symptom relation.
+
+    stimulate and inhibit map to induces only on a Disease-Gene row (partner_entity_type "Gene"), where they encode the
+    sign of the gene's correlation with the disease; with any other partner they are chemical-gene relations and None.
+    """
+    relation_type_lower = relation_type.strip().lower()
+    if relation_type_lower in DISEASE_GENE_RELATION_TYPE_SIGNS:
+        return ("induces", 1) if partner_entity_type == GENE_ENTITY_TYPE else None
+    relation = RELATION_TYPE_TO_RELATION.get(relation_type_lower)
     return None if relation is None else (relation, 1)
+
+
+def literature_source_name(source_prefix: str, relation_type: str) -> str:
+    """The source string the assembler parses: "<prefix>-<relation type>", for example "PubTator3-cause" or "CTD-curated"."""
+    return f"{source_prefix}-{relation_type.strip().lower()}"
 
 
 def parse_entity(entity_field: str) -> tuple[str, list[str]]:
@@ -122,6 +152,8 @@ class PubtatorRelationRow:
     symptom: str
     mesh_descriptor: str
     mesh_descriptor_level: str
+    perturbation_sign: float = LOSS_OF_FUNCTION_SIGN  # sign of the gene perturbation; drugs carry none here
+    direction_demoted: bool = False  # a directional relation demoted to associated_with on a mixed-polarity descriptor
 
 
 def disease_rows_from_stream(rows: Iterable[tuple[str, str, str, str]], descriptors: dict[str, SymptomMeshDescriptor]) -> tuple[list[tuple[str, str, str, str]], Counter]:
@@ -169,14 +201,17 @@ def filter_relation_rows(
         else:
             entity_role, disease_ids, partner_type, partner_ids = "disease_second", second_targets, first_type, first_ids
         relation_type_lower = relation_type.strip().lower()
-        if relation_type_lower in CHEMICAL_GENE_RELATION_TYPES:
-            counts[f"dropped_chemical_gene_relation_type:{relation_type_lower}"] += 1
-            continue
-        mapped = map_relation_type(relation_type_lower)
+        mapped = map_relation_type(relation_type_lower, partner_type)
         if mapped is None:
-            counts[f"dropped_relation_type_not_mapped:{relation_type_lower}"] += 1
+            if relation_type_lower in CHEMICAL_GENE_RELATION_TYPES:
+                counts[f"dropped_chemical_gene_relation_type:{relation_type_lower}"] += 1
+            else:
+                counts[f"dropped_relation_type_not_mapped:{relation_type_lower}"] += 1
             continue
         relation, report_value = mapped
+        perturbation_sign = DISEASE_GENE_RELATION_TYPE_SIGNS.get(relation_type_lower, LOSS_OF_FUNCTION_SIGN)
+        if relation_type_lower in DISEASE_GENE_RELATION_TYPE_SIGNS:
+            counts[f"disease_gene_relation_type_kept:{relation_type_lower}"] += 1
         if partner_type == GENE_ENTITY_TYPE:
             partners = _gene_partners(partner_ids, ncbi_gene_id_to_symbol, counts)
         elif partner_type == CHEMICAL_ENTITY_TYPE:
@@ -190,20 +225,35 @@ def filter_relation_rows(
             counts["rows_with_several_partner_identifiers"] += 1
         for descriptor_id in disease_ids:
             descriptor = descriptors[descriptor_id]
+            descriptor_relation, demoted = demote_direction_on_mixed_polarity_descriptor(relation, descriptor.level)
+            if demoted:
+                counts[f"demoted_to_associated_with_on_mixed_polarity_descriptor:{relation_type_lower}"] += 1
             for perturbation_type, perturbation_id, perturbation_label, ncbi_gene_id, chemical_mesh_id, match_method in partners:
                 kept.append(
                     PubtatorRelationRow(
-                        pmid=pmid, relation_type=relation_type_lower, relation=relation, report_value=report_value, entity_role=entity_role,
+                        pmid=pmid, relation_type=relation_type_lower, relation=descriptor_relation, report_value=report_value, entity_role=entity_role,
                         perturbation_type=perturbation_type, perturbation_id=perturbation_id, perturbation_label=perturbation_label,
                         perturbation_ncbi_gene_id=ncbi_gene_id, chemical_mesh_id=chemical_mesh_id, chemical_match_method=match_method,
                         symptom=descriptor.target_symptom, mesh_descriptor=descriptor.mesh_descriptor, mesh_descriptor_level=descriptor.level,
+                        perturbation_sign=perturbation_sign, direction_demoted=demoted,
                     )
                 )
                 counts["rows_kept"] += 1
     return kept, counts
 
 
-def _gene_partners(partner_ids: list[str], ncbi_gene_id_to_symbol: dict[int, str], counts: Counter) -> list[tuple]:
+def demote_direction_on_mixed_polarity_descriptor(relation: str, descriptor_level: str) -> tuple[str, bool]:
+    """(relation to record, demoted) for a relation on a descriptor of the given crosswalk level: induces and relieves on a
+    mixed-polarity diagnosis (Bipolar Disorder) become associated_with, since the diagnosis has the opposite symptom as a
+    cardinal feature and a treat or cause relation on it carries no sign for the mania symptom."""
+    if descriptor_level == MIXED_POLARITY_DESCRIPTOR_LEVEL and relation in ("induces", "relieves"):
+        return ASSOCIATED_WITH_RELATION, True
+    return relation, False
+
+
+def _gene_partners(partner_ids: list[str], ncbi_gene_id_to_symbol: dict[int, str | list[str]], counts: Counter) -> list[tuple]:
+    """One partner per graph symbol of each NCBI id; a value that is a list (two graph nodes sharing one NCBI id, such as a
+    gene present under its current and its previous symbol) yields one partner per node."""
     partners: list[tuple] = []
     for identifier in partner_ids:
         try:
@@ -211,11 +261,14 @@ def _gene_partners(partner_ids: list[str], ncbi_gene_id_to_symbol: dict[int, str
         except ValueError:
             counts["dropped_gene_identifier_not_integer"] += 1
             continue
-        symbol = ncbi_gene_id_to_symbol.get(ncbi_gene_id)
-        if symbol is None:
+        symbols = ncbi_gene_id_to_symbol.get(ncbi_gene_id)
+        if not symbols:
             counts["dropped_gene_not_in_graph"] += 1
             continue
-        partners.append(("gene", symbol, symbol, ncbi_gene_id, None, None))
+        for symbol in (symbols if isinstance(symbols, list) else [symbols]):
+            partners.append(("gene", symbol, symbol, ncbi_gene_id, None, None))
+        if isinstance(symbols, list) and len(symbols) > 1:
+            counts["rows_with_gene_id_shared_by_several_nodes"] += 1
     return partners
 
 
@@ -305,21 +358,25 @@ def literature_report_record(
     return record
 
 
-def gene_perturbation_nodes_json(gene_symbol: str) -> str:
-    """The graph node of a gene with the loss-of-function sign of the monogenic class. A literature relation does not
-    say which direction the gene was perturbed, so the sign is a documented convention (model_description says so)
-    that the assembler may override; drugs get an empty list and are joined to their ChEMBL targets by STITCH flat
-    id by the assembler, as SIDER rows are."""
-    return json.dumps([[f"GENE:{gene_symbol}", -1.0, 1.0]])
+def gene_perturbation_nodes_json(gene_symbol: str, perturbation_sign: float = LOSS_OF_FUNCTION_SIGN) -> str:
+    """The graph node of a gene with its perturbation sign: the sign of the gene's correlation with the disease for a
+    stimulate or inhibit row, else the loss-of-function sign of the monogenic class as a documented convention
+    (model_description says which). Drugs get an empty list and are joined to their ChEMBL targets by STITCH flat id
+    by the assembler, as SIDER rows are."""
+    return json.dumps([[f"GENE:{gene_symbol}", float(perturbation_sign), 1.0]])
 
 
 def pubtator_limitations_text(row: PubtatorRelationRow, dated: bool) -> str:
     clauses = ["machine-extracted relation from PubTator3, no study design read"]
     if row.relation == ASSOCIATED_WITH_RELATION:
         clauses.append("undirected association")
-    if row.mesh_descriptor_level == "diagnosis":
+    if row.mesh_descriptor_level in ("diagnosis", MIXED_POLARITY_DESCRIPTOR_LEVEL):
         clauses.append("diagnosis-level descriptor, not the symptom itself")
-    if row.perturbation_type == "gene":
+    if row.direction_demoted:
+        clauses.append("diagnosis covers both mood poles, direction not attributable to the symptom")
+    if row.perturbation_type == "gene" and row.relation_type in DISEASE_GENE_RELATION_TYPE_SIGNS:
+        clauses.append(f"gene-disease correlation, perturbation sign {row.perturbation_sign:+.0f} from the relation type")
+    elif row.perturbation_type == "gene":
         clauses.append("gene mention, perturbation direction not stated")
     else:
         clauses.append(f"drug matched to MeSH by {row.chemical_match_method}")
@@ -339,10 +396,15 @@ def relation_rows_to_reports(rows: list[PubtatorRelationRow], publication_dates:
         group_key = (row.pmid, row.mesh_descriptor, row.symptom)
         ordinals[group_key] += 1
         evidence_date = publication_dates.get(row.pmid)
-        model = f"human gene mention; PubTator3 {row.relation_type}; sign set to loss-of-function by convention" if row.perturbation_type == "gene" else f"human; drug mention; PubTator3 {row.relation_type}; ChEMBL targets joined by the assembler"
+        if row.perturbation_type == "gene" and row.relation_type in DISEASE_GENE_RELATION_TYPE_SIGNS:
+            model = f"human gene mention; PubTator3 {row.relation_type}; perturbation sign {row.perturbation_sign:+.0f} from the relation type"
+        elif row.perturbation_type == "gene":
+            model = f"human gene mention; PubTator3 {row.relation_type}; sign set to loss-of-function by convention"
+        else:
+            model = f"human; drug mention; PubTator3 {row.relation_type}; targets supplied by the assembler from the SIDER map"
         records.append(
             literature_report_record(
-                source=PUBTATOR_SOURCE_NAME,
+                source=literature_source_name(PUBTATOR_SOURCE_NAME, row.relation_type),
                 source_record_id=f"PMID:{row.pmid}",
                 source_term_id=f"MESH:{row.mesh_descriptor}",
                 source_term_label=row.mesh_descriptor,
@@ -359,7 +421,7 @@ def relation_rows_to_reports(rows: list[PubtatorRelationRow], publication_dates:
                 pubmed_reference_count=1,
                 evidence_date=evidence_date,
                 limitations=pubtator_limitations_text(row, evidence_date is not None),
-                perturbation_nodes=gene_perturbation_nodes_json(row.perturbation_id) if row.perturbation_type == "gene" else "[]",
+                perturbation_nodes=gene_perturbation_nodes_json(row.perturbation_id, row.perturbation_sign) if row.perturbation_type == "gene" else "[]",
                 extras={
                     "pmid": row.pmid,
                     "relation_type": row.relation_type,
@@ -414,6 +476,9 @@ def summarize_reports(table: pd.DataFrame) -> dict:
         "rows_by_relation": {key: int(value) for key, value in table.relation.value_counts().sort_index().items()},
         "rows_by_relation_type": {key: int(value) for key, value in table.relation_type.value_counts().sort_index().items()} if table.relation_type.notna().any() else {},
         "rows_by_perturbation_type": {key: int(value) for key, value in table.perturbation_type.value_counts().sort_index().items()},
+        "rows_by_source": {key: int(value) for key, value in table.source.value_counts().sort_index().items()},
+        "rows_demoted_to_associated_with_on_mixed_polarity_descriptor": int(((table.relation == ASSOCIATED_WITH_RELATION) & table.relation_type.isin(["cause", "treat", "prevent", "stimulate", "inhibit", "marker/mechanism", "therapeutic"])).sum()) if table.relation_type.notna().any() else 0,
+        "gene_rows_by_relation_type": {key: int(value) for key, value in table.loc[table.perturbation_type == "gene", "relation_type"].value_counts().sort_index().items()} if table.relation_type.notna().any() else {},
         "rows_by_descriptor_level": {key: int(value) for key, value in table.mesh_descriptor_level.value_counts().sort_index().items()},
         "rows_by_descriptor": {key: int(value) for key, value in table.mesh_descriptor.value_counts().sort_index().items()},
         "rows_by_chemical_match_method": {key: int(value) for key, value in table.chemical_match_method.dropna().value_counts().sort_index().items()},

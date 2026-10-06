@@ -13,6 +13,9 @@ Steps, each cached under data/raw/pubtator3 or data/processed/literature so a re
      and per descriptor), then the partner filters in memory.
   5. Chemical ids on kept rows that no SIDER name matched are looked up by MeSH label (id.nlm.nih.gov) and matched
      again by name; --mesh-label-lookup-limit caps that pass and the cap is logged with the number left unresolved.
+     One SIDER drug is then kept per MeSH chemical id (sider_chemical_matching.collapse_matches_to_one_drug_per_mesh_id,
+     preferring the exact-name match, then a STITCH id with a ChEMBL mapping in data/raw/chembl, then the lowest CID),
+     so a paper is never counted under a brand, salt or code-name entry as well; the dropped ids go to the summary.
   6. With --fetch-publication-dates, every distinct PMID of the kept rows is dated through esummary (200 per
      request) so the time split can use evidence_date and publication_year.
   7. data/processed/literature/pubtator_relations_filtered.parquet in the evidence_reports.parquet schema plus the
@@ -53,10 +56,12 @@ from mechanistic_pathway_learning.evidence.pubmed_publication_dates import fetch
 from mechanistic_pathway_learning.evidence.sider_chemical_matching import (
     ChemicalMatch,
     chemical_matches_by_mesh_id,
+    collapse_matches_to_one_drug_per_mesh_id,
     drug_names_by_normalized_name,
     load_sider_drug_names,
     match_autocomplete_candidates,
     match_mesh_label,
+    pubchem_cid_of_stitch_flat_id,
 )
 
 BULK_RELATION_URL = "https://ftp.ncbi.nlm.nih.gov/pub/lu/PubTator3/relation2pubtator3.gz"
@@ -180,6 +185,21 @@ def match_unresolved_chemicals_by_mesh_label(client: CachedRateLimitedClient, ch
     return matches, counts
 
 
+def stitch_ids_with_chembl_mapping(chembl_directory: Path, stitch_ids: set[str]) -> set[str]:
+    """The STITCH flat ids among stitch_ids whose PubChem CID has a non-empty ChEMBL list in pubchem_to_chembl_with_parents.json
+    (the drugs the assembler can join to targets); empty when the file is absent."""
+    mapping_path = Path(chembl_directory) / "pubchem_to_chembl_with_parents.json"
+    if not mapping_path.exists():
+        return set()
+    mapping = json.loads(mapping_path.read_text())
+    preferred: set[str] = set()
+    for stitch_id in stitch_ids:
+        entry = mapping.get(str(pubchem_cid_of_stitch_flat_id(stitch_id)))
+        if entry:
+            preferred.add(stitch_id)
+    return preferred
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--bulk-url", default=BULK_RELATION_URL)
@@ -190,6 +210,7 @@ def main() -> None:
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph_full"))
     parser.add_argument("--human-gem-genes", type=Path, default=Path("data/raw/Human-GEM/model/genes.tsv"))
     parser.add_argument("--hgnc-dir", type=Path, default=Path("data/raw/hgnc"))
+    parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"), help="pubchem_to_chembl_with_parents.json names the STITCH ids preferred when a MeSH chemical matches several SIDER drugs")
     parser.add_argument("--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES)
     parser.add_argument("--mesh-label-lookup-limit", type=int, default=None, help="cap on MeSH label lookups for unresolved chemical ids; logged when it drops anything")
     parser.add_argument("--fetch-publication-dates", action="store_true")
@@ -244,10 +265,18 @@ def main() -> None:
     summary["chemical_ids_on_disease_rows"] = len(chemical_row_counts)
     summary["mesh_label_lookup"] = dict(label_counts)
     all_matches = autocomplete_matches + [match for match in label_matches if match.chemical_mesh_id not in matched_ids]
-    matches_index = chemical_matches_by_mesh_id(all_matches)
-    pd.DataFrame([match.__dict__ for match in all_matches]).to_parquet(arguments.output_dir / "sider_chemical_mesh_map.parquet", index=False)
-    summary["sider_drugs_matched_total"] = len({match.stitch_flat_id for match in all_matches})
-    summary["chemical_match_methods"] = dict(Counter(match.match_method for match in all_matches))
+    preferred_stitch_ids = stitch_ids_with_chembl_mapping(arguments.chembl_dir, {match.stitch_flat_id for match in all_matches})
+    kept_matches, collapsed_ids = collapse_matches_to_one_drug_per_mesh_id(all_matches, preferred_stitch_ids)
+    matches_index = chemical_matches_by_mesh_id(kept_matches)
+    mesh_map = pd.DataFrame([match.__dict__ for match in kept_matches])
+    mesh_map.to_parquet(arguments.output_dir / "sider_chemical_mesh_map.parquet", index=False)
+    summary["sider_drugs_matched_before_collapse"] = len({match.stitch_flat_id for match in all_matches})
+    summary["sider_drugs_matched_total"] = len({match.stitch_flat_id for match in kept_matches})
+    summary["mesh_ids_with_several_sider_drugs"] = len(collapsed_ids)
+    summary["sider_drugs_collapsed_into_another"] = sorted({stitch_id for dropped in collapsed_ids.values() for stitch_id in dropped})
+    summary["collapsed_sider_drugs_by_mesh_id"] = collapsed_ids
+    summary["chemical_match_methods"] = dict(Counter(match.match_method for match in kept_matches))
+    print(f"chemical matches: {len(all_matches)} before collapse, {len(kept_matches)} kept (one SIDER drug per MeSH id; {len(collapsed_ids)} ids had several)", flush=True)
     print(f"mesh label lookup: {label_counts.get('mesh_label_lookups', 0)} lookups, {label_counts.get('chemical_ids_matched_by_mesh_label', 0)} further ids matched", flush=True)
 
     kept_rows, filter_counts = filter_relation_rows(disease_rows, descriptors, ncbi_to_symbol, matches_index)

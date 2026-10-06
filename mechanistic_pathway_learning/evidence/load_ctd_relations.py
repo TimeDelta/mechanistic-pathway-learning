@@ -9,6 +9,12 @@ yields one report per evidence value. Rows with empty DirectEvidence are inferre
 with a count. PubMedIDs is a "|" list; each cited paper becomes its own report so the reliability model can count
 papers, and a direct-evidence row that cites no paper is kept as one undated report with no reference.
 
+A direct-evidence statement on a descriptor of crosswalk level mixed_polarity_diagnosis (Bipolar Disorder D001714)
+is demoted to associated_with with a count and a limitation clause, as in load_pubtator_relations. One SIDER drug is
+kept per CTD chemical (sider_chemical_matching.collapse_matches_to_one_drug_per_mesh_id), so a paper is never counted
+under a second STITCH id for the same chemical. The source is "CTD-curated", the name the assembler's predication
+parser expects.
+
 Literature reports are soft priors only (grades C to E): never evaluation positives, and an unobserved pair is
 unlabelled, not negative.
 """
@@ -23,11 +29,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from mechanistic_pathway_learning.evidence.load_pubtator_relations import literature_report_record, reports_dataframe
+from mechanistic_pathway_learning.evidence.load_pubtator_relations import demote_direction_on_mixed_polarity_descriptor, literature_report_record, literature_source_name, reports_dataframe
 from mechanistic_pathway_learning.evidence.mesh_symptom_descriptors import SymptomMeshDescriptor
-from mechanistic_pathway_learning.evidence.sider_chemical_matching import ChemicalMatch, match_ctd_chemical_name
+from mechanistic_pathway_learning.evidence.sider_chemical_matching import ChemicalMatch, collapse_matches_to_one_drug_per_mesh_id, match_ctd_chemical_name
 
 CTD_SOURCE_NAME = "CTD"
+CTD_CURATED_SOURCE = literature_source_name(CTD_SOURCE_NAME, "curated")  # "CTD-curated"
 DIRECT_EVIDENCE_TO_RELATION: dict[str, str] = {"marker/mechanism": "induces", "therapeutic": "relieves"}
 CTD_COLUMNS: tuple[str, ...] = ("ChemicalName", "ChemicalID", "CasRN", "DiseaseName", "DiseaseID", "DirectEvidence", "InferenceGeneSymbol", "InferenceScore", "OmimIDs", "PubMedIDs")
 
@@ -63,6 +70,7 @@ class CtdRelationRow:
     pmid: str | None
     symptom: str
     mesh_descriptor_level: str
+    direction_demoted: bool = False  # a directional statement demoted to associated_with on a mixed-polarity descriptor
 
 
 def expand_ctd_row(row: dict[str, str], descriptor: SymptomMeshDescriptor, matches: list[ChemicalMatch], counts: Counter) -> list[CtdRelationRow]:
@@ -76,13 +84,16 @@ def expand_ctd_row(row: dict[str, str], descriptor: SymptomMeshDescriptor, match
     if not pmids:
         counts["direct_evidence_rows_without_pubmed_id"] += 1
     expanded: list[CtdRelationRow] = []
+    if len(evidence_values) > 1:
+        counts["rows_with_both_direct_evidence_values"] += 1
     for evidence_value in evidence_values:
         relation = DIRECT_EVIDENCE_TO_RELATION.get(evidence_value)
         if relation is None:
             counts[f"dropped_direct_evidence_not_mapped:{evidence_value}"] += 1
             continue
-        if len(evidence_values) > 1:
-            counts["rows_with_both_direct_evidence_values"] += 1
+        relation, demoted = demote_direction_on_mixed_polarity_descriptor(relation, descriptor.level)
+        if demoted:
+            counts[f"demoted_to_associated_with_on_mixed_polarity_descriptor:{evidence_value}"] += 1
         for match in matches:
             for pmid in pmids or [None]:
                 expanded.append(
@@ -90,7 +101,7 @@ def expand_ctd_row(row: dict[str, str], descriptor: SymptomMeshDescriptor, match
                         chemical_mesh_id=row["ChemicalID"], chemical_name=row["ChemicalName"], stitch_flat_id=match.stitch_flat_id,
                         drug_name=match.drug_name, chemical_match_method=match.match_method, disease_mesh_id=descriptor.mesh_descriptor,
                         disease_name=row["DiseaseName"], direct_evidence=evidence_value, relation=relation, pmid=pmid,
-                        symptom=descriptor.target_symptom, mesh_descriptor_level=descriptor.level,
+                        symptom=descriptor.target_symptom, mesh_descriptor_level=descriptor.level, direction_demoted=demoted,
                     )
                 )
                 counts["reports_kept"] += 1
@@ -104,8 +115,10 @@ def filter_ctd_rows(
     chemical_matches_by_mesh_id: dict[str, list[ChemicalMatch]] | None = None,
 ) -> tuple[list[CtdRelationRow], Counter]:
     """Rows whose DiseaseID is a target descriptor and whose chemical is a SIDER drug, by ChemicalName first
-    (ctd_chemical_name) and otherwise by a MeSH id already matched through PubTator3 (its own method is kept)."""
+    (ctd_chemical_name) and otherwise by a MeSH id already matched through PubTator3 (its own method is kept); one
+    SIDER drug per chemical, the PubTator3 map's choice when it has one, else the collapse rule of sider_chemical_matching."""
     chemical_matches_by_mesh_id = chemical_matches_by_mesh_id or {}
+    preferred_stitch_ids = {match.stitch_flat_id for matches in chemical_matches_by_mesh_id.values() for match in matches}
     kept: list[CtdRelationRow] = []
     counts: Counter = Counter()
     for row in rows:
@@ -122,13 +135,17 @@ def filter_ctd_rows(
         if not matches:
             counts["dropped_chemical_not_matched_to_sider"] += 1
             continue
+        if len(matches) > 1:
+            matches, collapsed = collapse_matches_to_one_drug_per_mesh_id(matches, preferred_stitch_ids)
+            counts["ctd_rows_with_chemical_collapsed_to_one_sider_drug"] += 1
         counts["ctd_rows_with_target_descriptor_and_sider_chemical"] += 1
         kept.extend(expand_ctd_row(row, descriptor, matches, counts))
     return kept, counts
 
 
 def ctd_limitations_text(row: CtdRelationRow) -> str:
-    clauses = ["curated chemical-disease statement from CTD, study design not read"]
+    clauses_prefix = ["diagnosis covers both mood poles, direction not attributable to the symptom"] if row.direction_demoted else []
+    clauses = clauses_prefix + ["curated chemical-disease statement from CTD, study design not read"]
     if row.direct_evidence == "marker/mechanism":
         clauses.append("marker/mechanism covers correlation as well as causation")
     if row.mesh_descriptor_level == "diagnosis":
@@ -152,7 +169,7 @@ def ctd_rows_to_reports(rows: list[CtdRelationRow], publication_dates: dict[str,
         evidence_date = publication_dates.get(row.pmid) if row.pmid else None
         records.append(
             literature_report_record(
-                source=CTD_SOURCE_NAME,
+                source=CTD_CURATED_SOURCE,
                 source_record_id=f"MESH:{row.chemical_mesh_id}",
                 source_term_id=f"MESH:{row.disease_mesh_id}",
                 source_term_label=row.disease_mesh_id,
@@ -164,7 +181,7 @@ def ctd_rows_to_reports(rows: list[CtdRelationRow], publication_dates: dict[str,
                 relation=row.relation,
                 report_value=1,
                 evidence_code=f"ctd_direct_evidence_{'marker_mechanism' if row.direct_evidence == 'marker/mechanism' else row.direct_evidence}",
-                model_description=f"human or animal, unspecified; CTD curated {row.direct_evidence}; ChEMBL targets joined by the assembler",
+                model_description=f"human or animal, unspecified; CTD curated {row.direct_evidence}; targets supplied by the assembler from the SIDER map",
                 references=f"PMID:{row.pmid}" if row.pmid else "",
                 pubmed_reference_count=1 if row.pmid else 0,
                 evidence_date=evidence_date,

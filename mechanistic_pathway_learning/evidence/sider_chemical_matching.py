@@ -90,3 +90,29 @@ def chemical_matches_by_mesh_id(matches: list[ChemicalMatch]) -> dict[str, list[
     for match in matches:
         index.setdefault(match.chemical_mesh_id, []).append(match)
     return index
+
+
+MATCH_METHOD_PRIORITY: dict[str, int] = {method: rank for rank, method in enumerate(MATCH_METHODS)}
+
+
+def pubchem_cid_of_stitch_flat_id(stitch_flat_id: str) -> int:
+    """3386 from "CID100003386" (STITCH flat ids are "CID1" followed by the zero-padded PubChem CID)."""
+    digits = stitch_flat_id[4:] if stitch_flat_id.upper().startswith("CID1") else stitch_flat_id[3:]
+    return int(digits) if digits.isdigit() else 0
+
+
+def collapse_matches_to_one_drug_per_mesh_id(matches: list[ChemicalMatch], preferred_stitch_ids: set[str] | None = None) -> tuple[list[ChemicalMatch], dict[str, list[str]]]:
+    """One SIDER drug per MeSH chemical id, so a paper is never counted under a second STITCH id for the same chemical
+    (SIDER lists brand names, salts and code names as separate drugs: olanzapine and Zyprexa, rizatriptan and MK-462).
+    Order of preference: the match method (an exact descriptor name beats a synonym beats a label lookup beats a CTD
+    name), then a STITCH id in preferred_stitch_ids (the ids the assembled table or the ChEMBL parent map already use),
+    then the lowest PubChem CID. Returns the kept matches and, per MeSH id that lost entries, the dropped STITCH ids."""
+    preferred = preferred_stitch_ids or set()
+    kept: list[ChemicalMatch] = []
+    collapsed: dict[str, list[str]] = {}
+    for mesh_id, candidates in chemical_matches_by_mesh_id(matches).items():
+        ranked = sorted(candidates, key=lambda match: (MATCH_METHOD_PRIORITY.get(match.match_method, len(MATCH_METHODS)), 0 if match.stitch_flat_id in preferred else 1, pubchem_cid_of_stitch_flat_id(match.stitch_flat_id)))
+        kept.append(ranked[0])
+        if len(ranked) > 1:
+            collapsed[mesh_id] = [match.stitch_flat_id for match in ranked[1:]]
+    return kept, collapsed

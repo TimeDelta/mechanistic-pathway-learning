@@ -6,7 +6,11 @@ Depression D003863) name the sign or symptom itself; diagnosis-level descriptors
 Depressive Disorder D003866) name a diagnostic category whose literature is about the disorder rather than the
 symptom. Both are retrieved, because the literature on a diagnosis is a soft prior on its cardinal symptoms,
 and the level travels with every report so the reliability model and the leakage audit can weight the two
-apart (assumption A7 keeps diagnoses out of the targets, not out of the priors).
+apart (assumption A7 keeps diagnoses out of the targets, not out of the priors). A third level,
+"mixed_polarity_diagnosis", marks a diagnosis whose cardinal features include the opposite of the target symptom
+(Bipolar Disorder D001714 for elevated mood or mania): its literature is kept, but a cause or treat relation on it
+is demoted to the undirected associated_with relation by the loaders, since "treats bipolar disorder" carries no
+sign for mania.
 
 Literature reports are grade C to E soft priors (design section 4.2): they never become evaluation positives,
 and unobserved pairs stay unlabelled.
@@ -18,7 +22,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-DESCRIPTOR_LEVELS: tuple[str, ...] = ("symptom", "diagnosis")
+DESCRIPTOR_LEVELS: tuple[str, ...] = ("symptom", "diagnosis", "mixed_polarity_diagnosis")  # the third: a diagnosis whose cardinal features include the opposite symptom (Bipolar Disorder for mania), whose directional relations are demoted
 MESH_DESCRIPTOR_PATTERN = re.compile(r"^D\d{6,9}$")
 LIST_SEPARATOR = ";"
 

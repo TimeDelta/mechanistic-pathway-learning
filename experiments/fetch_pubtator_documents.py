@@ -3,9 +3,12 @@ annotations from the PubTator3 export, and publication types from E-utilities es
 
 Usage:
   python experiments/fetch_pubtator_documents.py [--max-pmids 30000]
-Writes data/processed/literature/documents.parquet. When the PMIDs exceed the cap, the PMIDs of cause, treat,
-prevent and correlation relations are fetched first and associate relations fill the rest; the number left
-unfetched is logged and written to the summary (no silent cap).
+Writes data/processed/literature/documents.parquet. When the PMIDs exceed the cap, the PMIDs that carry any directional
+relation in any table (PubTator3 cause, treat, prevent, stimulate, inhibit and the correlation types; CTD marker/mechanism
+and therapeutic) are fetched first, in first-seen order, and associate-only PMIDs fill the rest; a PMID is judged on all
+its rows, not on the first one seen. Documents already in documents.parquet are kept without a request, so a rerun after
+a change of priority fetches only the newly selected PMIDs. The number left unfetched is logged and written to the
+summary (no silent cap).
 """
 from __future__ import annotations
 
@@ -20,22 +23,30 @@ from mechanistic_pathway_learning.evidence.cached_http import CachedRateLimitedC
 
 PUBTATOR_EXPORT_URL = "https://www.ncbi.nlm.nih.gov/research/pubtator3-api/publications/export/biocjson"
 ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
-PRIORITY_RELATION_TYPES = ("cause", "treat", "prevent", "positive_correlation", "negative_correlation", "positive_correlate", "negative_correlate")
+PRIORITY_RELATION_TYPES = ("cause", "treat", "prevent", "stimulate", "inhibit", "positive_correlation", "negative_correlation", "positive_correlate", "negative_correlate", "marker/mechanism", "therapeutic")
 
 
 def pmids_in_priority_order(relation_tables: list[pd.DataFrame]) -> tuple[list[str], list[str]]:
-    """Distinct PMIDs with directional relations first, then the rest (associate relations and CTD rows without a type)."""
-    priority: list[str] = []
-    rest: list[str] = []
+    """Distinct PMIDs that carry a directional relation on any of their rows (any table) first, in first-seen order,
+    then the rest (associate-only PMIDs). A PMID whose first row is an associate relation and whose later row is a
+    cause relation is a priority PMID."""
+    directional: set[str] = set()
+    order: list[str] = []
     seen: set[str] = set()
     for table in relation_tables:
         if table is None or "pmid" not in table.columns:
             continue
-        for pmid, relation_type in zip(table.pmid.astype(str), table.get("relation_type", pd.Series([""] * len(table))).astype(str)):
-            if pmid in seen or not pmid or pmid == "nan":
+        relation_types = table["relation_type"].astype(str) if "relation_type" in table.columns else pd.Series([""] * len(table), index=table.index)
+        for pmid, relation_type in zip(table.pmid.astype(str), relation_types):
+            if not pmid or pmid == "nan":
                 continue
-            seen.add(pmid)
-            (priority if relation_type in PRIORITY_RELATION_TYPES else rest).append(pmid)
+            if pmid not in seen:
+                seen.add(pmid)
+                order.append(pmid)
+            if relation_type in PRIORITY_RELATION_TYPES:
+                directional.add(pmid)
+    priority = [pmid for pmid in order if pmid in directional]
+    rest = [pmid for pmid in order if pmid not in directional]
     return priority, rest
 
 
@@ -104,16 +115,27 @@ def main() -> None:
     tables = [pd.read_parquet(path) for path in (arguments.literature_dir / "pubtator_relations_filtered.parquet", arguments.literature_dir / "ctd_relations_filtered.parquet") if path.exists()]
     priority, rest = pmids_in_priority_order(tables)
     selected = (priority + rest)[: arguments.max_pmids]
-    unfetched = max(0, len(priority) + len(rest) - len(selected))
-    print(f"pmids: {len(priority)} with directional relations, {len(rest)} other; fetching {len(selected)}, leaving {unfetched} unfetched")
+    documents_path = arguments.literature_dir / "documents.parquet"
+    existing = pd.read_parquet(documents_path) if documents_path.exists() else pd.DataFrame()
+    existing_pmids = set(existing.pmid.astype(str)) if len(existing) else set()
+    to_fetch = [pmid for pmid in selected if pmid not in existing_pmids]
+    all_pmids = set(priority) | set(rest)
+    print(f"pmids: {len(priority)} with directional relations, {len(rest)} other; selected {len(selected)} (cap {arguments.max_pmids}); {len(existing_pmids)} already fetched, fetching {len(to_fetch)} new")
     export_client = CachedRateLimitedClient(arguments.cache_dir / "documents")
     esummary_client = CachedRateLimitedClient(arguments.cache_dir / "esummary")
-    documents = pd.DataFrame(fetch_documents(export_client, selected))
-    publication_types = fetch_publication_types(esummary_client, selected)
+    new_documents = pd.DataFrame(fetch_documents(export_client, to_fetch))
+    publication_types = fetch_publication_types(esummary_client, to_fetch)
+    if len(new_documents):
+        new_documents["publication_types"] = new_documents.pmid.map(lambda pmid: ";".join(publication_types.get(str(pmid), [])))
+    documents = pd.concat([table for table in (existing, new_documents) if len(table)], ignore_index=True, sort=False) if (len(existing) or len(new_documents)) else new_documents
     if len(documents):
-        documents["publication_types"] = documents.pmid.map(lambda pmid: ";".join(publication_types.get(str(pmid), [])))
-    documents.to_parquet(arguments.literature_dir / "documents.parquet", index=False)
-    summary = {"pmids_with_directional_relations": len(priority), "pmids_other": len(rest), "pmids_fetched": len(selected), "pmids_unfetched": unfetched,
+        documents = documents.drop_duplicates(subset="pmid", keep="first")
+    documents.to_parquet(documents_path, index=False)
+    fetched_pmids = set(documents.pmid.astype(str)) if len(documents) else set()
+    unfetched = len(all_pmids - fetched_pmids)
+    summary = {"pmids_with_directional_relations": len(priority), "pmids_other": len(rest), "pmids_selected_by_cap": len(selected), "max_pmids": arguments.max_pmids,
+               "pmids_newly_fetched": len(to_fetch), "pmids_fetched": int(len(fetched_pmids)), "pmids_unfetched": unfetched,
+               "directional_pmids_without_document": int(len(set(priority) - fetched_pmids)),
                "documents_returned": int(len(documents)), "documents_with_species": int((documents.species_ids != "").sum()) if len(documents) else 0,
                "documents_with_publication_types": int((documents.publication_types != "").sum()) if len(documents) else 0}
     (arguments.literature_dir / "documents_summary.json").write_text(json.dumps(summary, indent=1))

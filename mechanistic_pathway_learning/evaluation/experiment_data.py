@@ -88,6 +88,7 @@ GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id"}
 
 
 DEFAULT_LABEL_GRADES: tuple[str, ...] = ("A", "B")  # grades that count as positive labels; grade C (human association) and lower are soft evidence, not labels
+SOFT_PRIOR_ONLY_GRADES: tuple[str, ...] = ("D", "E")  # literature grades: soft priors by design (section 4.2), never labels and never evaluation positives
 
 
 def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES) -> ExperimentData:
@@ -108,6 +109,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     evidence = evidence[evidence.relation == relation]
     if "positive_report_count" in evidence.columns:  # tables written before reports existed have no such column and every row is a positive claim
         evidence = evidence[evidence.positive_report_count > 0]
+    if label_grades is not None and set(label_grades) & set(SOFT_PRIOR_ONLY_GRADES):
+        raise ValueError(f"label_grades {sorted(label_grades)} include a literature grade; grades {SOFT_PRIOR_ONLY_GRADES} are soft priors and never labels (design section 4.2)")
     if label_grades is not None and "grade" in evidence.columns:
         evidence = evidence[evidence.grade.isin(label_grades)]
     if group_column not in evidence.columns:  # evidence tables written before disease clusters existed

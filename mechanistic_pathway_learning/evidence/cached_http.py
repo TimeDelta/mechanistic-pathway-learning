@@ -76,7 +76,8 @@ class CachedRateLimitedClient:
                     raise
             except Exception as error:  # noqa: BLE001 - network retry
                 last_error = error
-            time.sleep(min(60.0, 2.0 ** attempt))
+            if attempt + 1 < self.retries:  # no backoff sleep after the final failed attempt
+                time.sleep(min(60.0, 2.0 ** attempt))
         raise RuntimeError(f"request failed after {self.retries} attempts: {url}") from last_error
 
     def _wait_for_rate_limit(self) -> None:

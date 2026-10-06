@@ -19,12 +19,15 @@ from mechanistic_pathway_learning.evidence.load_ctd_relations import (
     iterate_ctd_rows,
 )
 from mechanistic_pathway_learning.evidence.load_pubtator_relations import (
+    DISEASE_GENE_RELATION_TYPE_SIGNS,
     EVIDENCE_REPORT_COLUMNS,
     LITERATURE_REPORT_COLUMNS,
     RELATION_TYPE_TO_RELATION,
+    demote_direction_on_mixed_polarity_descriptor,
     disease_rows_from_stream,
     filter_relation_rows,
     iterate_bulk_relation_rows,
+    literature_source_name,
     map_relation_type,
     parse_entity,
     relation_rows_to_reports,
@@ -40,11 +43,13 @@ from mechanistic_pathway_learning.evidence.pubmed_publication_dates import parse
 from mechanistic_pathway_learning.evidence.sider_chemical_matching import (
     ChemicalMatch,
     chemical_matches_by_mesh_id,
+    collapse_matches_to_one_drug_per_mesh_id,
     drug_names_by_normalized_name,
     match_autocomplete_candidates,
     match_ctd_chemical_name,
     match_mesh_label,
 )
+from mechanistic_pathway_learning.evidence.assemble_evidence_table import predication_type_for_literature_sources, targets_from_report_descriptions
 
 FIXTURE_DESCRIPTORS = descriptor_lookup(
     [
@@ -68,10 +73,14 @@ def test_relation_types_map_to_induces_relieves_and_associated_with() -> None:
     assert map_relation_type("negative_correlate") == ("relieves", 1)
     assert map_relation_type("Associate") == ("associated_with", 1)  # kept as its own undirected relation, never merged into induces
     assert map_relation_type("association") == ("associated_with", 1)
-    for chemical_gene_type in ("stimulate", "inhibit"):
-        assert map_relation_type(chemical_gene_type) is None
+    for disease_gene_type in ("stimulate", "inhibit"):
+        assert map_relation_type(disease_gene_type) is None  # a chemical-gene relation without a Disease-Gene context
+        assert map_relation_type(disease_gene_type, "Chemical") is None
+        assert map_relation_type(disease_gene_type, "Gene") == ("induces", 1)  # the bulk file's gene-disease correlation types
+    assert DISEASE_GENE_RELATION_TYPE_SIGNS == {"stimulate": 1.0, "inhibit": -1.0}
     assert map_relation_type("cotreat") is None
     assert set(RELATION_TYPE_TO_RELATION.values()) == {"induces", "relieves", "associated_with"}
+    assert literature_source_name("PubTator3", "Cause") == "PubTator3-cause" and literature_source_name("CTD", "curated") == "CTD-curated"
 
 
 def test_parse_entity_strips_mesh_prefix_and_splits_several_gene_ids() -> None:
@@ -87,8 +96,8 @@ def test_filter_keeps_graph_genes_and_sider_drugs_and_counts_every_drop() -> Non
         ("11", "cause", "Gene|8813", "Disease|MESH:D001007"),  # kept: graph gene, symptom-level
         ("12", "treat", "Chemical|MESH:D005473", "Disease|MESH:D001008"),  # kept: SIDER drug, diagnosis-level
         ("13", "associate", "Disease|MESH:D001007", "Gene|8813"),  # kept: disease first, associated_with
-        ("14", "stimulate", "Chemical|MESH:D005473", "Disease|MESH:D001007"),  # dropped: chemical-gene type
-        ("15", "inhibit", "Gene|8813", "Disease|MESH:D001007"),  # dropped: chemical-gene type
+        ("14", "stimulate", "Chemical|MESH:D005473", "Disease|MESH:D001007"),  # dropped: chemical-gene type (chemical partner)
+        ("15", "inhibit", "Gene|8813", "Disease|MESH:D001007"),  # kept: Disease-Gene negative correlation, induces with sign -1
         ("16", "cotreat", "Chemical|MESH:D005473", "Disease|MESH:D001007"),  # dropped: not mapped
         ("17", "cause", "Gene|99", "Disease|MESH:D001007"),  # dropped: gene not in graph
         ("18", "treat", "Chemical|MESH:D000001", "Disease|MESH:D001007"),  # dropped: chemical not SIDER
@@ -97,20 +106,66 @@ def test_filter_keeps_graph_genes_and_sider_drugs_and_counts_every_drop() -> Non
         ("21", "cause", "Gene|8813;77", "Disease|MESH:D005221"),  # kept once: one of two ids in graph
     ]
     kept, counts = filter_relation_rows(rows, FIXTURE_DESCRIPTORS, {8813: "DPM1"}, chemical_matches_by_mesh_id([FLUOXETINE]))
-    assert [row.pmid for row in kept] == ["11", "12", "13", "21"]
-    assert [row.relation for row in kept] == ["induces", "relieves", "associated_with", "induces"]
-    assert [row.entity_role for row in kept] == ["disease_second", "disease_second", "disease_first", "disease_second"]
+    assert [row.pmid for row in kept] == ["11", "12", "13", "15", "21"]
+    assert [row.relation for row in kept] == ["induces", "relieves", "associated_with", "induces", "induces"]
+    assert [row.entity_role for row in kept] == ["disease_second", "disease_second", "disease_first", "disease_second", "disease_second"]
     assert kept[1].perturbation_id == "CID100003386" and kept[1].chemical_match_method == "autocomplete_name"
     assert kept[0].perturbation_ncbi_gene_id == 8813 and kept[0].perturbation_id == "DPM1"
+    assert kept[0].perturbation_sign == -1.0 and kept[3].perturbation_sign == -1.0 and kept[3].relation_type == "inhibit"
     assert counts["dropped_chemical_gene_relation_type:stimulate"] == 1
-    assert counts["dropped_chemical_gene_relation_type:inhibit"] == 1
+    assert counts["disease_gene_relation_type_kept:inhibit"] == 1 and "dropped_chemical_gene_relation_type:inhibit" not in counts
     assert counts["dropped_relation_type_not_mapped:cotreat"] == 1
     assert counts["dropped_gene_not_in_graph"] == 2  # row 17 and the second id of row 21
     assert counts["dropped_chemical_not_matched_to_sider"] == 1
     assert counts["dropped_both_sides_target_descriptors"] == 1
     assert counts["dropped_partner_type:Species"] == 1
     assert counts["rows_with_several_partner_identifiers"] == 1
-    assert counts["rows_kept"] == 4
+    assert counts["rows_kept"] == 5
+
+
+def test_disease_gene_stimulate_carries_a_positive_sign_and_shared_ncbi_ids_reach_every_node() -> None:
+    rows = [("31", "stimulate", "Disease|MESH:D001007", "Gene|2629")]
+    kept, counts = filter_relation_rows(rows, FIXTURE_DESCRIPTORS, {2629: ["GBA", "GBA1"]}, {})
+    assert [(row.perturbation_id, row.relation, row.perturbation_sign) for row in kept] == [("GBA", "induces", 1.0), ("GBA1", "induces", 1.0)]
+    assert counts["rows_with_gene_id_shared_by_several_nodes"] == 1
+    reports = relation_rows_to_reports(kept)
+    assert json.loads(reports.loc[0, "perturbation_nodes"]) == [["GENE:GBA", 1.0, 1.0]]
+    assert reports.source.eq("PubTator3-stimulate").all() and "perturbation sign +1 from the relation type" in reports.loc[0, "limitations"]
+    assert predication_type_for_literature_sources(set(reports.source), "induces") == "ASSOCIATED_WITH"  # a correlation, not a cause
+
+
+def test_directional_relations_on_a_mixed_polarity_descriptor_are_demoted_to_associated_with() -> None:
+    assert demote_direction_on_mixed_polarity_descriptor("relieves", "mixed_polarity_diagnosis") == ("associated_with", True)
+    assert demote_direction_on_mixed_polarity_descriptor("induces", "diagnosis") == ("induces", False)
+    assert demote_direction_on_mixed_polarity_descriptor("associated_with", "mixed_polarity_diagnosis") == ("associated_with", False)
+    descriptors = descriptor_lookup([SymptomMeshDescriptor("elevated_mood_or_mania", "D001714", "mixed_polarity_diagnosis"), SymptomMeshDescriptor("elevated_mood_or_mania", "D000087122", "symptom")])
+    rows = [("41", "treat", "Chemical|MESH:D005473", "Disease|MESH:D001714"), ("42", "treat", "Chemical|MESH:D005473", "Disease|MESH:D000087122")]
+    kept, counts = filter_relation_rows(rows, descriptors, {}, chemical_matches_by_mesh_id([FLUOXETINE]))
+    assert [(row.pmid, row.relation, row.direction_demoted) for row in kept] == [("41", "associated_with", True), ("42", "relieves", False)]
+    assert counts["demoted_to_associated_with_on_mixed_polarity_descriptor:treat"] == 1
+    reports = relation_rows_to_reports(kept)
+    assert "direction not attributable to the symptom" in reports.loc[0, "limitations"] and reports.loc[0, "relation_type"] == "treat" and reports.loc[0, "source"] == "PubTator3-treat"
+    assert "direction not attributable" not in reports.loc[1, "limitations"]
+
+
+def test_one_sider_drug_is_kept_per_mesh_chemical_in_a_documented_order() -> None:
+    olanzapine = ChemicalMatch("CID100004585", "olanzapine", "D000077152", "Olanzapine", "autocomplete_name")
+    zyprexa = ChemicalMatch("CID100135398745", "Zyprexa", "D000077152", "Olanzapine", "autocomplete_synonym")
+    salt_low = ChemicalMatch("CID100000100", "drug a", "D000001", "Drug A", "autocomplete_synonym")
+    salt_high = ChemicalMatch("CID100000200", "drug a hydrochloride", "D000001", "Drug A", "autocomplete_synonym")
+    kept, collapsed = collapse_matches_to_one_drug_per_mesh_id([zyprexa, olanzapine, salt_high, salt_low, FLUOXETINE])
+    assert [match.stitch_flat_id for match in kept] == ["CID100004585", "CID100000100", "CID100003386"]  # exact name beats synonym; else the lowest CID
+    assert collapsed == {"D000077152": ["CID100135398745"], "D000001": ["CID100000200"]}
+    kept_preferring_high, _ = collapse_matches_to_one_drug_per_mesh_id([salt_high, salt_low], preferred_stitch_ids={"CID100000200"})
+    assert [match.stitch_flat_id for match in kept_preferring_high] == ["CID100000200"]  # a ChEMBL-mapped id beats the lowest CID at equal method
+
+
+def test_literature_drug_rows_carry_no_chembl_target_marker_for_the_assembler() -> None:
+    rows = [("51", "treat", "Chemical|MESH:D005473", "Disease|MESH:D001007")]
+    kept, _ = filter_relation_rows(rows, FIXTURE_DESCRIPTORS, {}, chemical_matches_by_mesh_id([FLUOXETINE]))
+    reports = relation_rows_to_reports(kept)
+    assert targets_from_report_descriptions(reports) == ""
+    assert reports.loc[0, "source"] == "PubTator3-treat" and predication_type_for_literature_sources({"PubTator3-treat"}, "relieves") == "AFFECTS"
 
 
 def test_bulk_stream_reader_and_first_pass_keep_only_target_descriptor_rows() -> None:
@@ -263,7 +318,7 @@ def test_ctd_direct_evidence_maps_marker_to_induces_and_therapeutic_to_relieves_
     assert counts["dropped_chemical_not_matched_to_sider"] == 1
     assert counts["dropped_inferred_no_direct_evidence"] == 1
     assert counts["direct_evidence_rows_without_pubmed_id"] == 1
-    assert counts["rows_with_both_direct_evidence_values"] == 2
+    assert counts["rows_with_both_direct_evidence_values"] == 1  # one row carries both values
     assert [(row.relation, row.pmid, row.symptom) for row in kept] == [
         ("relieves", "111", "anxiety"),
         ("relieves", "222", "anxiety"),
@@ -278,7 +333,8 @@ def test_ctd_direct_evidence_maps_marker_to_induces_and_therapeutic_to_relieves_
     assert reports.loc[1, "evidence_date"] is None and "undated" in reports.loc[1, "limitations"]
     assert reports.loc[4, "references"] == "" and reports.loc[4, "pubmed_reference_count"] == 0 and "no PubMed reference" in reports.loc[4, "limitations"]
     assert set(reports.evidence_code) == {"ctd_direct_evidence_therapeutic", "ctd_direct_evidence_marker_mechanism"}
-    assert reports.source.eq("CTD").all() and reports.evidence_class.eq("literature").all() and reports.perturbation_type.eq("drug").all()
+    assert reports.source.eq("CTD-curated").all() and reports.evidence_class.eq("literature").all() and reports.perturbation_type.eq("drug").all()
+    assert targets_from_report_descriptions(reports) == "" and predication_type_for_literature_sources({"CTD-curated"}, "induces") == "CAUSES"
 
 
 def test_ctd_rows_fall_back_to_the_pubtator_mesh_map_when_the_name_differs() -> None:
@@ -304,7 +360,8 @@ def test_pubtator_reports_follow_the_evidence_reports_schema_and_are_soft_priors
     reports = relation_rows_to_reports(kept, {"7": "2015 Mar"} and {"7": parse_pubdate("2015 Mar")})
     assert tuple(reports.columns) == LITERATURE_REPORT_COLUMNS
     assert tuple(reports.columns[: len(EVIDENCE_REPORT_COLUMNS)]) == EVIDENCE_REPORT_COLUMNS
-    assert reports.report_id.tolist() == ["PubTator3|PMID:7|MESH:D001007|anxiety|1", "PubTator3|PMID:7|MESH:D001007|anxiety|2"]
+    assert reports.report_id.tolist() == ["PubTator3-cause|PMID:7|MESH:D001007|anxiety|1", "PubTator3-associate|PMID:7|MESH:D001007|anxiety|2"]
+    assert reports.source.tolist() == ["PubTator3-cause", "PubTator3-associate"]
     assert reports.evidence_class.eq("literature").all() and reports.report_value.eq(1).all()
     assert reports.evidence_date.tolist() == ["2015-03-01", "2015-03-01"] and reports.publication_year.tolist() == [2015, 2015]
     assert json.loads(reports.loc[0, "perturbation_nodes"]) == [["GENE:DPM1", -1.0, 1.0]]
