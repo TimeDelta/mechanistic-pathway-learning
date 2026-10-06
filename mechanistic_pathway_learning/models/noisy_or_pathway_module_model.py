@@ -37,7 +37,6 @@ from torch import Tensor, nn
 HARD_CONCRETE_STRETCH_LOW = -0.1
 HARD_CONCRETE_STRETCH_HIGH = 1.1
 PROBABILITY_EPSILON = 1e-6
-GATE_EVALUATION_ESTIMATES = ("deterministic", "expected")
 EXPECTED_GATE_QUADRATURE_POINTS = 64
 
 
@@ -51,17 +50,14 @@ class HardConcreteNodeGate(nn.Module):
         temperature: float = 2.0 / 3.0,
         initial_log_alpha: float = -1.0,
         initial_log_alpha_noise: float = 0.01,
-        evaluation_estimate: str = "deterministic",
     ) -> None:
-        """evaluation_estimate chooses the gate used in eval mode. "deterministic" is the test-time estimator of
-        Louizos et al., clamp(sigmoid(log_alpha) * (high - low) + low), which matches training once gates have
-        converged to 0 or 1. "expected" is the mean of the training gate distribution; it is the consistent choice
-        when gates stay fractional and a sum pools thousands of them, since the pooled sum then concentrates at its
-        expectation during training (at log_alpha -2.3 the expected training gate is 0.11, the deterministic one 0.009)."""
+        """In eval mode the gate is the mean of the training gate distribution (expected_gate). The test-time
+        estimator of Louizos et al., clamp(sigmoid(log_alpha) * (high - low) + low), matches training only once gates
+        have converged to 0 or 1; with gates that stay fractional and a sum that pools thousands of them, the pooled sum
+        concentrates at its expectation during training, so evaluation must use that expectation (at log_alpha -2.3 the
+        expected training gate is 0.11 and the Louizos estimator 0.009). Runs recorded without a git commit, before
+        6 October 2026, evaluated with the Louizos estimator (docs/b6_module_diagnosis.md)."""
         super().__init__()
-        if evaluation_estimate not in GATE_EVALUATION_ESTIMATES:
-            raise ValueError(f"evaluation_estimate must be one of {GATE_EVALUATION_ESTIMATES}")
-        self.evaluation_estimate = evaluation_estimate
         self.temperature = temperature
         initial_values = torch.full((num_pathway_modules, num_graph_nodes), initial_log_alpha)
         initial_values = initial_values + initial_log_alpha_noise * torch.randn_like(initial_values)
@@ -73,8 +69,10 @@ class HardConcreteNodeGate(nn.Module):
             uniform_noise = torch.rand_like(self.log_alpha).clamp(PROBABILITY_EPSILON, 1 - PROBABILITY_EPSILON)
             logistic_noise = torch.log(uniform_noise) - torch.log1p(-uniform_noise)
             return self._stretch_and_clamp(torch.sigmoid((logistic_noise + self.log_alpha) / self.temperature))
-        if self.evaluation_estimate == "expected":
-            return self.expected_gate()
+        return self.expected_gate()
+
+    def louizos_test_time_gate(self) -> Tensor:
+        """The test-time estimator of Louizos et al., kept for diagnosis of runs that evaluated with it."""
         return self._stretch_and_clamp(torch.sigmoid(self.log_alpha))
 
     @staticmethod
@@ -138,7 +136,6 @@ class NoisyOrPathwayModuleHead(nn.Module):
         pooling: str = "sum",
         gate_initial_log_alpha_noise: float = 0.01,
         initial_readout_bias: float = 0.0,
-        gate_evaluation_estimate: str = "deterministic",
     ) -> None:
         """gate_initial_log_alpha_noise breaks the symmetry between modules (all gates start at the same
         log-alpha otherwise, and identical modules stay identical); initial_readout_bias below zero makes a
@@ -157,7 +154,6 @@ class NoisyOrPathwayModuleHead(nn.Module):
             temperature=gate_temperature,
             initial_log_alpha=gate_initial_log_alpha,
             initial_log_alpha_noise=gate_initial_log_alpha_noise,
-            evaluation_estimate=gate_evaluation_estimate,
         )
         self.module_readout_weight = nn.Parameter(torch.randn(num_pathway_modules, node_state_dim) / math.sqrt(node_state_dim))
         self.module_readout_bias = nn.Parameter(torch.full((num_pathway_modules,), float(initial_readout_bias)))

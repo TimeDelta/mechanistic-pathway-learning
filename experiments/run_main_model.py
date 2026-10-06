@@ -26,6 +26,7 @@ import argparse
 import copy
 import json
 import signal
+import subprocess
 import time
 from datetime import date
 from pathlib import Path
@@ -84,9 +85,22 @@ def build_models(data, arguments, device):
     else:
         head = NoisyOrPathwayModuleHead(len(data.node_ids), arguments.node_state_dim, arguments.num_modules, len(data.symptoms),
                                         gate_initial_log_alpha=arguments.gate_initial_log_alpha, pooling=arguments.pooling,
-                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init,
-                                        gate_evaluation_estimate=arguments.gate_evaluation).to(device)
+                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init).to(device)
     return encoder, head
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def git_provenance() -> dict:
+    """The commit the code runs from and any tracked files changed relative to it, so a result names the exact code
+    that produced it (a run started from a tree with tracked changes is not reproducible from the commit alone)."""
+    try:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=REPOSITORY_ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return {"commit": None, "tracked_changes": None}
+    return {"commit": commit, "tracked_changes": [line[3:] for line in status.splitlines() if line.strip()]}
 
 
 def optimizer_parameter_groups(encoder, head, arguments) -> list[dict]:
@@ -201,8 +215,6 @@ def main() -> None:
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
     parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
     parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
-    parser.add_argument("--gate-evaluation", choices=["deterministic", "expected"], default="deterministic",
-                        help="noisy-OR head: gate used at evaluation; 'expected' matches the training distribution when gates stay fractional")
     parser.add_argument("--head-scalar-learning-rate", type=float, default=0.0,
                         help="noisy-OR head: learning rate of the links, leaks and readout biases (0 = the main learning rate); Adam moves a parameter by about one learning rate per step, so links starting at logit -3 need about 1,500 steps at 0.002 to reach 0.5")
     parser.add_argument("--batch-size", type=int, default=16)
@@ -255,7 +267,7 @@ def main() -> None:
         return
     split_directory.mkdir(parents=True, exist_ok=True)
     checkpoint_path = split_directory / "checkpoint.pt"
-    state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None}
+    state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None, "code_provenance": []}
     if arguments.resume and checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         encoder.load_state_dict(checkpoint["encoder"])
@@ -263,6 +275,12 @@ def main() -> None:
         optimizer.load_state_dict(checkpoint["optimizer"])
         state = checkpoint["state"]
         print(f"resumed at epoch {state['epoch']}")
+    if "code_provenance" not in state:  # a checkpoint written before commits were recorded: its epochs ran under unrecorded code
+        state["code_provenance"] = [{"started_at_epoch": 0, "commit": None, "tracked_changes": None}] if state["epoch"] > 0 else []
+    provenance = git_provenance()
+    if provenance["tracked_changes"]:
+        print(f"warning: tracked files differ from commit {provenance['commit']}: {provenance['tracked_changes']}")
+    state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance})  # one entry per process, so a resumed run lists every commit it ran under
 
     def save_checkpoint() -> None:
         torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state}, checkpoint_path)
@@ -387,6 +405,7 @@ def main() -> None:
         "expected_calibration_error": expected_calibration_error(predictions, test_outcomes), "per_symptom": per_symptom, "symptoms": data.symptoms,
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
         "time_split": time_split_results,
+        "code_provenance": state["code_provenance"],
     }
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]

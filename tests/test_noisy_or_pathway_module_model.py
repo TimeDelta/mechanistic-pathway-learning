@@ -41,8 +41,8 @@ def test_hard_concrete_gate_shapes_and_range() -> None:
     assert sampled.shape == (4, 10)
     assert torch.all(sampled >= 0.0) and torch.all(sampled <= 1.0)
     gate.eval()
-    deterministic = gate()
-    assert torch.all(deterministic >= 0.0) and torch.all(deterministic <= 1.0)
+    evaluation_gate = gate()
+    assert torch.all(evaluation_gate >= 0.0) and torch.all(evaluation_gate <= 1.0)
     assert gate.expected_active_node_count().shape == (4,)
 
 
@@ -86,7 +86,7 @@ def test_leak_initialization_reproduces_base_rates_and_off_by_default_bias_silen
     assert head.support_gate.log_alpha.std() > 0.3  # symmetry between modules is broken at initialization
 
 
-def test_expected_gate_matches_the_mean_of_training_samples_and_exceeds_the_deterministic_gate_when_fractional() -> None:
+def test_expected_gate_matches_the_mean_of_training_samples_and_exceeds_the_louizos_gate_when_fractional() -> None:
     torch.manual_seed(0)
     gate = HardConcreteNodeGate(num_pathway_modules=1, num_graph_nodes=3, initial_log_alpha=0.0, initial_log_alpha_noise=0.0)
     with torch.no_grad():
@@ -95,18 +95,13 @@ def test_expected_gate_matches_the_mean_of_training_samples_and_exceeds_the_dete
     monte_carlo_mean = torch.stack([gate() for _ in range(20_000)]).mean(dim=0)
     expected = gate.expected_gate()
     assert torch.allclose(expected, monte_carlo_mean, atol=0.01)
-    deterministic_gate = HardConcreteNodeGate(num_pathway_modules=1, num_graph_nodes=3, initial_log_alpha_noise=0.0)
-    with torch.no_grad():
-        deterministic_gate.log_alpha.copy_(gate.log_alpha)
-    deterministic_gate.eval()
-    # at log_alpha -2.3 the training gate averages about 0.11 while the deterministic estimator gives about 0.009
-    assert expected[0, 0].item() > 5 * deterministic_gate()[0, 0].item()
+    # at log_alpha -2.3 the training gate averages about 0.11 while the Louizos test-time estimator gives about 0.009
+    assert expected[0, 0].item() > 5 * gate.louizos_test_time_gate()[0, 0].item()
 
 
-def test_gate_evaluation_estimate_selects_the_eval_mode_gate() -> None:
-    gate = HardConcreteNodeGate(num_pathway_modules=2, num_graph_nodes=5, evaluation_estimate="expected")
+def test_eval_mode_gate_is_the_expected_training_gate_and_scalar_parameters_are_links_leaks_and_biases() -> None:
+    gate = HardConcreteNodeGate(num_pathway_modules=2, num_graph_nodes=5)
     gate.eval()
     assert torch.equal(gate(), gate.expected_gate())
-    head = NoisyOrPathwayModuleHead(num_graph_nodes=5, node_state_dim=3, num_pathway_modules=2, num_symptoms=2, gate_evaluation_estimate="expected")
-    assert head.support_gate.evaluation_estimate == "expected"
+    head = NoisyOrPathwayModuleHead(num_graph_nodes=5, node_state_dim=3, num_pathway_modules=2, num_symptoms=2)
     assert {id(parameter) for parameter in head.scalar_parameters()} == {id(head.module_symptom_link_logit), id(head.symptom_leak_logit), id(head.module_readout_bias)}

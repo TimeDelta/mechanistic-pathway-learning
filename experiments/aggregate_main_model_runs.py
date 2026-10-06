@@ -56,6 +56,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
     scored = np.zeros(len(data.perturbation_ids), dtype=bool)
     per_split = []
     support_sizes, expected_support_sizes, symptoms_per_module, epochs = [], [], [], []
+    code_commits: set[str] = set()
     for split_directory in split_directories:
         results = json.loads((split_directory / "results.json").read_text())
         predictions = np.load(split_directory / "test_predictions.npy")
@@ -69,6 +70,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
                           "mean_reciprocal_rank": mean_reciprocal_rank(predictions, data.outcomes[rows]), "hits_at_3": hits_at_k(predictions, data.outcomes[rows], 3),
                           "epochs_completed": results.get("epochs_completed"), "best_epoch": results.get("best_epoch")})
         epochs.append(results.get("epochs_completed", 0))
+        code_commits.update(entry["commit"][:7] for entry in results.get("code_provenance", []) if entry.get("commit"))
         if "module_symptom_links" in results:
             links = np.array(results["module_symptom_links"])
             support_sizes.append(results["module_support_sizes"])
@@ -92,6 +94,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
     first_results = json.loads((split_directories[0] / "results.json").read_text())
     return {
         "run_directory": str(run_directory), "num_splits": len(split_directories), "num_scored_perturbations": int(scored.sum()),
+        "code_commits": sorted(code_commits),
         "arguments": {key: first_results["arguments"].get(key) for key in ("head", "field", "pooling", "num_modules", "group_by", "description_length_coefficient", "learning_rate", "node_state_dim", "num_layers", "permute_labels")},
         "per_symptom": per_symptom,
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
@@ -208,10 +211,12 @@ def main() -> None:
         for comparison in comparisons:
             a, r = comparison["macro_auprc"], comparison["macro_auroc"]
             lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {a['difference']:+.3f} [{a['lower']:+.3f}, {a['upper']:+.3f}] | {a['fraction_resamples_favoring_a']:.2f} | {r['difference']:+.3f} [{r['lower']:+.3f}, {r['upper']:+.3f}] |")
-    lines += ["", "## Configurations", "", "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    lines += ["", "## Configurations", "", "Commits are those the splits ran under (recorded from 6 October 2026; 'not recorded' marks earlier runs, which evaluated noisy-OR gates with the Louizos test-time estimator rather than the expected training gate).", "",
+              "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs | commits |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():
         a = entry["arguments"]
-        lines.append(f"| {name} | {a.get('head')} | {a.get('field')} | {a.get('pooling')} | {a.get('num_modules')} | {a.get('description_length_coefficient')} | {a.get('learning_rate')} | {a.get('node_state_dim')} | {a.get('num_layers')} | {a.get('permute_labels')} | {entry['num_splits']} | {entry['mean_epochs']:.1f} |")
+        commits = ", ".join(entry.get("code_commits") or []) or "not recorded"
+        lines.append(f"| {name} | {a.get('head')} | {a.get('field')} | {a.get('pooling')} | {a.get('num_modules')} | {a.get('description_length_coefficient')} | {a.get('learning_rate')} | {a.get('node_state_dim')} | {a.get('num_layers')} | {a.get('permute_labels')} | {entry['num_splits']} | {entry['mean_epochs']:.1f} | {commits} |")
     lines += ["", "## Per-symptom AUPRC (pooled; 95 percent bootstrap interval over perturbations; base rate in parentheses)", "",
               "| symptom | " + " | ".join(list(baseline_entries) + list(aggregated)) + " |", "|---|" + "---|" * (len(baseline_entries) + len(aggregated))]
     for symptom in data.symptoms:
@@ -222,7 +227,7 @@ def main() -> None:
         lines.append(f"| {symptom} | " + " | ".join(cells) + " |")
     for name, entry in aggregated.items():
         if entry["module_support_sizes"]:
-            lines += ["", f"## Module structure, {name}", "", "Support size counts gates above 0.5 in the deterministic (evaluation) gate; expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.", "",
+            lines += ["", f"## Module structure, {name}", "", "Support size counts gates above 0.5 in the evaluation gate (see the commits note under Configurations); expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.", "",
                       "| split | support sizes | expected support sizes | symptoms per module above 0.5 |", "|---|---|---|---|"]
             for split_entry, sizes, expected, per_module in zip(entry["per_split"], entry["module_support_sizes"], entry["module_expected_support_sizes"], entry["symptoms_per_module_above_half"]):
                 lines.append(f"| {split_entry['split']} | {sizes} | {[round(x) for x in expected] if expected else 'n/a'} | {per_module} |")
