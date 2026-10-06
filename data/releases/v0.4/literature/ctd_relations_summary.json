@@ -1,7 +1,7 @@
 {
-  "run_started_at": "2026-10-03T15:24:57Z",
+  "run_started_at": "2026-10-06T19:03:55Z",
   "sider_drugs_total": 1430,
-  "pubtator_mesh_map_rows": 1210,
+  "pubtator_mesh_map_rows": 1128,
   "filter": {
     "ctd_rows_total": 9903450,
     "dropped_disease_not_target_descriptor": 9828357,
@@ -9,18 +9,21 @@
     "dropped_chemical_not_matched_to_sider": 60354,
     "ctd_rows_with_target_descriptor_and_sider_chemical": 14739,
     "dropped_inferred_no_direct_evidence": 13003,
-    "reports_kept": 5607
+    "reports_kept": 5191,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:therapeutic": 68,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:marker/mechanism": 98,
+    "ctd_rows_with_chemical_collapsed_to_one_sider_drug": 1680
   },
-  "stream_seconds": 32.6,
+  "stream_seconds": 43.4,
   "ctd_pin": {
     "url": "https://ctdbase.org/reports/CTD_chemicals_diseases.tsv.gz",
     "content_length": 162343480,
     "last_modified": "Tue, 29 Sep 2026 17:21:06 GMT",
-    "checked_at": "2026-10-03T15:24:58Z",
+    "checked_at": "2026-10-06T19:03:55Z",
     "sha256": "e11e6dc36a27d36ed88576e529a92211186e3e0b3cea4271cc78dcf3d1b821ee",
     "report_created": "Tue Sep 29 13:17:30 EDT 2026",
-    "local_file": "data/raw/ctd/CTD_chemicals_diseases.tsv.gz",
-    "ctd_rows_total": 9903450
+    "ctd_rows_total": 9903450,
+    "local_file": "data/raw/ctd/CTD_chemicals_diseases.tsv.gz"
   },
   "publication_dates": {
     "pmids_requested": 3356,
@@ -29,80 +32,87 @@
     "pmids_without_date": 0,
     "pmids_not_returned": 1
   },
-  "esummary_requests_made": 17,
+  "esummary_requests_made": 0,
   "output": {
-    "rows": 5607,
+    "rows": 5191,
     "distinct_pmids": 3356,
-    "distinct_perturbations": 490,
+    "distinct_perturbations": 457,
     "distinct_genes": 0,
-    "distinct_drugs": 490,
-    "distinct_pairs": 1662,
+    "distinct_drugs": 457,
+    "distinct_pairs": 1521,
     "rows_by_symptom": {
-      "anhedonia": 6,
-      "anxiety": 376,
-      "cognitive_impairment": 947,
-      "depressed_mood": 1421,
-      "elevated_mood_or_mania": 961,
-      "fatigue": 289,
-      "insomnia": 258,
-      "psychomotor_agitation": 196,
-      "psychosis": 869,
-      "somnolence_or_hypersomnia": 284
+      "anhedonia": 5,
+      "anxiety": 361,
+      "cognitive_impairment": 887,
+      "depressed_mood": 1343,
+      "elevated_mood_or_mania": 774,
+      "fatigue": 265,
+      "insomnia": 250,
+      "psychomotor_agitation": 190,
+      "psychosis": 840,
+      "somnolence_or_hypersomnia": 276
     },
     "rows_by_relation": {
-      "induces": 3006,
-      "relieves": 2601
+      "associated_with": 774,
+      "induces": 2590,
+      "relieves": 1827
     },
     "rows_by_relation_type": {
-      "marker/mechanism": 3006,
-      "therapeutic": 2601
+      "marker/mechanism": 2851,
+      "therapeutic": 2340
     },
     "rows_by_perturbation_type": {
-      "drug": 5607
+      "drug": 5191
     },
+    "rows_by_source": {
+      "CTD-curated": 5191
+    },
+    "rows_demoted_to_associated_with_on_mixed_polarity_descriptor": 774,
+    "gene_rows_by_relation_type": {},
     "rows_by_descriptor_level": {
-      "diagnosis": 3465,
-      "symptom": 2142
+      "diagnosis": 2385,
+      "mixed_polarity_diagnosis": 774,
+      "symptom": 2032
     },
     "rows_by_descriptor": {
       "D000077260": 2,
-      "D001008": 376,
-      "D001714": 961,
-      "D003221": 400,
-      "D003704": 84,
-      "D003865": 266,
-      "D003866": 1155,
-      "D005221": 289,
-      "D006212": 528,
-      "D006970": 282,
-      "D007319": 258,
-      "D008569": 453,
-      "D011595": 196,
-      "D011618": 341,
-      "D059445": 6,
-      "D060825": 10
+      "D001008": 361,
+      "D001714": 774,
+      "D003221": 378,
+      "D003704": 83,
+      "D003865": 254,
+      "D003866": 1089,
+      "D005221": 265,
+      "D006212": 516,
+      "D006970": 274,
+      "D007319": 250,
+      "D008569": 418,
+      "D011595": 190,
+      "D011618": 324,
+      "D059445": 5,
+      "D060825": 8
     },
     "rows_by_chemical_match_method": {
       "autocomplete_synonym": 239,
-      "ctd_chemical_name": 5368
+      "ctd_chemical_name": 4952
     },
-    "rows_dated": 5606,
+    "rows_dated": 5190,
     "rows_by_symptom_and_perturbation_type": {
-      "anhedonia:drug": 6,
-      "anxiety:drug": 376,
-      "cognitive_impairment:drug": 947,
-      "depressed_mood:drug": 1421,
-      "elevated_mood_or_mania:drug": 961,
-      "fatigue:drug": 289,
-      "insomnia:drug": 258,
-      "psychomotor_agitation:drug": 196,
-      "psychosis:drug": 869,
-      "somnolence_or_hypersomnia:drug": 284
+      "anhedonia:drug": 5,
+      "anxiety:drug": 361,
+      "cognitive_impairment:drug": 887,
+      "depressed_mood:drug": 1343,
+      "elevated_mood_or_mania:drug": 774,
+      "fatigue:drug": 265,
+      "insomnia:drug": 250,
+      "psychomotor_agitation:drug": 190,
+      "psychosis:drug": 840,
+      "somnolence_or_hypersomnia:drug": 276
     },
     "rows_by_direct_evidence": {
-      "marker/mechanism": 3006,
-      "therapeutic": 2601
+      "marker/mechanism": 2851,
+      "therapeutic": 2340
     }
   },
-  "run_finished_at": "2026-10-03T15:26:07Z"
+  "run_finished_at": "2026-10-06T19:04:41Z"
 }

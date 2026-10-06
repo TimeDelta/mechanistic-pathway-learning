@@ -1,9 +1,13 @@
 {
- "pmids_with_directional_relations": 83478,
- "pmids_other": 45943,
- "pmids_fetched": 30000,
- "pmids_unfetched": 99421,
- "documents_returned": 30000,
- "documents_with_species": 24492,
- "documents_with_publication_types": 29991
+ "pmids_with_directional_relations": 94410,
+ "pmids_other": 40337,
+ "pmids_selected_by_cap": 30000,
+ "max_pmids": 30000,
+ "pmids_newly_fetched": 2647,
+ "pmids_fetched": 32647,
+ "pmids_unfetched": 102100,
+ "directional_pmids_without_document": 61763,
+ "documents_returned": 32647,
+ "documents_with_species": 26473,
+ "documents_with_publication_types": 32638
 }

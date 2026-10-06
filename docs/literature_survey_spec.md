@@ -1,9 +1,9 @@
 # Literature survey, evidence class E3: retrieval and appraisal (PubTator3 and CTD)
 
-Status: both halves implemented and run on 3 October 2026. The adversarial review of the component
-(docs/design_review_v04.md, third table) produced fixes that are in the code as of 6 October 2026; the rerun that
-applies them to the data is pending the re-pin of the PubTator3 bulk file (section 7), so every count in this document
-and in release v0.4 is from the 3 October build under the rules before the review. The rule-based appraisal and the survey
+Status: both halves implemented and first run on 3 October 2026. The adversarial review of the component
+(docs/design_review_v04.md, third table) produced fixes that went into the code on 6 October 2026, and the chain was
+rerun the same day on the PubTator3 bulk file that NCBI published on 6 October (section 7); the counts in this
+document and in release v0.4 are from that build unless a paragraph names the 3 October build. The rule-based appraisal and the survey
 (experiments/survey_literature.py, docs/literature_survey.md) join the two relation tables with the document
 metadata into literature_reports.parquet, which enters the assembled table and the reliability fit through
 assemble_evidence_table.py --extra-reports as grade E soft priors. Design sections 3.1, 4.2 (E3 paragraph), 4.3
@@ -200,36 +200,45 @@ mesh_descriptor_level, publication_year and direct_evidence (CTD only). A gene w
 nodes (GBA and GBA1, SLC22A18 and SLC67A1) yields one report per node. Publication dates come from esummary (pubdate
 parsed to an ISO date, first of the month or year when the finer part is missing).
 
-Build of 3 October 2026 from the bulk file pinned in section 7: 40,094,383 rows, 387,756 with a target descriptor on either side.
+Build of 6 October 2026 from the bulk file pinned in section 7: 40,411,999 rows, 390,996 with a target descriptor on either side (3 October build on the 17 August file: 40,094,383 and 387,756).
 
 | Relation type, whole file | Rows |
 |---|---|
-| associate | 18,652,530 |
-| treat | 7,316,131 |
-| negative_correlate | 4,080,594 |
-| cause | 3,757,055 |
-| positive_correlate | 3,464,117 |
-| stimulate | 788,589 |
-| inhibit | 623,277 |
-| cotreat | 564,994 |
-| compare | 539,036 |
-| interact | 266,057 |
-| prevent | 34,251 |
-| drug_interact | 7,752 |
+| associate | 18,816,263 |
+| treat | 7,372,138 |
+| negative_correlate | 4,106,519 |
+| cause | 3,784,942 |
+| positive_correlate | 3,487,922 |
+| stimulate | 794,630 |
+| inhibit | 627,652 |
+| cotreat | 569,147 |
+| compare | 542,110 |
+| interact | 268,431 |
+| prevent | 34,414 |
+| drug_interact | 7,831 |
 
 | Filter outcome on target-descriptor rows | Rows |
 |---|---|
-| rows kept | 226,347 |
-| dropped chemical not matched to sider | 137,110 |
-| dropped gene not in graph | 28,166 |
-| dropped chemical gene relation type:stimulate | 8,629 |
-| dropped partner type:SNP | 5,537 |
-| dropped chemical gene relation type:inhibit | 5,400 |
-| dropped partner type:ProteinMutation | 2,969 |
-| dropped partner type:DNAMutation | 1,957 |
+| rows kept | 209,184 |
+| dropped chemical not matched to sider | 138,435 |
+| dropped gene not in graph | 32,867 |
+| dropped partner type:SNP | 5,550 |
+| dropped partner type:ProteinMutation | 2,990 |
+| dropped partner type:DNAMutation | 1,967 |
 | dropped partner type:Mutation | 3 |
 
-Kept: 226,347 reports over 127,866 papers, 4,741 genes and 1,062 drug ids; 226,217 dated through esummary. By relation: associated_with 76,544, induces 44,328, relieves 105,475. The two dropped Disease-Gene types, stimulate and inhibit, are the rows the review restores as signed induces reports; the rerun that applies it is pending (section 7).
+| Kept rows needing a rule of section 2 or 4 | Rows |
+|---|---|
+| Disease-Gene stimulate rows, kept as signed induces (before the gene-in-graph check) | 8,715 |
+| Disease-Gene inhibit rows, kept as signed induces (before the gene-in-graph check) | 5,441 |
+| directional rows on D001714 demoted to associated_with: treat | 13,946 |
+| directional rows on D001714 demoted to associated_with: cause | 1,014 |
+| directional rows on D001714 demoted to associated_with: stimulate | 461 |
+| directional rows on D001714 demoted to associated_with: inhibit | 386 |
+
+Kept: 209,184 reports over 133,193 papers, 5,011 genes and 985 drug ids; 209,068 dated through esummary (85 PMIDs not returned). By relation: associated_with 85,895, induces 47,107, relieves 76,182. Gene rows: associate 54,151, stimulate 6,277, inhibit 3,492; after the demotion on D001714, 8,922 gene reports are signed induces and 54,998 associated_with. SIDER drugs matched by MeSH chemical: 1,210, of which 82 are collapsed into another drug on the same MeSH id (64 MeSH ids had several), leaving 1,128.
+
+The 3 October build (17 August file, rules before the review) kept 226,347 reports over 127,866 papers, 4,741 genes and 1,062 drug ids, with the 8,629 stimulate and 5,400 inhibit rows dropped as chemical-gene relations. Drug reports fell from 172,743 to 145,264, mostly through the one-drug-per-chemical rule (the earlier build counted a paper once per matched SIDER id), and gene reports rose from 53,604 to 63,920 with the restored stimulate and inhibit rows; the replacement bulk file adds 0.8 percent rows on its own.
 
 ## 6. CTD chemical-disease statements
 
@@ -243,7 +252,7 @@ no reference. Marker/mechanism covers correlation as well as causation, which th
 carries both values is counted once under rows_with_both_direct_evidence_values. Statements on the mixed-polarity
 descriptor D001714 are demoted to associated_with as in section 5, and one SIDER drug is kept per chemical (section 4).
 
-Build of 3 October 2026: 9,903,450 CTD rows, 75,093 on a target descriptor, 14,739 of those with a SIDER chemical; 13,003 of these were inferred through a gene and dropped. Kept: 5,607 reports from 3,356 papers on 490 drug ids, marker/mechanism 3,006, therapeutic 2,601; by chemical match method autocomplete_synonym 239, ctd_chemical_name 5,368.
+Build of 6 October 2026 (same CTD file as 3 October): 9,903,450 CTD rows, 75,093 on a target descriptor, 14,739 of those with a SIDER chemical; 13,003 of these were inferred through a gene and dropped; 1,680 rows had a chemical matching several SIDER ids and were collapsed to one. Kept: 5,191 reports from 3,356 papers on 457 drug ids, marker/mechanism 2,851, therapeutic 2,340; by relation induces 2,590, relieves 1,827 and associated_with 774 (166 CTD rows on D001714, 98 marker/mechanism and 68 therapeutic, demoted); 5,190 dated; by chemical match method autocomplete_synonym 239, ctd_chemical_name 4,952. The 3 October build kept 5,607 reports on 490 drug ids, counting a paper once per matched SIDER id.
 
 ## 6a. Documents and the rule-based appraisal
 
@@ -270,27 +279,38 @@ one-hots, symptom-level descriptor, publication year known, metadata available) 
 report into the assembled table and the reliability fit; study_design is its own column and is prefixed to
 model_description, while evidence_code keeps the extraction type.
 
-Build of 3 October 2026, under the rules before the review: document metadata for 30,000 of 129,421 papers (24,492 with species annotations, 29,991 with publication types); 231,954 reports appraised.
+Build of 6 October 2026: 134,747 papers across the two relation tables, 94,410 of them with a directional relation. The
+cap selected 30,000 papers, all directional; 27,353 of them were already in documents.parquet from the 3 October
+build and 2,647 were fetched new. The 2,647 documents of the 3 October selection that fall outside this selection stay
+in documents.parquet and are used, so metadata exists for 32,647 papers (26,473 with species annotations, 32,638 with
+publication types); a build from an empty cache would have 30,000. 102,100 papers have no metadata, among them 61,763
+with a directional relation. 214,375 reports appraised; median rubric weight 0.245 (quantiles 0.1 to 0.9: 0.21, 0.21,
+0.245, 0.30, 0.42).
 
-| Study design, 3 October rules | Reports |
-|---|---|
-| not_reported | 190,724 |
-| review_or_secondary | 10,752 |
-| human_randomized_trial | 9,311 |
-| human_cohort_or_case_control | 8,208 |
-| human_case_report | 6,807 |
-| animal_pharmacological | 6,142 |
-| animal_genetic_perturbation | 10 |
+| Study design | Reports, 6 October build | Reports, 3 October build and rules |
+|---|---|---|
+| metadata_not_fetched | 159,342 | (in not_reported) |
+| not_reported | 19,078 | 190,724 |
+| review_or_secondary | 10,097 | 10,752 |
+| human_randomized_trial | 8,602 | 9,311 |
+| human_cohort_or_case_control | 4,384 | 8,208 |
+| human_case_report | 6,128 | 6,807 |
+| animal_pharmacological | 6,686 | 6,142 |
+| animal_genetic_perturbation | 58 | 10 |
 
-Under those rules not_reported merged papers never fetched with papers read and uninformative, and Comparative Study counted as a human cohort design; the review's rules split the first and put species before publication types, so these counts change at the rerun.
+Under the 3 October rules not_reported merged papers never fetched with papers read and uninformative, and Comparative
+Study counted as a human cohort design; the review's rules split the first and put species before publication types,
+which is most of the fall in human_cohort_or_case_control and the rise in the animal designs. Three quarters of the
+reports (159,342) rest on papers beyond the cap, so the appraisal grades a minority of the literature; raising
+--max-pmids is the lever, at about one biocjson and one esummary request per 100 and 200 papers.
 
 ## 7. Pins
 
 | Download | Pinned file | Notes |
 |---|---|---|
-| PubTator3 relation2pubtator3.gz | 297,478,945 bytes; Last-Modified Mon, 17 Aug 2026 13:41:35 GMT; 40,094,383 rows; sha256 6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42 | the file behind the 3 October build and release v0.4 |
-| PubTator3 relation2pubtator3.gz, replacement | 299,925,917 bytes; Last-Modified Tue, 06 Oct 2026 15:44:13 GMT; 40,411,999 rows; sha256 ffde6b53c1798363547c2fdf351c3385c21a249fcd3fe4be8dfe8dad3203cd76 | NCBI replaced the file on 6 October 2026 and no longer serves the 17 August one; the rerun of 6 October downloaded the replacement over the local copy before it was stopped, so the 3 October build cannot be regenerated byte for byte; re-pinning to the replacement is pending |
-| CTD_chemicals_diseases.tsv.gz | 162,343,480 bytes; Last-Modified Tue, 29 Sep 2026 17:21:06 GMT; report created Tue Sep 29 13:17:30 EDT 2026; 9,903,450 rows; sha256 e11e6dc36a27d36ed88576e529a92211186e3e0b3cea4271cc78dcf3d1b821ee | downloaded 3 October 2026 |
+| PubTator3 relation2pubtator3.gz | 299,925,917 bytes; Last-Modified Tue, 06 Oct 2026 15:44:13 GMT; 40,411,999 rows; sha256 ffde6b53c1798363547c2fdf351c3385c21a249fcd3fe4be8dfe8dad3203cd76 | downloaded 6 October 2026 16:59 UTC; the file behind the 6 October build and release v0.4 |
+| PubTator3 relation2pubtator3.gz, superseded | 297,478,945 bytes; Last-Modified Mon, 17 Aug 2026 13:41:35 GMT; 40,094,383 rows; sha256 6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42 | the file behind the 3 October build; NCBI replaced it on 6 October 2026 and no longer serves it, and the local copy was overwritten, so the 3 October build cannot be regenerated |
+| CTD_chemicals_diseases.tsv.gz | 162,343,480 bytes; Last-Modified Tue, 29 Sep 2026 17:21:06 GMT; report created Tue Sep 29 13:17:30 EDT 2026; 9,903,450 rows; sha256 e11e6dc36a27d36ed88576e529a92211186e3e0b3cea4271cc78dcf3d1b821ee | downloaded 3 October 2026; unchanged at the 6 October check (same Last-Modified and sha256) |
 | HGNC hgnc_complete_set.txt | 16,963,116 bytes; Last-Modified Fri, 02 Oct 2026 13:45:08 GMT; 45,187 rows; sha256 2b4224ea847df2fc6982f5b2a52804c5d92fbb8810b134afb636f6029452dc03 | downloaded 3 October 2026 |
 
 ## 8. Status of the join and what is still open

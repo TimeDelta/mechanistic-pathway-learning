@@ -1,5 +1,5 @@
 {
-  "run_started_at": "2026-10-03T15:06:05Z",
+  "run_started_at": "2026-10-06T18:42:35Z",
   "descriptors": {
     "D003863": {
       "symptom": "depressed_mood",
@@ -91,7 +91,7 @@
     },
     "D001714": {
       "symptom": "elevated_mood_or_mania",
-      "level": "diagnosis"
+      "level": "mixed_polarity_diagnosis"
     }
   },
   "gene_identifier_map": {
@@ -122,171 +122,490 @@
   },
   "autocomplete_requests_made": 0,
   "bulk_stream": {
-    "bulk_rows_total": 40094383,
-    "bulk_rows_by_type:associate": 18652530,
-    "bulk_rows_by_type:treat": 7316131,
-    "bulk_rows_by_type:stimulate": 788589,
-    "bulk_rows_by_type:cause": 3757055,
-    "bulk_rows_by_type:positive_correlate": 3464117,
-    "bulk_rows_by_type:negative_correlate": 4080594,
-    "bulk_rows_by_type:interact": 266057,
-    "bulk_rows_by_type:compare": 539036,
-    "bulk_rows_by_type:cotreat": 564994,
-    "bulk_rows_with_target_descriptor": 387756,
-    "bulk_rows_by_type:inhibit": 623277,
-    "bulk_rows_by_type:prevent": 34251,
-    "bulk_rows_by_type:drug_interact": 7752
+    "bulk_rows_total": 40411999,
+    "bulk_rows_by_type:associate": 18816263,
+    "bulk_rows_by_type:treat": 7372138,
+    "bulk_rows_by_type:stimulate": 794630,
+    "bulk_rows_by_type:cause": 3784942,
+    "bulk_rows_by_type:negative_correlate": 4106519,
+    "bulk_rows_by_type:positive_correlate": 3487922,
+    "bulk_rows_by_type:interact": 268431,
+    "bulk_rows_by_type:compare": 542110,
+    "bulk_rows_by_type:cotreat": 569147,
+    "bulk_rows_with_target_descriptor": 390996,
+    "bulk_rows_by_type:inhibit": 627652,
+    "bulk_rows_by_type:prevent": 34414,
+    "bulk_rows_by_type:drug_interact": 7831
   },
-  "bulk_stream_seconds": 136.3,
+  "bulk_stream_seconds": 168.0,
   "bulk_pin": {
     "url": "https://ftp.ncbi.nlm.nih.gov/pub/lu/PubTator3/relation2pubtator3.gz",
-    "content_length": 297478945,
-    "last_modified": "Mon, 17 Aug 2026 13:41:35 GMT",
-    "checked_at": "2026-10-03T15:06:05Z",
-    "sha256": "6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42",
-    "bulk_rows_total": 40094383,
+    "content_length": 299925917,
+    "last_modified": "Tue, 06 Oct 2026 15:44:13 GMT",
+    "checked_at": "2026-10-06T18:42:35Z",
+    "sha256": "ffde6b53c1798363547c2fdf351c3385c21a249fcd3fe4be8dfe8dad3203cd76",
+    "bulk_rows_total": 40411999,
+    "downloaded_at": "2026-10-06T16:59:16Z",
     "local_file": "data/raw/pubtator3/relation2pubtator3.gz"
   },
   "bulk_rows_by_descriptor": {
     "D003863": 0,
-    "D003866": 130599,
-    "D003865": 26098,
-    "D059445": 4209,
-    "D001007": 46333,
-    "D001008": 6939,
+    "D003866": 131530,
+    "D003865": 26285,
+    "D059445": 4250,
+    "D001007": 46816,
+    "D001008": 6992,
     "D007508": 0,
     "D000374": 0,
-    "D007319": 11501,
-    "D000077260": 1379,
-    "D006970": 5997,
-    "D005221": 27460,
-    "D005222": 367,
-    "D011595": 6853,
-    "D006212": 4818,
+    "D007319": 11662,
+    "D000077260": 1387,
+    "D006970": 6044,
+    "D005221": 27724,
+    "D005222": 372,
+    "D011595": 6921,
+    "D006212": 4866,
     "D003702": 0,
-    "D011618": 21262,
-    "D060825": 12954,
-    "D008569": 26851,
-    "D003221": 1424,
-    "D003704": 20171,
-    "D000087122": 752,
-    "D001714": 31789
+    "D011618": 21397,
+    "D060825": 13127,
+    "D008569": 27044,
+    "D003221": 1466,
+    "D003704": 20360,
+    "D000087122": 754,
+    "D001714": 31999
   },
-  "chemical_ids_on_disease_rows": 9880,
+  "chemical_ids_on_disease_rows": 9917,
   "mesh_label_lookup": {
-    "chemical_ids_unresolved_after_autocomplete": 8897,
-    "chemical_rows_unresolved_after_autocomplete": 137110,
-    "mesh_label_lookups": 8897
+    "chemical_ids_unresolved_after_autocomplete": 8932,
+    "chemical_rows_unresolved_after_autocomplete": 138435,
+    "mesh_label_lookups": 8932
   },
-  "sider_drugs_matched_total": 1210,
+  "sider_drugs_matched_before_collapse": 1210,
+  "sider_drugs_matched_total": 1128,
+  "mesh_ids_with_several_sider_drugs": 64,
+  "sider_drugs_collapsed_into_another": [
+    "CID100000271",
+    "CID100000923",
+    "CID100002308",
+    "CID100002541",
+    "CID100002881",
+    "CID100003003",
+    "CID100003015",
+    "CID100003263",
+    "CID100003267",
+    "CID100003388",
+    "CID100003640",
+    "CID100004159",
+    "CID100004895",
+    "CID100004896",
+    "CID100005238",
+    "CID100005248",
+    "CID100005409",
+    "CID100005410",
+    "CID100006436",
+    "CID100009904",
+    "CID100010340",
+    "CID100010631",
+    "CID100012559",
+    "CID100018140",
+    "CID100019090",
+    "CID100020585",
+    "CID100021800",
+    "CID100021945",
+    "CID100022502",
+    "CID100023954",
+    "CID100024424",
+    "CID100024450",
+    "CID100024748",
+    "CID100028332",
+    "CID100028486",
+    "CID100029089",
+    "CID100031378",
+    "CID100032603",
+    "CID100032797",
+    "CID100045469",
+    "CID100047419",
+    "CID100054331",
+    "CID100060184",
+    "CID100060496",
+    "CID100060668",
+    "CID100060871",
+    "CID100061475",
+    "CID100062924",
+    "CID100062965",
+    "CID100064778",
+    "CID100065157",
+    "CID100071469",
+    "CID100077997",
+    "CID100083513",
+    "CID100083606",
+    "CID100084003",
+    "CID100091488",
+    "CID100119830",
+    "CID100158781",
+    "CID100168924",
+    "CID100171558",
+    "CID100179344",
+    "CID100216210",
+    "CID100517045",
+    "CID103085017",
+    "CID104517618",
+    "CID105359596",
+    "CID106326970",
+    "CID106918366",
+    "CID109854489",
+    "CID110482134",
+    "CID111238823",
+    "CID111254352",
+    "CID111505907",
+    "CID111593706",
+    "CID116129672",
+    "CID124838347",
+    "CID124846132",
+    "CID125880656",
+    "CID144564722",
+    "CID154682541",
+    "CID156603655"
+  ],
+  "collapsed_sider_drugs_by_mesh_id": {
+    "D005947": [
+      "CID100024748"
+    ],
+    "D002118": [
+      "CID100000271"
+    ],
+    "D002794": [
+      "CID100020585"
+    ],
+    "D004958": [
+      "CID100003263",
+      "CID100003267"
+    ],
+    "D005990": [
+      "CID110482134"
+    ],
+    "D011188": [
+      "CID100024450"
+    ],
+    "D012964": [
+      "CID100005238",
+      "CID100005248",
+      "CID100010340",
+      "CID100061475",
+      "CID100517045",
+      "CID100000923",
+      "CID100002881",
+      "CID100045469",
+      "CID104517618",
+      "CID111254352"
+    ],
+    "D008775": [
+      "CID100004159"
+    ],
+    "D017311": [
+      "CID100060496"
+    ],
+    "D001507": [
+      "CID100002308",
+      "CID100062965"
+    ],
+    "D003907": [
+      "CID100003003"
+    ],
+    "C081643": [
+      "CID100002541"
+    ],
+    "D002444": [
+      "CID100047419"
+    ],
+    "D002710": [
+      "CID100029089"
+    ],
+    "D002981": [
+      "CID100032603"
+    ],
+    "D002990": [
+      "CID100032797"
+    ],
+    "D003534": [
+      "CID100003015"
+    ],
+    "D004917": [
+      "CID100012559",
+      "CID100071469"
+    ],
+    "D004961": [
+      "CID100018140"
+    ],
+    "D005047": [
+      "CID100060668"
+    ],
+    "D005438": [
+      "CID100031378"
+    ],
+    "D005476": [
+      "CID100003388"
+    ],
+    "C035394": [
+      "CID100091488"
+    ],
+    "D000068298": [
+      "CID100062924",
+      "CID109854489"
+    ],
+    "D005578": [
+      "CID100054331"
+    ],
+    "D006854": [
+      "CID100003640"
+    ],
+    "D020910": [
+      "CID100084003"
+    ],
+    "D008525": [
+      "CID100010631"
+    ],
+    "D008535": [
+      "CID100019090"
+    ],
+    "D008709": [
+      "CID100021945"
+    ],
+    "D009277": [
+      "CID100009904"
+    ],
+    "D000077152": [
+      "CID111505907"
+    ],
+    "D011239": [
+      "CID100004895",
+      "CID100004896"
+    ],
+    "D011343": [
+      "CID100022502"
+    ],
+    "C093622": [
+      "CID100077997"
+    ],
+    "D012834": [
+      "CID100023954"
+    ],
+    "D013739": [
+      "CID100005409",
+      "CID100005410",
+      "CID100065157"
+    ],
+    "D014221": [
+      "CID100006436"
+    ],
+    "D011431": [
+      "CID100028332"
+    ],
+    "D008094": [
+      "CID100028486"
+    ],
+    "D001151": [
+      "CID105359596"
+    ],
+    "D000584": [
+      "CID100171558"
+    ],
+    "D001623": [
+      "CID100021800"
+    ],
+    "D007811": [
+      "CID100168924"
+    ],
+    "D015032": [
+      "CID100024424"
+    ],
+    "D012643": [
+      "CID106326970"
+    ],
+    "D001464": [
+      "CID100083513"
+    ],
+    "C053001": [
+      "CID100060871"
+    ],
+    "D020913": [
+      "CID100060184"
+    ],
+    "D000077731": [
+      "CID100064778"
+    ],
+    "D004318": [
+      "CID125880656",
+      "CID154682541"
+    ],
+    "D000068698": [
+      "CID100119830"
+    ],
+    "D013324": [
+      "CID100083606"
+    ],
+    "C571001": [
+      "CID100179344"
+    ],
+    "C437965": [
+      "CID100158781"
+    ],
+    "C495058": [
+      "CID156603655"
+    ],
+    "D000069603": [
+      "CID103085017",
+      "CID111593706"
+    ],
+    "D000069604": [
+      "CID100216210"
+    ],
+    "C579707": [
+      "CID106918366"
+    ],
+    "C521273": [
+      "CID111238823"
+    ],
+    "C520809": [
+      "CID144564722"
+    ],
+    "D007328": [
+      "CID116129672"
+    ],
+    "D005934": [
+      "CID124838347"
+    ],
+    "D006895": [
+      "CID124846132"
+    ]
+  },
   "chemical_match_methods": {
-    "autocomplete_name": 1073,
-    "autocomplete_synonym": 137
+    "autocomplete_name": 998,
+    "autocomplete_synonym": 130
   },
   "filter": {
-    "rows_kept": 226347,
-    "dropped_chemical_not_matched_to_sider": 137110,
-    "dropped_chemical_gene_relation_type:stimulate": 8629,
-    "dropped_gene_not_in_graph": 28166,
-    "dropped_partner_type:SNP": 5537,
-    "dropped_partner_type:ProteinMutation": 2969,
-    "dropped_partner_type:DNAMutation": 1957,
-    "dropped_chemical_gene_relation_type:inhibit": 5400,
+    "rows_kept": 209184,
+    "dropped_chemical_not_matched_to_sider": 138435,
+    "disease_gene_relation_type_kept:stimulate": 8715,
+    "dropped_gene_not_in_graph": 32867,
+    "dropped_partner_type:SNP": 5550,
+    "dropped_partner_type:ProteinMutation": 2990,
+    "dropped_partner_type:DNAMutation": 1967,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:treat": 13946,
+    "disease_gene_relation_type_kept:inhibit": 5441,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:inhibit": 386,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:cause": 1014,
+    "demoted_to_associated_with_on_mixed_polarity_descriptor:stimulate": 461,
     "dropped_partner_type:Mutation": 3
   },
   "publication_dates": {
-    "pmids_requested": 127866,
-    "batches": 640,
-    "pmids_dated": 127786,
+    "pmids_requested": 133193,
+    "batches": 666,
+    "pmids_dated": 133108,
     "pmids_without_date": 0,
-    "pmids_not_returned": 80
+    "pmids_not_returned": 85
   },
-  "esummary_requests_made": 640,
+  "esummary_requests_made": 666,
   "output": {
-    "rows": 226347,
-    "distinct_pmids": 127866,
-    "distinct_perturbations": 5803,
-    "distinct_genes": 4741,
-    "distinct_drugs": 1062,
-    "distinct_pairs": 20779,
+    "rows": 209184,
+    "distinct_pmids": 133193,
+    "distinct_perturbations": 5996,
+    "distinct_genes": 5011,
+    "distinct_drugs": 985,
+    "distinct_pairs": 22162,
     "rows_by_symptom": {
-      "anhedonia": 2106,
-      "anxiety": 24591,
-      "cognitive_impairment": 30754,
-      "depressed_mood": 87016,
-      "elevated_mood_or_mania": 29769,
-      "fatigue": 15424,
-      "insomnia": 6905,
-      "psychomotor_agitation": 5282,
-      "psychosis": 19408,
-      "somnolence_or_hypersomnia": 5092
+      "anhedonia": 2037,
+      "anxiety": 23575,
+      "cognitive_impairment": 30299,
+      "depressed_mood": 81456,
+      "elevated_mood_or_mania": 23370,
+      "fatigue": 14184,
+      "insomnia": 6813,
+      "psychomotor_agitation": 4945,
+      "psychosis": 17699,
+      "somnolence_or_hypersomnia": 4806
     },
     "rows_by_relation": {
-      "associated_with": 76544,
-      "induces": 44328,
-      "relieves": 105475
+      "associated_with": 85895,
+      "induces": 47107,
+      "relieves": 76182
     },
     "rows_by_relation_type": {
-      "associate": 76544,
-      "cause": 44328,
-      "treat": 105475
+      "associate": 70088,
+      "cause": 39199,
+      "inhibit": 3492,
+      "stimulate": 6277,
+      "treat": 90128
     },
     "rows_by_perturbation_type": {
-      "drug": 172743,
-      "gene": 53604
+      "drug": 145264,
+      "gene": 63920
+    },
+    "rows_by_source": {
+      "PubTator3-associate": 70088,
+      "PubTator3-cause": 39199,
+      "PubTator3-inhibit": 3492,
+      "PubTator3-stimulate": 6277,
+      "PubTator3-treat": 90128
+    },
+    "rows_demoted_to_associated_with_on_mixed_polarity_descriptor": 15807,
+    "gene_rows_by_relation_type": {
+      "associate": 54151,
+      "inhibit": 3492,
+      "stimulate": 6277
     },
     "rows_by_descriptor_level": {
-      "diagnosis": 152268,
-      "symptom": 74079
+      "diagnosis": 115519,
+      "mixed_polarity_diagnosis": 22797,
+      "symptom": 70868
     },
     "rows_by_descriptor": {
-      "D000077260": 1009,
-      "D000087122": 696,
-      "D001007": 21047,
-      "D001008": 3544,
-      "D001714": 29073,
-      "D003221": 1027,
-      "D003704": 12610,
-      "D003865": 15608,
-      "D003866": 71408,
-      "D005221": 15249,
-      "D005222": 175,
-      "D006212": 3466,
-      "D006970": 4083,
-      "D007319": 6905,
-      "D008569": 10585,
-      "D011595": 5282,
-      "D011618": 15942,
-      "D059445": 2106,
-      "D060825": 6532
+      "D000077260": 974,
+      "D000087122": 573,
+      "D001007": 20107,
+      "D001008": 3468,
+      "D001714": 22797,
+      "D003221": 931,
+      "D003704": 12324,
+      "D003865": 15750,
+      "D003866": 65706,
+      "D005221": 14015,
+      "D005222": 169,
+      "D006212": 3260,
+      "D006970": 3832,
+      "D007319": 6813,
+      "D008569": 10131,
+      "D011595": 4945,
+      "D011618": 14439,
+      "D059445": 2037,
+      "D060825": 6913
     },
     "rows_by_chemical_match_method": {
-      "autocomplete_name": 157741,
-      "autocomplete_synonym": 15002
+      "autocomplete_name": 136975,
+      "autocomplete_synonym": 8289
     },
-    "rows_dated": 226217,
+    "rows_dated": 209068,
     "rows_by_symptom_and_perturbation_type": {
-      "anhedonia:drug": 1734,
-      "anhedonia:gene": 372,
-      "anxiety:drug": 18133,
-      "anxiety:gene": 6458,
-      "cognitive_impairment:drug": 18192,
-      "cognitive_impairment:gene": 12562,
-      "depressed_mood:drug": 64748,
-      "depressed_mood:gene": 22268,
-      "elevated_mood_or_mania:drug": 24202,
-      "elevated_mood_or_mania:gene": 5567,
-      "fatigue:drug": 13389,
-      "fatigue:gene": 2035,
-      "insomnia:drug": 6058,
-      "insomnia:gene": 847,
-      "psychomotor_agitation:drug": 5107,
-      "psychomotor_agitation:gene": 175,
-      "psychosis:drug": 16471,
-      "psychosis:gene": 2937,
-      "somnolence_or_hypersomnia:drug": 4709,
-      "somnolence_or_hypersomnia:gene": 383
+      "anhedonia:drug": 1571,
+      "anhedonia:gene": 466,
+      "anxiety:drug": 16107,
+      "anxiety:gene": 7468,
+      "cognitive_impairment:drug": 15680,
+      "cognitive_impairment:gene": 14619,
+      "depressed_mood:drug": 54234,
+      "depressed_mood:gene": 27222,
+      "elevated_mood_or_mania:drug": 16912,
+      "elevated_mood_or_mania:gene": 6458,
+      "fatigue:drug": 11550,
+      "fatigue:gene": 2634,
+      "insomnia:drug": 5738,
+      "insomnia:gene": 1075,
+      "psychomotor_agitation:drug": 4737,
+      "psychomotor_agitation:gene": 208,
+      "psychosis:drug": 14417,
+      "psychosis:gene": 3282,
+      "somnolence_or_hypersomnia:drug": 4318,
+      "somnolence_or_hypersomnia:gene": 488
     }
   },
-  "run_finished_at": "2026-10-03T15:27:42Z"
+  "run_finished_at": "2026-10-06T19:03:54Z"
 }

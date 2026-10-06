@@ -11,7 +11,7 @@ CID100000214,PGE1,D000527,Alprostadil,autocomplete_synonym
 CID100000222,ammonia,D000641,Ammonia,autocomplete_name
 CID100000232,arginine,D001120,Arginine,autocomplete_name
 CID100000247,betaine,D001622,Betaine,autocomplete_name
-CID100000271,calcium,D002118,Calcium,autocomplete_name
+CID100006116,calcium,D002118,Calcium,autocomplete_name
 CID100000297,graphene,D006108,Graphite,autocomplete_synonym
 CID100000298,chloramphenicol,D002701,Chloramphenicol,autocomplete_name
 CID100000305,choline,D002794,Choline,autocomplete_name
@@ -39,7 +39,7 @@ CID100000853,thyroxine,D013974,Thyroxine,autocomplete_name
 CID100000861,triiodothyronine,D014284,Triiodothyronine,autocomplete_name
 CID100000888,magnesium,D008274,Magnesium,autocomplete_name
 CID100000896,melatonin,D008550,Melatonin,autocomplete_name
-CID100000923,sodium,D012964,Sodium,autocomplete_name
+CID100003737,sodium,D012964,Sodium,autocomplete_name
 CID100000937,niacin,D009525,Niacin,autocomplete_name
 CID100000942,nicotine,D009538,Nicotine,autocomplete_name
 CID100000951,norepinephrine,D009638,Norepinephrine,autocomplete_name
@@ -107,7 +107,6 @@ CID100002269,azithromycin,D017963,Azithromycin,autocomplete_name
 CID100002274,aztreonam,D001398,Aztreonam,autocomplete_name
 CID100002284,baclofen,D001418,Baclofen,autocomplete_name
 CID100002307,beclomethasone,D001507,Beclomethasone,autocomplete_name
-CID100002308,beclomethasone,D001507,Beclomethasone,autocomplete_name
 CID100002311,benazepril,C044946,benazepril,autocomplete_name
 CID100002315,bendrofluazide,D001539,Bendroflumethiazide,autocomplete_synonym
 CID100002337,benzocaine,D001566,Benzocaine,autocomplete_name
@@ -140,7 +139,6 @@ CID100002519,caffeine,D002110,Caffeine,autocomplete_name
 CID100002520,verapamil,D014700,Verapamil,autocomplete_name
 CID100002522,calcipotriol,C055085,calcipotriene,autocomplete_synonym
 CID100002540,candesartan,C081643,candesartan,autocomplete_name
-CID100002541,candesartan,C081643,candesartan,autocomplete_name
 CID100002547,capreomycin,D002207,Capreomycin,autocomplete_name
 CID100002548,capsaicin,D002211,Capsaicin,autocomplete_name
 CID100002550,captopril,D002216,Captopril,autocomplete_name
@@ -203,7 +201,6 @@ CID100002818,clozapine,D003024,Clozapine,autocomplete_name
 CID100002826,cocaine,D003042,Cocaine,autocomplete_name
 CID100002828,codeine,D003061,Codeine,autocomplete_name
 CID100002833,colchicine,D003078,Colchicine,autocomplete_name
-CID100002881,sodium,D012964,Sodium,autocomplete_name
 CID100002883,crotamiton,C005553,crotamiton,autocomplete_name
 CID100002891,cyanocobalamin,D014805,Vitamin B 12,autocomplete_synonym
 CID100002895,cyclobenzaprine,C004704,cyclobenzaprine,autocomplete_name
@@ -218,10 +215,8 @@ CID100002972,deferiprone,D000077543,Deferiprone,autocomplete_name
 CID100002973,deferoxamine,D003676,Deferoxamine,autocomplete_name
 CID100002995,desipramine,D003891,Desipramine,autocomplete_name
 CID100003000,desoximetasone,D003899,Desoximetasone,autocomplete_name
-CID100003003,dexamethasone,D003907,Dexamethasone,autocomplete_name
 CID100003007,amphetamine,D000661,Amphetamine,autocomplete_name
 CID100003008,dextromethorphan,D003915,Dextromethorphan,autocomplete_name
-CID100003015,cyproterone,D003534,Cyproterone,autocomplete_name
 CID100003016,diazepam,D003975,Diazepam,autocomplete_name
 CID100003019,diazoxide,D003981,Diazoxide,autocomplete_name
 CID100003032,diclofenac,D004008,Diclofenac,autocomplete_name
@@ -267,8 +262,6 @@ CID100003251,ergotamine,D004878,Ergotamine,autocomplete_name
 CID100003255,erythromycin,D004917,Erythromycin,autocomplete_name
 CID100003256,monomycin,D015643,Erythromycin Ethylsuccinate,autocomplete_synonym
 CID100003261,estazolam,D004949,Estazolam,autocomplete_name
-CID100003263,estradiol,D004958,Estradiol,autocomplete_name
-CID100003267,estradiol,D004958,Estradiol,autocomplete_name
 CID100003268,estramustine,D004961,Estramustine,autocomplete_name
 CID100003269,estriol,D004964,Estriol,autocomplete_name
 CID100003279,ethambutol,D004977,Ethambutol,autocomplete_name
@@ -305,7 +298,6 @@ CID100003384,fluorometholone,D005469,Fluorometholone,autocomplete_name
 CID100003385,5-FU,D005472,Fluorouracil,autocomplete_synonym
 CID100003386,fluoxetine,D005473,Fluoxetine,autocomplete_name
 CID100003387,fluoxymesterone,D005474,Fluoxymesterone,autocomplete_name
-CID100003388,fluphenazine,D005476,Fluphenazine,autocomplete_name
 CID100003392,flurandrenolone,D005478,Flurandrenolone,autocomplete_name
 CID100003393,flurazepam,D005479,Flurazepam,autocomplete_name
 CID100003394,flurbiprofen,D005480,Flurbiprofen,autocomplete_name
@@ -344,7 +336,6 @@ CID100003623,homatropine,C100236,homatropine,autocomplete_name
 CID100003636,Buscopan,D002086,Butylscopolammonium Bromide,autocomplete_synonym
 CID100003637,hydralazine,D006830,Hydralazine,autocomplete_name
 CID100003639,hydrochlorothiazide,D006852,Hydrochlorothiazide,autocomplete_name
-CID100003640,cortisol,D006854,Hydrocortisone,autocomplete_synonym
 CID100003642,hydrocortisone,D006854,Hydrocortisone,autocomplete_name
 CID100003647,hydroflumethiazide,D006857,Hydroflumethiazide,autocomplete_name
 CID100003648,hydromorphone,D004091,Hydromorphone,autocomplete_name
@@ -365,7 +356,6 @@ CID100003724,iodixanol,C044834,iodixanol,autocomplete_name
 CID100003730,iohexol,D007472,Iohexol,autocomplete_name
 CID100003734,iopamidol,D007479,Iopamidol,autocomplete_name
 CID100003736,iopromide,C038192,iopromide,autocomplete_name
-CID100003737,sodium,D012964,Sodium,autocomplete_name
 CID100003738,iotrolan,C033300,iotrolan,autocomplete_name
 CID100003739,iodipamide,D007458,Iodipamide,autocomplete_name
 CID100003741,ioversol,C054871,ioversol,autocomplete_name
@@ -442,7 +432,6 @@ CID100004121,methyclothiazide,D008736,Methyclothiazide,autocomplete_name
 CID100004138,methyldopa,D008750,Methyldopa,autocomplete_name
 CID100004140,methylergometrine,D008755,Methylergonovine,autocomplete_synonym
 CID100004158,methylphenidate,D008774,Methylphenidate,autocomplete_name
-CID100004159,methylprednisolone,D008775,Methylprednisolone,autocomplete_name
 CID100004160,methyltestosterone,D008777,Methyltestosterone,autocomplete_name
 CID100004163,methysergide,D008784,Methysergide,autocomplete_name
 CID100004168,metoclopramide,D008787,Metoclopramide,autocomplete_name
@@ -555,8 +544,6 @@ CID100004889,pravastatin,D017035,Pravastatin,autocomplete_name
 CID100004891,praziquantel,D011223,Praziquantel,autocomplete_name
 CID100004893,prazosin,D011224,Prazosin,autocomplete_name
 CID100004894,prednisolone,D011239,Prednisolone,autocomplete_name
-CID100004895,prednisolone,D011239,Prednisolone,autocomplete_name
-CID100004896,prednisolone,D011239,Prednisolone,autocomplete_name
 CID100004900,prednisone,D011241,Prednisone,autocomplete_name
 CID100004906,prilocaine,D011318,Prilocaine,autocomplete_name
 CID100004908,primaquine,D011319,Primaquine,autocomplete_name
@@ -607,9 +594,7 @@ CID100005206,sevoflurane,D000077149,Sevoflurane,autocomplete_name
 CID100005210,sibutramine,C058254,sibutramine,autocomplete_name
 CID100005214,silver,D012834,Silver,autocomplete_name
 CID100005215,sulfadiazine,D013411,Sulfadiazine,autocomplete_name
-CID100005238,sodium,D012964,Sodium,autocomplete_name
 CID100005245,risedronate,D000068296,Risedronic Acid,autocomplete_synonym
-CID100005248,sodium,D012964,Sodium,autocomplete_name
 CID100005253,sotalol,D013015,Sotalol,autocomplete_name
 CID100005257,sparfloxacin,C061363,sparfloxacin,autocomplete_name
 CID100005267,spironolactone,D013148,Spironolactone,autocomplete_name
@@ -635,8 +620,6 @@ CID100005403,terbutaline,D013726,Terbutaline,autocomplete_name
 CID100005404,terconazole,C037815,terconazole,autocomplete_name
 CID100005407,testolactone,D013738,Testolactone,autocomplete_name
 CID100005408,testosterone,D013739,Testosterone,autocomplete_name
-CID100005409,testosterone,D013739,Testosterone,autocomplete_name
-CID100005410,testosterone,D013739,Testosterone,autocomplete_name
 CID100005411,tetracaine,D013748,Tetracaine,autocomplete_name
 CID100005419,tetrahydrozoline,C005810,tetrahydrozoline,autocomplete_name
 CID100005426,thalidomide,D013792,Thalidomide,autocomplete_name
@@ -700,10 +683,8 @@ CID100005978,vincristine,D014750,Vincristine,autocomplete_name
 CID100006018,tetrabenazine,D013747,Tetrabenazine,autocomplete_name
 CID100006049,EDTA,D004492,Edetic Acid,autocomplete_synonym
 CID100006058,cysteamine,D003543,Cysteamine,autocomplete_name
-CID100006116,calcium,D002118,Calcium,autocomplete_name
 CID100006238,17-hydroxyprogesterone,D019326,17-alpha-Hydroxyprogesterone,autocomplete_synonym
 CID100006256,trifluorothymidine,D014271,Trifluridine,autocomplete_synonym
-CID100006436,triamcinolone,D014221,Triamcinolone,autocomplete_name
 CID100006468,phencyclidine,D010622,Phencyclidine,autocomplete_name
 CID100006476,methsuximide,C100286,methsuximide,autocomplete_name
 CID100006726,cyclizine,D003501,Cyclizine,autocomplete_name
@@ -715,10 +696,7 @@ CID100008612,chloroprocaine,C004616,chloroprocaine,autocomplete_name
 CID100008982,nafcillin,D009254,Nafcillin,autocomplete_name
 CID100009034,methohexital,D008723,Methohexital,autocomplete_name
 CID100009433,aminophylline,D000628,Aminophylline,autocomplete_name
-CID100009904,nandrolone,D009277,Nandrolone,autocomplete_name
 CID100010100,propoxyphene,D011431,Dextropropoxyphene,autocomplete_synonym
-CID100010340,sodium,D012964,Sodium,autocomplete_name
-CID100010631,medroxyprogesterone,D008525,Medroxyprogesterone,autocomplete_name
 CID100010660,dimenhydrinate,D004111,Dimenhydrinate,autocomplete_name
 CID100011125,lithium,D008094,Lithium,autocomplete_name
 CID100011973,Brolene,C053597,dibrompropamidine,autocomplete_synonym
@@ -726,7 +704,6 @@ CID100012453,zuclopenthixol,D003006,Clopenthixol,autocomplete_synonym
 CID100012460,phendimetrazine,C100294,phendimetrazine,autocomplete_name
 CID100012536,desonide,D003898,Desonide,autocomplete_name
 CID100012555,benzydamine,D001591,Benzydamine,autocomplete_name
-CID100012559,erythromycin,D004917,Erythromycin,autocomplete_name
 CID100012597,isomannide,C502182,1 4-3 6-dianhydromannitol,autocomplete_synonym
 CID100012620,Tadenan,C009375,Tadenan,autocomplete_name
 CID100013314,lormetazepam,C023842,lormetazepam,autocomplete_name
@@ -741,20 +718,13 @@ CID100016533,betamethasone,D001623,Betamethasone,autocomplete_name
 CID100016850,fluorescein,D019793,Fluorescein,autocomplete_name
 CID100016886,5-aza-2'-deoxycytidine,D000077209,Decitabine,autocomplete_synonym
 CID100017358,SonoVue,C420843,contrast agent BR1,autocomplete_synonym
-CID100018140,estramustine,D004961,Estramustine,autocomplete_name
-CID100019090,megestrol,D008535,Megestrol,autocomplete_name
-CID100020585,choline,D002794,Choline,autocomplete_name
 CID100020969,clocortolone,C004686,clocortolone,autocomplete_name
-CID100021800,betamethasone,D001623,Betamethasone,autocomplete_name
-CID100021945,methenamine,D008709,Methenamine,autocomplete_name
 CID100022258,hydrocodone,D006853,Hydrocodone,autocomplete_name
 CID100022318,gold,D006046,Gold,autocomplete_name
-CID100022502,procaine,D011343,Procaine,autocomplete_name
 CID100023703,ogen,C009927,estropipate,autocomplete_synonym
 CID100023897,molindone,D008972,Molindone,autocomplete_name
 CID100023926,lanthanum,D007811,Lanthanum,autocomplete_name
 CID100023951,samarium,D012493,Samarium,autocomplete_name
-CID100023954,silver,D012834,Silver,autocomplete_name
 CID100023976,chromium,D002857,Chromium,autocomplete_name
 CID100023978,copper,D003300,Copper,autocomplete_name
 CID100023982,gadolinium,D005682,Gadolinium,autocomplete_name
@@ -762,24 +732,15 @@ CID100023993,yttrium,D015019,Yttrium,autocomplete_name
 CID100023994,zinc,D015032,Zinc,autocomplete_name
 CID100024087,selenium,D012643,Selenium,autocomplete_name
 CID100024414,barium,D001464,Barium,autocomplete_name
-CID100024424,zinc,D015032,Zinc,autocomplete_name
-CID100024450,potassium,D011188,Potassium,autocomplete_name
 CID100024706,Triphasil,D019304,Ethinyl Estradiol-Norgestrel Combination,autocomplete_synonym
-CID100024748,glucose,D005947,Glucose,autocomplete_name
 CID100025419,clodronate,D004002,Clodronic Acid,autocomplete_synonym
 CID100027400,pizotifen,D010918,Pizotyline,autocomplete_synonym
 CID100027661,isosorbide-5-mononitrate,C030397,isosorbide-5-mononitrate,autocomplete_name
-CID100028332,propoxyphene,D011431,Dextropropoxyphene,autocomplete_synonym
-CID100028486,lithium,D008094,Lithium,autocomplete_name
-CID100029089,chlorhexidine,D002710,Chlorhexidine,autocomplete_name
 CID100030623,dexrazoxane,D064730,Dexrazoxane,autocomplete_name
 CID100031072,carbimazole,D002231,Carbimazole,autocomplete_name
 CID100031264,paraldehyde,D010242,Paraldehyde,autocomplete_name
-CID100031378,fludrocortisone,D005438,Fludrocortisone,autocomplete_name
 CID100031477,metipranolol,D014290,Metipranolol,autocomplete_name
 CID100032169,articaine,D002355,Carticaine,autocomplete_synonym
-CID100032603,clindamycin,D002981,Clindamycin,autocomplete_name
-CID100032797,clobetasol,D002990,Clobetasol,autocomplete_name
 CID100034312,oxcarbazepine,D000078330,Oxcarbazepine,autocomplete_name
 CID100036339,etomidate,D005045,Etomidate,autocomplete_name
 CID100036811,dobutamine,D004280,Dobutamine,autocomplete_name
@@ -803,10 +764,8 @@ CID100041781,torasemide,D000077786,Torsemide,autocomplete_synonym
 CID100042113,desflurane,D000077335,Desflurane,autocomplete_name
 CID100042395,Westcort,C038363,hydrocortisone valerate,autocomplete_synonym
 CID100042955,misoprostol,D016595,Misoprostol,autocomplete_name
-CID100045469,sodium,D012964,Sodium,autocomplete_name
 CID100047319,atracurium,D001279,Atracurium,autocomplete_name
 CID100047320,cisatracurium,C101584,cisatracurium,autocomplete_name
-CID100047419,cefuroxime,D002444,Cefuroxime,autocomplete_name
 CID100047471,butoconazole,C017125,butoconazole,autocomplete_name
 CID100047528,nicorandil,D020108,Nicorandil,autocomplete_name
 CID100047640,naftifine,C029178,naftifine,autocomplete_name
@@ -818,7 +777,6 @@ CID100051634,miglustat,C059896,miglustat,autocomplete_name
 CID100052421,prednicarbate,C035287,prednicarbate,autocomplete_name
 CID100054158,mebrofenin,C000714007,mebrofenin,autocomplete_name
 CID100054313,iloprost,D016285,Iloprost,autocomplete_name
-CID100054331,fosfomycin,D005578,Fosfomycin,autocomplete_name
 CID100054373,Octreotide,D015282,Octreotide,autocomplete_name
 CID100054454,simvastatin,D019821,Simvastatin,autocomplete_name
 CID100054547,cefpodoxime,C053268,cefpodoxime,autocomplete_name
@@ -838,13 +796,10 @@ CID100060146,tamsulosin,D000077409,Tamsulosin,autocomplete_name
 CID100060164,adapalene,D000068816,Adapalene,autocomplete_name
 CID100060172,adefovir,C053001,adefovir,autocomplete_name
 CID100060183,perindopril,D020913,Perindopril,autocomplete_name
-CID100060184,perindopril,D020913,Perindopril,autocomplete_name
 CID100060198,exemestane,C056516,exemestane,autocomplete_name
 CID100060490,zileuton,C063449,zileuton,autocomplete_name
-CID100060496,amlodipine,D017311,Amlodipine,autocomplete_name
 CID100060612,dexmedetomidine,D020927,Dexmedetomidine,autocomplete_name
 CID100060613,cidofovir,D000077404,Cidofovir,autocomplete_name
-CID100060668,etoposide,D005047,Etoposide,autocomplete_name
 CID100060695,rocuronium,D000077123,Rocuronium,autocomplete_name
 CID100060706,meropenem,D000077731,Meropenem,autocomplete_name
 CID100060714,gadoteridol,C062402,gadoteridol,autocomplete_name
@@ -859,26 +814,20 @@ CID100060843,pemetrexed,D000068437,Pemetrexed,autocomplete_name
 CID100060852,ibandronate,D000077557,Ibandronic Acid,autocomplete_synonym
 CID100060853,ziprasidone,C092292,ziprasidone,autocomplete_name
 CID100060867,levosimendan,D000077464,Simendan,autocomplete_synonym
-CID100060871,adefovir,C053001,adefovir,autocomplete_name
 CID100060877,emtricitabine,D000068679,Emtricitabine,autocomplete_name
 CID100060878,eprosartan,C068373,eprosartan,autocomplete_name
 CID100060936,tiludronate,C058651,tiludronic acid,autocomplete_synonym
 CID100060953,capecitabine,D000069287,Capecitabine,autocomplete_name
-CID100061475,sodium,D012964,Sodium,autocomplete_name
 CID100061799,monomethylfumarate,C073341,citraconic acid,autocomplete_synonym
 CID100062305,doxycycline,D004318,Doxycycline,autocomplete_name
 CID100062816,colestipol,D003084,Colestipol,autocomplete_name
 CID100062819,Metrodin,D050477,Urofollitropin,autocomplete_synonym
-CID100062924,fluticasone,D000068298,Fluticasone,autocomplete_name
 CID100062956,fosinoprilat,C046965,fosinoprilat,autocomplete_name
 CID100062959,trovafloxacin,C080163,trovafloxacin,autocomplete_name
-CID100062965,beclomethasone,D001507,Beclomethasone,autocomplete_name
 CID100063001,benazeprilat,C052133,benazeprilat,autocomplete_name
 CID100064147,valganciclovir,D000077562,Valganciclovir,autocomplete_name
-CID100064778,Meropenem,D000077731,Meropenem,autocomplete_name
 CID100064987,tenofovir,D000068698,Tenofovir,autocomplete_name
 CID100065014,AMD3100,C088327,plerixafor,autocomplete_synonym
-CID100065157,testosterone,D013739,Testosterone,autocomplete_name
 CID100065840,colestimide,C417427,colestimide,autocomplete_name
 CID100065856,reboxetine,D000077593,Reboxetine,autocomplete_name
 CID100065863,sertaconazole,C061131,sertaconazole,autocomplete_name
@@ -895,7 +844,6 @@ CID100071329,dofetilide,C063533,dofetilide,autocomplete_name
 CID100071360,iloperidone,C081732,iloperidone,autocomplete_name
 CID100071406,TPGS,C014225,tocophersolan,autocomplete_synonym
 CID100071436,Lutalyse,C010714,dinoprost tromethamine,autocomplete_synonym
-CID100071469,erythromycin,D004917,Erythromycin,autocomplete_name
 CID100071616,voriconazole,D065819,Voriconazole,autocomplete_name
 CID100072022,perindoprilat,C053500,perindoprilat,autocomplete_name
 CID100072054,darifenacin,C101207,darifenacin,autocomplete_name
@@ -908,16 +856,12 @@ CID100074989,atovaquone,D053626,Atovaquone,autocomplete_name
 CID100077992,frovatriptan,C108128,frovatriptan,autocomplete_name
 CID100077993,eletriptan,C115647,eletriptan,autocomplete_name
 CID100077996,paricalcitol,C084656,paricalcitol,autocomplete_name
-CID100077997,MK-462,C093622,rizatriptan,autocomplete_synonym
 CID100077998,rosiglitazone,D000077154,Rosiglitazone,autocomplete_name
 CID100078032,Vallergan,D014291,Trimeprazine,autocomplete_synonym
 CID100082146,bexarotene,D000077610,Bexarotene,autocomplete_name
 CID100082148,agomelatine,C084711,agomelatine,autocomplete_name
 CID100083030,Ge-132,C066750,propagermanium,autocomplete_synonym
-CID100083513,barium,D001464,Barium,autocomplete_name
-CID100083606,strontium,D013324,Strontium,autocomplete_name
-CID100084003,ketorolac,D020910,Ketorolac,autocomplete_name
-CID100091488,fluocinolone,C035394,fluocinolone,autocomplete_name
+CID106918182,strontium,D013324,Strontium,autocomplete_name
 CID100093860,bortezomib,D000069286,Bortezomib,autocomplete_name
 CID100096312,nelarabine,C104457,nelarabine,autocomplete_name
 CID100104758,raltitrexed,C068874,raltitrexed,autocomplete_name
@@ -932,7 +876,6 @@ CID100114709,eslicarbazepine,C571001,eslicarbazepine,autocomplete_name
 CID100119182,clofarabine,D000077866,Clofarabine,autocomplete_name
 CID100119607,valdecoxib,C406224,valdecoxib,autocomplete_name
 CID100119828,parecoxib,C409945,parecoxib,autocomplete_name
-CID100119830,tenofovir,D000068698,Tenofovir,autocomplete_name
 CID100121396,N-carbamylglutamate,C006895,N-carbamylglutamate,autocomplete_name
 CID100121749,ustekinumab,D000069549,Ustekinumab,autocomplete_name
 CID100121892,retigabine,C101866,ezogabine,autocomplete_synonym
@@ -982,15 +925,11 @@ CID100156326,asenapine,C522667,asenapine,autocomplete_name
 CID100156418,cinacalcet,D000069449,Cinacalcet,autocomplete_name
 CID100157688,vinflunine,C111217,vinflunine,autocomplete_name
 CID100157920,lubiprostone,D000068238,Lubiprostone,autocomplete_name
-CID100158781,olmesartan,C437965,olmesartan,autocomplete_name
 CID100158786,pegaptanib,C495058,pegaptanib,autocomplete_name
 CID100159247,sevelamer,D000069603,Sevelamer,autocomplete_name
 CID100163296,tipranavir,C107201,tipranavir,autocomplete_name
 CID100166548,Anidulafungin,D000077612,Anidulafungin,autocomplete_name
-CID100168924,lanthanum,D007811,Lanthanum,autocomplete_name
 CID100170361,varenicline,D000068580,Varenicline,autocomplete_name
-CID100171558,Kaluril,D000584,Amiloride,autocomplete_synonym
-CID100179344,eslicarbazepine,C571001,eslicarbazepine,autocomplete_name
 CID100185457,S-benzoylmercaptoacetyltriglycine,C111010,S-benzoylmercaptoacetyltriglycine,autocomplete_name
 CID100192155,Prednefrin,C009020,prednefrin,autocomplete_name
 CID100193962,etravirine,C451734,etravirine,autocomplete_name
@@ -1003,7 +942,6 @@ CID100213023,dabigatran,D000069604,Dabigatran,autocomplete_name
 CID100213039,darunavir,D000069454,Darunavir,autocomplete_name
 CID100214339,luliconazole,C112528,luliconazole,autocomplete_name
 CID100216209,aliskiren,C446481,aliskiren,autocomplete_name
-CID100216210,dabigatran,D000069604,Dabigatran,autocomplete_name
 CID100216235,sitaxsentan,C106276,sitaxsentan,autocomplete_name
 CID100216237,tolvaptan,D000077602,Tolvaptan,autocomplete_name
 CID100216239,sorafenib,D000077157,Sorafenib,autocomplete_name
@@ -1026,7 +964,6 @@ CID100455658,hemin,D006427,Hemin,autocomplete_name
 CID100477468,FK463,D000077551,Micafungin,autocomplete_synonym
 CID100483407,maraviroc,D000077592,Maraviroc,autocomplete_name
 CID100489129,efinaconazole,C431707,efinaconazole,autocomplete_name
-CID100517045,sodium,D012964,Sodium,autocomplete_name
 CID100644241,nilotinib,C498826,nilotinib,autocomplete_name
 CID100656628,silodosin,C095285,silodosin,autocomplete_name
 CID100656892,TMC207,C493870,bedaquiline,autocomplete_synonym
@@ -1043,13 +980,11 @@ CID103062316,dasatinib,D000069439,Dasatinib,autocomplete_name
 CID103080904,Estrofem,C044003,estradiol estriol drug combination,autocomplete_synonym
 CID103081361,vandetanib,C452423,vandetanib,autocomplete_name
 CID103081362,telavancin,C487637,telavancin,autocomplete_name
-CID103085017,sevelamer,D000069603,Sevelamer,autocomplete_name
 CID103086685,axitinib,D000077784,Axitinib,autocomplete_name
 CID103086686,sunitinib,D000077210,Sunitinib,autocomplete_name
 CID104474778,2-hydroxysuccinaldehyde,C105896,2-hydroxysuccinaldehyde,autocomplete_name
 CID104479094,doxercalciferol,C042533,1 alpha-hydroxyergocalciferol,autocomplete_synonym
 CID104479097,hydroxocobalamin,D006879,Hydroxocobalamin,autocomplete_name
-CID104517618,sodium,D012964,Sodium,autocomplete_name
 CID104659568,entacapone,C071192,entacapone,autocomplete_name
 CID104659569,tolcapone,D000077867,Tolcapone,autocomplete_name
 CID105001396,warfarin,D014859,Warfarin,autocomplete_name
@@ -1062,7 +997,6 @@ CID105327147,polyoxyethylene,D011092,Polyethylene Glycols,autocomplete_synonym
 CID105328940,bosutinib,C471992,bosutinib,autocomplete_name
 CID105353894,pralidoxime,C028797,pralidoxime,autocomplete_name
 CID105353980,sulfasalazine,D012460,Sulfasalazine,autocomplete_name
-CID105359596,arsenic,D001151,Arsenic,autocomplete_name
 CID105360237,Paroven,C005865,troxerutin,autocomplete_synonym
 CID105361912,rifabutin,D017828,Rifabutin,autocomplete_name
 CID105361917,methylnaltrexone,C032257,methylnaltrexone,autocomplete_name
@@ -1078,7 +1012,6 @@ CID105488547,alvimopan,C419502,alvimopan,autocomplete_name
 CID105493381,deferasirox,D000077588,Deferasirox,autocomplete_name
 CID106102852,gadobutrol,C090600,gadobutrol,autocomplete_name
 CID106323497,rifapentine,C018421,rifapentine,autocomplete_name
-CID106326970,selenium,D012643,Selenium,autocomplete_name
 CID106328144,radium,D011883,Radium,autocomplete_name
 CID106331630,eribulin,C490954,eribulin,autocomplete_name
 CID106333887,auranofin,D001310,Auranofin,autocomplete_name
@@ -1097,8 +1030,6 @@ CID106452749,Locorten,C005565,flumethasone pivalate,autocomplete_synonym
 CID106453361,Sativex,C587251,nabiximols,autocomplete_synonym
 CID106477186,delamanid,C516022,OPC-67683,autocomplete_synonym
 CID106850789,iron,D007501,Iron,autocomplete_name
-CID106918182,strontium,D013324,Strontium,autocomplete_name
-CID106918366,fosaprepitant,C579707,fosaprepitant,autocomplete_name
 CID106918430,ceftobiprole,C443755,ceftobiprole,autocomplete_name
 CID106918462,retapamulin,C508887,retapamulin,autocomplete_name
 CID106918558,fesoterodine,C526675,fesoterodine,autocomplete_name
@@ -1116,7 +1047,6 @@ CID109831414,Lovaza,C405603,Omacor,autocomplete_synonym
 CID109831783,Stalevo,C481098,Stalevo,autocomplete_name
 CID109846180,eltrombopag,C520809,eltrombopag,autocomplete_name
 CID109853053,lomitapide,C473731,BMS201038,autocomplete_synonym
-CID109854489,fluticasone,D000068298,Fluticasone,autocomplete_name
 CID109865528,mirabegron,C520025,mirabegron,autocomplete_name
 CID109869929,avanafil,C553414,avanafil,autocomplete_name
 CID109871419,ticagrelor,D000077486,Ticagrelor,autocomplete_name
@@ -1132,22 +1062,17 @@ CID110178705,besifloxacin,C522124,besifloxacin,autocomplete_name
 CID110182969,apixaban,C522181,apixaban,autocomplete_name
 CID110324367,boceprevir,C512204,N-(3-amino-1-(cyclobutylmethyl)-2 3-dioxopropyl)-3-(2-((((1 1-dimethylethyl)amino)carbonyl)amino)-3 3-dimethyl-1-oxobutyl)-6 6-dimethyl-3-azabicyclo(3.1.0)hexan-2-carboxamide,autocomplete_synonym
 CID110465263,lorcaserin,C506658,lorcaserin,autocomplete_name
-CID110482134,glycerol,D005990,Glycerol,autocomplete_name
 CID111001318,tafamidis,C547076,tafamidis,autocomplete_name
 CID111163584,alogliptin,C520853,alogliptin,autocomplete_name
 CID111167602,regorafenib,C559147,regorafenib,autocomplete_name
 CID111234049,TR-700,C546016,tedizolid,autocomplete_synonym
 CID111235728,Saxagliptin,C502994,saxagliptin,autocomplete_name
-CID111238823,azilsartan,C521273,azilsartan,autocomplete_name
-CID111254352,sodium,D012964,Sodium,autocomplete_name
 CID111304743,riociguat,C542595,riociguat,autocomplete_name
 CID111499245,AN2690,C512998,tavaborole,autocomplete_synonym
 CID111501341,florbetaben,C527756,18F-BAY94-9172,autocomplete_synonym
-CID111505907,Zyprexa,D000077152,Olanzapine,autocomplete_synonym
 CID111519069,umeclidinium,C573971,GSK573719,autocomplete_synonym
 CID111531537,eliglustat,C522917,eliglustat,autocomplete_name
 CID111556711,Carfilzomib,C524865,carfilzomib,autocomplete_name
-CID111593706,sevelamer,D000069603,Sevelamer,autocomplete_name
 CID111597571,crizotinib,D000077547,Crizotinib,autocomplete_name
 CID111707110,trametinib,C560077,trametinib,autocomplete_name
 CID111722286,spinosad,C415329,spinosad,autocomplete_name
@@ -1159,14 +1084,13 @@ CID116004692,macitentan,C533860,macitentan,autocomplete_name
 CID116065945,TMC435,D000069616,Simeprevir,autocomplete_synonym
 CID116126651,PCI-32765,C551803,ibrutinib,autocomplete_synonym
 CID116129629,LY146032,D017576,Daptomycin,autocomplete_synonym
-CID116129672,Insulin,D007328,Insulin,autocomplete_name
+CID116137271,insulin,D007328,Insulin,autocomplete_name
 CID116129682,Forteo,D019379,Teriparatide,autocomplete_synonym
 CID116131215,Abarelix,C423508,abarelix,autocomplete_name
 CID116132283,glucagon,D005934,Glucagon,autocomplete_name
 CID116132418,NovoLog,D061267,Insulin Aspart,autocomplete_synonym
 CID116132438,Humalog,D061268,Insulin Lispro,autocomplete_synonym
 CID116136245,degarelix,C431566,acetyl-2-naphthylalanyl-3-chlorophenylalanyl-1-oxohexadecyl-seryl-4-aminophenylalanyl(hydroorotyl)-4-aminophenylalanyl(carbamoyl)-leucyl-ILys-prolyl-alaninamide,autocomplete_synonym
-CID116137271,insulin,D007328,Insulin,autocomplete_name
 CID116139342,Lyxumia,C479460,lixisenatide,autocomplete_synonym
 CID116139605,teduglutide,C494910,teduglutide,autocomplete_name
 CID116156130,exenatide,D000077270,Exenatide,autocomplete_name
@@ -1182,13 +1106,10 @@ CID124776445,vismodegib,C538724,HhAntag691,autocomplete_synonym
 CID124812758,canagliflozin,D000068896,Canagliflozin,autocomplete_name
 CID124822371,florbetapir,C545186,florbetapir,autocomplete_name
 CID124826799,ponatinib,C545373,ponatinib,autocomplete_name
-CID124838347,glucagon,D005934,Glucagon,autocomplete_name
-CID124846132,hetastarch,D006895,Hydroxyethyl Starch Derivatives,autocomplete_synonym
 CID124950485,cobicistat,D000069547,Cobicistat,autocomplete_name
 CID124965990,suvorexant,C551624,suvorexant,autocomplete_name
 CID125094462,sofosbuvir,D000069474,Sofosbuvir,autocomplete_name
 CID125102847,cabozantinib,C558660,cabozantinib,autocomplete_name
-CID125880656,doxycycline,D004318,Doxycycline,autocomplete_name
 CID125880664,tetracycline,D013752,Tetracycline,autocomplete_name
 CID126275995,minocycline,D008911,Minocycline,autocomplete_name
 CID140468184,acenocoumarol,D000074,Acenocoumarol,autocomplete_name
@@ -1198,14 +1119,11 @@ CID144146714,Lantus,D000069036,Insulin Glargine,autocomplete_synonym
 CID144201343,ecallantide,C511194,ecallantide,autocomplete_name
 CID144462760,dabrafenib,C561627,dabrafenib,autocomplete_name
 CID144564107,mipomersen,C524142,mipomersen,autocomplete_name
-CID144564722,Promacta,C520809,eltrombopag,autocomplete_synonym
 CID144567678,dalbavancin,C469289,dalbavancin,autocomplete_name
 CID146216142,dolutegravir,C562325,dolutegravir,autocomplete_name
 CID151508717,tenoxicam,C032801,tenoxicam,autocomplete_name
 CID151601240,demeclocycline,D003707,Demeclocycline,autocomplete_name
 CID153477714,heparin,D006493,Heparin,autocomplete_name
 CID154681041,tigecycline,D000078304,Tigecycline,autocomplete_name
-CID154682541,doxycycline,D004318,Doxycycline,autocomplete_name
 CID154687131,lymecycline,D008194,Lymecycline,autocomplete_name
-CID156603655,pegaptanib,C495058,pegaptanib,autocomplete_name
 CID170695640,colestyramine,D002792,Cholestyramine Resin,autocomplete_synonym

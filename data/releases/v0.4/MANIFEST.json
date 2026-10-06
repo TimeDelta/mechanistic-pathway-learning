@@ -1,10 +1,10 @@
 {
  "version": "v0.4",
- "created": "2026-10-05",
- "git_commit": "3e45f092ed77810e1b0252468e51f2b621fa85a7",
+ "created": "2026-10-06",
+ "git_commit": "b1c9d02133545bd0c31009355236c4e43f1ddf61",
  "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
  "licensed_term_labels_blanked": 8830,
- "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended after the OnSIDES review of 5 October 2026 (3,910 observations; 7,488 reports from five sources; 876 drug pairs over 142 drugs); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked; 1,144 qualifying statements, no ATC waiver, combination-only statements excluded, LLT events matched through their PT, name unification with SIDER); literature holds the E3 tables: 226,347 PubTator3 relation reports, 5,607 CTD reports, 231,954 appraised literature reports, publication dates, document metadata for 30,000 papers without article text, gene identifier map, SIDER chemical map.",
+ "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended after the OnSIDES review of 5 October 2026 (3,910 observations; 7,488 reports from five sources; 876 drug pairs over 142 drugs); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked; 1,144 qualifying statements, no ATC waiver, combination-only statements excluded, LLT events matched through their PT, name unification with SIDER); literature holds the E3 tables rebuilt on 6 October 2026 after the literature review, on the PubTator3 bulk file published that day: 209,184 PubTator3 relation reports, 5,191 CTD reports, 214,375 appraised literature reports over 134,747 papers, publication dates, document metadata for 32,647 papers without article text, gene identifier map, SIDER chemical map.",
  "source_pins": [
   {
    "source": "Human-GEM (github.com/SysBioChalmers/Human-GEM)",
@@ -74,7 +74,7 @@
   {
    "source": "HGNC complete set (storage.googleapis.com/public-download-files/hgnc)",
    "use": "gene symbol to NCBI Gene and Ensembl identifiers for non-metabolic graph genes",
-   "pinned_version": "downloaded 2026-10-03; 16963116 bytes; 12,537 of 12,627 gene nodes carry an NCBI Gene id"
+   "pinned_version": "downloaded 2026-10-03; Last-Modified Fri, 02 Oct 2026 13:45:08 GMT; 16,963,116 bytes; 45,187 rows; sha256 2b4224ea847df2fc6982f5b2a52804c5d92fbb8810b134afb636f6029452dc03; 12,537 of 12,627 gene nodes carry an NCBI Gene id"
   },
   {
    "source": "CollecTRI (via OmniPath, dataset collectri)",
@@ -89,12 +89,12 @@
   {
    "source": "PubTator3 (ncbi.nlm.nih.gov/research/pubtator3; bulk relation2pubtator3.gz)",
    "use": "E3 literature relations, document species and years",
-   "pinned_version": "bulk file 297478945 bytes, server date Mon, 17 Aug 2026 13:41:35 GMT, sha256 6fca7a4c6a7b; filtered 2026-10-03: 226,347 reports; documents for 30,000 papers fetched 2026-10-03"
+   "pinned_version": "bulk file 299,925,917 bytes, 40,411,999 rows, Last-Modified Tue, 06 Oct 2026 15:44:13 GMT, sha256 ffde6b53c1798363547c2fdf351c3385c21a249fcd3fe4be8dfe8dad3203cd76, downloaded 2026-10-06 16:59 UTC; filtered 2026-10-06: 209,184 reports over 133,193 papers; documents for 32,647 papers (30,000 selected by the cap on 2026-10-06, 2,647 of them fetched that day, plus 2,647 kept from the 2026-10-03 selection); superseded: the 17 August 2026 file (297,478,945 bytes, 40,094,383 rows, sha256 6fca7a4c6a7b6fb9b727d564b1fc1aff1b04c0dfcadbc53aba188fb844e3ac42) behind the 2026-10-03 build, no longer served by NCBI"
   },
   {
    "source": "CTD (ctdbase.org, CTD_chemicals_diseases.tsv.gz)",
    "use": "E3 chemical-symptom associations with direction (DirectEvidence marker/mechanism or therapeutic)",
-   "pinned_version": "downloaded 2026-10-03 (162,343,480 bytes); 5,607 reports from 3,356 papers"
+   "pinned_version": "downloaded 2026-10-03; 162,343,480 bytes; 9,903,450 rows; Last-Modified Tue, 29 Sep 2026 17:21:06 GMT; report created Tue Sep 29 13:17:30 EDT 2026; sha256 e11e6dc36a27d36ed88576e529a92211186e3e0b3cea4271cc78dcf3d1b821ee; unchanged at the 2026-10-06 check; filtered 2026-10-06: 5,191 reports from 3,356 papers (5,607 on 2026-10-03, before one SIDER drug per MeSH chemical)"
   },
   {
    "source": "SemMedDB (NLM)",
@@ -239,28 +239,28 @@
    "rows": null
   },
   "literature/ctd_relations_filtered.csv": {
-   "sha256": "2d27408477696a848321ddef614cc8dc5e57828753b03684f018c3eb8222eca6",
-   "bytes": 3914085,
-   "rows": 5607
+   "sha256": "abb9f7a0debfcfa7b65c31e0f472a04f515b6f6a25fe931bc14be78f59acea33",
+   "bytes": 3822827,
+   "rows": 5191
   },
   "literature/ctd_relations_filtered.parquet": {
-   "sha256": "fbcd6fa7c53885b9dbdd06f60148568d9f7d922f8e0072d9c0182f101f3d4bd0",
-   "bytes": 199935,
-   "rows": 5607
+   "sha256": "074ccb33b33bd2e17ad2c41d10594313c6793731708a017e81278d0917d97df0",
+   "bytes": 197286,
+   "rows": 5191
   },
   "literature/ctd_relations_summary.json": {
-   "sha256": "ec94dd106a7947ab44924efb5aa935f09ae6d17b69845d7f29345c722a702232",
-   "bytes": 3003,
+   "sha256": "b205bee640edf18147dd0dfc13922398f6dd2982d84bce9a2d112c639188bf30",
+   "bytes": 3465,
    "rows": null
   },
   "literature/documents.parquet": {
-   "sha256": "577118ff5939bf934429d5494feacbd655a4a75fde825f1bd7582ba484adff9f",
-   "bytes": 1382111,
-   "rows": 30000
+   "sha256": "efed05a709ec4a1e3fb8e667dff628ea338999bac3fd0e59b5858005eade5b8c",
+   "bytes": 1514376,
+   "rows": 32647
   },
   "literature/documents_summary.json": {
-   "sha256": "3fce97b97aa042e37e0e71efd10aa88fd766e30046b55ec331006245ee7f5b22",
-   "bytes": 229,
+   "sha256": "54692b24eed322477424d7fbdd7fbead943a715f9dc356f60f657041af1b1b9b",
+   "bytes": 360,
    "rows": null
   },
   "literature/gene_identifier_map.parquet": {
@@ -274,39 +274,39 @@
    "rows": null
   },
   "literature/literature_reports.parquet": {
-   "sha256": "0293aa2e2aba1f95cef0b660df12e7c0f79dc3dc1938dc03cef692f5f6356026",
-   "bytes": 9848047,
-   "rows": 231954
+   "sha256": "cf4ce52d7c8e5386d906d308af21c48f9da3eddce810d71b891f57fe8b22a587",
+   "bytes": 10309873,
+   "rows": 214375
   },
   "literature/literature_summary.json": {
-   "sha256": "74b42c70b73281e6631e4792f9f84901089cf548ec84ce7d316f2d7bb602e2d5",
-   "bytes": 3031,
+   "sha256": "58b97f6c4a5fd918916655b8a129cebd68549c09af1d629877ee964d9cc50d73",
+   "bytes": 6134,
    "rows": null
   },
   "literature/pubmed_publication_dates.json": {
-   "sha256": "ac03d9e570539e5ef50299338ab742ee41424437d533637fb96ca161ec841320",
-   "bytes": 3295142,
+   "sha256": "5c9e861a87b9ab2c5f8987ed721127d28b3e7ae749872f1125239b9d45685a99",
+   "bytes": 3433010,
    "rows": null
   },
   "literature/pubtator_relations_filtered.parquet": {
-   "sha256": "bdcc35fc9ddd2c2c14a07a39b407098f36d85d6c4b7b5e0dd854bc8d6f839826",
-   "bytes": 9353386,
-   "rows": 226347
+   "sha256": "013f3db90553668fb0523138f61458a87475b5bcc41b8e1ac2fb68a69b74247c",
+   "bytes": 9650063,
+   "rows": 209184
   },
   "literature/pubtator_relations_summary.json": {
-   "sha256": "6138b68fb8c8ecba7441cbd59fa9a93c7a88a7f5491547bc3391a387467cbcaf",
-   "bytes": 7685,
+   "sha256": "0ca9d94446cd2ac20c31d45fd397321d79079e958391091e0a8468b1bef31d29",
+   "bytes": 13628,
    "rows": null
   },
   "literature/sider_chemical_mesh_map.csv": {
-   "sha256": "5d89e4cd434f01f8e5217b3538f78795cd5b7ddae8b46bbd88e3b99134cd28b0",
-   "bytes": 77012,
-   "rows": 1210
+   "sha256": "317f0facf03787d69ea2114d9b4dbb6b1183703a6361ef0960d8ef03864d75f7",
+   "bytes": 71973,
+   "rows": 1128
   },
   "literature/sider_chemical_mesh_map.parquet": {
-   "sha256": "abe8f1d41d39abb5fc63db7cd4cf43b61d7b442eb53f57ba6d6c8d4fe9756c7e",
-   "bytes": 46896,
-   "rows": 1210
+   "sha256": "190c3f6a8469a065a190afd1eba85e3c6bbce71cbbc289405a278a5168fe5685",
+   "bytes": 45856,
+   "rows": 1128
   },
   "onsides/ingredient_identifier_bridge.json": {
    "sha256": "a7e5ac498b7268425663ecd6282599b0f78fc7ab6c9411054854263ffd1d30da",
