@@ -84,8 +84,19 @@ def build_models(data, arguments, device):
     else:
         head = NoisyOrPathwayModuleHead(len(data.node_ids), arguments.node_state_dim, arguments.num_modules, len(data.symptoms),
                                         gate_initial_log_alpha=arguments.gate_initial_log_alpha, pooling=arguments.pooling,
-                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init).to(device)
+                                        gate_initial_log_alpha_noise=arguments.gate_init_noise, initial_readout_bias=arguments.module_bias_init,
+                                        gate_evaluation_estimate=arguments.gate_evaluation).to(device)
     return encoder, head
+
+
+def optimizer_parameter_groups(encoder, head, arguments) -> list[dict]:
+    """One group for every parameter at the main learning rate, or two when --head-scalar-learning-rate sets a
+    separate rate for the noisy-OR links, leaks and readout biases."""
+    if not arguments.head_scalar_learning_rate or not hasattr(head, "scalar_parameters"):
+        return [{"params": list(encoder.parameters()) + list(head.parameters())}]
+    scalar_parameter_ids = {id(parameter) for parameter in head.scalar_parameters()}
+    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in scalar_parameter_ids]
+    return [{"params": other_parameters}, {"params": head.scalar_parameters(), "lr": arguments.head_scalar_learning_rate, "weight_decay": 0.0}]
 
 
 def encode(encoder, node_index, sign_and_magnitude, adjacencies, field_kind: str):
@@ -190,6 +201,10 @@ def main() -> None:
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
     parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
     parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
+    parser.add_argument("--gate-evaluation", choices=["deterministic", "expected"], default="deterministic",
+                        help="noisy-OR head: gate used at evaluation; 'expected' matches the training distribution when gates stay fractional")
+    parser.add_argument("--head-scalar-learning-rate", type=float, default=0.0,
+                        help="noisy-OR head: learning rate of the links, leaks and readout biases (0 = the main learning rate); Adam moves a parameter by about one learning rate per step, so links starting at logit -3 need about 1,500 steps at 0.002 to reach 0.5")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
@@ -233,8 +248,11 @@ def main() -> None:
         head.initialize_leak_from_base_rates(torch.as_tensor(data.outcomes[train_indices].mean(axis=0), dtype=torch.float32, device=device))
     adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
         torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
-    optimizer = torch.optim.AdamW(list(encoder.parameters()) + list(head.parameters()), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
+    optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
     split_directory = arguments.run_dir / split_name
+    if arguments.resume and (split_directory / "DONE").exists():
+        print(f"{split_name}: DONE marker present; skipping (delete the marker to retrain)")
+        return
     split_directory.mkdir(parents=True, exist_ok=True)
     checkpoint_path = split_directory / "checkpoint.pt"
     state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None}

@@ -37,6 +37,8 @@ from torch import Tensor, nn
 HARD_CONCRETE_STRETCH_LOW = -0.1
 HARD_CONCRETE_STRETCH_HIGH = 1.1
 PROBABILITY_EPSILON = 1e-6
+GATE_EVALUATION_ESTIMATES = ("deterministic", "expected")
+EXPECTED_GATE_QUADRATURE_POINTS = 64
 
 
 class HardConcreteNodeGate(nn.Module):
@@ -49,8 +51,17 @@ class HardConcreteNodeGate(nn.Module):
         temperature: float = 2.0 / 3.0,
         initial_log_alpha: float = -1.0,
         initial_log_alpha_noise: float = 0.01,
+        evaluation_estimate: str = "deterministic",
     ) -> None:
+        """evaluation_estimate chooses the gate used in eval mode. "deterministic" is the test-time estimator of
+        Louizos et al., clamp(sigmoid(log_alpha) * (high - low) + low), which matches training once gates have
+        converged to 0 or 1. "expected" is the mean of the training gate distribution; it is the consistent choice
+        when gates stay fractional and a sum pools thousands of them, since the pooled sum then concentrates at its
+        expectation during training (at log_alpha -2.3 the expected training gate is 0.11, the deterministic one 0.009)."""
         super().__init__()
+        if evaluation_estimate not in GATE_EVALUATION_ESTIMATES:
+            raise ValueError(f"evaluation_estimate must be one of {GATE_EVALUATION_ESTIMATES}")
+        self.evaluation_estimate = evaluation_estimate
         self.temperature = temperature
         initial_values = torch.full((num_pathway_modules, num_graph_nodes), initial_log_alpha)
         initial_values = initial_values + initial_log_alpha_noise * torch.randn_like(initial_values)
@@ -61,11 +72,25 @@ class HardConcreteNodeGate(nn.Module):
         if self.training:
             uniform_noise = torch.rand_like(self.log_alpha).clamp(PROBABILITY_EPSILON, 1 - PROBABILITY_EPSILON)
             logistic_noise = torch.log(uniform_noise) - torch.log1p(-uniform_noise)
-            relaxed_gate = torch.sigmoid((logistic_noise + self.log_alpha) / self.temperature)
-        else:
-            relaxed_gate = torch.sigmoid(self.log_alpha)
+            return self._stretch_and_clamp(torch.sigmoid((logistic_noise + self.log_alpha) / self.temperature))
+        if self.evaluation_estimate == "expected":
+            return self.expected_gate()
+        return self._stretch_and_clamp(torch.sigmoid(self.log_alpha))
+
+    @staticmethod
+    def _stretch_and_clamp(relaxed_gate: Tensor) -> Tensor:
         stretched_gate = relaxed_gate * (HARD_CONCRETE_STRETCH_HIGH - HARD_CONCRETE_STRETCH_LOW) + HARD_CONCRETE_STRETCH_LOW
         return stretched_gate.clamp(0.0, 1.0)
+
+    def expected_gate(self, quadrature_points: int = EXPECTED_GATE_QUADRATURE_POINTS) -> Tensor:
+        """Mean of the training gate distribution, by midpoint quadrature over the quantiles of the logistic noise
+        (deterministic, so evaluation is reproducible); shape [num_pathway_modules, num_graph_nodes]."""
+        expected = torch.zeros_like(self.log_alpha)
+        for point in range(quadrature_points):
+            quantile = (point + 0.5) / quadrature_points
+            logistic_quantile = math.log(quantile) - math.log1p(-quantile)
+            expected = expected + self._stretch_and_clamp(torch.sigmoid((logistic_quantile + self.log_alpha) / self.temperature))
+        return expected / quadrature_points
 
     def expected_active_node_count(self) -> Tensor:
         """Expected number of nonzero gates per module (the L0 surrogate), shape [num_pathway_modules]."""
@@ -113,6 +138,7 @@ class NoisyOrPathwayModuleHead(nn.Module):
         pooling: str = "sum",
         gate_initial_log_alpha_noise: float = 0.01,
         initial_readout_bias: float = 0.0,
+        gate_evaluation_estimate: str = "deterministic",
     ) -> None:
         """gate_initial_log_alpha_noise breaks the symmetry between modules (all gates start at the same
         log-alpha otherwise, and identical modules stay identical); initial_readout_bias below zero makes a
@@ -131,6 +157,7 @@ class NoisyOrPathwayModuleHead(nn.Module):
             temperature=gate_temperature,
             initial_log_alpha=gate_initial_log_alpha,
             initial_log_alpha_noise=gate_initial_log_alpha_noise,
+            evaluation_estimate=gate_evaluation_estimate,
         )
         self.module_readout_weight = nn.Parameter(torch.randn(num_pathway_modules, node_state_dim) / math.sqrt(node_state_dim))
         self.module_readout_bias = nn.Parameter(torch.full((num_pathway_modules,), float(initial_readout_bias)))
@@ -161,6 +188,11 @@ class NoisyOrPathwayModuleHead(nn.Module):
         """
         clamped = symptom_base_rates.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
         self.symptom_leak_logit[relation_index] = torch.log(clamped) - torch.log1p(-clamped)
+
+    def scalar_parameters(self) -> list[nn.Parameter]:
+        """Links, leaks and readout biases: the few parameters whose values the noisy-OR reads directly as
+        probabilities or offsets, and which an optimizer may need to move faster than the gates and readout weights."""
+        return [self.module_symptom_link_logit, self.symptom_leak_logit, self.module_readout_bias]
 
     def link_probability(self, relation_index: int = 0) -> Tensor:
         return torch.sigmoid(self.module_symptom_link_logit[relation_index])
