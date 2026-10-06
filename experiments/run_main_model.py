@@ -92,7 +92,7 @@ def build_models(data, arguments, device):
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
                                         num_propagation_steps=arguments.propagation_steps,
-                                        propagation_channels=arguments.propagation_channels, damping=arguments.propagation_damping).to(device)
+                                        propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping).to(device)
     else:
         node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
@@ -233,6 +233,8 @@ def main() -> None:
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
     parser.add_argument("--cofactor-relations", action="store_true",
                         help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains")
+    parser.add_argument("--response-scale", choices=["linear", "signed_log"], default="linear",
+                        help="linear-response encoder: read the response as it is, or through sign(h) log(1 + |h| / s) with a learned scale, so changes many edges away stay readable")
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=2)

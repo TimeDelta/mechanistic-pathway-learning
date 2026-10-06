@@ -86,3 +86,22 @@ def test_gains_bound_the_transition_and_gradients_reach_every_parameter() -> Non
     field.pow(2).sum().backward()
     for name, parameter in encoder.named_parameters():
         assert parameter.grad is not None and torch.any(parameter.grad != 0), name
+
+
+def test_signed_log_scale_keeps_sign_and_odd_symmetry_and_lifts_small_changes() -> None:
+    torch.manual_seed(0)
+    node_features = torch.nn.functional.one_hot(torch.tensor(NODE_TYPES), num_classes=3).float()
+    arguments = dict(edge_source=torch.tensor([edge[0] for edge in EDGES]), edge_target=torch.tensor([edge[1] for edge in EDGES]),
+                     edge_relation=torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), edge_sign=torch.tensor([edge[3] for edge in EDGES]),
+                     node_features=node_features, node_state_dim=4)
+    encoder = LinearResponseEncoder(6, RELATION_TYPES, response_scale="signed_log", **arguments)
+    with torch.no_grad():
+        loss_of_function = encoder(*perturb(0, -1.0))
+        gain_of_function = encoder(*perturb(0, 1.0))
+        raw = encoder.response(*perturb(0, -1.0))[0]
+        scaled = torch.sign(raw) * torch.log1p(raw.abs() / torch.exp(encoder.log_response_scale))
+    assert torch.allclose(loss_of_function, -gain_of_function, atol=1e-6)
+    assert torch.equal(torch.sign(scaled), torch.sign(raw))
+    nonzero = raw.abs() > 0
+    smallest, largest = raw.abs()[nonzero].min(), raw.abs()[nonzero].max()
+    assert scaled.abs()[nonzero].min() / scaled.abs()[nonzero].max() > smallest / largest  # the scale compresses the range

@@ -47,6 +47,12 @@ heads read. Propagating all node_state_dim channels was memory-bound: each step 
 [relations, nodes, batch, channels] tensor (about 200 MB on the metabolic slice at batch 16 and 32 channels), 19
 seconds per batch forward and backward on one core.
 
+The response decays steeply with distance under in-degree averaging (on the slice, the change at L-dopa is about 1e-5
+of the change at the perturbed gene and at dopamine about 1e-8), so a linear readout sees little beyond the first few
+edges. response_scale "signed_log" maps each channel through sign(h) * log(1 + |h| / s_c) with a learned scale s_c
+(starting at 1e-4), which keeps the sign and the order of magnitude and makes distant changes readable; it is odd, so
+a gain of function still mirrors a loss of function. response_scale "linear" leaves the response as it is.
+
 The system is linear in the input, so the unperturbed response is zero and the field is a difference field by
 construction: no base state, and no node identity, enters it. Node kinds enter only through an output gate,
 field = (h W_expand) * sigmoid(node_features W + b), which lets a pooled readout tell where the response landed
@@ -65,6 +71,7 @@ COPRODUCT_RELATION = "coproduct_of"
 DEPLETES_COSUBSTRATE_RELATION = "depletes_cosubstrate"
 UNSIGNED_RELATIONS = ("binds",)
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
+INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
 
 
 class LinearResponseEncoder(nn.Module):
@@ -82,6 +89,7 @@ class LinearResponseEncoder(nn.Module):
         cofactor_edges: Tensor | None = None,
         num_propagation_steps: int = 8,
         propagation_channels: int = 4,
+        response_scale: str = "linear",
         damping: float = 0.5,
         contraction: float = 0.9,
     ) -> None:
@@ -102,6 +110,10 @@ class LinearResponseEncoder(nn.Module):
         self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS for name in relation_names]), persistent=False)
         self.maximum_gain = contraction
         self.propagation_channels = propagation_channels
+        if response_scale not in ("linear", "signed_log"):
+            raise ValueError("response_scale must be 'linear' or 'signed_log'")
+        self.response_scale = response_scale
+        self.log_response_scale = nn.Parameter(torch.full((propagation_channels,), INITIAL_LOG_RESPONSE_SCALE)) if response_scale == "signed_log" else None
         initial_gain_logit = torch.randn(len(relation_names), propagation_channels)  # spread so channels start at different time scales
         for carrier_relation in (COSUBSTRATE_RELATION, COPRODUCT_RELATION, DEPLETES_COSUBSTRATE_RELATION):
             if carrier_relation in relation_names:  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
@@ -183,7 +195,10 @@ class LinearResponseEncoder(nn.Module):
         """The gated response field [B, N, D]; relation_adjacencies is accepted for the message passing signature and
         ignored, since the signed adjacency is built once from the edges given at construction."""
         gate = torch.sigmoid(self.output_gate(self.node_features))  # [N, D]
-        return (self.response(perturbation_node_index, perturbation_sign_and_magnitude) @ self.channel_expansion) * gate[None, :, :]
+        response = self.response(perturbation_node_index, perturbation_sign_and_magnitude)
+        if self.response_scale == "signed_log":
+            response = torch.sign(response) * torch.log1p(response.abs() / torch.exp(self.log_response_scale))
+        return (response @ self.channel_expansion) * gate[None, :, :]
 
     def perturbation_difference_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
         """The response is linear in the input, so the unperturbed field is zero and the difference field is the field."""
