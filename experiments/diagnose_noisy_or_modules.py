@@ -48,7 +48,7 @@ def diagnose_split(split_directory: Path) -> dict:
     state = checkpoint["state"]
     best_head = state["best_head"]
     learning_rate = float(configuration.get("learning_rate", 0.002))
-    scalar_learning_rate = float(configuration.get("head_scalar_learning_rate") or learning_rate)
+    scalar_learning_rate = float(configuration.get("link_learning_rate") or configuration.get("head_scalar_learning_rate") or learning_rate)  # head_scalar_learning_rate: runs of commits f6985fc to 1cf0dcb
     batch_size = int(configuration.get("batch_size", 16))
     train_size = int(results.get("num_train") or 0)
     steps_per_epoch = int(np.ceil(train_size / batch_size)) if train_size else None

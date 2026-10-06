@@ -99,9 +99,12 @@ def test_expected_gate_matches_the_mean_of_training_samples_and_exceeds_the_loui
     assert expected[0, 0].item() > 5 * gate.louizos_test_time_gate()[0, 0].item()
 
 
-def test_eval_mode_gate_is_the_expected_training_gate_and_scalar_parameters_are_links_leaks_and_biases() -> None:
+def test_eval_mode_gate_is_the_expected_training_gate_and_time_scale_groups_are_links_leaks_and_biases() -> None:
     gate = HardConcreteNodeGate(num_pathway_modules=2, num_graph_nodes=5)
     gate.eval()
     assert torch.equal(gate(), gate.expected_gate())
     head = NoisyOrPathwayModuleHead(num_graph_nodes=5, node_state_dim=3, num_pathway_modules=2, num_symptoms=2)
-    assert {id(parameter) for parameter in head.scalar_parameters()} == {id(head.module_symptom_link_logit), id(head.symptom_leak_logit), id(head.module_readout_bias)}
+    groups = head.time_scale_parameter_groups()
+    assert [id(parameter) for parameter in groups["links"]] == [id(head.module_symptom_link_logit)]
+    assert [id(parameter) for parameter in groups["leaks"]] == [id(head.symptom_leak_logit)]
+    assert [id(parameter) for parameter in groups["module_biases"]] == [id(head.module_readout_bias)]

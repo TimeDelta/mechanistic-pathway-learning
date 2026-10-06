@@ -113,13 +113,17 @@ def git_provenance() -> dict:
 
 
 def optimizer_parameter_groups(encoder, head, arguments) -> list[dict]:
-    """One group for every parameter at the main learning rate, or two when --head-scalar-learning-rate sets a
-    separate rate for the noisy-OR links, leaks and readout biases."""
-    if not arguments.head_scalar_learning_rate or not hasattr(head, "scalar_parameters"):
+    """One group at the main learning rate, plus one group for each noisy-OR time scale (links, leaks, module biases)
+    whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the time
+    scale on which that parameter can change."""
+    rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate}
+    if not hasattr(head, "time_scale_parameter_groups") or not any(rates.values()):
         return [{"params": list(encoder.parameters()) + list(head.parameters())}]
-    scalar_parameter_ids = {id(parameter) for parameter in head.scalar_parameters()}
-    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in scalar_parameter_ids]
-    return [{"params": other_parameters}, {"params": head.scalar_parameters(), "lr": arguments.head_scalar_learning_rate, "weight_decay": 0.0}]
+    separate_groups = [{"params": parameters, "lr": rates[name], "weight_decay": 0.0}
+                       for name, parameters in head.time_scale_parameter_groups().items() if rates[name]]
+    separated_ids = {id(parameter) for group in separate_groups for parameter in group["params"]}
+    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids]
+    return [{"params": other_parameters}, *separate_groups]
 
 
 def encode(encoder, node_index, sign_and_magnitude, adjacencies, field_kind: str):
@@ -229,8 +233,10 @@ def main() -> None:
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
     parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
     parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
-    parser.add_argument("--head-scalar-learning-rate", type=float, default=0.0,
-                        help="noisy-OR head: learning rate of the links, leaks and readout biases (0 = the main learning rate); Adam moves a parameter by about one learning rate per step, so links starting at logit -3 need about 1,500 steps at 0.002 to reach 0.5")
+    parser.add_argument("--link-learning-rate", type=float, default=0.0,
+                        help="noisy-OR head: learning rate of the module-to-symptom links (0 = the main rate); links start at logit -3 and Adam moves them about one rate per step, so at 0.002 they need about 1,500 steps to reach 0.5")
+    parser.add_argument("--leak-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the symptom leaks (0 = the main rate); slow, so a leak started at the base rate stays there")
+    parser.add_argument("--module-bias-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the module readout biases (0 = the main rate)")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)

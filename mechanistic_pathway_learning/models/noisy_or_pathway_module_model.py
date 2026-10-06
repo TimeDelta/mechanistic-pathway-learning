@@ -185,10 +185,11 @@ class NoisyOrPathwayModuleHead(nn.Module):
         clamped = symptom_base_rates.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
         self.symptom_leak_logit[relation_index] = torch.log(clamped) - torch.log1p(-clamped)
 
-    def scalar_parameters(self) -> list[nn.Parameter]:
-        """Links, leaks and readout biases: the few parameters whose values the noisy-OR reads directly as
-        probabilities or offsets, and which an optimizer may need to move faster than the gates and readout weights."""
-        return [self.module_symptom_link_logit, self.symptom_leak_logit, self.module_readout_bias]
+    def time_scale_parameter_groups(self) -> dict[str, list[nn.Parameter]]:
+        """The parameters the noisy-OR reads directly as probabilities or offsets, by the time scale they may need:
+        links have to travel from logit -3 towards 1 within the epochs early stopping allows, while a leak started at the
+        base rate should move slowly, or it absorbs the signal before the links can (docs/b6_module_diagnosis.md)."""
+        return {"links": [self.module_symptom_link_logit], "leaks": [self.symptom_leak_logit], "module_biases": [self.module_readout_bias]}
 
     def link_probability(self, relation_index: int = 0) -> Tensor:
         return torch.sigmoid(self.module_symptom_link_logit[relation_index])
