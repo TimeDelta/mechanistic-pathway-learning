@@ -48,6 +48,7 @@ class ExperimentData:
     node_is_reversible: np.ndarray | None = None
     node_brain_expression: np.ndarray | None = None  # log1p of the largest GTEx brain median TPM per node (genes, and reactions through their genes); 0 when unknown
     node_brain_expressed: np.ndarray | None = None  # median TPM at least the build threshold in one brain tissue; False when unknown
+    edge_sign: np.ndarray | None = None  # +1 activating, -1 inhibiting or repressing, 0 unsigned (binds); +1 where the graph has no sign column
 
     def structural_node_features(self) -> np.ndarray:
         """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
@@ -162,6 +163,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         edge_source=edges.source_id.map(node_index).to_numpy(),
         edge_target=edges.target_id.map(node_index).to_numpy(),
         edge_relation=edges.relation_type.map(relation_index).to_numpy(),
+        edge_sign=(edges["sign"].fillna(1.0) if "sign" in edges.columns else pd.Series(1.0, index=edges.index)).to_numpy(dtype=float),
         relation_types=relation_types,
         symptoms=symptoms,
         perturbation_ids=perturbation_ids,

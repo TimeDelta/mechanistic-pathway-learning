@@ -28,6 +28,8 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b6_mechanistic_expected_gate_fast_scalars": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--head-scalar-learning-rate", "0.02"],
     "b6_off_by_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5"],
     "b6_typed_nodes": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate"],
+    "b3_linear_response": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response"],
+    "b6_linear_response": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5"],
     "b3_typed_nodes": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed"],
     "b6_frequency_target": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--positive-target-from-frequency"],
     "b6_default_permuted": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--permute-labels"],

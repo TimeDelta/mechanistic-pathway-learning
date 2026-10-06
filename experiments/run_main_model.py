@@ -52,6 +52,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
+from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
 from mechanistic_pathway_learning.models.soft_constraint_losses import evidence_weighted_binary_cross_entropy
@@ -78,8 +79,16 @@ def pad_perturbations(data, indices: np.ndarray) -> tuple[torch.Tensor, torch.Te
 
 
 def build_models(data, arguments, device):
-    node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
-    encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
+    if arguments.encoder == "linear_response":
+        if arguments.field != "difference":
+            raise ValueError("the linear-response encoder is linear in its input, so its field is a difference field; use --field difference")
+        encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
+                                        torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
+                                        arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), num_propagation_steps=arguments.propagation_steps,
+                                        propagation_channels=arguments.propagation_channels, damping=arguments.propagation_damping).to(device)
+    else:
+        node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
+        encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
     if arguments.head == "sigmoid":
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling).to(device)
     else:
@@ -207,6 +216,11 @@ def main() -> None:
     parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
                         help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
+    parser.add_argument("--encoder", choices=["message_passing", "linear_response"], default="message_passing",
+                        help="route 1 encoder: L layers of message passing, or the time-invariant signed linear-response state space (linear_response_encoder.py)")
+    parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
+    parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
+    parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--num-modules", type=int, default=8)
@@ -258,8 +272,10 @@ def main() -> None:
     encoder, head = build_models(data, arguments, device)
     if arguments.init_leak_from_base_rate and arguments.head == "noisy_or":
         head.initialize_leak_from_base_rates(torch.as_tensor(data.outcomes[train_indices].mean(axis=0), dtype=torch.float32, device=device))
-    adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
-        torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
+    adjacencies = None  # the linear-response encoder builds its signed adjacency from the edges at construction
+    if arguments.encoder == "message_passing":
+        adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
+            torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
     optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
     split_directory = arguments.run_dir / split_name
     if arguments.resume and (split_directory / "DONE").exists():
