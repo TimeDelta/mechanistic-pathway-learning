@@ -33,8 +33,8 @@ needed (findings 2 and 8).
   held-out gene's symptoms resemble those of its same-pathway training genes more than its baseline, while complex
   partners carry no such excess. Whether that is leakage depends on the claim: a new gene in a pathway with known
   members is the realistic use, but a claim about learning mechanism needs the subsystem hold-out (finding 3) or a
-  pathway-grouped split, and the scores should be reported separately for genes whose pathway is split and genes
-  whose pathway is not.
+  pathway-grouped split. Reported separately (finding 13), the trained models trail the random walk only on genes
+  whose pathway is split, and tie it on the rest.
 - Contribution if Aim 2 fails: a measured account of how much apparent signal in this task is leakage and node degree.
 
 ### Aim 2. Test whether the pathway-module model beats the best baseline
@@ -77,6 +77,7 @@ container; cluster access is not confirmed.
 | 10 | Untrained, the linear response predicts the direction of measured metabolite changes worse than always guessing "increased" | 1,067 signed gene-metabolite pairs from HPO laboratory abnormalities; sign agreement 0.615 at best (8 steps, summed over compartment copies) against 0.806 for the majority direction; AUROC 0.574 | docs/linear_response_sign_check.md (7 October) |
 | 11 | Candidate cause of the null, not yet tested: the encoder's per-node averaging cancels production against consumption | 7,811 of 21,337 destinations (36.6 percent) receive both signs; at equal gains the aggregate input sums to zero at 7,437 of 8,460 metabolites (88 percent) and at no reaction. It predicts that the spectral normalisation arm and the cross-relation mixture move the score; neither has been run on symptoms | docs/membrane_potential_reach.md; docs/graph_content_null_results.md (7 October) |
 | 12 | The disease-cluster split divides almost every pathway between training and test, and the split pathways carry label information across it; protein complexes do not | of 308 held-out genes whose primary subsystem is a pathway, 271 (88 percent) have a training gene with the same one and 37 have none; a held-out gene's mean Jaccard similarity of positive symptom sets to its same-pathway training genes exceeds its mean to all training genes by +0.050 [+0.028, +0.072] (bootstrap over 271 held-out genes), to genes sharing any pathway subsystem by +0.028 [+0.013, +0.044], to genes sharing a catalysed reaction by +0.020 [-0.014, +0.055] and to complex partners by -0.011 [-0.069, +0.050] (58 genes, 13 percent, have a complex partner in training) | docs/fold_mechanism_sharing.md (7 October) |
+| 13 | The trained models trail the random walk only where a gene's pathway is split across folds; elsewhere they tie it | split-pathway genes (271): B3 typed nodes minus random walk -0.049 [-0.075, -0.023], B6 linear response with gate time scale -0.037 [-0.068, -0.005], B3 linear response with cofactors -0.073 [-0.099, -0.048], B6 mechanistic with gate time scale -0.022 [-0.051, +0.023]; unsplit genes (180): every trained model within an interval including zero (B3 typed nodes -0.000 [-0.037, +0.034]). The random walk's own lift over popularity is +0.072 on split-pathway genes, +0.076 on the 37 genes whose pathway is absent from training (5 symptoms scorable, intervals near ±0.1) and +0.041 on the 143 genes with no pathway subsystem, so its edge follows being a pathway enzyme rather than the split itself. The random walk reads the labels of training neighbours at prediction time and the trained models do not, which is the candidate reason; pooled predictions, strata by primary subsystem, no correction for the number of comparisons | docs/score_by_pathway_split.md (7 October) |
 
 Data layer:
 
