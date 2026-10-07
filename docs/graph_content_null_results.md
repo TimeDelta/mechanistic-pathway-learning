@@ -132,6 +132,41 @@ additions to the graph's content have not moved the score, while removing the wi
 in the gross connectivity the random walk reads, and the layers added on top of it are small relative to the noise of
 a five-fold comparison on 451 perturbations.
 
+## The baseline is undirected and the encoders are not (7 October 2026)
+
+The comparison behind this document sets directed models against an undirected walk. Both trained encoders follow the
+stored edge direction: the linear-response encoder puts each edge at row relation x N + target and column source, and
+adds one reverse edge, the depletion edge from a reaction back to its substrate
+(mechanistic_pathway_learning/models/linear_response_encoder.py, signed_stacked_adjacency); the message-passing
+encoder takes edge_index as [edge_source, edge_target] and adds none. The random walk with restart symmetrises the
+graph ("The walk runs on the undirected graph with currency metabolites removed",
+mechanistic_pathway_learning/models/baselines/random_walk_with_restart_baseline.py), and so does every rewiring in
+the null distribution above. The null result therefore reads: a directed, signed model has not beaten an undirected,
+unsigned walk.
+
+Silverbush and Sharan (2019, doi:10.1038/s41467-019-10887-6) report that diffusion over an oriented network ranks drug targets better than diffusion over
+an unoriented one (docs/literature_appraisal_staging.md, slot 14). On this graph a walk that follows direction from a
+gene cannot return to another gene, since genes have outgoing edges only, so the guess this section was written to
+test is that direction costs the encoders here. experiments/score_directed_random_walk.py (docs/directed_random_walk.md)
+runs three unsigned walks with one readout fixed in advance (cosine similarity of the held-out gene's walk distribution
+over reactions and metabolites with the mean distribution of the symptom's training positives), differing only in the
+edges they follow. Macro AUPRC, minus the undirected walk with the same readout; 95 percent intervals, not corrected:
+
+| walk | per fold, t | pooled | within degree strata |
+|---|---|---|---|
+| the encoder's own edge directions | +0.005 [-0.003, +0.013] | +0.006 [+0.001, +0.011] | -0.002 [-0.011, +0.009] |
+| downstream only (substrate to reaction to product) | +0.006 [-0.015, +0.027] | +0.008 [+0.003, +0.014] | +0.012 [-0.002, +0.028] |
+
+Following direction does not cost the walk anything, so the guess is not supported. Nor is a gain established: one
+reading of three excludes zero for each arm, the pooled one, and for the encoder's edges the within-strata reading
+puts the point estimate below zero, so that arm's pooled gain is consistent with ordering genes by degree. The
+committed walk (B1, which scores the mass landing on the training genes rather than a profile similarity) is within
+noise of all three (+0.004 [-0.007, +0.015] per fold against the undirected profile walk). On this slice direction
+alone neither explains the encoders' deficit nor adds to the walk's score. Signs are the other half of the
+difference: b3_linear_response_cofactors_unsigned (every edge +1, every gain positive, otherwise identical to
+b3_linear_response_cofactors) is running, and it removes the cancellation at mixed-sign nodes together with the sign
+information.
+
 ## What is still not established
 
 This section was written before the 20-rewiring null existed and said there was no distribution to place the real

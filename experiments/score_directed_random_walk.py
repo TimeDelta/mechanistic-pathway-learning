@@ -1,7 +1,7 @@
 """Random walks that follow edge direction, without signs, against the undirected walk the null result is measured on.
 
 The baseline random walk with restart (B1) symmetrises the graph, so the signed linear-response encoder has only been
-compared with a baseline that has neither direction nor sign. Silverbush et al. (2019, Nature Communications,
+compared with a baseline that has neither direction nor sign. Silverbush and Sharan (2019, Nature Communications,
 doi:10.1038/s41467-019-10887-6) report that diffusion over an oriented network ranks drug targets better than diffusion
 over an unoriented one. This script asks the same question on the slice, with no signs anywhere.
 
