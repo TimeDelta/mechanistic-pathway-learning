@@ -13,7 +13,15 @@ which. Grouped disease-cluster split, 451 perturbations, random walk with restar
 | real | **0.293 ± 0.014** | 0.245 | 0.530 |
 | rewired, 2 swaps per edge | 0.272 ± 0.014 | 0.227 | 0.523 |
 | rewired, 50 swaps per edge | **0.250 ± 0.033** | 0.211 | **0.485** |
+| labels permuted within degree strata, a different control | 0.269 ± 0.028 | 0.224 | 0.529 |
 | degree-scaled popularity, for scale | 0.259 ± 0.024 | 0.211 | 0.500 |
+
+A second error, found after the first correction and worth recording because it caused it. The figure 0.269 in the
+fourth row was read as the real graph's random-walk score for most of the day, from a grep whose context window
+caught the tail of the label-permutation table in docs/phase2_baselines_disease_cluster.md rather than the
+grouped-split table above it. The real graph has scored 0.293 in that document since 3 October and in both runs made
+today, so the committed baseline was never stale; the comparison was simply against the wrong row, which is how a
+rewired graph came to look as good as the real one. Read a figure's own section heading before comparing to it.
 
 At two swaps per edge the rewiring barely moved the score, and that reading supported the conclusion that the wiring
 carried nothing beyond the degree sequence. Two swaps per edge is below the rewiring function's own default of ten
@@ -60,6 +68,16 @@ twin, paired over five folds:
 So individual additions to the graph's content have not moved the score, while removing the wiring wholesale does.
 Those are consistent: the signal lives in the gross connectivity the random walk reads, and the specific layers added
 on top of it are small relative to the noise of a five-fold comparison.
+
+## What is still not established
+
+One rewiring at one seed cannot say whether the 0.043 gap is larger than the spread across rewirings. The real score
+and the rewired one, 0.293 +/- 0.014 against 0.250 +/- 0.033, overlap on their fold-to-fold spread, and there is no
+null distribution to place the real score against, so the gap is suggestive rather than measured.
+experiments/run_rewiring_null_distribution.py repeats the rewiring over 20 seeds with the graph, the evidence, the
+fold assignment and the restart probability all held fixed, and reports how many rewirings match or beat the real
+graph. Twenty seeds bound the p-value below by 1/21, so a clean sweep is reportable at the 0.05 level. Its output is
+docs/rewiring_null_distribution.md.
 
 ## The decisive follow-up
 
