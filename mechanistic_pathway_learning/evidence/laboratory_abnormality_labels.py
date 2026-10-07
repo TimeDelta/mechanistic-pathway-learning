@@ -21,7 +21,8 @@ terms (hypokalemia, hyperkalemia) name potassium(1+); conversely several HPO ter
 cation (calcium atom in hypercalciuria, iron atom and iron cation, sodium, zinc, copper and magnesium atoms) where
 Human-GEM has the ion, and HPO's 'phosphate' is the clinical inorganic phosphate, Human-GEM's Pi. Serum iron counts
 both oxidation states, so iron maps to Fe2+ and Fe3+; Human-GEM has no Cu+, so copper maps to Cu2+. Human-GEM has no
-manganese metabolite, so the manganese terms stay unmapped. The same table maps compounds that HPO names in a generic,
+manganese metabolite; the manganese terms map to MN2, the Mn2+ node of the manganese graph variant
+(graph/manganese_extension.py), and reach no node in the base graphs. The same table maps compounds that HPO names in a generic,
 neutral or racemic form the ontology bridge cannot reach (glucose, lactic acid, cholesterol, adrenaline, galactose,
 argininosuccinate, DOPAC and others below, each to the Human-GEM metabolite of that name), and a few class names to
 the members a clinical test measures: ketone bodies (acetoacetate, 3-hydroxybutyrate, acetone), catecholamines
@@ -59,6 +60,7 @@ MANUAL_HUMAN_GEM_MAPPINGS: dict[str, frozenset[str]] = {
     "CHEBI:28694": frozenset({"MAM01624"}),  # copper atom -> Cu2+
     "CHEBI:23378": frozenset({"MAM01624"}),  # copper cation -> Cu2+
     "CHEBI:25107": frozenset({"MAM02482"}),  # magnesium atom -> Mg2+
+    "CHEBI:25155": frozenset({"MN2"}),  # manganese cation -> Mn2+ of the manganese graph variant (graph/manganese_extension.py); no node in the base graphs
     # the same compound in a generic, neutral or racemic form
     "CHEBI:17234": frozenset({"MAM01965"}),  # glucose -> glucose (Human-GEM: D-glucopyranose)
     "CHEBI:28358": frozenset({"MAM02403"}),  # rac-lactic acid -> L-lactate (the clinical lactate)
