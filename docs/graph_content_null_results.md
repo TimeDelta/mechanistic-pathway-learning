@@ -64,6 +64,33 @@ hypothesis about the null rather than a demonstrated cause: it predicts that the
 keeps no per-node divisor, and an aggregator that survives sign mixing should both move the score, and neither has
 been run against symptoms yet.
 
+## The wiring does carry signal: 20 degree-preserving rewirings (7 October 2026)
+
+The single rewiring reported earlier left the question open, since one draw cannot say whether a gap is
+real. Twenty degree-preserving rewirings at 50 double-edge swaps per edge, with the graph, the
+evidence, the fold assignment and the restart probability all held fixed and only the rewiring seed
+varied, give the null distribution in docs/rewiring_null_distribution.md:
+
+| | per-fold macro AUPRC |
+|---|---|
+| real graph | **0.293** |
+| rewirings, mean of 20 | 0.268 ± 0.010 |
+| rewirings, best of 20 | 0.287 |
+| rewirings, worst of 20 | 0.250 |
+
+No rewiring reached the real graph, so p = 0.048, and the real score sits 2.4 null standard deviations
+above the null mean. The p-value is held at 0.048 by the number of rewirings, not by the size of the
+effect: with 20 draws and none at least as good, (0 + 1) / (20 + 1) is the smallest value the test can
+return. More seeds would lower it.
+
+Two things keep this from being a strong result. The margin over the best single rewiring is 0.006,
+which is smaller than the real graph's own fold-to-fold spread of ±0.014, so a reader comparing the
+real graph with one rewiring rather than with the distribution would see nothing. And a rewiring
+preserves in-degree and out-degree per relation but not the bipartite metabolite-reaction structure,
+so part of the gap may be the plausibility of the graph as a graph rather than the correctness of its
+biology. What the control does establish is the claim it was run for: the specific wiring matters, and
+the random walk is reading the graph rather than the degree sequence.
+
 ## Which earlier interventions were and were not null
 
 These paired differences stand, since they do not depend on the rewiring control. Each intervention against its own
