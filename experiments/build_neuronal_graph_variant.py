@@ -92,18 +92,21 @@ CURATED_REACTIONS = [
     # not; NALCN and the atypical SCN7A are a leak; the ENaC subunits are epithelial and not voltage-gated. HCN conducts
     # potassium as well as sodium, which this reaction leaves out. TPCN1 and TPCN2 are lysosomal and keep Reactome's
     # lysosomal calcium reaction instead of a plasma-membrane sodium one
-    CuratedReaction("MAR_NAV_SODIUM", "sodium entry through voltage-gated sodium channels", ("MAM02519e",), ("MAM02519c",),
+    # Products are the neuronal pool nodes, so these currents reach the pools as Reactome's ion species do.
+    CuratedReaction("MAR_NAV_SODIUM", "sodium entry through voltage-gated sodium channels", ("MAM02519e",), ("NEURON_MAM02519c",),
                     ("SCN1A", "SCN2A", "SCN3A", "SCN4A", "SCN5A", "SCN8A", "SCN9A", "SCN10A", "SCN11A"), "voltage-gated sodium channel (PMID 33199904)"),
-    CuratedReaction("MAR_HCN_SODIUM", "sodium entry through hyperpolarisation-activated HCN channels", ("MAM02519e",), ("MAM02519c",),
-                    ("HCN1", "HCN2", "HCN3", "HCN4"), "hyperpolarisation-activated cation channel (PMID 19584315)"),
-    CuratedReaction("MAR_SODIUM_LEAK", "sodium leak into the cytosol", ("MAM02519e",), ("MAM02519c",), ("NALCN", "SCN7A"),
+    # HCN: mixed sodium and potassium current; its net sign at rest is set explicitly (see CuratedReaction).
+    CuratedReaction("MAR_HCN_CURRENT", "mixed sodium and potassium current through HCN channels", ("MAM02519e", "NEURON_MAM02200c"),
+                    ("NEURON_MAM02519c", "NEURON_MAM02200e"), ("HCN1", "HCN2", "HCN3", "HCN4"),
+                    "hyperpolarisation-activated cation channel, I_h (PMID 19584315)", membrane_potential_sign=1.0),
+    CuratedReaction("MAR_SODIUM_LEAK", "sodium leak into the cytosol", ("MAM02519e",), ("NEURON_MAM02519c",), ("NALCN", "SCN7A"),
                     "sodium leak channel, not voltage-gated (PMID 33199904)"),
-    CuratedReaction("MAR_ENAC_SODIUM", "sodium entry through epithelial sodium channels", ("MAM02519e",), ("MAM02519c",),
+    CuratedReaction("MAR_ENAC_SODIUM", "sodium entry through epithelial sodium channels", ("MAM02519e",), ("NEURON_MAM02519c",),
                     ("SCNN1A", "SCNN1B", "SCNN1D", "SCNN1G"), "epithelial sodium channel, not voltage-gated (PMID 33199904)"),
 ]
 # Human-GEM reactions the curated set replaces, deleted with every edge they carry
 REPLACED_HUMAN_GEM_REACTIONS = {"MAR01527": "Sodium Transport (Uniport) lumps the Nav, HCN, NALCN, ENaC and TPCN families, whose voltage dependence differs; "
-                                            "split into MAR_NAV_SODIUM, MAR_HCN_SODIUM, MAR_SODIUM_LEAK and MAR_ENAC_SODIUM"}
+                                            "split into MAR_NAV_SODIUM, MAR_HCN_CURRENT, MAR_SODIUM_LEAK and MAR_ENAC_SODIUM"}
 
 
 def main() -> None:

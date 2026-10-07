@@ -108,7 +108,11 @@ class ReactomeReaction:
 @dataclass
 class CuratedReaction:
     """A reaction Reactome lacks, in graph node ids: substrates and products are metabolite nodes, catalysts gene
-    symbols. release names the transmitter base a vesicle-to-cleft release reaction releases."""
+    symbols. release names the transmitter base a vesicle-to-cleft release reaction releases.
+    membrane_potential_sign overrides the sign derived from the charge that crosses, for a current whose direction is
+    known while its stoichiometry is not: a channel permeable to two ions at once carries a net current set by the
+    permeability ratio and the driving forces, not by a whole-number stoichiometry, so deriving the sign from counted
+    charge would either invent that ratio or cancel to zero and drop the current altogether."""
     reaction_id: str
     display_name: str
     substrates: tuple[str, ...]
@@ -116,6 +120,7 @@ class CuratedReaction:
     catalysts: tuple[str, ...]
     evidence: str
     release: str | None = None
+    membrane_potential_sign: float | None = None
 
 
 def compartment_letter(name: str) -> str:
@@ -338,6 +343,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         catalyst_genes = set().union(*(genes_of_node.get(node_of_species.get(s), set()) for s in reaction.catalysts)) if reaction.catalysts else set()
         reaction_records[node_id] = (participants, catalyst_genes, reactant_nodes, product_nodes, "Reactome")
 
+    curated_membrane_signs: dict[str, float] = {}
     for curated in curated_reactions:
         for node in curated.substrates + curated.products:  # a compartment copy of a metabolite the base graph lacks (a transmitter in the vesicle lumen)
             if node not in existing and node not in new_nodes:
@@ -356,6 +362,8 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         participants = [("in", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.substrates]
         participants += [("out", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.products]
         reaction_records[curated.reaction_id] = (participants, set(curated.catalysts), list(curated.substrates), list(curated.products), "curated")
+        if curated.membrane_potential_sign is not None:
+            curated_membrane_signs[curated.reaction_id] = curated.membrane_potential_sign
 
     # Human-GEM: the vesicular shortcuts go, brain-expressed ion transport joins the electrical layer
     catalysts_of: dict[str, set[str]] = defaultdict(set)
@@ -385,14 +393,19 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     for reaction_node, (participants, catalyst_genes, _, _, source) in reaction_records.items():
         moved = ions_moved_inward(participants, ion_set)
         inward_charge = sum(ion_charges.get(base, 0) * amount for base, amount in moved.items())
-        if inward_charge and add_edge(reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", 1.0 if inward_charge > 0 else -1.0,
-                                      f"net charge across the plasma membrane ({source})"):
+        curated_sign = curated_membrane_signs.get(reaction_node)
+        sign = curated_sign if curated_sign is not None else (1.0 if inward_charge > 0 else -1.0)
+        evidence = ("net current of a channel permeable to more than one ion (curated)" if curated_sign is not None
+                    else f"net charge across the plasma membrane ({source})")
+        if (curated_sign is not None or inward_charge) and add_edge(reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", sign, evidence):
             membrane_edges[source] += 1
+        # Reactome and curated reactions reach the pools through their own substrate and product edges, since their
+        # ion species are the pool nodes; only Human-GEM, whose ions are currency nodes, needs these edges
         if source == "Human-GEM":
             for base, amount in moved.items():
                 for letter, direction in (("c", 1.0), ("e", -1.0)):
                     if (base, letter) in pools and add_edge(reaction_node, neuronal_pool_id(base, letter), "changes_ion_pool",
-                                                            direction * (1.0 if amount > 0 else -1.0), "ion moved across the plasma membrane (Human-GEM)"):
+                                                            direction * (1.0 if amount > 0 else -1.0), f"ion moved across the plasma membrane ({source})"):
                         pool_edges += 1
         gating = voltage_gating_sign(catalyst_genes) if moves_ions_across_a_membrane(participants, ion_set | {base for base in ion_charges}) else 0.0
         if gating and add_edge(MEMBRANE_POTENTIAL_NODE, reaction_node, "voltage_gates", gating, "voltage-gated pore"):

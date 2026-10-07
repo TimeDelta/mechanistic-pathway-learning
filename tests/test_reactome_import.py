@@ -365,3 +365,22 @@ def test_a_lumped_human_gem_reaction_is_replaced_by_the_curated_families():
     depolarising = edge_table[edge_table.relation_type == "changes_membrane_potential"].set_index("source_id").sign
     assert depolarising["MAR_NAV_SODIUM"] == 1.0 and depolarising["MAR_HCN_SODIUM"] == 1.0
     assert summary["voltage_gating_edges"].get("curated") == 2
+
+
+def test_a_mixed_permeability_channel_keeps_its_net_current():
+    """HCN passes sodium in and potassium out through one pore. Counted one for one the charges cancel and the
+    current would vanish, so its net sign at rest is given explicitly; the pools still see both ions move."""
+    sodium_pool, potassium_pool_in, potassium_pool_out = neuronal_pool_id(SODIUM, "c"), neuronal_pool_id(POTASSIUM, "c"), neuronal_pool_id(POTASSIUM, "e")
+    mixed = CuratedReaction("MAR_HCN_CURRENT", "mixed current", (f"{SODIUM}e", potassium_pool_in), (sodium_pool, potassium_pool_out), ("HCN1",), "test",
+                            membrane_potential_sign=1.0)
+    counted = CuratedReaction("MAR_COUNTED", "the same ions without a sign", (f"{SODIUM}e", potassium_pool_in), (sodium_pool, potassium_pool_out), ("ATP1A3",), "test")
+    _, edges, _, _ = run_import(curated_reactions=[mixed, counted])
+    current = edges[(edges.relation_type == "changes_membrane_potential")].set_index("source_id").sign
+    assert current["MAR_HCN_CURRENT"] == 1.0
+    assert "MAR_COUNTED" not in current.index  # one sodium in, one potassium out: no net charge, no edge
+    gating = edges[edges.relation_type == "voltage_gates"].set_index("target_id").sign
+    assert gating["MAR_HCN_CURRENT"] == -1.0
+    # the pools are reached through the reaction's own substrate and product edges, once each
+    assert ((edges.source_id == "MAR_HCN_CURRENT") & (edges.target_id == sodium_pool) & (edges.relation_type == "product_of")).any()
+    assert ((edges.source_id == potassium_pool_in) & (edges.target_id == "MAR_HCN_CURRENT") & (edges.relation_type == "substrate_of")).any()
+    assert not ((edges.source_id == "MAR_HCN_CURRENT") & (edges.relation_type == "changes_ion_pool")).any()
