@@ -8,9 +8,13 @@ tissues and a brain_expressed flag (annotate_brain_expression); reactions take t
 column of the structural node features and the flag into the next column. These are node attributes, not filters,
 so peripheral genes stay in the graph.
 
+Expression per brain region (13 Human Protein Atlas regions) and per brain cell class (10 classes grouped from 34
+single-nucleus cluster types) is implemented as node descriptors, not as structural features, in
+mechanistic_pathway_learning/graph/brain_expression_descriptors.py (built by
+experiments/build_brain_expression_descriptors.py); unlike the GTEx column it is also available on the slice graphs.
+
 What is not implemented: the rank-normalised weight in [0, 1] that compute_brain_expression_weights below was meant
-to return (nothing calls it), expression per brain region (the 13 GTEx tissues are collapsed to their maximum), and
-expression per cell type (design assumption A1 defers cell types to version 2).
+to return (nothing calls it), and cell-class layer copies of the graph (nodes per cell class, as in Lewis et al. 2010).
 """
 
 

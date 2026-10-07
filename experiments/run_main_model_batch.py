@@ -51,6 +51,16 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b3_linear_response_cofactors_shared_gain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                                  "--cofactor-relations", "--relation-gains", "shared"],
     # task 24: a sparsemax-weighted mixture of odd statistics across relations in place of their mean; the only change from b3_linear_response_cofactors
+    # the node descriptors (protein, metabolite and reaction properties) in the linear-response output gate, which until
+    # now saw only the structural features; the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                 "--cofactor-relations", "--node-descriptors", "data/processed/graph/node_descriptors.parquet"],
+    # brain region and brain cell-class expression (experiments/build_brain_expression_descriptors.py) appended to the
+    # node descriptors, for genes and, through the gene rule, for reactions; the only change from
+    # b3_linear_response_cofactors_descriptors
+    "b3_linear_response_cofactors_descriptors_brain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                       "--cofactor-relations", "--node-descriptors",
+                                                       "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
     "b3_linear_response_cofactors_mixture": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                              "--cross-relation-aggregator", "softmax_mixture", "--mixture-weighting", "sparsemax"],
     "b6_linear_response_time_scales_cofactors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
