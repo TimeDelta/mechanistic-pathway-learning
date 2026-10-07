@@ -120,6 +120,7 @@ last line of this list.
 - Slot 13, 7 October 2026, 18:38 UTC: Mottaqi 2026 appraised as DOI 10.64898/2026.04.29.721775. Slots spent: 13 of 19.
 - Slot 14, 7 October 2026, 19:00 UTC: Silverbush 2019 appraised as PMID 31289271. Slots spent: 14 of 19.
 - Slot 15, 7 October 2026, 19:08 UTC: Martin 2014 appraised as PMID 25015298. Slots spent: 15 of 19.
+- Slot 16, 7 October 2026, 19:19 UTC: one Consensus search on the relation-typed half of Q1, 20 records. Slots spent: 16 of 19.
 
 ### Triage checks: the original four and three additions
 
@@ -301,6 +302,87 @@ Set aside from this search on the abstract, with the reason:
 
 Plan for the remaining seven slots: read 1 to 3 in order, spend one slot on a search for the relation-typed half of
 Q1, then take the last three from the two queues by expected bearing.
+
+### Relation-typed search (slot 16, one Consensus search, 20 records)
+
+Query: "Do relation-aware or heterogeneous graph neural networks over a biomedical knowledge graph outperform
+network diffusion, random walk or network proximity baselines for predicting disease phenotypes, drug indications
+or gene-disease associations when whole diseases or genes are held out?" No filters were applied. This is the first
+search on the relation-typed half of Q1.
+
+The reply listed 20 records, each with a DOI, and carried no sign-up, upgrade or usage notice. It ends with the
+block of formatting instructions already noted under the slot 12 search. No abstract contained instruction-like
+text. None of the 20 was already on file.
+
+What the set looks like. Most records predict a link of the heterogeneous network they propagate over (a
+drug-disease or gene-disease association that sits in the graph as an edge type), under cross-validation over
+edges. That is the association-label design: checks 2 and 3 are in doubt for nearly all of them. No abstract names
+a diffusion or proximity baseline, so the comparison the query asked for is not visible at this level.
+
+Queued from this search, with the reason:
+
+1. Venkatesh, 2026, Bioinformatics, 10.1093/bioinformatics/btag413. Benchmarks an MLP, GCN, HGT and RGCN on one
+   heterogeneous graph and reports "RGCN achieves the strongest overall performance (Macro F1: 0.694, Recall:
+   0.720), with relation-specific weight matrices proving the critical factor". The same graph with and without
+   relation types is the isolation check 5 asks for, applied to types. The outcome is the class of a drug-drug
+   interaction, not a phenotype, and the split is not stated in the abstract.
+2. Mellina Andreu, 2024, Artificial Intelligence in Medicine, 10.1016/j.artmed.2025.103177. A heterogeneous graph
+   model for phenotype-gene links that "consistently outperforms existing models in both retrospective and temporal
+   validation tasks". The outcome is the kind this project predicts and a temporal split is stricter than a random
+   one. The abstract does not say whether any baseline is a diffusion.
+3. Hu, 2026, Nature Biomedical Engineering, 10.1038/s41551-025-01598-z. Path-based reasoning that learns "by
+   considering all relations along paths" and "leverages a background regulatory graph for enhanced message
+   passing"; it "outperforms or matches existing methods" on tasks that include drug-disease indication. A typed
+   propagation over a background graph kept apart from the predicted links is close to our design. The baselines
+   are not named in the abstract.
+4. Macaulay, 2024, Proceedings of Machine Learning Research, 10.1101/2024.09.24.614782. A multi-relational graph
+   model that "matches and often outperforms traditional single-relation approaches", tested on external data
+   sets. Node features come from text embeddings, which changes more than the relation typing.
+5. Hu, 2025, Bioinformatics Advances, 10.1093/bioadv/vbaf187. A benchmark of 42 techniques on eight biomedical
+   link-prediction data sets. It may hold typed against untyped comparisons at scale, all on transductive tasks.
+
+Added from the appraiser's recall, not returned by any search. The identifier and every claim are unverified until
+the slot that reads it:
+
+- Huang, 2024, Nature Medicine, "A foundation model for clinician-centered drug repurposing" (TxGNN), DOI recalled
+  as 10.1038/s41591-024-03233-x. Recalled as a relation-typed graph model on a medical knowledge graph, scored on
+  indications and contraindications for held-out disease areas against baselines that include diffusion state
+  distance, network proximity and untyped or typed graph networks. If the recall is right it is the most direct
+  test of the relation-typed half of Q1 on a clinical label, with check 3 met and check 2 in doubt, since the
+  graph holds the indication edges of the training diseases.
+
+Set aside from this search on the abstract, with the reason:
+
+- Gu, 2022 (10.1016/j.compbiomed.2022.106127); Zhao, 2025 (10.1016/j.ins.2024.121360); Zhao, 2021
+  (10.1093/bib/bbab515); He, 2024 (10.1186/s12859-024-05705-w); Mary, 2026 (10.25258/ijddt.16.21s.106); Jia, 2024
+  (10.1186/s12859-024-05841-3); Zeng, 2026 (10.1109/jbhi.2026.3679534); Borah, 2025 (10.64898/2025.12.25.696543);
+  Li, 2023 (10.1093/bib/bbac578); Keichin, 2025 (10.1093/bib/bbaf369): association or interaction prediction on a
+  network that contains the predicted edge type, compared with other methods of that kind (checks 2 and 3), with
+  no untyped or diffusion variant in the abstract.
+- Zhao, 2025, Briefings in Bioinformatics (10.1093/bib/bbaf555): tests "unseen drugs and diseases", so check 3
+  holds, but the abstract names no untyped or diffusion baseline.
+- Bang, 2023, Nature Communications (10.1038/s41467-023-39301-y): a random walk guided by semantic information
+  against link-prediction models, up to 16.8% better on drug-disease association. A typed walk against untyped
+  ones, on a transductive task. Next in line if a slot frees up.
+- Mastropietro, 2023, Bioinformatics (10.1093/bioinformatics/btad482): a graph network for disease-gene ranking on
+  an untyped interaction network. No relation types, so it does not bear on Q1. It bears on our null result from the
+  other side: a learned model reported ahead of existing gene discovery methods on an untyped graph.
+- Ye, 2025, Advanced Science (10.1002/advs.202412402): drug screening with a heterogeneous graph and expression
+  data; several inputs change at once.
+- Yue, 2019, Bioinformatics (10.1093/bioinformatics/btz718): a benchmark of untyped graph embeddings. Background
+  for the untyped baseline.
+
+Plan for slots 17 to 19, the best three unread entries across this search and the slot 12 queue:
+
+- Slot 17: Huang 2024 (TxGNN), because it is the only candidate expected to run diffusion and proximity baselines
+  on a clinical label with whole disease areas held out. If the recalled identifier does not resolve to that paper,
+  the slot goes to entry 1 above.
+- Slot 18: Venkatesh 2026, the typed against untyped comparison on one graph.
+- Slot 19: Mellina Andreu 2024, the phenotype outcome with a temporal split.
+
+Left unread when the cap is spent: Hu 2026, Macaulay 2024, Hu 2025 and Bang 2023 from this search, and Trinh 2016
+and Gates 2021 from slot 12. The two from slot 12 dropped below these because both score Boolean models' own
+dynamics or drug-target status under a signed logic with no unsigned variant visible in the abstract.
 
 ### Note on 39148051
 
