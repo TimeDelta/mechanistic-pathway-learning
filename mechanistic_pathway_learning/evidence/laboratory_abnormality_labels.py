@@ -15,9 +15,13 @@ stereo-specific one (L-phenylalanine, its zwitterion), so ChEBI identifiers are 
     named compound's name (L-phenylalanine under phenylalanine), with its own equivalents; kept apart in the report
     because a class such as 'amino acid' would otherwise reach every amino acid. Where a compound has both an L- and a
     D- child (ornithine, arginine), only the L- form is kept: clinical amino acid measurements are of the L- form.
-Where Human-GEM's own ChEBI annotation is wrong for a measured compound, a manual entry of MANUAL_HUMAN_GEM_MAPPINGS
-maps it (route 'manual'): Human-GEM annotates K+ (MAM02200) with CHEBI:26216, the potassium atom, while the HPO
-potassium terms (hypokalemia, hyperkalemia) name potassium(1+), CHEBI:29103.
+Where HPO and Human-GEM name a measured element in different forms, a manual entry of MANUAL_HUMAN_GEM_MAPPINGS maps
+it (route 'manual'): Human-GEM annotates K+ (MAM02200) with CHEBI:26216, the potassium atom, while the HPO potassium
+terms (hypokalemia, hyperkalemia) name potassium(1+); conversely several HPO terms name the element or a generic
+cation (calcium atom in hypercalciuria, iron atom and iron cation, sodium, zinc, copper and magnesium atoms) where
+Human-GEM has the ion, and HPO's 'phosphate' is the clinical inorganic phosphate, Human-GEM's Pi. Serum iron counts
+both oxidation states, so iron maps to Fe2+ and Fe3+; Human-GEM has no Cu+, so copper maps to Cu2+. Human-GEM has no
+manganese metabolite, so the manganese terms stay unmapped.
 A term that still reaches more than MAXIMUM_METABOLITES_PER_TERM metabolites names a class (prostaglandins reach 32,
 fatty acids 11) and is left out, as are generic pseudo-metabolites such as '[protein]'.
 A label is a (gene, metabolite, direction, fluid) record; an unannotated pair is unlabelled, not normal.
@@ -39,6 +43,15 @@ FLUID_BY_UBERON = {"UBERON_0000178": "blood", "UBERON_0001088": "urine", "UBERON
 MAXIMUM_METABOLITES_PER_TERM = 3
 MANUAL_HUMAN_GEM_MAPPINGS: dict[str, frozenset[str]] = {
     "CHEBI:29103": frozenset({"MAM02200"}),  # potassium(1+) -> K+ (Human-GEM lists the potassium atom, CHEBI:26216)
+    "CHEBI:22984": frozenset({"MAM01413"}),  # calcium atom -> Ca2+
+    "CHEBI:26020": frozenset({"MAM02751"}),  # phosphate (clinical inorganic phosphate) -> Pi
+    "CHEBI:18248": frozenset({"MAM01821", "MAM01822"}),  # iron atom -> Fe2+, Fe3+
+    "CHEBI:24875": frozenset({"MAM01821", "MAM01822"}),  # iron cation -> Fe2+, Fe3+
+    "CHEBI:26708": frozenset({"MAM02519"}),  # sodium atom -> Na+
+    "CHEBI:27363": frozenset({"MAM03157"}),  # zinc atom -> zinc (annotated zinc(2+))
+    "CHEBI:28694": frozenset({"MAM01624"}),  # copper atom -> Cu2+
+    "CHEBI:23378": frozenset({"MAM01624"}),  # copper cation -> Cu2+
+    "CHEBI:25107": frozenset({"MAM02482"}),  # magnesium atom -> Mg2+
 }
 CHEBI_EQUIVALENCE_RELATIONS = {"RO:0018033", "RO:0018034", "RO:0018036"}  # is conjugate base of, is conjugate acid of, is tautomer of
 HP_CLASS_PATTERN = re.compile(r'<owl:Class rdf:about="http://purl.obolibrary.org/obo/(HP_\d+)">')

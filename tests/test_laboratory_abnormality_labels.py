@@ -120,3 +120,10 @@ def test_potassium_ion_maps_to_human_gem_potassium_by_manual_entry(tmp_path) -> 
     metabolites_by_chebi = human_gem_metabolites_by_chebi(pd.DataFrame({"metsNoComp": ["MAM02200"], "metChEBIID": ["CHEBI:26216"]}))
     hypokalemia = ChemicalDefinition("HP:0002900", ("CHEBI:29103",), -1, "blood")
     assert map_definition_to_metabolites(hypokalemia, names, neighbours, children, metabolites_by_chebi) == ({"MAM02200"}, "manual")
+
+
+def test_iron_maps_to_both_oxidation_states() -> None:
+    names, neighbours, children = {}, {}, {}
+    metabolites_by_chebi = human_gem_metabolites_by_chebi(pd.DataFrame({"metsNoComp": ["MAM01821", "MAM01822"], "metChEBIID": ["CHEBI:29033", "CHEBI:29034"]}))
+    increased_serum_iron = ChemicalDefinition("HP:0003452", ("CHEBI:24875",), 1, "blood")
+    assert map_definition_to_metabolites(increased_serum_iron, names, neighbours, children, metabolites_by_chebi) == ({"MAM01821", "MAM01822"}, "manual")
