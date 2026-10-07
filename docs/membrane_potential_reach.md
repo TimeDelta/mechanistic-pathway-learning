@@ -74,6 +74,43 @@ clips the falling half of the field: the messages at a node carry both signs wha
 is, so a maximum over negative messages returns the least negative, which at the first step is the
 zero of an untouched neighbour. That is about message signs rather than input signs.
 
+## Why the midpoint between the sum and the mean is dominated (7 October 2026)
+
+Taking both scalings and splitting the difference is the natural compromise, and the geometric midpoint
+between a sum S and a mean S / d is sign(S) |S| / sqrt(d), which is in-degree normalisation at exponent
+0.5: the arm removed earlier the same day. Two things came out of measuring it properly.
+
+The removal rested on a confounded measurement. The implemented arm divided by in-degree to the
+exponent and then rescaled globally by the largest row sum. Contraction does not need that; it needs
+the spectral radius of the unsigned aggregate below one, which is smaller. On the metabolic graph:
+
+| scheme | largest row sum | spectral radius |
+|---|---|---|
+| mean, exponent 1, with the relations-feeding divisor | 1.000 | 1.000 |
+| mean, exponent 1, without it | 1.000 | 1.423 |
+| midpoint, exponent 0.5 | 45.465 | 12.377 |
+| sum, exponent 0 | 2067.000 | 41.166 |
+
+So the arm was dividing by 45.5 where 12.4 suffices, paying 3.7 times more than contraction requires.
+The recorded field of 2.9e-15 at VM_c measured that waste rather than the exponent.
+
+The midpoint is still dominated, and provably. One perturbed producing reaction at in-degree d
+contributes 1 / d under the mean, 1 / (12.4 sqrt(d)) at the midpoint and 1 / 41.2 under the sum. The
+midpoint beats the mean when sqrt(d) > 12.4, so when d > 154, and beats the sum when
+sqrt(d) < 41.2 / 12.4, so when d < 11. Those conditions cannot both hold, so no in-degree makes the
+midpoint the best of the three, and d > 154 is out of reach for any propagating metabolite: the
+heaviest non-currency one is arginine at 114 producing reactions.
+
+The compromise is also aimed at the wrong quantity. The global constant is uniform over nodes, so it
+sets the overall scale and leaves the relative weighting between nodes untouched, and the overall scale
+is what the learned per-relation gain and the signed-logarithm response scale already absorb. A
+per-fold macro AUPRC is a ranking, so a uniform factor of 41 costs nothing that a gain cannot undo.
+What the sum buys is the relative stoichiometric weighting between a metabolite with five producers and
+one with one, which no rescaling recovers. The crossover at d of about 41 also says the choice is
+properly per node rather than global, and in-degree is a node property, so a learned exponent per
+relation or per node type is a weaker instrument than it looks: metabolites alone span in-degree 1 to
+114.
+
 ## In-degree normalisation dilutes, and it dilutes the readouts hardest (7 October 2026)
 
 Within a relation the encoder takes a mean, so the message a node receives is independent of how many
