@@ -130,8 +130,10 @@ def base_graph() -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     return nodes, edges, ["catalyzed_by", "substrate_of", "product_of"]
 
 
-def run_import(**overrides):
-    nodes, edges, relation_types = base_graph()
+def run_import(nodes=None, edges=None, **overrides):
+    default_nodes, default_edges, relation_types = base_graph()
+    nodes = default_nodes if nodes is None else nodes
+    edges = default_edges if edges is None else edges
     arguments = dict(sbml_texts=[REACTOME_SBML], nodes=nodes, edges=edges, relation_types=relation_types,
                      gene_of_uniprot={"P35498": "SCN1A", "P21579": "SYT1"}, map_chebi_to_human_gem={"CHEBI:29101": SODIUM, "CHEBI:18243": "MAM01736"}.get,
                      ion_bases=ION_BASES, ion_charges=ION_CHARGES, human_gem_participants=read_human_gem_participants(HUMAN_GEM_SBML, set(ION_BASES.values())),
@@ -228,12 +230,30 @@ def test_release_takes_the_vesicle_lumen_transmitter_and_calcium():
     assert calcium.relation_type.tolist() == ["activates"] and calcium.sign.tolist() == [1.0]
 
 
-def test_vesicular_shortcut_loses_its_catalysis():
-    _, edges, _, summary = run_import()
-    assert not ((edges.source_id == "GENE:SLC18A2") & (edges.target_id == "MAR00334")).any()
-    assert summary["vesicular_shortcut_catalysis_removed"] and summary["edges_removed"] == 1
-    # a non-vesicular transporter keeps it
+def test_vesicular_shortcut_reaction_is_deleted_outright():
+    nodes, edges, _, summary = run_import()
+    # dropping the catalysis alone would leave an uncatalysed cytosol-to-extracellular route that still skips the vesicle
+    assert "MAR00334" not in set(nodes.node_id)
+    assert not ((edges.source_id == "MAR00334") | (edges.target_id == "MAR00334")).any()
+    assert summary["nodes_deleted"] == 1 and len(summary["vesicular_shortcut_reactions_deleted"]) == 1
+    assert "SLC18A2" in summary["vesicular_shortcut_reactions_deleted"][0]
+    # the transmitter keeps no route out of the cytosol other than the vesicle cycle
+    assert not ((edges.source_id == "MAM01736c") & edges.relation_type.eq("substrate_of")
+                & edges.target_id.isin(edges[edges.target_id.eq("MAM01736e")].source_id)).any()
+    # a non-vesicular transporter keeps its reaction
     assert ((edges.source_id == "GENE:ATP1A3") & (edges.target_id == "MAR05429")).any()
+
+
+def test_shortcut_shared_with_another_transporter_keeps_the_reaction():
+    """A reaction a non-vesicular transporter also carries loses only the vesicular catalysis."""
+    nodes, edges, relation_types = base_graph()
+    edges = pd.concat([edges, pd.DataFrame([{"source_id": "GENE:ATP1A3", "target_id": "MAR00334", "relation_type": "catalyzed_by", "sign": 1.0,
+                                             "evidence_source": "Human-GEM"}], columns=EDGE_COLUMNS)], ignore_index=True)
+    node_table, edge_table, _, summary = run_import(nodes=nodes, edges=edges)
+    assert "MAR00334" in set(node_table.node_id) and summary["nodes_deleted"] == 0
+    assert not ((edge_table.source_id == "GENE:SLC18A2") & (edge_table.target_id == "MAR00334")).any()
+    assert ((edge_table.source_id == "GENE:ATP1A3") & (edge_table.target_id == "MAR00334")).any()
+    assert len(summary["vesicular_shortcut_catalysis_removed"]) == 1
 
 
 def test_curated_reaction_adds_its_missing_metabolite_copies():
@@ -283,3 +303,39 @@ def test_built_variant_is_consistent_when_present(variant_directory):
     assert (nodes.node_type == "membrane_potential").sum() == 1
     assert len(summary["release_reactions"]) >= 6
     assert summary["membrane_potential_edges"]["Reactome"] > 0 and summary["voltage_gating_edges"]["Reactome"] > 0
+
+
+def test_curated_vesicle_chain_and_reverse_transport_in_the_built_variant():
+    """In the built variant a transmitter reaches the cleft by exocytosis only through its vesicle lumen, and reverse
+    transport through the plasma-membrane transporter is the one route that bypasses the vesicle."""
+    from pathlib import Path
+
+    directory = Path("data/processed/graph_neuronal")
+    if not (directory / "nodes.parquet").exists():
+        pytest.skip("the neuronal variant has not been built")
+    nodes = pd.read_parquet(directory / "nodes.parquet")
+    edges = pd.read_parquet(directory / "edges.parquet")
+    summary = json.loads((directory / "neuronal_variant_summary.json").read_text())
+    catalysts = edges[edges.relation_type == "catalyzed_by"]
+    vesicular = {"SLC18A1", "SLC18A2", "SLC18A3", "SLC32A1", "SLC17A6", "SLC17A7", "SLC17A8"}
+    compartment_of = dict(zip(nodes.node_id, nodes.compartment.astype(str)))
+    for gene in sorted(vesicular):
+        for reaction in catalysts[catalysts.source_id == f"GENE:{gene}"].target_id:
+            letters = set(compartment_of.get(reaction, "").split(";"))
+            assert not {"c", "e"} <= letters, f"{gene} still catalyses the cytosol-to-extracellular reaction {reaction}"
+    # VMAT1 is neuroendocrine, so the curated brain loading reactions are VMAT2 alone (PMID 8643547)
+    loading = [reaction for reaction in catalysts[catalysts.source_id == "GENE:SLC18A2"].target_id if reaction.startswith("MAR_")]
+    assert loading and not [reaction for reaction in catalysts[catalysts.source_id == "GENE:SLC18A1"].target_id if reaction.startswith("MAR_")]
+    # Release draws on the vesicle lumen copy wherever the loading reaction makes one (dopamine, serotonin, GABA,
+    # histamine, glycine, noradrenaline); for glutamate and acetylcholine Reactome's loading consumes the cytosolic
+    # transmitter straight into the loaded-vesicle complex, so the chain runs through that entity instead.
+    node_ids = set(nodes.node_id)
+    for reaction, released in summary["release_reactions"].items():
+        for base in released:
+            if f"{base}v" in node_ids:
+                assert ((edges.source_id == f"{base}v") & (edges.target_id == reaction) & (edges.relation_type == "substrate_of")).any()
+            else:
+                loading = set(edges[(edges.source_id == f"{base}c") & (edges.relation_type == "substrate_of")].target_id)
+                complexes = set(edges[edges.source_id.isin(loading) & (edges.relation_type == "product_of")].target_id)
+                assert any(node.startswith("RCTE_") for node in complexes), f"{base} reaches release through no loaded vesicle"
+    assert ((edges.source_id == "GENE:SLC6A3") & (edges.target_id == "MAR_DOPAMINE_EFFLUX")).any()

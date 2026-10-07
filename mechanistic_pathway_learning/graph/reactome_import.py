@@ -41,8 +41,11 @@ the electrical layer:
     of dopamine, serotonin, noradrenaline and GABA without consuming the lumen transmitter its loading reactions make,
     so the lumen transmitter is made a substrate of release, which connects VMAT2 and VGAT to the cleft.
 Human-GEM's vesicular shortcuts (VMAT, VAChT, VGAT and VGLUT moving a transmitter straight from the cytosol to the
-extracellular space, including Recon3D's 5-hydroxytryptophan secretion) lose their vesicular-transporter catalysis, so
-these transporters act through the vesicle cycle only.
+extracellular space in one ATP-driven step, including Recon3D's 5-hydroxytryptophan secretion) are deleted outright,
+with every edge they carry, when no other transporter also catalyses them. Dropping their catalysis alone is not
+enough: an uncatalysed reaction still propagates substrate -> reaction -> product, so the transmitter would still reach
+the cleft without the vesicle. Deleting them leaves the vesicle cycle as the only route for a transmitter to leave the
+cytosol by exocytosis, which is what makes a vesicular transporter defect, or a drug acting on one, reach the synapse.
 """
 from __future__ import annotations
 
@@ -252,6 +255,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     new_nodes: dict[str, dict] = {}
     new_edges: list[dict] = []
     removed_edges: set[tuple[str, str, str]] = set()
+    deleted_nodes: set[str] = set()
     node_of_species: dict[str, str] = {}
     base_of_node: dict[str, str] = dict(zip(nodes.node_id, nodes.base_metabolite_id))
     letter_of_node: dict[str, str] = dict(zip(nodes.node_id, nodes.compartment.astype(str)))
@@ -346,17 +350,24 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         participants += [("out", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.products]
         reaction_records[curated.reaction_id] = (participants, set(curated.catalysts), list(curated.substrates), list(curated.products), "curated")
 
-    # Human-GEM: vesicular shortcuts lose vesicular catalysis; brain-expressed ion transport joins the electrical layer
+    # Human-GEM: the vesicular shortcuts go, brain-expressed ion transport joins the electrical layer
     catalysts_of: dict[str, set[str]] = defaultdict(set)
     for source, target, relation in zip(edges.source_id, edges.target_id, edges.relation_type):
         if relation == "catalyzed_by" and str(source).startswith("GENE:"):
             catalysts_of[target].add(source[5:])
-    shortcut_edges_removed = []
+    shortcuts_deleted, shortcut_catalysis_removed = [], []
     for reaction_node, genes in catalysts_of.items():
-        if genes & set(vesicular_transporter_genes) and {"c", "e"} <= set(str(letter_of_node.get(reaction_node, "")).split(";")):
+        if not (genes & set(vesicular_transporter_genes) and {"c", "e"} <= set(str(letter_of_node.get(reaction_node, "")).split(";"))):
+            continue
+        if genes <= set(vesicular_transporter_genes):
+            # the reaction exists only as the shortcut, so it goes with every edge it has: dropping the catalysis alone
+            # would leave an uncatalysed route from the cytosol to the extracellular space, which still skips the vesicle
+            deleted_nodes.add(reaction_node)
+            shortcuts_deleted.append(f"{reaction_node} ({name_of_node.get(reaction_node)}), catalysed by {', '.join(sorted(genes))}")
+        else:  # a reaction a non-vesicular transporter also carries: only the vesicular catalysis goes
             for gene in sorted(genes & set(vesicular_transporter_genes)):
                 removed_edges.add((f"GENE:{gene}", reaction_node, "catalyzed_by"))
-                shortcut_edges_removed.append(f"{gene} -> {reaction_node} ({name_of_node.get(reaction_node)})")
+                shortcut_catalysis_removed.append(f"{gene} -> {reaction_node} ({name_of_node.get(reaction_node)})")
             catalysts_of[reaction_node] = genes - set(vesicular_transporter_genes)
     for reaction_id, participants in human_gem_participants.items():
         genes = catalysts_of.get(reaction_id, set())
@@ -402,8 +413,9 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         if calcium_pool and calcium_pool not in reactant_nodes:
             add_edge(calcium_pool, reaction_node, "activates", 1.0, "Ca2+-triggered exocytosis")
 
-    node_table = pd.concat([nodes, pd.DataFrame(list(new_nodes.values()), columns=nodes.columns)], ignore_index=True)
-    kept = ~pd.Series(list(zip(edges.source_id, edges.target_id, edges.relation_type))).isin(removed_edges).to_numpy()
+    node_table = pd.concat([nodes[~nodes.node_id.isin(deleted_nodes)], pd.DataFrame(list(new_nodes.values()), columns=nodes.columns)], ignore_index=True)
+    kept = (~pd.Series(list(zip(edges.source_id, edges.target_id, edges.relation_type))).isin(removed_edges).to_numpy()
+            & ~edges.source_id.isin(deleted_nodes).to_numpy() & ~edges.target_id.isin(deleted_nodes).to_numpy())
     edge_table = pd.concat([edges[kept], pd.DataFrame(new_edges, columns=edges.columns)], ignore_index=True).astype(edges.dtypes.to_dict())
     edge_table = edge_table.drop_duplicates(["source_id", "target_id", "relation_type"], ignore_index=True)
     counts = edge_table.source_id.value_counts().add(edge_table.target_id.value_counts(), fill_value=0)
@@ -412,8 +424,10 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
                                                                        "changes_membrane_potential", "voltage_gates", "changes_ion_pool", "driving_force")
                                             if relation not in relation_types]
     summary = {"reactome_reactions": len(reactions), "reactome_species": len(species), "curated_reactions": len(curated_reactions),
-               "nodes_added": len(node_table) - len(nodes), "edges_added": len(edge_table) - len(edges) + int((~kept).sum()), "edges_removed": int((~kept).sum()),
+               "nodes_added": len(node_table) - len(nodes) + len(deleted_nodes), "nodes_deleted": len(deleted_nodes),
+               "edges_added": len(edge_table) - len(edges) + int((~kept).sum()), "edges_removed": int((~kept).sum()),
                "membrane_potential_edges": dict(membrane_edges), "ion_pool_edges_from_human_gem": pool_edges, "voltage_gating_edges": dict(gating_edges),
-               "release_reactions": release_reactions, "vesicular_shortcut_catalysis_removed": shortcut_edges_removed,
+               "release_reactions": release_reactions, "vesicular_shortcut_reactions_deleted": shortcuts_deleted,
+               "vesicular_shortcut_catalysis_removed": shortcut_catalysis_removed,
                "small_molecules_without_human_gem_metabolite": sorted(unmapped_small_molecules)}
     return node_table, edge_table, new_relations, summary

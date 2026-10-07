@@ -46,7 +46,10 @@ VESICULAR_TRANSPORTER_GENES = {"SLC18A1", "SLC18A2", "SLC18A3", "SLC32A1", "SLC1
 SIGNALLING_METABOLITES = {"MAM02041": None, "MAM01986": {"e", "v"}}
 MANGANESE_CHEBI = "CHEBI:29035"
 
-# Vesicle loading and release Reactome's chosen pathways leave out, in Human-GEM's form. Reactome loads dopamine,
+# Vesicle loading, release and reverse transport Reactome's chosen pathways leave out, in Human-GEM's form.
+# Loading is VMAT2 alone: central, peripheral and enteric neurons express only VMAT2, while VMAT1 (SLC18A1) is
+# neuroendocrine, in chromaffin and enterochromaffin cells (Erickson et al. 1996, PMID 8643547). SLC18A1 keeps its
+# gene node and its other reactions, since adrenal release reaches the brain through the circulation. Reactome loads dopamine,
 # serotonin, GABA and acetylcholine into vesicles but not histamine, noradrenaline or glycine, and its loaded-vesicle
 # complexes are formed without consuming the lumen transmitter, so release also takes the lumen copy as a substrate
 # (reactome_import.import_reactome_layer). Histamine and noradrenaline are VMAT2 substrates (histamine with 30-fold
@@ -58,8 +61,8 @@ MANGANESE_CHEBI = "CHEBI:29035"
 # noradrenaline in the cytosol, is its substrate. Release is Ca2+-triggered through synaptotagmin, with the Ca2+
 # channels recruited to the active zone (Sudhof 2013, PMID 24183019).
 CURATED_REACTIONS = [
-    CuratedReaction("MAR_HISTAMINE_LOADING", "loading of histamine into secretory vesicles", ("MAM02124c",), ("MAM02124v",), ("SLC18A2", "SLC18A1"), "VMAT2 substrate (PMID 8643547)"),
-    CuratedReaction("MAR_NORADRENALINE_LOADING", "loading of dopamine into noradrenergic vesicles", ("MAM01736c",), ("MAM01736v",), ("SLC18A2", "SLC18A1"), "VMAT2 substrate (PMID 8643547)"),
+    CuratedReaction("MAR_HISTAMINE_LOADING", "loading of histamine into secretory vesicles", ("MAM02124c",), ("MAM02124v",), ("SLC18A2",), "VMAT2 substrate (PMID 8643547)"),
+    CuratedReaction("MAR_NORADRENALINE_LOADING", "loading of dopamine into noradrenergic vesicles", ("MAM01736c",), ("MAM01736v",), ("SLC18A2",), "VMAT2 substrate (PMID 8643547)"),
     # Human-GEM writes dopamine beta-monooxygenase (MAR06741) in the cytosol: ascorbate + dopamine + O2 ->
     # dehydroascorbate + H2O + noradrenaline. The same reaction with the lumen copies of the amines
     CuratedReaction("MAR_NORADRENALINE_VESICLE_SYNTHESIS", "dopamine beta-monooxygenase (vesicle lumen)", ("MAM01736v", "MAM02630c", "MAM01368c"),
@@ -69,6 +72,16 @@ CURATED_REACTIONS = [
                     "Ca2+-triggered exocytosis (PMID 24183019)", release="MAM02124"),
     CuratedReaction("MAR_GLYCINE_RELEASE", "release of glycine at the synapse", ("MAM01986v",), ("MAM01986e",), ("SYT1", "STX1A", "SNAP25", "VAMP2"),
                     "Ca2+-triggered exocytosis (PMID 24183019)", release="MAM01986"),
+    # Reverse transport through the plasma-membrane transporter, the other half of the amphetamine mechanism: it raises
+    # extracellular monoamine from the cytosolic pool without a vesicle and without depolarisation, while vesicular
+    # redistribution empties the vesicle (Schmitz et al. 2001, PMID 11487614). Human-GEM writes these transporters as
+    # uptake only, so without this reaction a drug acting on them can only lower extracellular transmitter
+    CuratedReaction("MAR_DOPAMINE_EFFLUX", "reverse transport of dopamine (cytosol to extracellular)", ("MAM01736c",), ("MAM01736e",), ("SLC6A3",),
+                    "reverse transport through the transporter (PMID 11487614)"),
+    CuratedReaction("MAR_NORADRENALINE_EFFLUX", "reverse transport of noradrenaline (cytosol to extracellular)", ("MAM02617c",), ("MAM02617e",), ("SLC6A2",),
+                    "reverse transport through the transporter (PMID 11487614)"),
+    CuratedReaction("MAR_SEROTONIN_EFFLUX", "reverse transport of serotonin (cytosol to extracellular)", ("MAM02897c",), ("MAM02897e",), ("SLC6A4",),
+                    "reverse transport through the transporter (PMID 11487614)"),
 ]
 
 
