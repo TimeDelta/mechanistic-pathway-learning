@@ -78,6 +78,12 @@ DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
 COSUBSTRATE_RELATION = "cosubstrate_of"
 COPRODUCT_RELATION = "coproduct_of"
 UNSIGNED_RELATIONS = ("binds",)
+# Where the edge signs come from. "graph" uses the stored signs and the -1 of the derived depletes_substrate relation;
+# "all_positive" sets every edge to +1 and keeps every gain positive, the sign ablation of the same pipeline on the
+# same graph and split (the check docs/literature_appraisal_staging.md applies to every appraised source). With no
+# negative entries nothing cancels at a node, so the ablation removes the sign information and the cancellation
+# together; the total_in_degree normalisation is the arm that keeps the signs and removes most of the cancellation.
+EDGE_SIGNS = ("graph", "all_positive")
 
 # How the messages of the relations feeding a node are combined into one. "mean" is the original
 # behaviour: each relation's normalised message is multiplied by its gain and the results are summed,
@@ -299,6 +305,7 @@ class LinearResponseEncoder(nn.Module):
         cross_relation_aggregator: str = "mean",
         mixture_weighting: str = "sparsemax",
         node_type_index: Tensor | None = None,
+        edge_signs: str = "graph",
     ) -> None:
         super().__init__()
         if node_features.shape[0] != num_graph_nodes:
@@ -315,11 +322,12 @@ class LinearResponseEncoder(nn.Module):
         uses_mixture = cross_relation_aggregator == "softmax_mixture"
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
                                                                           non_propagating_nodes, cofactor_edges, normalisation,
-                                                                          divide_by_relations_feeding=not uses_mixture)
+                                                                          divide_by_relations_feeding=not uses_mixture, edge_signs=edge_signs)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         self.register_buffer("node_features", node_features.to(torch.float32), persistent=False)
-        self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS for name in relation_names]), persistent=False)
+        self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS and edge_signs == "graph" for name in relation_names]),
+                             persistent=False)
         self.maximum_gain = contraction
         self.propagation_channels = propagation_channels
         if response_scale not in ("linear", "signed_log"):
@@ -375,7 +383,7 @@ class LinearResponseEncoder(nn.Module):
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
                                  cofactor_edges: Tensor | None = None, normalisation: str = "in_degree",
-                                 divide_by_relations_feeding: bool = True) -> tuple[Tensor, list[str]]:
+                                 divide_by_relations_feeding: bool = True, edge_signs: str = "graph") -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
         depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
         given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order."""
@@ -403,6 +411,10 @@ class LinearResponseEncoder(nn.Module):
         for index, name in enumerate(relation_names):
             if name in UNSIGNED_RELATIONS:
                 sign = torch.where(relation == index, torch.ones_like(sign), sign)  # the learned gain carries the sign
+        if edge_signs not in EDGE_SIGNS:
+            raise ValueError(f"edge_signs must be one of {EDGE_SIGNS}, not {edge_signs!r}")
+        if edge_signs == "all_positive":  # the sign ablation; see EDGE_SIGNS
+            sign = torch.ones_like(sign)
         if normalisation not in NORMALISATIONS:
             raise ValueError(f"normalisation must be one of {NORMALISATIONS}, not {normalisation!r}")
         row = relation * num_graph_nodes + target
