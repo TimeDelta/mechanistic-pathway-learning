@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1093/bib/bbae573](https://doi.org/10.1093/bib/bbae573) (PMID 39523622) | Q1, Q2 | `supports` | `same_construct_other_domain` | `weak` | "combined with balance theory and state theory, molecular features are extracted from the point of social relations through the propagation and aggregation of signed graph attention network" | an ablation isolating the signed graph attention from the topological embedding, the denoising autoencoder and the GBDT classifier, and an unsigned baseline on the same network; the abstract reports neither | everything about attribution, and whether any of it holds on a network that violates balance, which ours does at 26.9% of edges |
 | [10.1093/bib/bbaf062](https://doi.org/10.1093/bib/bbaf062) (PMID 39976387) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "CSGDN uses a signed graph diffusion method to uncover the underlying regulatory associations between genes and phenotypes" | an unsigned diffusion baseline on the same graph and split, and an ablation separating the signed diffusion from the contrastive objective; they report neither | whether the gain comes from the signs or from the contrastive views, and whether anything survives when the signed graph is a mechanistic substrate rather than the label graph itself |
 | [10.1016/j.neunet.2021.04.007](https://doi.org/10.1016/j.neunet.2021.04.007) (PMID 33906083) | Q1, Q2 | `no_bearing` | `background` | `strong` | "we obtain some sufficient conditions which can guarantee that networks with signed graph topologies realize bipartite synchronization under any initial conditions and arbitrary switching signals" | nothing: it is a control-theory result about coupled reaction-diffusion systems, with no biological network, no phenotype and no unsigned comparison | everything about Q1, but it supplies the condition under which signed dynamics reduce to unsigned, which is testable on our graph |
 | [10.1186/s12915-024-01968-0](https://doi.org/10.1186/s12915-024-01968-0) (PMID 39148051) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "A novel strategy for propagating signed message in signed networks addresses heterogeneity and consistency among nodes connected by signed edges" | an ablation replacing their signed propagation with an unsigned one, same features and same split; the abstract reports neither | whether the reported AUROC of 0.9742 owes anything to the signed strategy, and whether any of it transfers off a similarity-feature bipartite graph |
@@ -109,7 +110,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -119,7 +120,7 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 39523622, 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+Remaining to read: 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
 
 ### Note on 39148051
 
@@ -195,3 +196,29 @@ on association or similarity graphs without the ablation, one supplies the balan
 has no bearing. If that holds through the rest of the queue, the strict form of Q1 is an open question
 rather than a settled negative, which makes the unsigned random-walk baseline in
 docs/graph_content_null_results.md more unusual as a reported result than as a failure.
+
+### The pattern across the five rows, which is more informative than any single one
+
+Three of the five appraised papers (39148051, 39976387, 39523622) share one shape: a signed graph
+neural network over a biomedical **association** network, scored on link or sign prediction, with a
+headline figure reported for the whole pipeline and no unsigned ablation. None is a weak paper for its
+own question; all three are weakly informative for ours, for the same three reasons each time, which
+is why the firing instructions now name those three distinctions explicitly.
+
+A fourth observation cuts deeper and is worth stating as a claim rather than a row. Two of those three
+build on **balance theory**, 39523622 naming it outright, and 25113603 is about the aggregation
+method's restriction to the balanced, or causally consistent, case. Balance is the assumption that
+sign products around cycles are positive, and the published signed-propagation machinery for
+biological networks leans on it or on its near-miss.
+
+A stoichiometric metabolic graph violates balance by construction, not by accident. Every substrate_of
+edge forms a negative two-cycle with the depletes_substrate edge the encoder derives from it, giving
+34,791 frustrated edges of 129,577 (26.9%) on the metabolic graph and 38,958 of 143,079 (27.2%) on the
+neuronal graph, measured by `experiments/measure_signed_graph_balance.py`. So the balance-theoretic
+tools are unavailable here, and the papers that work best on association networks do so partly because
+those networks are close to balanced.
+
+That reframes the project's negative result. The question is not only whether signed propagation beats
+unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
+switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
+so far addresses that case, which makes it the open question rather than a settled negative.
