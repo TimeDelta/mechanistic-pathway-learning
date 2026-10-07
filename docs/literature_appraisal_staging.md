@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1186/1471-2105-15-238](https://doi.org/10.1186/1471-2105-15-238) (PMID 25015298) | Q1, Q2 | `mixed` | `analogous_mechanism` | `moderate` | "As in the previous example, performance results showed a more robust behavior of network-based features as compared to gene selection, for the majority of the learning algorithms used." | the same classifiers on backbone values computed three ways (the signed Laplacian as published, all edges made positive, signs permuted with the topology kept), scored across cohorts with intervals sized for test cohorts of about 24 patients; and a plain diffusion of the gene fold-changes over the same backbone as the unsigned baseline | no run removes or permutes the signs for prediction, so Q1 is not reached: the baselines are gene-level signatures and gene sets, not an unsigned propagation; the K statistic permutes backbone edges together with their signs and tests the perturbation score, not the classifier; for infliximab response the backbone signature is not the best performer (mean G-performance across cohorts 0.83, against 0.85 for a classifier on the genes downstream of one node and 0.80 for nearest shrunken centroids on all genes), with 47 pre-treatment patients over both cohorts; for smoking status all five backbone classifiers score 0.83 to 0.91 across data sets while gene-level ones range from 0.00 to 0.88; edge direction is discarded by the signed Laplacian; the inference runs backward from expression to upstream activity in a patient, not forward from a perturbation to a phenotype; standard errors are in a supplementary table that was not read; the fraction of nodes receiving both signs is not reported |
 | [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; checks 3 and 6 hold as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
 | [10.64898/2026.04.29.721775](https://doi.org/10.64898/2026.04.29.721775) (bioRxiv preprint, version 1, no PMID) | Q1, Q2 | `mixed` | `same_construct_other_domain` | `moderate` | "Without task-specific fine-tuning, FLASH consistently outperforms or matches nine state-of-the-art unsigned, relational, and signed graph baselines across drug mode-of-action prediction, clinical response modeling, and drug-drug interaction prediction, while substantially improving computational efficiency." | the same model with signs removed or permuted and nothing else changed, on a split that holds out whole drugs or diseases, with the majority-class score beside each accuracy; for Q1 proper, an outcome that is not itself an edge of the graph | the "clinical response" label is the sign of a compound-disease edge of the same graph (indication against contraindication), split by random edges, so this is the association-label design of 39976387; the unsigned baselines lose edge types as well as signs and differ in architecture, and the signed models receive the training labels as input edge signs, so the gain cannot be credited to sign propagation; contraindications are 92.6% of the labels and no majority-class score is given beside the binary accuracy of 0.9893; in the one drug-disjoint setting, on an unsigned outcome, the lead over the best baseline is not significant (p = 0.20 as relayed, three runs); balance is imposed by pruning edges in unbalanced cycles, which our graph could not survive; a preprint with unresolved table references; the body was read through a summarising fetch tool, so every figure beyond the abstract is relayed |
 | [10.1093/bioinformatics/btm170](https://doi.org/10.1093/bioinformatics/btm170) (PMID 17646318) | Q1 | `supports` | `analogous_mechanism` | `weak` | "In cross-validation tests, SPINE obtains very high accuracy in predicting knockout effects (99%)." | for Q1, a readout that an unsigned propagation over the same physical network can also be scored on (whether a knockout changes a gene at all, or a phenotype), since direction gives it nothing to predict; for the 99%, the counts of up and down effects among the held-out pairs and a split that holds out whole knockouts instead of single pairs | a direction task on expression, so Q1 is not reached and the readout is not a phenotype; the signs are fitted to the same knockout compendium they are scored on, with one or five pairs hidden per iteration, so the other pairs of the same knockout stay in the fit; the only baseline is another signed method (Yeang et al. 2004), and by the table as relayed the leave-one-out gap is 101 against 100 correct of 103 held-out pairs; no class balance or majority-direction rate in the part read; the figure is for the edge variant on a mating subnetwork of 58 interactions and 149 knockout pairs; the full text is not in PMC and was read through a publisher-page fetch that stopped in section 3.2 and relays only short quotes, so every figure beyond the abstract needs checking against the PDF |
@@ -118,6 +119,7 @@ last line of this list.
 - Slot 12, 7 October 2026, 18:29 UTC: one Consensus search, 20 records, five queued. Slots spent: 12 of 19.
 - Slot 13, 7 October 2026, 18:38 UTC: Mottaqi 2026 appraised as DOI 10.64898/2026.04.29.721775. Slots spent: 13 of 19.
 - Slot 14, 7 October 2026, 19:00 UTC: Silverbush 2019 appraised as PMID 31289271. Slots spent: 14 of 19.
+- Slot 15, 7 October 2026, 19:08 UTC: Martin 2014 appraised as PMID 25015298. Slots spent: 15 of 19.
 
 ### Triage checks: the original four and three additions
 
@@ -262,7 +264,7 @@ To read, in order of expected bearing on Q1:
    design is the one Q1 needs: a mechanistic edge attribute added, the plain network run as the baseline and a
    ranking outcome both can be scored on. Risk: the orientations are fitted from drug response and cancer genomic
    data, the same kind of data as the outcome (check 6).
-3. Martin, 2014, BMC Bioinformatics, 10.1186/1471-2105-15-238. Scores signed cause-and-effect networks from
+3. Appraised in slot 15 as PMID 25015298. Martin, 2014, BMC Bioinformatics, 10.1186/1471-2105-15-238. Scores signed cause-and-effect networks from
    transcriptomics and builds a signature "to predict the response to the treatment" in ulcerative colitis, a
    clinical label. The abstract says the value of the method's components is "substantiated", which may include a
    test with the signed structure removed or permuted (check 5). Probably the same framework as the first row
@@ -400,6 +402,68 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 25015298, a signed method built for networks that are not balanced
+
+The full text was read from PMC (PMC4227138), all sections. Reference numbers, figure numbers and most formula
+symbols are missing from the text as served, and the result tables arrive as flat lists of cells, so the table
+figures below rest on reading each method name with the seven numbers that follow it.
+
+Check 4, and a correction to this file's running claim. The notes above say that the published signed machinery
+leans on balance and that nothing in the queue addresses a frustrated graph. This paper does. Its predecessor was
+"restricted to causally consistent networks (e.g., no negative feedback loops are allowed)", and two of the networks
+used here are stated to violate that: "the xenobiotic metabolism network is not causally consistent", which
+"further motivated our method that does not assume causal consistency of the backbone", and "The cell cycle model
+contains many negative feedback loops, hence is not causally consistent". The paper equates the two terms: "a graph
+is balanced if and only if all its cycles are positive. This property is called “causally consistent”". The
+restriction named in the quoted sentence of the first row (25113603) is the one this paper removes. Whether the
+first row belongs to the same framework could not be confirmed, because the reference list is not in the served
+text.
+
+How it handles signs. Node values on the signed backbone are fitted by least squares to the gene fold-changes: the
+"smoothest" vector under the signed Laplacian with the measured genes as a boundary condition. The network-level
+score is a sum of per-edge quadratic terms, chosen because "we should avoid canceling out (“destructive
+interference”) cumulative signed edge scores". Two limits, the first stated in the paper and the second an
+inference made here from the objective as described:
+
+- Direction is lost: "the directionality of the edges has no more importance at this stage."
+- The quadratic score prevents cancellation in the network summary, not at a node. A backbone node whose signed
+  neighbours pull with equal strength in opposite directions still receives a fitted value near zero. So this is
+  not a ready answer to the encoder's mixed-sign destinations; it is a precedent for carrying a second,
+  sign-invariant quantity beside the signed value.
+
+The paper also ties balance to the spectrum of the signed Laplacian (the symbols are stripped, so the exact
+statement needs the PDF). The standard result is that the smallest eigenvalue of the signed Laplacian of a connected
+graph is zero exactly when the graph is balanced. That eigenvalue, computed on our derived relation stack, would be
+a continuous measure of frustration to set beside the count of 26.9% of edges. This is a suggestion from the
+literature session, not something the paper applies to a metabolic graph.
+
+Prediction of a clinical label. Patients' expression profiles are mapped to backbone values and classified, with
+10-fold cross-validation repeated 5 times and each cohort predicted from the other. Mean G-performance (geometric
+mean of sensitivity and specificity) over the two cross-cohort tests:
+
+- Infliximab response in ulcerative colitis (Table 8; 20 responders and 27 non-responders before treatment over
+  both cohorts). Backbone values: 0.68, 0.65, 0.83, 0.73 and 0.80 over five classifiers. All genes: 0.79, 0.58,
+  0.63 and 0.80. Genes downstream of the single best node: 0.80 and 0.85. The best figure belongs to a gene set,
+  not to the signed backbone, and the gaps are within what one or two patients change in cohorts of this size.
+- Smoking status (Table 7). Backbone values: 0.86, 0.86, 0.91, 0.85 and 0.83. All genes and transcript-layer genes:
+  from 0.00 to 0.88, with several classifiers assigning every sample of the other data set to one class. Genes
+  downstream of the single best node: 0.89 and 0.90.
+
+Why `mixed` and `analogous_mechanism`. The backbone features are the most consistent across classifiers for
+smoking and are not ahead for infliximab response, where the paper's own text credits "NSC combined with the genes
+underlying a single UBE and NSC based on the backbone values" jointly. Neither case compares a signed with an
+unsigned propagation. The comparison run is network-derived features against gene-level features, so the signs'
+contribution to prediction is not measured. The K statistic comes closest and does not fill the gap: "The edges of
+the functional layer are randomly permuted (together with their signs)", and what is recomputed is the perturbation
+score.
+
+Against the original checks: 1 holds (signs are curated cause-and-effect relations), 2 holds (the backbone is
+fixed before the data are seen: "this linear transform does not depend on the data"), 3 holds (whole cohorts held
+out), 4 holds (no balance assumption). Check 5 fails, check 6 holds and check 7 is met by reporting sensitivity and
+specificity separately.
+
+No instruction-like text was found in the article.
 
 ### Note on 31289271, the first row where the plain network is the baseline
 
