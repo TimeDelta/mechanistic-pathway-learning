@@ -19,7 +19,7 @@ Layers and sources:
                  to the receptor or enzyme node, so dopamine reaches DRD1-5 and so on.
   transcription  CollecTRI regulons: regulates_transcription_of with the consensus sign.
   pharmacology   ChEMBL mechanisms: targets, with action type                    (joined downstream)
-  attributes     currency tag per metabolite (tag_currency_metabolites); brain expression (not yet)
+  attributes     currency tag per metabolite (tag_currency_metabolites); brain expression (--brain-expression, below)
 
 Gene and protein nodes share one identifier space, GENE:<symbol>: metabolic genes with a
 symbol in genes.tsv are remapped from their Ensembl identifier, and signaling or

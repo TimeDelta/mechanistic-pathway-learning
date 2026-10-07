@@ -1,13 +1,18 @@
-"""Brain expression weights per gene (design section 4.1, node attributes).
+"""Brain expression weights per gene (design section 4.1, node attributes): an unused stub.
 
-Version 1: a scalar weight in [0, 1] from Human Protein Atlas brain tissue
-consensus or GTEx brain tissues (median TPM, rank-normalized). Version 2:
-cell-type-specific weights. Weights are node attributes used by the encoder,
-not filters, so peripheral genes stay in the background graph.
+What is implemented, and where: mechanistic_pathway_learning/graph/build_physiology_graph.py reads the GTEx v10
+median-TPM table (load_brain_expression) and gives every gene node the largest median TPM over the 13 GTEx brain
+tissues and a brain_expressed flag (annotate_brain_expression); reactions take the largest value over their catalysts
+(propagate_brain_expression_to_reactions), and regulon edges of factors known not to be brain expressed are dropped
+(restrict_transcription_edges_to_brain_expressed). load_experiment_data turns the value into the log1p brain-expression
+column of the structural node features and the flag into the next column. These are node attributes, not filters,
+so peripheral genes stay in the graph.
 
-Not implemented in version 0.1.
+What is not implemented: the rank-normalised weight in [0, 1] that compute_brain_expression_weights below was meant
+to return (nothing calls it), expression per brain region (the 13 GTEx tissues are collapsed to their maximum), and
+expression per cell type (design assumption A1 defers cell types to version 2).
 """
 
 
 def compute_brain_expression_weights(expression_table_path):
-    raise NotImplementedError("rank-normalize brain median expression per gene to [0, 1]")
+    raise NotImplementedError("not implemented and not called; see the module docstring for the implemented brain expression")
