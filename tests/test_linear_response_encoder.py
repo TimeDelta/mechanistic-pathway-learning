@@ -499,3 +499,22 @@ def test_the_warm_start_rejects_a_weight_that_would_leave_a_statistic_without_a_
         CrossRelationAggregator(num_node_types=1, propagation_channels=1, initial_mean_weight=1.0)
     with pytest.raises(ValueError, match="initial_mean_weight"):
         CrossRelationAggregator(num_node_types=1, propagation_channels=1, initial_mean_weight=0.1)
+
+
+def test_a_shared_gain_gives_every_relation_the_same_gain():
+    encoder = LinearResponseEncoder(
+        6, RELATION_TYPES, torch.tensor([edge[0] for edge in EDGES]), torch.tensor([edge[1] for edge in EDGES]),
+        torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), torch.tensor([edge[3] for edge in EDGES]),
+        torch.zeros(6, 3), node_state_dim=4, relation_gains="shared")
+    gain = encoder.relation_gain()
+    assert encoder.gain_logit.shape[0] == 1
+    assert gain.shape[0] == len(encoder.relation_names)
+    assert torch.allclose(gain, gain[:1].expand_as(gain))
+
+
+def test_an_unknown_relation_gain_rule_is_refused():
+    with pytest.raises(ValueError, match="relation_gains must be one of"):
+        LinearResponseEncoder(
+            6, RELATION_TYPES, torch.tensor([edge[0] for edge in EDGES]), torch.tensor([edge[1] for edge in EDGES]),
+            torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), torch.tensor([edge[3] for edge in EDGES]),
+            torch.zeros(6, 3), node_state_dim=4, relation_gains="typed")

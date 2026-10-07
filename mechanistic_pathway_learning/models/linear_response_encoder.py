@@ -84,6 +84,11 @@ UNSIGNED_RELATIONS = ("binds",)
 # negative entries nothing cancels at a node, so the ablation removes the sign information and the cancellation
 # together; the total_in_degree normalisation is the arm that keeps the signs and removes most of the cancellation.
 EDGE_SIGNS = ("graph", "all_positive")
+# Whether each relation learns its own gain. "per_relation" is the default; "shared" ties every relation to one gain
+# per channel (and drops the carriers' weak starting offset), the relation-typing ablation of the same pipeline. The
+# adjacency is still normalised per relation under "in_degree", so "shared" removes the learned part of the typing
+# and keeps the structural part; "total_in_degree" with "shared" removes both.
+RELATION_GAINS = ("per_relation", "shared")
 
 # How the messages of the relations feeding a node are combined into one. "mean" is the original
 # behaviour: each relation's normalised message is multiplied by its gain and the results are summed,
@@ -306,6 +311,7 @@ class LinearResponseEncoder(nn.Module):
         mixture_weighting: str = "sparsemax",
         node_type_index: Tensor | None = None,
         edge_signs: str = "graph",
+        relation_gains: str = "per_relation",
     ) -> None:
         super().__init__()
         if node_features.shape[0] != num_graph_nodes:
@@ -334,9 +340,12 @@ class LinearResponseEncoder(nn.Module):
             raise ValueError("response_scale must be 'linear' or 'signed_log'")
         self.response_scale = response_scale
         self.log_response_scale = nn.Parameter(torch.full((propagation_channels,), INITIAL_LOG_RESPONSE_SCALE)) if response_scale == "signed_log" else None
-        initial_gain_logit = torch.randn(len(relation_names), propagation_channels)  # spread so channels start at different time scales
+        if relation_gains not in RELATION_GAINS:
+            raise ValueError(f"relation_gains must be one of {RELATION_GAINS}, not {relation_gains!r}")
+        self.relation_gains = relation_gains
+        initial_gain_logit = torch.randn(1 if relation_gains == "shared" else len(relation_names), propagation_channels)  # spread so channels start at different time scales
         for carrier_relation in (COSUBSTRATE_RELATION, COPRODUCT_RELATION):
-            if carrier_relation in relation_names:  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
+            if carrier_relation in relation_names and relation_gains == "per_relation":  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
                 initial_gain_logit[relation_names.index(carrier_relation)] += CARRIER_INITIAL_GAIN_LOGIT_OFFSET
         self.gain_logit = nn.Parameter(initial_gain_logit)
         self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
@@ -434,8 +443,9 @@ class LinearResponseEncoder(nn.Module):
 
     def relation_gain(self) -> Tensor:
         """[R, D] gains: positive for signed relations, either sign for unsigned ones, all below the contraction bound."""
-        positive = torch.sigmoid(self.gain_logit)
-        either_sign = torch.tanh(self.gain_logit)
+        gain_logit = self.gain_logit.expand(len(self.relation_names), -1)  # a no-op unless relation_gains is "shared"
+        positive = torch.sigmoid(gain_logit)
+        either_sign = torch.tanh(gain_logit)
         return self.maximum_gain * torch.where(self.relation_is_unsigned[:, None], either_sign, positive)
 
     def sustained_input(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor) -> Tensor:

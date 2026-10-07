@@ -43,6 +43,9 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # the sign ablation: every edge +1 and every gain positive, same graph, split and head; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_unsigned": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                               "--cofactor-relations", "--edge-signs", "all_positive"],
+    # the relation-typing ablation: one gain shared by every relation; the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_shared_gain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                 "--cofactor-relations", "--relation-gains", "shared"],
     # task 24: a sparsemax-weighted mixture of odd statistics across relations in place of their mean; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_mixture": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                              "--cross-relation-aggregator", "softmax_mixture", "--mixture-weighting", "sparsemax"],

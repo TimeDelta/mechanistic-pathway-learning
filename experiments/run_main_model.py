@@ -61,6 +61,7 @@ from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cof
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CROSS_RELATION_AGGREGATORS,
     EDGE_SIGNS,
+    RELATION_GAINS,
     LinearResponseEncoder,
     MIXTURE_WEIGHTINGS,
     NORMALISATIONS,
@@ -178,11 +179,12 @@ def build_models(data, arguments, device):
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
-                                        edge_signs=arguments.edge_signs).to(device)
+                                        edge_signs=arguments.edge_signs, relation_gains=arguments.relation_gains).to(device)
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
-              + (", every edge sign +1" if arguments.edge_signs == "all_positive" else ""))
+              + (", every edge sign +1" if arguments.edge_signs == "all_positive" else "")
+              + (", one gain shared by every relation" if arguments.relation_gains == "shared" else ""))
     else:
         if arguments.node_descriptors and arguments.node_features != "typed":
             raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
@@ -345,6 +347,8 @@ def main() -> None:
                         help="linear-response encoder: divide each message by the number of edges feeding the node (in_degree), or apply one global scale set by the spectral radius so the stoichiometric counts survive (spectral)")
     parser.add_argument("--edge-signs", choices=EDGE_SIGNS, default="graph",
                         help="linear-response encoder: the graph's signs, or every edge +1 with every gain positive (the sign ablation)")
+    parser.add_argument("--relation-gains", choices=RELATION_GAINS, default="per_relation",
+                        help="linear-response encoder: a learned gain per relation, or one gain shared by every relation (the relation-typing ablation)")
     parser.add_argument("--cross-relation-aggregator", choices=CROSS_RELATION_AGGREGATORS, default="mean",
                         help="linear-response encoder: how the per-relation messages into a node combine; mean cancels exactly when a positive and a negative relation carry equal weight, softmax_mixture learns a weighting over order statistics instead")
     parser.add_argument("--mixture-weighting", choices=MIXTURE_WEIGHTINGS, default="sparsemax",
