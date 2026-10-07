@@ -183,7 +183,7 @@ def build_models(data, arguments, device):
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
-              + (", every edge sign +1" if arguments.edge_signs == "all_positive" else "")
+              + {"all_positive": ", every edge sign +1", "permuted": ", edge signs permuted among edges"}.get(arguments.edge_signs, "")
               + (", one gain shared by every relation" if arguments.relation_gains == "shared" else ""))
     else:
         if arguments.node_descriptors and arguments.node_features != "typed":
@@ -346,7 +346,8 @@ def main() -> None:
     parser.add_argument("--normalisation", choices=NORMALISATIONS, default="in_degree",
                         help="linear-response encoder: divide each message by the number of edges feeding the node (in_degree), or apply one global scale set by the spectral radius so the stoichiometric counts survive (spectral)")
     parser.add_argument("--edge-signs", choices=EDGE_SIGNS, default="graph",
-                        help="linear-response encoder: the graph's signs, or every edge +1 with every gain positive (the sign ablation)")
+                        help="linear-response encoder: the graph's signs, every edge +1 with every gain positive (the sign ablation), "
+                             "or the signs shuffled among edges with a fixed seed (the sign permutation)")
     parser.add_argument("--relation-gains", choices=RELATION_GAINS, default="per_relation",
                         help="linear-response encoder: a learned gain per relation, or one gain shared by every relation (the relation-typing ablation)")
     parser.add_argument("--cross-relation-aggregator", choices=CROSS_RELATION_AGGREGATORS, default="mean",

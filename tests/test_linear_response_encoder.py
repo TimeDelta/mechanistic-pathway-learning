@@ -518,3 +518,16 @@ def test_an_unknown_relation_gain_rule_is_refused():
             6, RELATION_TYPES, torch.tensor([edge[0] for edge in EDGES]), torch.tensor([edge[1] for edge in EDGES]),
             torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), torch.tensor([edge[3] for edge in EDGES]),
             torch.zeros(6, 3), node_state_dim=4, relation_gains="typed")
+
+
+def test_the_sign_permutation_keeps_the_number_of_negative_entries_and_is_reproducible():
+    def stacked_values(edge_signs):
+        stacked, _ = LinearResponseEncoder.signed_stacked_adjacency(
+            6, RELATION_TYPES, torch.tensor([edge[0] for edge in EDGES]), torch.tensor([edge[1] for edge in EDGES]),
+            torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), torch.tensor([edge[3] for edge in EDGES]),
+            edge_signs=edge_signs)
+        return stacked.values()
+
+    graph_signs, permuted_signs = stacked_values("graph"), stacked_values("permuted")
+    assert int((permuted_signs < 0).sum()) == int((graph_signs < 0).sum())
+    assert torch.equal(permuted_signs, stacked_values("permuted"))

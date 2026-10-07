@@ -83,7 +83,12 @@ UNSIGNED_RELATIONS = ("binds",)
 # same graph and split (the check docs/literature_appraisal_staging.md applies to every appraised source). With no
 # negative entries nothing cancels at a node, so the ablation removes the sign information and the cancellation
 # together; the total_in_degree normalisation is the arm that keeps the signs and removes most of the cancellation.
-EDGE_SIGNS = ("graph", "all_positive")
+# "permuted" shuffles the signs among all edges, the derived ones included, with a fixed seed, so the number of
+# negative edges and the cancellation they can cause stay while their placement by mechanism is lost; set beside
+# "all_positive", it separates the sign information from the cancellation (suggested in the literature session's
+# closing notes). The seed is fixed so a resumed run rebuilds the same permutation.
+EDGE_SIGNS = ("graph", "all_positive", "permuted")
+SIGN_PERMUTATION_SEED = 0
 # Whether each relation learns its own gain. "per_relation" is the default; "shared" ties every relation to one gain
 # per channel (and drops the carriers' weak starting offset), the relation-typing ablation of the same pipeline. The
 # adjacency is still normalised per relation under "in_degree", so "shared" removes the learned part of the typing
@@ -424,6 +429,8 @@ class LinearResponseEncoder(nn.Module):
             raise ValueError(f"edge_signs must be one of {EDGE_SIGNS}, not {edge_signs!r}")
         if edge_signs == "all_positive":  # the sign ablation; see EDGE_SIGNS
             sign = torch.ones_like(sign)
+        elif edge_signs == "permuted":  # the sign permutation; see EDGE_SIGNS
+            sign = sign[torch.randperm(len(sign), generator=torch.Generator().manual_seed(SIGN_PERMUTATION_SEED))]
         if normalisation not in NORMALISATIONS:
             raise ValueError(f"normalisation must be one of {NORMALISATIONS}, not {normalisation!r}")
         row = relation * num_graph_nodes + target

@@ -43,6 +43,10 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # the sign ablation: every edge +1 and every gain positive, same graph, split and head; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_unsigned": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                               "--cofactor-relations", "--edge-signs", "all_positive"],
+    # the sign permutation: the signs shuffled among edges, so the count of negative edges stays and their placement is lost;
+    # the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_permuted_signs": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                    "--cofactor-relations", "--edge-signs", "permuted"],
     # the relation-typing ablation: one gain shared by every relation; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_shared_gain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                                  "--cofactor-relations", "--relation-gains", "shared"],
