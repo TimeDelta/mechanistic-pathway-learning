@@ -17,6 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+descriptors = ["rdkit>=2024.3", "fair-esm>=2.0"]
 graph = ["cobra>=0.29", "omnipath>=1.0", "decoupler>=1.5", "chembl_webresource_client>=0.10", "networkx>=3.0", "pyarrow>=14"]
 dev = ["pytest>=7.4", "ruff>=0.4"]
 

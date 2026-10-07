@@ -17,3 +17,21 @@ def test_zero_field_head_depends_only_on_the_covariate() -> None:
     assert torch.all(probabilities[1] > probabilities[0])  # one shared slope: higher degree raises every symptom
     same_covariate = head(field, perturbation_covariate=torch.tensor([0.5, 0.5])).symptom_probability
     assert torch.allclose(same_covariate[0], same_covariate[1])  # different perturbations, same degree: same prediction
+
+
+def test_local_descriptor_encoder_writes_only_at_the_perturbed_node_and_depends_on_its_features() -> None:
+    from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
+
+    torch.manual_seed(0)
+    features = torch.randn(6, 5)
+    encoder = LocalDescriptorEncoder(6, features, node_state_dim=4)
+    node_index = torch.tensor([[2, -1], [4, -1]])
+    sign_and_magnitude = torch.tensor([[[-1.0, 1.0], [0.0, 0.0]], [[-1.0, 1.0], [0.0, 0.0]]])
+    field = encoder.perturbation_difference_field(node_index, sign_and_magnitude)
+    assert field.shape == (2, 6, 4)
+    other_nodes = [node for node in range(6) if node != 2]
+    assert torch.count_nonzero(field[0, other_nodes]) == 0 and torch.count_nonzero(field[1, [0, 1, 2, 3, 5]]) == 0
+    # the same perturbation at two nodes with different descriptors gives different fields
+    assert not torch.allclose(field[0, 2], field[1, 4])
+    field.sum().backward()
+    assert encoder.feature_projection.weight.grad is not None

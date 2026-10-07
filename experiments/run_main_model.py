@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import signal
 import subprocess
@@ -32,6 +33,7 @@ from datetime import date
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
@@ -52,6 +54,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
+from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
@@ -94,9 +97,34 @@ def covariate_of(data, batch: np.ndarray, arguments, device):
     return torch.as_tensor(perturbation_covariate(data)[batch], device=device)
 
 
+def node_feature_matrix(data, arguments) -> np.ndarray:
+    """The fixed structural features, followed by the node descriptors of --node-descriptors when given (one block per
+    node type, zero outside it: mechanistic_pathway_learning/graph/node_descriptors.py)."""
+    structural = data.structural_node_features()
+    if not getattr(arguments, "node_descriptors", None):
+        return structural
+    descriptors = pd.read_parquet(arguments.node_descriptors)
+    missing = set(data.node_ids) - set(descriptors.index)
+    if missing:
+        raise ValueError(f"{len(missing)} graph nodes have no row in {arguments.node_descriptors}")
+    return np.concatenate([structural, descriptors.loc[data.node_ids].to_numpy(dtype=np.float32)], axis=1)
+
+
+def file_sha256(path) -> str | None:
+    if not path:
+        return None
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def build_models(data, arguments, device):
     if arguments.encoder == "none":
         encoder = ZeroFieldEncoder(len(data.node_ids), arguments.node_state_dim).to(device)
+    elif arguments.encoder == "local_descriptors":
+        encoder = LocalDescriptorEncoder(len(data.node_ids), torch.as_tensor(node_feature_matrix(data, arguments)), arguments.node_state_dim).to(device)
     elif arguments.encoder == "linear_response":
         if arguments.field != "difference":
             raise ValueError("the linear-response encoder is linear in its input, so its field is a difference field; use --field difference")
@@ -106,12 +134,14 @@ def build_models(data, arguments, device):
                                                                 data.node_base_metabolite_id, data.node_display_name, data.is_currency))
             print(f"carrier edges given their own relations: {int(cofactor_edges.sum())}")
         encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
-                                        torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
+                                        torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(node_feature_matrix(data, arguments)),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
                                         num_propagation_steps=arguments.propagation_steps,
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping).to(device)
     else:
-        node_features = torch.as_tensor(data.structural_node_features()) if arguments.node_features == "typed" else None
+        if arguments.node_descriptors and arguments.node_features != "typed":
+            raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
+        node_features = torch.as_tensor(node_feature_matrix(data, arguments)) if arguments.node_features == "typed" else None
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
     if arguments.head == "sigmoid":
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling,
@@ -247,8 +277,10 @@ def main() -> None:
     parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
                         help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
-    parser.add_argument("--encoder", choices=["message_passing", "linear_response", "none"], default="message_passing",
-                        help="route 1 encoder: L layers of message passing, the time-invariant signed linear-response state space (linear_response_encoder.py), or none (a zero field: with --degree-offset, the degree-only control)")
+    parser.add_argument("--encoder", choices=["message_passing", "linear_response", "none", "local_descriptors"], default="message_passing",
+                        help="route 1 encoder: L layers of message passing, the time-invariant signed linear-response state space (linear_response_encoder.py), none (a zero field: with --degree-offset, the degree-only control) or local_descriptors (the perturbed node's own features and nothing from the graph: the descriptors-only control)")
+    parser.add_argument("--node-descriptors", type=Path, default=None,
+                        help="parquet of fixed node descriptors indexed by node_id (experiments/build_node_descriptors.py), appended to the structural node features")
     parser.add_argument("--degree-offset", action="store_true",
                         help="give the head the standardised log degree of each perturbation: a degree-dependent leak (noisy-OR) or logit offset (sigmoid), so the field only has to explain what degree does not")
     parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
@@ -462,6 +494,7 @@ def main() -> None:
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
         "time_split": time_split_results,
         "code_provenance": state["code_provenance"],
+        "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
     }
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]

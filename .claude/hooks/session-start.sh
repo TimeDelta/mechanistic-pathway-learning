@@ -13,7 +13,7 @@ cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
 
 if ! python -c "import mechanistic_pathway_learning, torch, pandas, pyarrow, pytest" > /dev/null 2>&1; then
   echo "session-start: installing the package with its test dependencies"
-  pip install --quiet -e ".[dev]" pyarrow || echo "session-start: dependency install failed; jobs are still resumed"
+  pip install --quiet -e ".[dev,descriptors]" pyarrow || echo "session-start: dependency install failed; jobs are still resumed"
 fi
 
 bash scripts/resume_jobs.sh
