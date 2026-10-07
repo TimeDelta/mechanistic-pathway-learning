@@ -3,6 +3,7 @@ import pytest
 import torch
 
 from mechanistic_pathway_learning.models.linear_response_encoder import (CrossRelationAggregator, LinearResponseEncoder,
+                                                                           project_onto_simplex,
                                                                            MIXTURE_STATISTICS, NORMALISATIONS)
 
 # gene 0 catalyses reaction 1, which turns substrate 2 into product 3; product 3 is the substrate of reaction 4,
@@ -284,3 +285,118 @@ def test_every_statistic_is_odd_so_the_response_mirrors_under_a_sign_flip():
         largest_departure = float((rising + falling).abs().max())
         assert largest_departure < 1e-6, f"{dominant_statistic} is not odd, mirror error {largest_departure}"
         assert float(rising.abs().max()) > 1e-9, f"{dominant_statistic} produced no field at all"
+
+
+def test_sparsemax_gives_exact_zeros_where_softmax_leaves_a_residue():
+    """Why sparsemax is the default: the statistics a node type does not use can be read off the
+    weights rather than inferred from a small share."""
+    logit = torch.tensor([[[2.0], [0.5], [0.4], [0.3], [0.2]]])  # [1, statistics, channels]
+    sparse_weight = project_onto_simplex(logit, dim=1)
+    dense_weight = torch.softmax(logit, dim=1)
+    assert abs(float(sparse_weight.sum()) - 1.0) < 1e-6
+    assert float(sparse_weight.min()) >= 0.0
+    assert int((sparse_weight == 0).sum()) == 4
+    assert int((dense_weight == 0).sum()) == 0
+
+
+def test_sparsemax_leaves_a_uniform_slice_uniform():
+    """The projection of an already-uniform point is itself, so an untrained mixture starts spread."""
+    uniform_weight = project_onto_simplex(torch.zeros(2, 4, 3), dim=1)
+    assert torch.allclose(uniform_weight, torch.full((2, 4, 3), 0.25), atol=1e-6)
+
+
+def test_power_mean_spans_from_the_mean_to_the_dominant_message():
+    """One learned exponent per node type covers the span a discrete mixture only samples."""
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1, statistics=("power_mean",))
+    messages = torch.tensor([[[[0.9]]], [[[-0.3]]]])  # [relations, nodes, batch, channels]
+    both_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+
+    with torch.no_grad():
+        aggregator.log_power_mean_exponent.fill_(0.0)  # exponent 1, the plain mean
+    at_the_mean = float(aggregator(messages, both_feed, node_type_index))
+    assert abs(at_the_mean - 0.3) < 1e-4, at_the_mean
+
+    with torch.no_grad():
+        aggregator.log_power_mean_exponent.fill_(4.0)  # a large exponent, so the dominant message
+    at_the_dominant = float(aggregator(messages, both_feed, node_type_index))
+    assert abs(at_the_dominant - 0.9) < 1e-3, at_the_dominant
+
+
+def test_the_median_equals_the_mean_at_two_messages():
+    """Recorded as a test because it is why the statistic list is short: no destination on
+    data/processed/graph is fed by three or more relations, and 73.1% are fed by exactly two, so on
+    that graph the median carries nothing the mean does not."""
+    median_only = CrossRelationAggregator(num_node_types=1, propagation_channels=1, statistics=("median",))
+    mean_only = CrossRelationAggregator(num_node_types=1, propagation_channels=1, statistics=("mean",))
+    messages = torch.tensor([[[[0.7]]], [[[-0.2]]]])
+    both_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+    assert abs(float(median_only(messages, both_feed, node_type_index))
+               - float(mean_only(messages, both_feed, node_type_index))) < 1e-6
+
+
+def test_signed_standard_deviation_keeps_the_magnitude_when_one_side_dominates():
+    """At two messages of opposite sign it is sign(m1 + m2) * (|m1| + |m2|) / 2, so it keeps the whole
+    magnitude where the mean keeps only the difference, and takes its direction from the dominant side."""
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1,
+                                         statistics=("signed_standard_deviation",))
+    both_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+
+    production_wins = float(aggregator(torch.tensor([[[[0.6]]], [[[-0.4]]]]), both_feed, node_type_index))
+    consumption_wins = float(aggregator(torch.tensor([[[[0.4]]], [[[-0.6]]]]), both_feed, node_type_index))
+    assert abs(production_wins - 0.5) < 1e-4, production_wins     # (0.6 + 0.4) / 2, positive
+    assert abs(consumption_wins + 0.5) < 1e-4, consumption_wins   # the same magnitude, negative
+
+
+PERMUTATION_INVARIANT_STATISTICS = tuple(statistic for statistic in MIXTURE_STATISTICS
+                                         if statistic != "signed_maximum_magnitude")
+
+
+@pytest.mark.parametrize("statistic", PERMUTATION_INVARIANT_STATISTICS)
+def test_no_symmetric_odd_statistic_can_rescue_an_exact_cancellation(statistic):
+    """An impossibility, recorded because a test written on the opposite assumption failed.
+
+    Every statistic here is odd and permutation invariant. Negating a message multiset that is already
+    symmetric under negation, such as {+0.5, -0.5}, returns the same multiset, so f = -f and therefore
+    f = 0. No choice of symmetric statistic escapes this, and the mixture is a convex combination of
+    them, so it cannot either. Only something that distinguishes the relations can, which the
+    per-relation gains already do; what they lack is freedom per node, and that is the normalisation's
+    business rather than the aggregator's (task 25, the spectral arm).
+
+    The mixture is still worth having: an exactly symmetric multiset is the measure-zero case, and at
+    the 73.1% of destinations fed by two relations the generic case is a mean that is small rather than
+    zero, where the dispersion and the dominant message both carry more than the mean does.
+
+    signed_maximum_magnitude is excluded because it is the one escape, and the way it escapes is worth
+    knowing rather than relying on: it is odd but not permutation invariant, since argmax resolves the
+    tie between two equal magnitudes by relation index. That index is the relation's position in the
+    stack, which is an arbitrary convention, so the value it returns at an exactly cancelling node is
+    an artifact of ordering rather than a mechanism. test_signed_maximum_magnitude_breaks_a_tie_by
+    _relation_order records that behaviour so a change to the ordering is caught.
+    """
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1, statistics=(statistic,))
+    symmetric_messages = torch.tensor([[[[0.5]]], [[[-0.5]]]])
+    both_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+    assert abs(float(aggregator(symmetric_messages, both_feed, node_type_index))) < 1e-6
+
+
+def test_an_unknown_mixture_weighting_is_refused():
+    with pytest.raises(ValueError, match="weighting must be one of"):
+        CrossRelationAggregator(num_node_types=1, propagation_channels=1, weighting="argmax")
+
+
+def test_signed_maximum_magnitude_breaks_a_tie_by_relation_order():
+    """The one escape from the impossibility above, and the reason not to lean on it: at two equal
+    magnitudes of opposite sign the statistic returns whichever relation comes first in the stack, so
+    its value at an exactly cancelling node follows the ordering convention rather than the biology."""
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1,
+                                         statistics=("signed_maximum_magnitude",))
+    both_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+    positive_relation_first = float(aggregator(torch.tensor([[[[0.5]]], [[[-0.5]]]]), both_feed, node_type_index))
+    negative_relation_first = float(aggregator(torch.tensor([[[[-0.5]]], [[[0.5]]]]), both_feed, node_type_index))
+    assert positive_relation_first == 0.5
+    assert negative_relation_first == -0.5

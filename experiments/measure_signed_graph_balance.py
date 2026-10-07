@@ -16,6 +16,10 @@ connected component. The violated-edge count under one breadth-first spanning fo
 upper bound on the frustration index, not the index itself, which is NP-hard; a count of zero
 is exact and proves balance.
 
+The measurement runs on the relation stack the encoder builds, not on the stored edge table: the
+metabolic graph stores no negative edge, so a balance measurement taken from the table reports zero
+frustration for the trivial reason that every sign is the same.
+
 Usage: PYTHONPATH=. python3 experiments/measure_signed_graph_balance.py --graph-dir data/processed/graph
 """
 from __future__ import annotations
@@ -82,13 +86,32 @@ def measure_frustration(edges: pd.DataFrame) -> dict:
     }
 
 
+def add_derived_depletion_relation(edges: pd.DataFrame) -> pd.DataFrame:
+    """The reverse of every substrate_of edge with sign -1, as signed_stacked_adjacency appends it.
+
+    Without this the measurement is vacuous on the metabolic graph, whose stored edge table holds no
+    negative edge at all: every negative sign in the model is derived here.
+    """
+    substrate_edges = edges[edges["relation_type"] == "substrate_of"]
+    derived = pd.DataFrame({"source_id": substrate_edges["target_id"].values,
+                            "target_id": substrate_edges["source_id"].values,
+                            "relation_type": "depletes_substrate",
+                            "sign": -1.0})
+    return pd.concat([edges[["source_id", "target_id", "relation_type", "sign"]], derived], ignore_index=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--graph-dir", default="data/processed/graph")
     parser.add_argument("--output-json", default=None)
+    parser.add_argument("--stored-edges-only", action="store_true",
+                        help="measure the stored edge table alone, which carries no negative edge on the "
+                             "metabolic graph and so reports a vacuous zero")
     arguments = parser.parse_args()
 
     edges = pd.read_parquet(Path(arguments.graph_dir) / "edges.parquet")
+    if not arguments.stored_edges_only:
+        edges = add_derived_depletion_relation(edges)
     result = measure_frustration(edges)
     result["graph_dir"] = arguments.graph_dir
 

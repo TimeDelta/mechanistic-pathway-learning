@@ -94,12 +94,33 @@ CROSS_RELATION_AGGREGATORS = ("mean", "softmax_mixture")
 # least negative, which at the first step is the zero of an untouched neighbour, so it suppresses the
 # whole falling branch of the response and a metabolite that should drop stays at exactly zero. The
 # minimum fails in mirror image, and a standard deviation is even, so it reports the same dispersion
-# whichever way the field moves. The odd forms keep what each statistic was wanted for:
-# signed_maximum_magnitude takes the single largest message with its sign, so the dominant contributor
-# survives a cancellation instead of being averaged into it; median is odd as it stands; and
-# signed_standard_deviation multiplies the dispersion by the sign of the mean, which is the
-# asymmetry-attached-to-dispersion idea in the only form that respects the mirror.
-MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_standard_deviation")
+# whichever way the field moves.
+#
+# The list is short because the graph is. No destination on data/processed/graph is fed by three or
+# more relations, 73.1% are fed by exactly two and the rest by one; on graph_neuronal three relations
+# reach 1.5% of destinations. At two values the median and the midrange both equal the mean, and a
+# third moment does not exist, so a skewness term is unavailable on this graph whatever one thinks of
+# it. What differs at two values is the mean, which message dominates, and the dispersion. The
+# dispersion is the interesting one: at two messages of opposite sign, signed_standard_deviation is
+# sign(m1 + m2) * (|m1| + |m2|) / 2, so it keeps the whole magnitude where the mean cancels and takes
+# its direction from whichever of production and consumption wins. median is kept because the full
+# graph may yet feed some destination three relations, and it is documented as collapsing to the mean
+# below that.
+#
+# power_mean covers the span between the mean and the dominant message continuously, as
+# sum_r m_r |m_r|^(p-1) / sum_r |m_r|^(p-1) with a learned exponent per node type: p = 1 is the mean
+# and p -> infinity is signed_maximum_magnitude. It is odd, bounded by the largest |m_r|, and unlike a
+# discrete mixture it has a gradient everywhere along that span.
+MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_standard_deviation", "power_mean")
+# How the mixture weights are formed from the logits. "softmax" spreads weight over every statistic, so
+# a statistic a node type does not need keeps a small share for ever. "sparsemax" (Martins and
+# Astudillo 2016) is the Euclidean projection onto the simplex and returns exact zeros, which makes the
+# learned choice reportable: a node type either uses a statistic or it does not. Both are non-negative
+# and sum to one, so the convex-combination bound that keeps the iteration contracting holds for either.
+# The cost of exact zeros is a zero gradient outside the support, so a statistic dropped early can
+# never return; entmax with the exponent between one and two interpolates, and MIXTURE_EXPONENT_SPARSEMAX
+# names the endpoint rather than hard-coding it.
+MIXTURE_WEIGHTINGS = ("softmax", "sparsemax")
 # how the signed adjacency is scaled so the iteration contracts: "in_degree" divides each entry by the
 # destination's in-degree under its relation times the number of relations feeding it, which averages and so
 # decays the response steeply with path length; "spectral" divides every entry by one global constant, the
@@ -118,6 +139,24 @@ MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_stan
 NORMALISATIONS = ("in_degree", "spectral")
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
+
+
+def project_onto_simplex(logit: Tensor, dim: int) -> Tensor:
+    """Sparsemax: the Euclidean projection of each slice onto the probability simplex.
+
+    Martins and Astudillo 2016 (arXiv:1602.02068). Sort descending, take the largest support size whose
+    sorted value still exceeds the running threshold, then shift by that threshold and clamp at zero.
+    The result is non-negative and sums to one, like a softmax, but with exact zeros outside the
+    support, so the statistics a node type does not use can be read off rather than inferred.
+    """
+    sorted_logit, _ = logit.sort(dim=dim, descending=True)
+    cumulative = sorted_logit.cumsum(dim=dim)
+    support_size = torch.arange(1, logit.shape[dim] + 1, device=logit.device, dtype=logit.dtype)
+    support_size = support_size.view([-1 if axis == dim else 1 for axis in range(logit.dim())])
+    is_in_support = sorted_logit * support_size > cumulative - 1.0
+    chosen_size = is_in_support.to(logit.dtype).sum(dim=dim, keepdim=True)
+    threshold = (cumulative.gather(dim, chosen_size.long() - 1) - 1.0) / chosen_size
+    return (logit - threshold).clamp_min(0.0)
 
 
 class CrossRelationAggregator(nn.Module):
@@ -141,14 +180,19 @@ class CrossRelationAggregator(nn.Module):
     """
 
     def __init__(self, num_node_types: int, propagation_channels: int,
-                 statistics: tuple[str, ...] = MIXTURE_STATISTICS) -> None:
+                 statistics: tuple[str, ...] = MIXTURE_STATISTICS, weighting: str = "sparsemax") -> None:
         super().__init__()
         unknown = [statistic for statistic in statistics if statistic not in MIXTURE_STATISTICS]
         if unknown:
             raise ValueError(f"unknown mixture statistics {unknown}, expected from {MIXTURE_STATISTICS}")
         if not statistics:
             raise ValueError("at least one mixture statistic is required")
+        if weighting not in MIXTURE_WEIGHTINGS:
+            raise ValueError(f"weighting must be one of {MIXTURE_WEIGHTINGS}, not {weighting!r}")
         self.statistics = tuple(statistics)
+        self.weighting = weighting
+        if "power_mean" in self.statistics:
+            self.log_power_mean_exponent = nn.Parameter(torch.zeros(num_node_types, propagation_channels))
         # starts near the mean, so an untrained mixture reproduces the original behaviour up to the divisor
         initial_logit = torch.full((num_node_types, len(self.statistics), propagation_channels), -2.0)
         if "mean" in self.statistics:
@@ -183,13 +227,20 @@ class CrossRelationAggregator(nn.Module):
                 lower_index = ((num_feeding - 1) / 2).floor().long()
                 upper_index = ((num_feeding - 1) / 2).ceil().long()
                 computed.append(0.5 * (ordered.gather(0, lower_index[None]) + ordered.gather(0, upper_index[None])).squeeze(0))
+            elif statistic == "power_mean":
+                # sum_r m_r |m_r|^(p-1) / sum_r |m_r|^(p-1): the mean at p = 1, the dominant message as p grows
+                exponent = torch.exp(self.log_power_mean_exponent)[node_type_index][None, :, None, :]  # [1, N, 1, C]
+                magnitude = masked.abs().clamp_min(1e-30) ** (exponent - 1.0) * feeding
+                computed.append((masked * magnitude).sum(dim=0) / magnitude.sum(dim=0).clamp_min(1e-30))
             else:  # signed_standard_deviation: population dispersion over the feeding relations, signed by the mean
                 squared_deviation = ((relation_messages - relation_mean[None]) ** 2) * feeding
                 dispersion = (squared_deviation.sum(dim=0) / num_feeding).clamp_min(0.0).sqrt()
                 computed.append(torch.sign(relation_mean) * dispersion)
 
         stacked = torch.stack(computed, dim=0)  # [S, N, B, C]
-        weight = torch.softmax(self.mixture_logit, dim=1)[node_type_index]  # [N, S, C]
+        simplex_weight = (torch.softmax(self.mixture_logit, dim=1) if self.weighting == "softmax"
+                          else project_onto_simplex(self.mixture_logit, dim=1))
+        weight = simplex_weight[node_type_index]  # [N, S, C]
         return (stacked * weight.permute(1, 0, 2)[:, :, None, :]).sum(dim=0) * node_has_input
 
 
@@ -213,6 +264,7 @@ class LinearResponseEncoder(nn.Module):
         contraction: float = 0.9,
         normalisation: str = "in_degree",
         cross_relation_aggregator: str = "mean",
+        mixture_weighting: str = "sparsemax",
         node_type_index: Tensor | None = None,
     ) -> None:
         super().__init__()
@@ -258,7 +310,8 @@ class LinearResponseEncoder(nn.Module):
             if given_types.shape[0] != num_graph_nodes:
                 raise ValueError("node_type_index must have one entry per graph node")
             self.register_buffer("node_type_index", given_types, persistent=False)
-            self.cross_relation_mixture = CrossRelationAggregator(int(given_types.max()) + 1, propagation_channels)
+            self.cross_relation_mixture = CrossRelationAggregator(int(given_types.max()) + 1, propagation_channels,
+                                                                  weighting=mixture_weighting)
         else:
             self.cross_relation_mixture = None
 
