@@ -18,5 +18,10 @@ stored slice edge is +1 (catalyzed_by, product_of and substrate_of); the only ne
 derives, depletes_substrate (one per main substrate edge; carrier cofactors get none), so on the slice a sign carries
 stoichiometry and nothing else. On graph_full_neuronal, OmniPath and CollecTRI add measured inhibition and repression
 (18,149 inhibits edges and 7,087 repressive regulon edges), so the sign ablation has to be repeated there.
-The shared-gain arm (one gain for every relation) and the sign permutation (signs shuffled among edges) are still to
-come.
+The shared-gain arm (one gain for every relation, b3_linear_response_cofactors_shared_gain against
+b3_linear_response_cofactors, five folds) leaves the score where it was too: per fold -0.009 [-0.022, +0.005] (0.257
+against 0.266), pooled +0.002 [-0.005, +0.012] and within degree strata -0.004 [-0.020, +0.008]. With the adjacency
+still normalised per relation, this removes the learned part of the typing and keeps the structural part, so on the
+slice the per-relation gains add nothing measurable; like the sign ablation, it needs repeating on graph_full_neuronal,
+where 19 relations carry different biology. The sign permutation (signs shuffled among edges) is still to come.
+docs/figures/slice_twin_comparisons.png shows both arms beside the other one-change comparisons.

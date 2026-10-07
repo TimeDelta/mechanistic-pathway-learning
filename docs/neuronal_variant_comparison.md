@@ -12,10 +12,10 @@ Per-fold accuracy is each fold's macro AUPRC; the per-fold difference is paired 
   Paired per fold (t interval, 4 degrees of freedom): +0.007 [-0.029, +0.043], the interval includes zero. Per fold: +0.026, +0.040, +0.002, -0.036, +0.002.
   Pooled out-of-fold over the 451 perturbations both scored (paired bootstrap, 1000 resamples): macro AUPRC +0.005 [-0.005, +0.013], the interval includes zero; macro AUROC +0.006 [-0.018, +0.029], the interval includes zero.
   Within degree strata (scores ranked inside one stratum of one test fold): macro AUPRC +0.015 [-0.004, +0.031], the interval includes zero.
-- the noisy-OR head on the variant against the metabolic graph: b6_linear_response_cofactors_neuronal 0.269 ± 0.061, b6_linear_response_gate_time_scales_cofactors 0.279 ± 0.045, over the 3 folds both finished.
-  Paired per fold (t interval, 2 degrees of freedom): -0.010 [-0.050, +0.029], the interval includes zero. Per fold: -0.023, +0.007, -0.015.
-  Pooled out-of-fold over the 271 perturbations both scored (paired bootstrap, 1000 resamples): macro AUPRC +0.008 [-0.016, +0.034], the interval includes zero; macro AUROC +0.028 [-0.017, +0.068], the interval includes zero.
-  Within degree strata (scores ranked inside one stratum of one test fold): macro AUPRC -0.010 [-0.042, +0.012], the interval includes zero.
+- the noisy-OR head on the variant against the metabolic graph: b6_linear_response_cofactors_neuronal 0.271 ± 0.047, b6_linear_response_gate_time_scales_cofactors 0.288 ± 0.044, over the 5 folds both finished.
+  Paired per fold (t interval, 4 degrees of freedom): -0.016 [-0.037, +0.004], the interval includes zero. Per fold: -0.023, +0.007, -0.015, -0.039, -0.011.
+  Pooled out-of-fold over the 451 perturbations both scored (paired bootstrap, 1000 resamples): macro AUPRC -0.002 [-0.021, +0.015], the interval includes zero; macro AUROC +0.011 [-0.021, +0.043], the interval includes zero.
+  Within degree strata (scores ranked inside one stratum of one test fold): macro AUPRC -0.019 [-0.040, -0.002], the interval excludes zero.
 
 ## What the variant's own genes predict
 
