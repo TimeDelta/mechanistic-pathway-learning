@@ -531,3 +531,64 @@ def test_the_sign_permutation_keeps_the_number_of_negative_entries_and_is_reprod
     graph_signs, permuted_signs = stacked_values("graph"), stacked_values("permuted")
     assert int((permuted_signs < 0).sum()) == int((graph_signs < 0).sum())
     assert torch.equal(permuted_signs, stacked_values("permuted"))
+
+
+def build_cell_class_encoder(cell_class_weights, channels_per_cell_class=1, extracellular_pool_nodes=None, shared_pool_classes=None, steps=8):
+    torch.manual_seed(0)
+    node_features = torch.nn.functional.one_hot(torch.tensor(NODE_TYPES), num_classes=3).float()
+    return LinearResponseEncoder(
+        6, RELATION_TYPES,
+        edge_source=torch.tensor([edge[0] for edge in EDGES]), edge_target=torch.tensor([edge[1] for edge in EDGES]),
+        edge_relation=torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]), edge_sign=torch.tensor([edge[3] for edge in EDGES]),
+        node_features=node_features, node_state_dim=4, num_propagation_steps=steps, cell_class_weights=cell_class_weights,
+        channels_per_cell_class=channels_per_cell_class, extracellular_pool_nodes=extracellular_pool_nodes, shared_pool_classes=shared_pool_classes,
+    )
+
+
+def test_one_all_ones_cell_class_reproduces_the_encoder_without_classes():
+    plain = build_encoder()  # four propagation channels by default
+    with_one_class = build_cell_class_encoder(torch.ones(6, 1), channels_per_cell_class=4)
+    with torch.no_grad():
+        assert torch.allclose(plain.response(*perturb(0, -1.0)), with_one_class.response(*perturb(0, -1.0)))
+        assert torch.allclose(plain(*perturb(0, -1.0)), with_one_class(*perturb(0, -1.0)))
+
+
+def test_a_class_that_does_not_express_the_reaction_does_not_carry_the_response_past_it():
+    weights = torch.ones(6, 2)
+    weights[1, 1] = 0.0  # class 1 does not express reaction 1
+    encoder = build_cell_class_encoder(weights)
+    with torch.no_grad():
+        response = encoder.response(*perturb(0, -1.0))[0]  # [nodes, classes * 1 channel]
+    assert torch.all(response[[1, 2, 3, 4, 5], 0] != 0)  # the all-expressing class carries it to the end of the chain
+    assert torch.count_nonzero(response[[1, 2, 3, 4, 5], 1]) == 0  # the other stops at the gene
+    assert response[0, 1] != 0
+
+
+def test_partial_expression_scales_the_response_down_and_keeps_its_sign():
+    full, half = torch.ones(6, 1), torch.ones(6, 1)
+    half[1, 0] = 0.5
+    with torch.no_grad():
+        full_response = build_cell_class_encoder(full).response(*perturb(0, -1.0))[0, :, 0]
+        half_response = build_cell_class_encoder(half).response(*perturb(0, -1.0))[0, :, 0]
+    downstream = [1, 2, 3, 4, 5]
+    assert torch.all(half_response[downstream].abs() < full_response[downstream].abs())
+    assert torch.all(torch.sign(half_response[downstream]) == torch.sign(full_response[downstream]))
+
+
+def test_the_extracellular_pool_carries_a_product_into_a_class_that_cannot_make_it():
+    weights = torch.ones(6, 2)
+    weights[1, 1] = 0.0  # class 1 cannot run reaction 1, but uses product 3 through reaction 4
+    pool = torch.tensor([False, False, False, True, False, False])
+    with torch.no_grad():
+        isolated = build_cell_class_encoder(weights).response(*perturb(0, -1.0))[0]
+        pooled = build_cell_class_encoder(weights, extracellular_pool_nodes=pool).response(*perturb(0, -1.0))[0]
+    assert isolated[3, 1] == 0 and isolated[4, 1] == 0
+    assert pooled[3, 1] != 0 and pooled[4, 1] != 0
+    assert torch.allclose(pooled[3, 0], pooled[3, 1])  # one shared pool
+
+
+def test_cell_class_weights_outside_the_unit_interval_and_a_pool_without_classes_are_refused():
+    with pytest.raises(ValueError):
+        build_cell_class_encoder(torch.full((6, 2), 1.5))
+    with pytest.raises(ValueError):
+        build_cell_class_encoder(torch.ones(6, 2), shared_pool_classes=torch.tensor([True, False]), extracellular_pool_nodes=torch.zeros(6, dtype=torch.bool))

@@ -60,6 +60,16 @@ edges. response_scale "signed_log" maps each channel through sign(h) * log(1 + |
 (starting at 1e-4), which keeps the sign and the order of magnitude and makes distant changes readable; it is odd, so
 a gain of function still mirrors a loss of function. response_scale "linear" leaves the response as it is.
 
+Cell classes enter as channels (cell_class_weights, [N, K] in [0, 1], from
+mechanistic_pathway_learning/graph/brain_expression_weights.py): with them the response propagates on K groups of
+channels_per_cell_class channels over the same adjacency, and in class k each node's new state, input included, is
+multiplied by its weight w_k at every step, h_k(t + 1) = (1 - damping) * h_k(t) + damping * w_k * (messages + u). A
+node a class does not express then neither holds nor passes that class's response, and the per-class diagonal scaling
+by weights at most one keeps the contraction. extracellular_pool_nodes makes chosen nodes (extracellular metabolites)
+one pool shared by the classes in shared_pool_classes: after each step their state is the mean over those classes, so
+a transmitter released in one class reaches every other. With an all-ones class among the K, the original propagation
+is one of the channel groups. The readout expands the K * channels_per_cell_class channels to node_state_dim as before.
+
 The system is linear in the input, so the unperturbed response is zero and the field is a difference field by
 construction: no base state, and no node identity, enters it. Node kinds enter only through an output gate,
 field = (h W_expand) * sigmoid(node_features W + b), which lets a pooled readout tell where the response landed
@@ -317,6 +327,10 @@ class LinearResponseEncoder(nn.Module):
         node_type_index: Tensor | None = None,
         edge_signs: str = "graph",
         relation_gains: str = "per_relation",
+        cell_class_weights: Tensor | None = None,
+        channels_per_cell_class: int = 1,
+        extracellular_pool_nodes: Tensor | None = None,
+        shared_pool_classes: Tensor | None = None,
     ) -> None:
         super().__init__()
         if node_features.shape[0] != num_graph_nodes:
@@ -340,6 +354,30 @@ class LinearResponseEncoder(nn.Module):
         self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS and edge_signs == "graph" for name in relation_names]),
                              persistent=False)
         self.maximum_gain = contraction
+        if cell_class_weights is not None:  # propagation_channels is then K * channels_per_cell_class; see the module docstring
+            cell_class_weights = cell_class_weights.to(torch.float32)
+            if cell_class_weights.dim() != 2 or cell_class_weights.shape[0] != num_graph_nodes:
+                raise ValueError("cell_class_weights must be [num_graph_nodes, num_cell_classes]")
+            if bool((cell_class_weights < 0).any()) or bool((cell_class_weights > 1).any()):
+                raise ValueError("cell_class_weights must lie in [0, 1], or the iteration may not contract")
+            self.num_cell_classes = cell_class_weights.shape[1]
+            self.channels_per_cell_class = channels_per_cell_class
+            propagation_channels = self.num_cell_classes * channels_per_cell_class
+            self.register_buffer("channel_node_weight", cell_class_weights.repeat_interleave(channels_per_cell_class, dim=1), persistent=False)  # [N, P], class-major
+        else:
+            self.num_cell_classes, self.channels_per_cell_class = 0, 0
+            self.channel_node_weight = None
+        if extracellular_pool_nodes is not None:
+            if cell_class_weights is None:
+                raise ValueError("extracellular_pool_nodes needs cell_class_weights")
+            pooled_classes = torch.ones(self.num_cell_classes, dtype=torch.bool) if shared_pool_classes is None else shared_pool_classes.bool()
+            if pooled_classes.shape[0] != self.num_cell_classes or int(pooled_classes.sum()) < 2:
+                raise ValueError("shared_pool_classes must name at least two of the cell classes")
+            self.register_buffer("extracellular_pool_nodes", extracellular_pool_nodes.bool(), persistent=False)
+            self.register_buffer("shared_pool_classes", pooled_classes, persistent=False)
+        else:
+            self.extracellular_pool_nodes = None
+            self.shared_pool_classes = None
         self.propagation_channels = propagation_channels
         if response_scale not in ("linear", "signed_log"):
             raise ValueError("response_scale must be 'linear' or 'signed_log'")
@@ -472,14 +510,29 @@ class LinearResponseEncoder(nn.Module):
         gain = self.relation_gain()  # [R, C]
         num_relations = gain.shape[0]
         node_major_input = sustained.permute(1, 0, 2).contiguous()  # [N, B, C]
+        node_weight = None if self.channel_node_weight is None else self.channel_node_weight[:, None, :]  # [N, 1, C]
+        if node_weight is not None:
+            node_major_input = node_major_input * node_weight  # a class that does not express the perturbed node does not feel it there
         state = node_major_input  # h(0) = u, so after k steps the response reaches k edges from the perturbed nodes
         for _ in range(self.num_propagation_steps if num_steps is None else num_steps):
             aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
             per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
             relation_messages = (per_relation.sum(dim=0) if self.cross_relation_mixture is None
                                  else self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index))
+            if node_weight is not None:  # every mixture statistic is positively homogeneous, so scaling after it equals scaling the messages
+                relation_messages = relation_messages * node_weight
             state = (1.0 - self.damping) * state + self.damping * (relation_messages + node_major_input)
+            if self.extracellular_pool_nodes is not None:
+                state = self.share_extracellular_pool(state)
         return state.permute(1, 0, 2)
+
+    def share_extracellular_pool(self, state: Tensor) -> Tensor:
+        """state [N, B, C] with the pool nodes' channels of the pooled classes replaced by their mean over those classes."""
+        num_nodes, batch_size, _ = state.shape
+        by_class = state.view(num_nodes, batch_size, self.num_cell_classes, self.channels_per_cell_class)
+        pooled_mean = by_class[:, :, self.shared_pool_classes, :].mean(dim=2, keepdim=True).expand_as(by_class)
+        replace = self.extracellular_pool_nodes[:, None, None, None] & self.shared_pool_classes[None, None, :, None]
+        return torch.where(replace, pooled_mean, by_class).reshape(num_nodes, batch_size, -1)
 
     def forward(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
         """The gated response field [B, N, D]; relation_adjacencies is accepted for the message passing signature and
