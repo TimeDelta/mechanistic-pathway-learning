@@ -313,6 +313,12 @@ reach the membrane potential run through the hub destinations of the same distri
   `b3_linear_response_cofactors`, as the spectral run is. The first spectral fold scored 0.192 macro AUPRC against
   0.231 for that twin on the same fold; one fold is not a result, and if the five folds agree the total-in-degree run
   is what says whether the counts or the shrink was the cost.
+  The five spectral folds did not agree with the first (7 October 2026, experiments/compare_twin_runs.py): 0.192,
+  0.355, 0.225, 0.256 and 0.264 against 0.231, 0.301, 0.274, 0.258 and 0.265 for the twin, 0.258 +/- 0.061 against
+  0.266 +/- 0.025 (SD with n - 1). Spectral minus twin, 95 percent intervals: -0.007 [-0.058, +0.043] per fold,
+  -0.007 [-0.020, +0.008] pooled and -0.009 [-0.028, +0.012] within degree strata. Keeping the counts at the price of
+  the shrink neither helps nor measurably costs on symptoms; the arm's fold-to-fold spread is two and a half times the
+  twin's. Whether the counts at full magnitude move the score is the total-in-degree run's question.
 - `in_degree_power` (removed 7 October 2026): divided by in-degree raised to an exponent, then rescaled the whole matrix once so the
   row sums return below one. Note what this does and does not do. Where in-degrees are uniform the rescale exactly
   undoes the softening and the exponent changes nothing, which a test asserts. It acts only where in-degrees differ,
