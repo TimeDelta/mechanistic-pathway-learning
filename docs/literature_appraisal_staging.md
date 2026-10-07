@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1186/s12915-024-01968-0](https://doi.org/10.1186/s12915-024-01968-0) (PMID 39148051) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "A novel strategy for propagating signed message in signed networks addresses heterogeneity and consistency among nodes connected by signed edges" | an ablation replacing their signed propagation with an unsigned one, same features and same split; the abstract reports neither | whether the reported AUROC of 0.9742 owes anything to the signed strategy, and whether any of it transfers off a similarity-feature bipartite graph |
 | [10.1186/1756-0500-7-516](https://doi.org/10.1186/1756-0500-7-516) (PMID 25113603) | Q1, Q2 | `supports` | `analogous_mechanism` | `weak` | "the aggregation method we used is limited to a specific class of causal network models called \"causally consistent\", which is equivalent to the notion of balance of a signed graph used in graph theory" | a held-out comparison of their signed aggregation against an unsigned random walk on the same networks and the same readout; they report neither | whether an unsigned walk would have scored the same, which is our whole question |
 
 ## How the task is paced
@@ -106,7 +107,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -116,5 +117,21 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 39148051, 39976387, 39523622, 38392416, 35364845, 40103114, 33906083,
+Remaining to read: 39976387, 39523622, 38392416, 35364845, 40103114, 33906083,
 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+
+### Note on 39148051
+
+The paper names our problem and does not measure it. Its signed propagation exists precisely
+because nodes joined by signed edges disagree in sign, which is the condition measured on our
+graph at 36% of destinations, so it is prior art for the aggregator work in task #24 rather
+than evidence about it. Three things keep the weight at `weak`. The sign is a property of the
+association label, the direction of an abundance change, not of an edge in a causal network.
+The outcome is association and sign classification, not a phenotype from a perturbation. And
+the abstract reports no unsigned-propagation ablation, so none of the 0.9742 AUROC can be
+attributed to the signed strategy; a similarity-feature bipartite graph with XGBoost on top
+can reach that figure without the propagation contributing anything.
+
+What it does settle: a dedicated strategy for signed message propagation, in place of a plain
+mean over signed neighbours, is published and not novel. Task #24 is therefore a measurement
+on a mechanistic network rather than a new idea, which is the weaker and more defensible claim.
