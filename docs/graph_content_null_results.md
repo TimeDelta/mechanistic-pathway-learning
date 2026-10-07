@@ -167,6 +167,30 @@ difference: b3_linear_response_cofactors_unsigned (every edge +1, every gain pos
 b3_linear_response_cofactors) is running, and it removes the cancellation at mixed-sign nodes together with the sign
 information.
 
+## A trained readout on the walk's own distributions does not beat the walk either (7 October 2026)
+
+Every trained configuration fits a readout to the labels and the random walk does not, so the null compares a change
+of encoder and the addition of supervision at once. Huang et al. (2024, doi:10.1038/s41591-024-03233-x) has the same
+confound in the opposite direction, a trained typed model against untrained diffusion statistics
+(docs/literature_appraisal_staging.md, slot 17). experiments/score_trained_diffusion_readout.py
+(docs/trained_diffusion_readout.md) keeps the diffusion and adds only supervision: each gene's walk distribution over
+reactions and metabolites, square-rooted, reduced to 32 components fitted on the training genes, read by one
+L2-regularised logistic regression per symptom with its strength chosen by inner cross-validation. Macro AUPRC minus
+the untrained walk, 95 percent intervals, not corrected:
+
+| trained readout on | per fold, t | pooled | within degree strata |
+|---|---|---|---|
+| the undirected walk | -0.012 [-0.031, +0.006] | -0.026 [-0.044, -0.011] | -0.004 [-0.026, +0.015] |
+| the downstream-only walk | +0.001 [-0.036, +0.037] | -0.020 [-0.037, -0.002] | +0.005 [-0.018, +0.023] |
+
+Supervision on top of the walk's own information ties the walk per fold and within degree strata and trails it
+pooled, the pattern of the trained encoders in research summary row 5. So on 451 genes in five folds a trained
+readout has not been shown to beat the untrained walk even when it is given everything the walk computes, and the
+encoders' failure to beat it is weak evidence against their mechanism specifically. That reading has two limits: it
+rests on one readout design, fixed before scoring, and a richer or better-regularised readout might do better; and
+the pooled deficit of trained readouts may partly reflect score scales that follow each fold's training base rate,
+which pooling penalises and the other two readings remove.
+
 ## What is still not established
 
 This section was written before the 20-rewiring null existed and said there was no distribution to place the real
