@@ -88,6 +88,24 @@ inside 300 seconds of the last appraisal and refuses outright after 19 appraisal
 the number of PubMed records matching the Q1 query. A refusal means no source is read that
 firing. The chain also stops on a message from the author or when a question is closed.
 
+### Handoff to a separate session (7 October 2026, 17:55 UTC)
+
+The paced chain was stopped in the experiment session at the user's request after slot 10 of 19 (nine rows and one
+replacement search), so that it can continue in a session started after the user connected a Consensus Pro account.
+From here on that literature session owns this file; the experiment session reads it but does not edit it.
+
+The gate's state lives in runs/literature_appraisal/pacing_state, which git ignores, so a fresh clone starts the count
+at zero. Before the first claim in the new session, seed it with the count spent here:
+
+    mkdir -p runs/literature_appraisal
+    printf 'last_appraisal_epoch=0\nappraisals_consumed=10\n' > runs/literature_appraisal/pacing_state
+
+Then each firing claims one slot with `bash scripts/literature_pacing.sh claim` and spends it on one source or one
+search, under the rules in this file. The next source is the one entry left in the replacement queue (Ourfali 2007);
+after it, the next slot goes to a new mechanism-named search. Commit only this file, and pull before every push,
+since the experiment session pushes to main as well. The literature session runs no experiment jobs: its container
+has no runs/ directory, so scripts/resume_jobs.sh has nothing to relaunch there, and it should not register any.
+
 ### Note on the first row
 
 The paper is a methods note, not a benchmark, so its weight is `weak` and its bearing is
