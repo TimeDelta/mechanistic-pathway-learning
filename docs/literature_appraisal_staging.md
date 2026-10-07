@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1093/bib/bbaf062](https://doi.org/10.1093/bib/bbaf062) (PMID 39976387) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "CSGDN uses a signed graph diffusion method to uncover the underlying regulatory associations between genes and phenotypes" | an unsigned diffusion baseline on the same graph and split, and an ablation separating the signed diffusion from the contrastive objective; they report neither | whether the gain comes from the signs or from the contrastive views, and whether anything survives when the signed graph is a mechanistic substrate rather than the label graph itself |
 | [10.1016/j.neunet.2021.04.007](https://doi.org/10.1016/j.neunet.2021.04.007) (PMID 33906083) | Q1, Q2 | `no_bearing` | `background` | `strong` | "we obtain some sufficient conditions which can guarantee that networks with signed graph topologies realize bipartite synchronization under any initial conditions and arbitrary switching signals" | nothing: it is a control-theory result about coupled reaction-diffusion systems, with no biological network, no phenotype and no unsigned comparison | everything about Q1, but it supplies the condition under which signed dynamics reduce to unsigned, which is testable on our graph |
 | [10.1186/s12915-024-01968-0](https://doi.org/10.1186/s12915-024-01968-0) (PMID 39148051) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "A novel strategy for propagating signed message in signed networks addresses heterogeneity and consistency among nodes connected by signed edges" | an ablation replacing their signed propagation with an unsigned one, same features and same split; the abstract reports neither | whether the reported AUROC of 0.9742 owes anything to the signed strategy, and whether any of it transfers off a similarity-feature bipartite graph |
 | [10.1186/1756-0500-7-516](https://doi.org/10.1186/1756-0500-7-516) (PMID 25113603) | Q1, Q2 | `supports` | `analogous_mechanism` | `weak` | "the aggregation method we used is limited to a specific class of causal network models called \"causally consistent\", which is equivalent to the notion of balance of a signed graph used in graph theory" | a held-out comparison of their signed aggregation against an unsigned random walk on the same networks and the same readout; they report neither | whether an unsigned walk would have scored the same, which is our whole question |
@@ -108,7 +109,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -118,7 +119,7 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 39976387, 39523622, 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+Remaining to read: 39523622, 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
 
 ### Note on 39148051
 
@@ -166,3 +167,31 @@ docs/membrane_potential_reach.md shows.
 **Measurement that now has a point:** run `experiments/measure_signed_graph_balance.py` on the derived
 relation stack rather than the stored edge table, to report the frustration per relation and confirm
 the count above rather than deriving it.
+
+### Note on 39976387, the nearest published analogue so far
+
+This is the closest hit in the queue: signed graph diffusion, gene-phenotype associations, a held-out
+link-prediction comparison and a reported gain of up to 9.28% AUC on Gossypium hirsutum. It still does
+not answer Q1, for three reasons that are worth separating because each one is a difference between
+their setting and ours rather than a flaw in their work.
+
+The sign is a label, not a mechanism. Their edges are positive or negative gene-phenotype
+associations, the thing being predicted. Ours are stoichiometric and regulatory signs on a metabolic
+graph, which is the substrate the prediction propagates through.
+
+They diffuse over the label graph; we diffuse over a mechanistic graph to produce labels. Theirs is
+transductive link prediction on the association network itself, so part of the performance can come
+from the structure of the labels. Our split holds out whole genes and whole disease clusters, and the
+graph carries no label information at all.
+
+The signed component is not isolated. The gain is reported for the whole method, signed diffusion plus
+stochastic perturbation views plus a multiview contrastive loss, against other methods rather than
+against its own unsigned variant. Nothing in the abstract attributes the 9.28% to the signs.
+
+Taken with the rows above, Q1 is so far unanswered in the strict form: no paper in this queue reports
+signed or relation-typed propagation on a mechanistic biological network beating unsigned diffusion
+for a phenotype, with the baseline run and the signed component ablated. Two papers do the comparison
+on association or similarity graphs without the ablation, one supplies the balance condition and one
+has no bearing. If that holds through the rest of the queue, the strict form of Q1 is an open question
+rather than a settled negative, which makes the unsigned random-walk baseline in
+docs/graph_content_null_results.md more unusual as a reported result than as a failure.
