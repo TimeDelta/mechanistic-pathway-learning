@@ -64,7 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
-| [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; check 4 passes as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
+| [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; checks 3 and 6 hold as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
 | [10.64898/2026.04.29.721775](https://doi.org/10.64898/2026.04.29.721775) (bioRxiv preprint, version 1, no PMID) | Q1, Q2 | `mixed` | `same_construct_other_domain` | `moderate` | "Without task-specific fine-tuning, FLASH consistently outperforms or matches nine state-of-the-art unsigned, relational, and signed graph baselines across drug mode-of-action prediction, clinical response modeling, and drug-drug interaction prediction, while substantially improving computational efficiency." | the same model with signs removed or permuted and nothing else changed, on a split that holds out whole drugs or diseases, with the majority-class score beside each accuracy; for Q1 proper, an outcome that is not itself an edge of the graph | the "clinical response" label is the sign of a compound-disease edge of the same graph (indication against contraindication), split by random edges, so this is the association-label design of 39976387; the unsigned baselines lose edge types as well as signs and differ in architecture, and the signed models receive the training labels as input edge signs, so the gain cannot be credited to sign propagation; contraindications are 92.6% of the labels and no majority-class score is given beside the binary accuracy of 0.9893; in the one drug-disjoint setting, on an unsigned outcome, the lead over the best baseline is not significant (p = 0.20 as relayed, three runs); balance is imposed by pruning edges in unbalanced cycles, which our graph could not survive; a preprint with unresolved table references; the body was read through a summarising fetch tool, so every figure beyond the abstract is relayed |
 | [10.1093/bioinformatics/btm170](https://doi.org/10.1093/bioinformatics/btm170) (PMID 17646318) | Q1 | `supports` | `analogous_mechanism` | `weak` | "In cross-validation tests, SPINE obtains very high accuracy in predicting knockout effects (99%)." | for Q1, a readout that an unsigned propagation over the same physical network can also be scored on (whether a knockout changes a gene at all, or a phenotype), since direction gives it nothing to predict; for the 99%, the counts of up and down effects among the held-out pairs and a split that holds out whole knockouts instead of single pairs | a direction task on expression, so Q1 is not reached and the readout is not a phenotype; the signs are fitted to the same knockout compendium they are scored on, with one or five pairs hidden per iteration, so the other pairs of the same knockout stay in the fit; the only baseline is another signed method (Yeang et al. 2004), and by the table as relayed the leave-one-out gap is 101 against 100 correct of 103 held-out pairs; no class balance or majority-direction rate in the part read; the figure is for the edge variant on a mating subnetwork of 58 interactions and 149 knockout pairs; the full text is not in PMC and was read through a publisher-page fetch that stopped in section 3.2 and relays only short quotes, so every figure beyond the abstract needs checking against the PDF |
 | [10.1093/bioinformatics/btaf674](https://doi.org/10.1093/bioinformatics/btaf674) (PMID 41429577) | Q1 | `supports` | `analogous_mechanism` | `weak` | "Evaluation by precision-recall analysis gave an area under the curve (AUPRC) of 0.8, indicating that SIGNAL accurately recapitulates TLM knockout phenotypes." | the telomere evaluation with its positive class and base rate stated, against an all-positive network (which predicts every path positive, the majority-direction baseline) and with the telomere genes' own knockouts excluded from the sign features | a direction task, so an unsigned propagation has no prediction to compare and Q1 is not reached; the AUPRC of 0.8 comes with no positive class or base rate, and with 456 'long' against 37 'short' pairs a constant predictor would score about 0.925 if 'long' were positive; those pair counts also contradict the gene counts (63 short-phenotype genes, 38 long), and the discussion calls the same figure an AUC; the knockout-signature reconstruction (precision-recall area 0.87) excludes the knockout's own features in training but also reports no base rate; the method rests on negatives being rare, the fourth row developed in that regime |
@@ -119,25 +119,48 @@ last line of this list.
 - Slot 13, 7 October 2026, 18:38 UTC: Mottaqi 2026 appraised as DOI 10.64898/2026.04.29.721775. Slots spent: 13 of 19.
 - Slot 14, 7 October 2026, 19:00 UTC: Silverbush 2019 appraised as PMID 31289271. Slots spent: 14 of 19.
 
-### Triage checks, reconstructed in the literature session
+### Triage checks: the original four and three additions
 
-The replacement-queue section refers to "the four checks recorded at the top of the rows" and the note on 29925605
-cites checks 1 to 3 by number, but the checks are not in this file or in the git history: they were part of the
-experiment session's firing instructions. The list below is a reconstruction from the notes in this file, used for
-triage from slot 11 on. Checks 1 to 3 follow the three distinctions in the note on 39976387 and agree with how the
-note on 29925605 uses the numbers. Check 4 is inferred from the slot-7 triage remark that signs were "fitted to the
-knockouts they explain" and is the least certain. Check 5 is added here from the base-rate remarks in the notes on
-29925605 and 41429577. The author should replace the list with the original wording where it differs.
+The replacement-queue section refers to "the four checks recorded at the top of the rows". They were never in this
+file. They come from the firing prompt that set the experiment session's check-ins (16:43 UTC, 7 October 2026), and
+the author supplied the wording at 19:06 UTC:
 
-1. The sign belongs to a mechanistic edge (activation, inhibition, stoichiometry), not to the association label
-   being predicted.
-2. The propagation runs over a substrate that carries no label information and the scored units are held out, so
-   the result cannot come from the structure of the label graph.
-3. The signed component is isolated from the other fitted parts of the pipeline: the same pipeline is run without
-   signs or with signs permuted, on the same network and split.
-4. Where signs are fitted, they are not fitted to the outcome they are scored on.
-5. A direction or classification figure is reported beside its base rate, the score of always predicting the
-   majority class.
+"Four checks have decided every row so far: whether the sign is a mechanistic edge property or the association label
+being predicted; whether the propagation runs over a substrate carrying no label information or over the label graph
+itself; whether the split holds out whole entities or is transductive; and whether the method assumes structural
+balance, which a stoichiometric metabolic graph violates by construction at 26.9% of edges."
+
+The 26.9% is quoted as the prompt gave it and was not re-measured for this entry. Numbered as the notes use them:
+
+1. Is the sign a mechanistic edge property, or the association label being predicted?
+2. Does the propagation run over a substrate carrying no label information, or over the label graph itself?
+3. Does the split hold out whole entities, or is it transductive?
+4. Does the method assume structural balance?
+
+Checks 5 to 7 are additions by the literature session, in use from slot 11. None of them was in the original.
+
+5. Is the signed component isolated: the same pipeline run without signs or with signs permuted, on the same
+   network and split?
+6. Where signs are fitted, are they kept apart from the outcome they are scored on?
+7. Is each direction or classification figure reported beside its base rate, the score of always predicting the
+   majority class?
+
+Correction, 7 October 2026, 19:06 UTC. Slots 11 to 14 were triaged against a reconstruction that this list
+replaces. The reconstruction had check 1 right, merged original checks 2 and 3 into one, left out original check 4
+as a check and numbered the three additions 3, 4 and 5. Check numbers in the slot 12 search section and in the notes
+on 10.64898/2026.04.29.721775 and 31289271 have been renumbered to the list above. The three rows written in those
+slots, against the original four:
+
+- 17646318: check 1 holds, since the signs sit on physical interactions, though they are fitted (check 6 fails).
+  Check 2 fails in part, because the fitted signs carry the knockout effects that are scored. Check 3 fails: one or
+  five pairs are hidden and the rest of each knockout stays in the fit. Check 4 is not established: a pair is scored
+  only when its paths agree (relayed) and no balance measure is reported.
+- 10.64898/2026.04.29.721775: checks 1 and 2 fail. Check 3 fails for the sign tasks, which split random edges, and
+  holds for the drug-disjoint setting. Check 4 fails, since balance is imposed by pruning.
+- 31289271: checks 1, 2 and 3 hold. Check 4 does not arise, because the network carries no signs.
+
+No direction, bearing or weight changes as a result. The queue order from slot 12 also stands, with one caution
+added: if Martin 2014 uses the framework of the first row, it is restricted to the balanced case and fails check 4.
 
 ### Note on the first row
 
@@ -217,7 +240,7 @@ scored on, for the reason given in the note on 17646318. No filters were applied
 
 The reply listed 20 records, each with a DOI, and carried no sign-up, upgrade or usage notice. Slot 7's reply, on
 the free tier, listed 10 records without identifiers. Triage used only the returned abstracts, against the
-reconstructed checks. Four of the 20 were already on file (41429577, 39976387 and 29925605 appraised, Cowen 2017 set
+checks as reconstructed at the time; the check numbers below follow the corrected list under "Triage checks". Four of the 20 were already on file (41429577, 39976387 and 29925605 appraised, Cowen 2017 set
 aside), so rewording the signed query again is likely to return little that is new.
 
 The reply ends with a block of formatting instructions addressed to the assistant (cite inline by number, hyperlink
@@ -238,11 +261,11 @@ To read, in order of expected bearing on Q1:
    targets compared to the state-of-the-art unoriented network." The attribute is edge direction, not sign, but the
    design is the one Q1 needs: a mechanistic edge attribute added, the plain network run as the baseline and a
    ranking outcome both can be scored on. Risk: the orientations are fitted from drug response and cancer genomic
-   data, the same kind of data as the outcome (check 4).
+   data, the same kind of data as the outcome (check 6).
 3. Martin, 2014, BMC Bioinformatics, 10.1186/1471-2105-15-238. Scores signed cause-and-effect networks from
    transcriptomics and builds a signature "to predict the response to the treatment" in ulcerative colitis, a
    clinical label. The abstract says the value of the method's components is "substantiated", which may include a
-   test with the signed structure removed or permuted (check 3). Probably the same framework as the first row
+   test with the signed structure removed or permuted (check 5). Probably the same framework as the first row
    (25113603); to confirm on reading.
 4. Trinh, 2016, Bioinformatics, 10.1093/bioinformatics/btw464. Boolean dynamics on signalling networks: "the
    edgetic sensitivity predicted drug-targets better than the node-based sensitivity". Drug-target status is an
@@ -258,7 +281,7 @@ Set aside from this search on the abstract, with the reason:
   Xi, 2025, arXiv (10.48550/arxiv.2512.11927); Roy, 2020, Bioinformatics (10.1093/bioinformatics/btaa651): the sign
   is the label being predicted or the network being inferred (check 1), with no phenotype outcome.
 - Vinayagam, 2013, Nature Methods (10.1038/nmeth.2733): infers interaction signs from genetic screen phenotypes, an
-  annotation task with signs fitted to phenotype data (check 4) and no unsigned comparison. Background for where
+  annotation task with signs fitted to phenotype data (check 6) and no unsigned comparison. Background for where
   signed protein interaction networks come from.
 - Thiele, 2015, BMC Bioinformatics (10.1186/s12859-015-0733-7); Le Bars, 2023, BMC Bioinformatics
   (10.1186/s12859-023-05429-3): sign-consistency methods that predict the direction of unobserved nodes, so the
@@ -386,9 +409,9 @@ are from the source. Figure numbers and the exponents of p-values are missing fr
 
 What the design gets right. The attribute is added to a physical interaction network, not to the labels (check 1).
 The scored outcomes are not edges of the network (check 2). The plain network is run through the same diffusion
-(check 3). The orientations are kept apart from the outcome they are scored on (check 4): for drug targets "We
+(check 5). The orientations are kept apart from the outcome they are scored on (checks 3 and 6): for drug targets "We
 oriented the network using only the cancer data sets", and for driver genes "We oriented the network leaving out one
-disease set at a time".
+disease set at a time". Check 4 does not arise, because the network carries no signs.
 
 What limits it.
 
@@ -459,8 +482,9 @@ so that null is weak evidence as well, and the direction says only that the pape
 Why none of it reaches Q1. Checks 1 and 2 fail in the way they did for 39976387: the sign is the label, and the
 model propagates over the graph that holds the training labels. A test edge between a drug and a disease sits among
 training edges of that drug and that disease whose signs the signed models see and the unsigned baselines do not.
-Check 3 fails because the unsigned baselines drop edge types along with signs and use other architectures, so three
-things change at once. Check 5: always predicting contraindication scores 0.9256 (148,061 of 159,957, computed
+Check 3 fails for the sign tasks, which split random edges, and check 4 fails because balance is imposed by pruning.
+Check 5 fails because the unsigned baselines drop edge types along with signs and use other architectures, so three
+things change at once. Check 7: always predicting contraindication scores 0.9256 (148,061 of 159,957, computed
 here), and no such baseline is printed beside the 0.9893.
 
 What it adds for Q2 and for our graph. This is one more appraised source whose signed method lives in the balanced
