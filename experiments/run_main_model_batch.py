@@ -59,6 +59,16 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # manganese graph variant (graph/manganese_extension.py): ablation against the same configuration on the base graph
     "b3_linear_response_cofactors_laboratory_manganese": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                                           "--laboratory-label-weight", "1.0", "--graph-dir", "data/processed/graph_manganese"],
+    # neuronal and oxidative graph variant (graph/reactome_import.py, neurotransmission_regulation.py, oxidative_regulation.py): the
+    # ablation of design section 5.7 against the same configuration on the metabolic graph, with and without the curated layers
+    "b3_linear_response_cofactors_laboratory_neuronal": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                                         "--laboratory-label-weight", "1.0", "--graph-dir", "data/processed/graph_neuronal"],
+    "b6_linear_response_cofactors_neuronal": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                              "--graph-dir", "data/processed/graph_neuronal", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5",
+                                              "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
+    "b3_linear_response_cofactors_laboratory_neuronal_no_curation": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                                     "--cofactor-relations", "--laboratory-label-weight", "1.0",
+                                                                     "--graph-dir", "data/processed/graph_neuronal_no_curation"],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],
