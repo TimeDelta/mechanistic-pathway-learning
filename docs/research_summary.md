@@ -4,6 +4,10 @@ Working notes on the project's aims and results. Every number below names the ge
 the date it was read; when that document is regenerated, update the number here or mark it stale. Numbers are
 per-fold macro AUPRC under the disease-cluster grouped split unless a row says otherwise.
 
+Every slice result below is from a pilot: the monogenic slice has the metabolic layer only, 451 genes and no brain
+expression, and it decides nothing about which components are kept (amendment of 7 October in docs/preregistration.md).
+The confirmatory test is the full graph with every layer.
+
 ## 1. The question in one paragraph
 
 Inborn errors of metabolism and psychoactive drugs both perturb known molecular pathways and both produce psychiatric
@@ -144,6 +148,9 @@ Superseded numbers to avoid:
 | 2026-10-06 | PubTator3 pinned to the 6 October bulk file | NCBI no longer serves the 17 August file |
 | 2026-10-06 | Flux route deferred until a B4 test shows signal (proposed, not decided) | coverage and medium problems of finding 7 |
 | 2026-10-07 | The slice is a pilot; the mechanistic encoder and node descriptors stay until the full graph with all layers and better (not more) training examples is tested; the confirmatory test moves to graph_full_neuronal | user's decision; the slice cannot separate a weak mechanism from too few labels (findings 5 and 16) |
+| 2026-10-07 | No graph cut unless the full-graph runs show noise that paring would remove; graph_full and graph_full_neuronal are kept | user's decision; the blocked-reaction measurement was stopped before it finished |
+| 2026-10-07 | The paused full-graph B3 typed job (graph_full, v0.4 labels) is retired; B3 typed is rerun on graph_full_neuronal with the better labels, since the primary endpoint names it as a comparator | user left the choice to the assistant |
+| 2026-10-07 | Cell types enter as propagation channels with expression-weighted edges, one per cell class, not as graph copies; a dopaminergic class is required | user's direction |
 | 2026-10-07 | Gates get their own learning rate (--gate-learning-rate) | with the shared rate, supports were still shrinking at early stopping (finding 6) |
 | 2026-10-07 | Rewiring control at 50 swaps per edge with a null of 20 draws on the slice | 2 swaps per edge left the graph under-mixed (finding 8) |
 | 2026-10-07 | The 0.3 percent sign-mixing figure retracted | computed without the derived depletes_substrate relation (finding 11) |

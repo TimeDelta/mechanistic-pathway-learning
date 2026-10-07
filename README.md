@@ -11,7 +11,7 @@ docs/experiment_design.md. Read that first.
 
 ## Status
 
-Phase 1 is measured and Phases 2 and 3 have started on the monogenic slice. Implemented and tested:
+Phase 1 is measured and Phases 2 and 3 have started on the monogenic slice. The slice is a pilot; the confirmatory test is the full graph with every layer (docs/preregistration.md, amendment of 7 October 2026). Implemented and tested:
 the noisy-OR pathway module head (sum or mean pooling over hard-concrete supports), soft constraint
 losses, a relational message passing encoder with absolute and perturbation-difference field
 readings, the sigmoid-head baseline B3, grouped splits by gene or by disease cluster, curated-module

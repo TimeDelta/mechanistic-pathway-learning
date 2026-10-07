@@ -1,5 +1,8 @@
 # What limits the electrical layer (generated from the measurement in this file's history, 7 October 2026)
 
+The monogenic slice is a pilot (amendment of 7 October in docs/preregistration.md): one layer, 451 genes, no brain
+expression. Nothing here decides whether a component of the model is kept; the full-graph test does.
+
 The neuronal variant adds a membrane potential node, `VM_c`, so that a perturbation of a channel, a pump or a
 receptor can reach a symptom through excitability (design section 5.2, component 2). This note records what actually
 limits that route, because the first number reported for it was the wrong one and led to the wrong priority.

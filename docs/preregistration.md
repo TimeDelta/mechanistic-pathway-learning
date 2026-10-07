@@ -51,8 +51,11 @@ doi:10.1073/pnas.1708274114, on preregistration when "the data are preexisting")
   scored, from evidence properties only (grade, frequency qualifier, provenance, layer contact), never from any
   model's predictions.
 - The ablations (node descriptors, brain expression, edge signs, relation typing) run whatever the primary result,
-  because they are what says which part carries the signal. (Proposed by the assistant on 7 October; the user has not
-  yet confirmed this item.)
+  because they are what says which part carries the signal (confirmed by the user on 7 October). The with and without
+  descriptors comparison is one of them; the descriptors are not dropped before the final experiment.
+- The confirmatory configuration is the full graph with the node descriptors, the brain region and cell-class
+  expression, the cell-class propagation channels (including a dopaminergic class) and the better training examples.
+  Full-graph runs made before all of these exist are full-graph pilots and are reported as such.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; number of flux samples per gene; power statement for the

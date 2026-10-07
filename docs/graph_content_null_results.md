@@ -1,5 +1,8 @@
 # On the slice the wiring carries signal, and the mechanistic encoders have not been shown to add to diffusion (7 October 2026)
 
+The monogenic slice is a pilot (amendment of 7 October in docs/preregistration.md): one layer, 451 genes, no brain
+expression. Nothing here decides whether a component of the model is kept; the full-graph test does.
+
 Scope: one metabolic slice graph, 451 monogenic perturbations and ten symptoms in five disease-cluster folds. It is
 not a general rule about signed or typed propagation against unsigned walks; published work on other graphs and
 labels reports typed models ahead of diffusion (docs/literature_appraisal_staging.md, state of Q1 at the cap; unreviewed).
