@@ -37,10 +37,11 @@ def coverage_rows(label_table: pd.DataFrame, gene_symbols: set[str], graph_base_
         "genes": len(gene_symbols),
         "gene-term pairs with a chemical definition": len(rows),
         "genes with such a pair": rows.gene_symbol.nunique(),
-        "pairs mapped to a Human-GEM metabolite": int(rows.route.isin(["equivalent", "specific_form"]).sum()),
+        "pairs mapped to a Human-GEM metabolite": int(rows.route.isin(["equivalent", "manual", "specific_form"]).sum()),
         "pairs left out as class terms": int((rows.route == "class_term").sum()),
         "  of which through an equivalent form": int((rows.route == "equivalent").sum()),
         "  of which through a specific form": int((rows.route == "specific_form").sum()),
+        "  of which through a manual mapping": int((rows.route == "manual").sum()),
         "pairs reaching a metabolite of the graph": len(in_graph),
         "genes with at least one such pair": in_graph.gene_symbol.nunique(),
         "distinct graph metabolites labelled": len(set().union(*in_graph.metabolites_in_graph)) if len(in_graph) else 0,
@@ -100,6 +101,7 @@ def main() -> None:
         f"({', '.join(f'{DIRECTION_NAMES[direction]} {count}' for direction, count in sorted(direction_counts.items(), reverse=True))}). "
         f"Terms mapped to a Human-GEM metabolite: {route_counts['equivalent']} through an equivalent form (conjugate acid or base, tautomer), "
         f"{route_counts['specific_form']} through a specific form (an is_a child named after the compound, such as L-phenylalanine), "
+        f"{route_counts['manual']} through a manual mapping (potassium(1+) to K+, which Human-GEM annotates with the potassium atom), "
         f"{route_counts['class_term']} left out as class terms (more than three metabolites), {route_counts['unmapped']} unmapped. "
         "Generic pseudo-metabolites ('[protein]') are excluded; an unannotated gene-metabolite pair is unlabelled, not normal.",
         "",

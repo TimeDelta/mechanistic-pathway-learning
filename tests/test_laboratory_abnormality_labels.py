@@ -111,3 +111,12 @@ def test_bridging_reaches_the_l_form_and_leaves_out_d_forms_and_class_terms(tmp_
     assert map_definition_to_metabolites(definitions["HP:0000002"], names, neighbours, children, metabolites_by_chebi) == (set(), "class_term")
     excluded = frozenset({"MAM_CO2"})
     assert map_definition_to_metabolites(definitions["HP:0000001"], names, neighbours, children, metabolites_by_chebi, excluded) == (set(), "unmapped")
+
+
+def test_potassium_ion_maps_to_human_gem_potassium_by_manual_entry(tmp_path) -> None:
+    obo_path = tmp_path / "chebi.obo"
+    obo_path.write_text("[Term]\nid: CHEBI:29103\nname: potassium(1+)\n\n[Term]\nid: CHEBI:26216\nname: potassium atom\n")
+    names, neighbours, children = read_chebi_relations(obo_path)
+    metabolites_by_chebi = human_gem_metabolites_by_chebi(pd.DataFrame({"metsNoComp": ["MAM02200"], "metChEBIID": ["CHEBI:26216"]}))
+    hypokalemia = ChemicalDefinition("HP:0002900", ("CHEBI:29103",), -1, "blood")
+    assert map_definition_to_metabolites(hypokalemia, names, neighbours, children, metabolites_by_chebi) == ({"MAM02200"}, "manual")

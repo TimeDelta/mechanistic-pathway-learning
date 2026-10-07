@@ -15,6 +15,9 @@ stereo-specific one (L-phenylalanine, its zwitterion), so ChEBI identifiers are 
     named compound's name (L-phenylalanine under phenylalanine), with its own equivalents; kept apart in the report
     because a class such as 'amino acid' would otherwise reach every amino acid. Where a compound has both an L- and a
     D- child (ornithine, arginine), only the L- form is kept: clinical amino acid measurements are of the L- form.
+Where Human-GEM's own ChEBI annotation is wrong for a measured compound, a manual entry of MANUAL_HUMAN_GEM_MAPPINGS
+maps it (route 'manual'): Human-GEM annotates K+ (MAM02200) with CHEBI:26216, the potassium atom, while the HPO
+potassium terms (hypokalemia, hyperkalemia) name potassium(1+), CHEBI:29103.
 A term that still reaches more than MAXIMUM_METABOLITES_PER_TERM metabolites names a class (prostaglandins reach 32,
 fatty acids 11) and is left out, as are generic pseudo-metabolites such as '[protein]'.
 A label is a (gene, metabolite, direction, fluid) record; an unannotated pair is unlabelled, not normal.
@@ -34,6 +37,9 @@ DECREASED_AMOUNT = "PATO_0001997"
 FLUID_BY_UBERON = {"UBERON_0000178": "blood", "UBERON_0001088": "urine", "UBERON_0001359": "cerebrospinal_fluid",
                    "UBERON_0001977": "serum", "UBERON_0002107": "liver"}
 MAXIMUM_METABOLITES_PER_TERM = 3
+MANUAL_HUMAN_GEM_MAPPINGS: dict[str, frozenset[str]] = {
+    "CHEBI:29103": frozenset({"MAM02200"}),  # potassium(1+) -> K+ (Human-GEM lists the potassium atom, CHEBI:26216)
+}
 CHEBI_EQUIVALENCE_RELATIONS = {"RO:0018033", "RO:0018034", "RO:0018036"}  # is conjugate base of, is conjugate acid of, is tautomer of
 HP_CLASS_PATTERN = re.compile(r'<owl:Class rdf:about="http://purl.obolibrary.org/obo/(HP_\d+)">')
 EQUIVALENT_CLASS_PATTERN = re.compile(r"<owl:equivalentClass>(.*?)</owl:equivalentClass>", flags=re.S)
@@ -153,13 +159,17 @@ def generic_metabolite_ids(nodes: pd.DataFrame) -> set[str]:
 def map_definition_to_metabolites(definition: ChemicalDefinition, names, neighbours, children, metabolites_by_chebi,
                                   excluded_metabolites: frozenset[str] = frozenset(),
                                   maximum_metabolites: int = MAXIMUM_METABOLITES_PER_TERM) -> tuple[set[str], str]:
-    """(Human-GEM base metabolites, route): route is 'equivalent', 'specific_form', 'class_term' (more than
-    maximum_metabolites reached; no metabolites returned) or 'unmapped'."""
+    """(Human-GEM base metabolites, route): route is 'equivalent', 'manual' (MANUAL_HUMAN_GEM_MAPPINGS),
+    'specific_form', 'class_term' (more than maximum_metabolites reached; no metabolites returned) or 'unmapped'."""
     def mapped_through(chebi_ids: set[str]) -> set[str]:
         return set().union(*(metabolites_by_chebi.get(chebi_id, set()) for chebi_id in chebi_ids)) - excluded_metabolites
 
-    mapped = mapped_through(set().union(*(equivalent_forms(chebi_id, neighbours) for chebi_id in definition.chebi_ids)))
+    equivalent_ids = set().union(*(equivalent_forms(chebi_id, neighbours) for chebi_id in definition.chebi_ids))
+    mapped = mapped_through(equivalent_ids)
     route = "equivalent"
+    if not mapped:
+        mapped = set().union(*(MANUAL_HUMAN_GEM_MAPPINGS.get(chebi_id, frozenset()) for chebi_id in equivalent_ids)) - excluded_metabolites
+        route = "manual"
     if not mapped:
         mapped = mapped_through(set().union(*(specific_forms(chebi_id, names, neighbours, children) for chebi_id in definition.chebi_ids)))
         route = "specific_form"
