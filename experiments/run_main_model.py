@@ -139,10 +139,11 @@ def git_provenance() -> dict:
 
 
 def optimizer_parameter_groups(encoder, head, arguments) -> list[dict]:
-    """One group at the main learning rate, plus one group for each noisy-OR time scale (links, leaks, module biases)
-    whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the time
-    scale on which that parameter can change."""
-    rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate}
+    """One group at the main learning rate, plus one group for each noisy-OR time scale (links, leaks, module biases,
+    gates) whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the
+    time scale on which that parameter can change."""
+    rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate,
+             "gates": getattr(arguments, "gate_learning_rate", 0.0)}
     if not hasattr(head, "time_scale_parameter_groups") or not any(rates.values()):
         return [{"params": list(encoder.parameters()) + list(head.parameters())}]
     separate_groups = [{"params": parameters, "lr": rates[name], "weight_decay": 0.0}
@@ -269,6 +270,7 @@ def main() -> None:
                         help="noisy-OR head: learning rate of the module-to-symptom links (0 = the main rate); links start at logit -3 and Adam moves them about one rate per step, so at 0.002 they need about 1,500 steps to reach 0.5")
     parser.add_argument("--leak-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the symptom leaks (0 = the main rate); slow, so a leak started at the base rate stays there")
     parser.add_argument("--module-bias-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the module readout biases (0 = the main rate)")
+    parser.add_argument("--gate-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the support gate log-alphas (0 = the main rate); fast, so gates no field reaches can close within the epochs early stopping allows")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)

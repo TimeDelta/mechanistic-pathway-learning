@@ -99,7 +99,7 @@ def test_expected_gate_matches_the_mean_of_training_samples_and_exceeds_the_loui
     assert expected[0, 0].item() > 5 * gate.louizos_test_time_gate()[0, 0].item()
 
 
-def test_eval_mode_gate_is_the_expected_training_gate_and_time_scale_groups_are_links_leaks_and_biases() -> None:
+def test_eval_mode_gate_is_the_expected_training_gate_and_time_scale_groups_are_links_leaks_biases_and_gates() -> None:
     gate = HardConcreteNodeGate(num_pathway_modules=2, num_graph_nodes=5)
     gate.eval()
     assert torch.equal(gate(), gate.expected_gate())
@@ -108,6 +108,33 @@ def test_eval_mode_gate_is_the_expected_training_gate_and_time_scale_groups_are_
     assert [id(parameter) for parameter in groups["links"]] == [id(head.module_symptom_link_logit)]
     assert [id(parameter) for parameter in groups["leaks"]] == [id(head.symptom_leak_logit)]
     assert [id(parameter) for parameter in groups["module_biases"]] == [id(head.module_readout_bias)]
+    assert [id(parameter) for parameter in groups["gates"]] == [id(head.support_gate.log_alpha)]
+
+
+def test_gates_no_field_reaches_close_at_a_speed_set_by_the_learning_rate_not_the_penalty_coefficient() -> None:
+    """The mechanism behind the diffuse supports of docs/b6_module_diagnosis.md: with a zero field the only gradient on a
+    gate is the sparsity penalty's, and Adam normalises it, so a coefficient 1000 times larger closes the gates no
+    faster (while the gradient stays well above Adam's epsilon); at the main learning rate the gate travels about one learning rate per step, and a gate time scale 25 times
+    faster moves it much further (less than 25 times, since the penalty gradient shrinks as the gate closes and Adam's
+    second-moment average remembers the larger early gradients)."""
+    steps = 200
+
+    def median_travel(gate_learning_rate: float, coefficient: float) -> float:
+        torch.manual_seed(0)
+        head = NoisyOrPathwayModuleHead(num_graph_nodes=50, node_state_dim=3, num_pathway_modules=2, num_symptoms=2, gate_initial_log_alpha_noise=0.0)
+        optimizer = torch.optim.Adam(head.time_scale_parameter_groups()["gates"], lr=gate_learning_rate)
+        zero_field = torch.zeros(4, 50, 3)
+        for _ in range(steps):
+            optimizer.zero_grad()
+            loss = torch.nn.functional.binary_cross_entropy(head(zero_field).symptom_probability, torch.zeros(4, 2)) + coefficient * head.description_length_penalty(node_cost=10.0)  # about ln(number of nodes), as in the training loop
+            loss.backward()
+            optimizer.step()
+        return float(-1.0 - head.support_gate.log_alpha.detach().median())
+
+    main_rate_travel = median_travel(0.002, 1e-6)
+    assert 0.9 * 0.002 * steps < main_rate_travel <= 1.05 * 0.002 * steps  # slightly above one rate per step while the gradient grows towards log-alpha -1.6
+    assert abs(median_travel(0.002, 1e-3) - main_rate_travel) < 0.02 * main_rate_travel
+    assert median_travel(0.05, 1e-6) > 10 * main_rate_travel
 
 
 def test_degree_offset_makes_the_leak_depend_on_the_covariate_and_starts_neutral() -> None:

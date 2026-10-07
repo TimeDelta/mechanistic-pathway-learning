@@ -196,8 +196,13 @@ class NoisyOrPathwayModuleHead(nn.Module):
     def time_scale_parameter_groups(self) -> dict[str, list[nn.Parameter]]:
         """The parameters the noisy-OR reads directly as probabilities or offsets, by the time scale they may need:
         links have to travel from logit -3 towards 1 within the epochs early stopping allows, while a leak started at the
-        base rate should move slowly, or it absorbs the signal before the links can (docs/b6_module_diagnosis.md)."""
-        return {"links": [self.module_symptom_link_logit], "leaks": [self.symptom_leak_logit], "module_biases": [self.module_readout_bias]}
+        base rate should move slowly, or it absorbs the signal before the links can (docs/b6_module_diagnosis.md).
+        Gates have to travel too: a gate that no perturbation's field reaches gets only the sparsity penalty's gradient,
+        which Adam turns into a full step down, so it closes at one learning rate per step; from log-alpha -1, closing
+        to a probability of being nonzero near 0.01 (log-alpha about -6) takes some 2,500 steps at 0.002, and every
+        slice run stopped after 180 to 1,100 with the median gate at 92 to 100 percent of that travel."""
+        return {"links": [self.module_symptom_link_logit], "leaks": [self.symptom_leak_logit], "module_biases": [self.module_readout_bias],
+                "gates": list(self.support_gate.parameters())}
 
     def link_probability(self, relation_index: int = 0) -> Tensor:
         return torch.sigmoid(self.module_symptom_link_logit[relation_index])
