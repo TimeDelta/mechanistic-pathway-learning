@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; check 4 passes as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
 | [10.64898/2026.04.29.721775](https://doi.org/10.64898/2026.04.29.721775) (bioRxiv preprint, version 1, no PMID) | Q1, Q2 | `mixed` | `same_construct_other_domain` | `moderate` | "Without task-specific fine-tuning, FLASH consistently outperforms or matches nine state-of-the-art unsigned, relational, and signed graph baselines across drug mode-of-action prediction, clinical response modeling, and drug-drug interaction prediction, while substantially improving computational efficiency." | the same model with signs removed or permuted and nothing else changed, on a split that holds out whole drugs or diseases, with the majority-class score beside each accuracy; for Q1 proper, an outcome that is not itself an edge of the graph | the "clinical response" label is the sign of a compound-disease edge of the same graph (indication against contraindication), split by random edges, so this is the association-label design of 39976387; the unsigned baselines lose edge types as well as signs and differ in architecture, and the signed models receive the training labels as input edge signs, so the gain cannot be credited to sign propagation; contraindications are 92.6% of the labels and no majority-class score is given beside the binary accuracy of 0.9893; in the one drug-disjoint setting, on an unsigned outcome, the lead over the best baseline is not significant (p = 0.20 as relayed, three runs); balance is imposed by pruning edges in unbalanced cycles, which our graph could not survive; a preprint with unresolved table references; the body was read through a summarising fetch tool, so every figure beyond the abstract is relayed |
 | [10.1093/bioinformatics/btm170](https://doi.org/10.1093/bioinformatics/btm170) (PMID 17646318) | Q1 | `supports` | `analogous_mechanism` | `weak` | "In cross-validation tests, SPINE obtains very high accuracy in predicting knockout effects (99%)." | for Q1, a readout that an unsigned propagation over the same physical network can also be scored on (whether a knockout changes a gene at all, or a phenotype), since direction gives it nothing to predict; for the 99%, the counts of up and down effects among the held-out pairs and a split that holds out whole knockouts instead of single pairs | a direction task on expression, so Q1 is not reached and the readout is not a phenotype; the signs are fitted to the same knockout compendium they are scored on, with one or five pairs hidden per iteration, so the other pairs of the same knockout stay in the fit; the only baseline is another signed method (Yeang et al. 2004), and by the table as relayed the leave-one-out gap is 101 against 100 correct of 103 held-out pairs; no class balance or majority-direction rate in the part read; the figure is for the edge variant on a mating subnetwork of 58 interactions and 149 knockout pairs; the full text is not in PMC and was read through a publisher-page fetch that stopped in section 3.2 and relays only short quotes, so every figure beyond the abstract needs checking against the PDF |
 | [10.1093/bioinformatics/btaf674](https://doi.org/10.1093/bioinformatics/btaf674) (PMID 41429577) | Q1 | `supports` | `analogous_mechanism` | `weak` | "Evaluation by precision-recall analysis gave an area under the curve (AUPRC) of 0.8, indicating that SIGNAL accurately recapitulates TLM knockout phenotypes." | the telomere evaluation with its positive class and base rate stated, against an all-positive network (which predicts every path positive, the majority-direction baseline) and with the telomere genes' own knockouts excluded from the sign features | a direction task, so an unsigned propagation has no prediction to compare and Q1 is not reached; the AUPRC of 0.8 comes with no positive class or base rate, and with 456 'long' against 37 'short' pairs a constant predictor would score about 0.925 if 'long' were positive; those pair counts also contradict the gene counts (63 short-phenotype genes, 38 long), and the discussion calls the same figure an AUC; the knockout-signature reconstruction (precision-recall area 0.87) excludes the knockout's own features in training but also reports no base rate; the method rests on negatives being rare, the fourth row developed in that regime |
@@ -116,6 +117,7 @@ last line of this list.
 - Slot 11, 7 October 2026, 18:00 UTC: Ourfali 2007 appraised as PMID 17646318. Slots spent: 11 of 19.
 - Slot 12, 7 October 2026, 18:29 UTC: one Consensus search, 20 records, five queued. Slots spent: 12 of 19.
 - Slot 13, 7 October 2026, 18:38 UTC: Mottaqi 2026 appraised as DOI 10.64898/2026.04.29.721775. Slots spent: 13 of 19.
+- Slot 14, 7 October 2026, 19:00 UTC: Silverbush 2019 appraised as PMID 31289271. Slots spent: 14 of 19.
 
 ### Triage checks, reconstructed in the literature session
 
@@ -231,7 +233,7 @@ To read, in order of expected bearing on Q1:
    matches" is not "beats"; the baselines are unsigned graph networks, not diffusion; the knowledge graph integrates
    perturbation and clinical data, so check 2 is in doubt; the method relies on "structural balance principles",
    the regime our graph is outside; it is not peer reviewed.
-2. Silverbush, 2019, Nature Communications, 10.1038/s41467-019-10887-6. Orients the human protein interaction
+2. Appraised in slot 14 as PMID 31289271. Silverbush, 2019, Nature Communications, 10.1038/s41467-019-10887-6. Orients the human protein interaction
    network and reports that "The oriented network leads to improved prioritization of cancer driver genes and drug
    targets compared to the state-of-the-art unoriented network." The attribute is edge direction, not sign, but the
    design is the one Q1 needs: a mechanistic edge attribute added, the plain network run as the baseline and a
@@ -375,6 +377,50 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 31289271, the first row where the plain network is the baseline
+
+This is the first appraised source that runs the same propagation on a network with and without a mechanistic edge
+attribute and scores both on a ranking outcome. The full text was read from PMC (PMC6617457), so the quotes below
+are from the source. Figure numbers and the exponents of p-values are missing from the text as served.
+
+What the design gets right. The attribute is added to a physical interaction network, not to the labels (check 1).
+The scored outcomes are not edges of the network (check 2). The plain network is run through the same diffusion
+(check 3). The orientations are kept apart from the outcome they are scored on (check 4): for drug targets "We
+oriented the network using only the cancer data sets", and for driver genes "We oriented the network leaving out one
+disease set at a time".
+
+What limits it.
+
+- The attribute is direction. The network carries no signs, so the paper bears on the relation-typed half of Q1 and
+  says nothing about activation against inhibition.
+- The baseline is below chance. A random ranking of 15,501 genes has an expected mean rank of 7,751 (computed
+  here). The unoriented network scores 8,837, which is 1,086 ranks worse than random, and the oriented network
+  scores 6,045, which is 1,706 ranks better. The reported gain of 2,792 ranks is therefore mostly recovery from a
+  baseline that ranks true targets in the lower half. No chance level, top-k score or area measure is given for the
+  drug-target test.
+- The baseline may remove more than the inferred orientations. The network includes 33,756 curated directed
+  interactions, and the comparison is against "a completely unoriented network". If the curated directions are
+  stripped as well, the test does not show that the inferred orientations help.
+- The driver-gene test gives figures for the oriented network only, for example "49% of the top 1% of the genes
+  reported by the orientation-based computation are in the AGO positive list", and states that it "consistently
+  reported higher fractions of driver genes and lower fractions of non-driver genes compared to the unoriented one"
+  with the comparison shown in a figure. The significance tests printed are against the gene background, not
+  against the unoriented ranking.
+- Both tests diffuse against the orientation: "we flipped all directions in the (oriented) network, so that a
+  diffusion process will follow a signal traversing up-wards in the network". The gain is specific to walking from
+  effects back to causes.
+
+Why `moderate`. The evaluation is held out and the baseline at issue is run, but that baseline performs below
+chance and no spread over drugs is printed in the text.
+
+What it suggests for our comparison. Direction and sign are separate attributes, and this paper is evidence for
+direction alone. The note on our null result (docs/graph_content_null_results.md) does not say whether the random
+walk with restart follows edge direction or symmetrises the graph. If it follows direction, the gain reported here
+is already inside our baseline. If it symmetrises, a directed unsigned arm is the comparison that separates
+direction from sign, and the signed encoder has so far been compared with a baseline that lacks both.
+
+No instruction-like text was found in the article.
 
 ### Note on 10.64898/2026.04.29.721775, the stated comparison and why it does not transfer
 
