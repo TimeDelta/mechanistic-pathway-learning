@@ -112,7 +112,12 @@ class CuratedReaction:
     membrane_potential_sign overrides the sign derived from the charge that crosses, for a current whose direction is
     known while its stoichiometry is not: a channel permeable to two ions at once carries a net current set by the
     permeability ratio and the driving forces, not by a whole-number stoichiometry, so deriving the sign from counted
-    charge would either invent that ratio or cancel to zero and drop the current altogether."""
+    charge would either invent that ratio or cancel to zero and drop the current altogether.
+    catalysis_relation names the relation of the gene-to-reaction edge, for a reaction whose catalysis the model should
+    weigh apart from ordinary catalysis. Gains are learned per relation, so a transporter that this set gives a
+    reaction in each direction has one shared gain over both unless the reverse direction carries a relation of its
+    own, and the model then cannot weigh efflux differently from uptake. Only the catalysis edge is separated: the
+    substrate and product edges of an efflux reaction carry the same mass action as any other transport."""
     reaction_id: str
     display_name: str
     substrates: tuple[str, ...]
@@ -121,6 +126,7 @@ class CuratedReaction:
     evidence: str
     release: str | None = None
     membrane_potential_sign: float | None = None
+    catalysis_relation: str = "catalyzed_by"
 
 
 def compartment_letter(name: str) -> str:
@@ -358,7 +364,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
             add_edge(curated.reaction_id, node, "product_of", 1.0, curated.evidence)
         for gene in curated.catalysts:
             add_node(f"GENE:{gene}", node_type="gene", display_name=gene, gene_symbol=gene, in_metabolic_layer=False)
-            add_edge(f"GENE:{gene}", curated.reaction_id, "catalyzed_by", 1.0, curated.evidence)
+            add_edge(f"GENE:{gene}", curated.reaction_id, curated.catalysis_relation, 1.0, curated.evidence)
         participants = [("in", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.substrates]
         participants += [("out", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.products]
         reaction_records[curated.reaction_id] = (participants, set(curated.catalysts), list(curated.substrates), list(curated.products), "curated")
@@ -439,8 +445,12 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     edge_table = edge_table.drop_duplicates(["source_id", "target_id", "relation_type"], ignore_index=True)
     counts = edge_table.source_id.value_counts().add(edge_table.target_id.value_counts(), fill_value=0)
     node_table["degree"] = counts.reindex(node_table.node_id).fillna(0).astype("int64").to_numpy()
-    new_relations = list(relation_types) + [relation for relation in ("substrate_of", "product_of", "catalyzed_by", "activates", "inhibits", "member_of",
-                                                                       "changes_membrane_potential", "voltage_gates", "changes_ion_pool", "driving_force")
+    # a curated catalysis relation may be the default "catalyzed_by", which the literal list already names, so the
+    # relations are deduplicated rather than concatenated; dict.fromkeys keeps the order the encoder indexes them by
+    added_relations = ("substrate_of", "product_of", "catalyzed_by", "activates", "inhibits", "member_of",
+                       "changes_membrane_potential", "voltage_gates", "changes_ion_pool", "driving_force"
+                       ) + tuple(sorted({curated.catalysis_relation for curated in curated_reactions}))
+    new_relations = list(relation_types) + [relation for relation in dict.fromkeys(added_relations)
                                             if relation not in relation_types]
     summary = {"reactome_reactions": len(reactions), "reactome_species": len(species), "curated_reactions": len(curated_reactions),
                "nodes_added": len(node_table) - len(nodes) + len(deleted_nodes), "nodes_deleted": len(deleted_nodes),

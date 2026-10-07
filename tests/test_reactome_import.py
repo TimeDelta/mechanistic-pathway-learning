@@ -384,3 +384,30 @@ def test_a_mixed_permeability_channel_keeps_its_net_current():
     assert ((edges.source_id == "MAR_HCN_CURRENT") & (edges.target_id == sodium_pool) & (edges.relation_type == "product_of")).any()
     assert ((edges.source_id == potassium_pool_in) & (edges.target_id == "MAR_HCN_CURRENT") & (edges.relation_type == "substrate_of")).any()
     assert not ((edges.source_id == "MAR_HCN_CURRENT") & (edges.relation_type == "changes_ion_pool")).any()
+
+
+def test_reverse_transport_catalysis_gets_its_own_relation_once():
+    """Gains are learned per relation, so a transporter given a reaction in each direction has one shared gain over
+    both unless the reverse direction carries its own catalysis relation. Only the catalysis edge is separated: the
+    substrate and product edges stay the ordinary mass action of a transport reaction."""
+    uptake = CuratedReaction("MAR_UPTAKE", "uptake of dopamine", ("MAM01736e",), ("MAM01736c",), ("SLC6A3",), "test")
+    efflux = CuratedReaction("MAR_EFFLUX", "reverse transport of dopamine", ("MAM01736c",), ("MAM01736e",), ("SLC6A3",), "test",
+                             catalysis_relation="catalyzes_reverse_transport")
+    _, edges, relation_types, _ = run_import(curated_reactions=[uptake, efflux])
+    catalysis = edges[edges.source_id == "GENE:SLC6A3"].set_index("target_id").relation_type
+    assert catalysis["MAR_UPTAKE"] == "catalyzed_by"
+    assert catalysis["MAR_EFFLUX"] == "catalyzes_reverse_transport"
+    # the two directions still share substrate_of and product_of, which is the same mass action either way
+    directed = edges[edges.relation_type.isin(["substrate_of", "product_of"])]
+    assert ((directed.source_id == "MAM01736c") & (directed.target_id == "MAR_EFFLUX")).any()
+    assert ((directed.source_id == "MAR_UPTAKE") & (directed.target_id == "MAM01736c")).any()
+    # "catalyzed_by" is the default, so a careless concatenation would list it twice and shift every relation index
+    assert len(relation_types) == len(set(relation_types))
+    assert relation_types.count("catalyzes_reverse_transport") == 1
+
+
+def test_a_curated_reaction_defaults_to_ordinary_catalysis():
+    plain = CuratedReaction("MAR_PLAIN", "an ordinary curated reaction", ("MAM01736c",), ("MAM01736e",), ("SLC6A3",), "test")
+    _, edges, relation_types, _ = run_import(curated_reactions=[plain])
+    assert (edges[edges.source_id == "GENE:SLC6A3"].relation_type == "catalyzed_by").all()
+    assert "catalyzes_reverse_transport" not in relation_types

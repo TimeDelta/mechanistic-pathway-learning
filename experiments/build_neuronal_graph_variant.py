@@ -77,11 +77,14 @@ CURATED_REACTIONS = [
     # redistribution empties the vesicle (Schmitz et al. 2001, PMID 11487614). Human-GEM writes these transporters as
     # uptake only, so without this reaction a drug acting on them can only lower extracellular transmitter
     CuratedReaction("MAR_DOPAMINE_EFFLUX", "reverse transport of dopamine (cytosol to extracellular)", ("MAM01736c",), ("MAM01736e",), ("SLC6A3",),
-                    "reverse transport through the transporter (PMID 11487614)"),
+                    "reverse transport through the transporter (PMID 11487614)",
+                    catalysis_relation="catalyzes_reverse_transport"),
     CuratedReaction("MAR_NORADRENALINE_EFFLUX", "reverse transport of noradrenaline (cytosol to extracellular)", ("MAM02617c",), ("MAM02617e",), ("SLC6A2",),
-                    "reverse transport through the transporter (PMID 11487614)"),
+                    "reverse transport through the transporter (PMID 11487614)",
+                    catalysis_relation="catalyzes_reverse_transport"),
     CuratedReaction("MAR_SEROTONIN_EFFLUX", "reverse transport of serotonin (cytosol to extracellular)", ("MAM02897c",), ("MAM02897e",), ("SLC6A4",),
-                    "reverse transport through the transporter (PMID 11487614)"),
+                    "reverse transport through the transporter (PMID 11487614)",
+                    catalysis_relation="catalyzes_reverse_transport"),
     # Human-GEM's MAR01527 "Sodium Transport (Uniport)" lumps every sodium-conducting channel into one reaction: the
     # voltage-gated Nav channels, the hyperpolarisation-activated HCN channels, the NALCN leak channel, the epithelial
     # ENaC subunits and the lysosomal two-pore channels. Their voltage dependence is opposite or absent, so one reaction
