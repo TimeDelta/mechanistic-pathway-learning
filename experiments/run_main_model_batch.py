@@ -52,6 +52,10 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b3_descriptors_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors",
                             "--node-descriptors", "data/processed/graph/node_descriptors.parquet"],
     "b3_local_structural": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors"],
+    # auxiliary supervision of the field with measured metabolite directions (models/laboratory_readout.py)
+    "b3_typed_nodes_laboratory": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--laboratory-label-weight", "1.0"],
+    "b3_linear_response_cofactors_laboratory": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                                "--laboratory-label-weight", "1.0"],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],
