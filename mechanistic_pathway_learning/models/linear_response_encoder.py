@@ -67,6 +67,8 @@ without adding anything where it did not.
 """
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor, nn
 
@@ -180,7 +182,8 @@ class CrossRelationAggregator(nn.Module):
     """
 
     def __init__(self, num_node_types: int, propagation_channels: int,
-                 statistics: tuple[str, ...] = MIXTURE_STATISTICS, weighting: str = "sparsemax") -> None:
+                 statistics: tuple[str, ...] = MIXTURE_STATISTICS, weighting: str = "sparsemax",
+                 initial_mean_weight: float = 0.9) -> None:
         super().__init__()
         unknown = [statistic for statistic in statistics if statistic not in MIXTURE_STATISTICS]
         if unknown:
@@ -194,10 +197,30 @@ class CrossRelationAggregator(nn.Module):
         if "power_mean" in self.statistics:
             self.log_power_mean_exponent = nn.Parameter(torch.zeros(num_node_types, propagation_channels))
         # starts near the mean, so an untrained mixture reproduces the original behaviour up to the divisor
-        initial_logit = torch.full((num_node_types, len(self.statistics), propagation_channels), -2.0)
+        initial_logit = torch.full((num_node_types, len(self.statistics), propagation_channels), 0.0)
         if "mean" in self.statistics:
-            initial_logit[:, self.statistics.index("mean"), :] = 2.0
+            initial_logit[:, self.statistics.index("mean"), :] = self.warm_start_gap(initial_mean_weight, len(self.statistics), weighting)
         self.mixture_logit = nn.Parameter(initial_logit)
+
+    @staticmethod
+    def warm_start_gap(initial_mean_weight: float, num_statistics: int, weighting: str) -> float:
+        """Logit gap that puts initial_mean_weight on the mean and spreads the rest evenly, under either weighting.
+
+        The gap is solved for rather than chosen so the two weightings start from the same mixture, which a
+        comparison between them needs. It also keeps sparsemax off its own boundary: with logits [a, b, ..., b],
+        sparsemax keeps every statistic in its support only while a - b < 1, independent of the number of
+        statistics, and outside the support a logit has exactly zero gradient, so a gap of 1 or more freezes
+        the mixture at the mean for the whole of training. Requiring initial_mean_weight < 1 is the same bound:
+        the sparsemax gap (num_statistics * w - 1) / (num_statistics - 1) is below 1 exactly when w is.
+        """
+        if num_statistics < 2:
+            return 0.0
+        if not 1.0 / num_statistics < initial_mean_weight < 1.0:
+            raise ValueError(f"initial_mean_weight must be in (1/{num_statistics}, 1) so the mean is favoured and "
+                             f"every statistic keeps a gradient, not {initial_mean_weight}")
+        if weighting == "sparsemax":
+            return (num_statistics * initial_mean_weight - 1.0) / (num_statistics - 1)
+        return math.log(initial_mean_weight * (num_statistics - 1) / (1.0 - initial_mean_weight))
 
     def forward(self, relation_messages: Tensor, relation_feeds_node: Tensor, node_type_index: Tensor) -> Tensor:
         """relation_messages [R, N, B, C] already multiplied by their gains, relation_feeds_node [R, N]
@@ -224,9 +247,14 @@ class CrossRelationAggregator(nn.Module):
                 # the feeding count rather than off the full relation axis
                 padding = masked.abs().amax(dim=0, keepdim=True) + 1.0  # sorts above every real message
                 ordered, _ = torch.where(feeding == 0, padding.expand_as(masked), masked).sort(dim=0)
-                lower_index = ((num_feeding - 1) / 2).floor().long()
-                upper_index = ((num_feeding - 1) / 2).ceil().long()
-                computed.append(0.5 * (ordered.gather(0, lower_index[None]) + ordered.gather(0, upper_index[None])).squeeze(0))
+                # num_feeding is [N, 1, 1], and gather does not broadcast its index, so the index is
+                # expanded over the batch and channel axes; without it the median reads batch row 0 of
+                # channel 0 and returns it for every row (and the stack below fails outright)
+                index_shape = (1, *masked.shape[1:])  # [1, N, B, C]
+                half_way = (num_feeding - 1) / 2
+                lower_index = half_way.floor().long()[None].expand(index_shape)
+                upper_index = half_way.ceil().long()[None].expand(index_shape)
+                computed.append(0.5 * (ordered.gather(0, lower_index) + ordered.gather(0, upper_index)).squeeze(0))
             elif statistic == "power_mean":
                 # sum_r m_r |m_r|^(p-1) / sum_r |m_r|^(p-1): the mean at p = 1, the dominant message as p grows
                 exponent = torch.exp(self.log_power_mean_exponent)[node_type_index][None, :, None, :]  # [1, N, 1, C]

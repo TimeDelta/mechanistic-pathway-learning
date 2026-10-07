@@ -250,6 +250,32 @@ Two consequences follow, and they reverse earlier rankings.
    preservation, so it does not settle this. The arm needs a run scored on symptoms before either normalisation is
    preferred.
 
+Two defects in CrossRelationAggregator were found on the real graph before the arm had run, both invisible to the
+unit tests because every aggregator test used one batch row and one propagation channel.
+
+- The median read the wrong entries. Its gather index had shape [1, N, 1, 1], and torch.gather does not broadcast an
+  index, so the median returned batch row 0 of channel 0 for every row. On the real graph with four perturbations
+  and two channels the stack of statistics failed outright; had it broadcast instead, every perturbation in a batch
+  would have received the first one's median. The index is now expanded over the batch and channel axes, and a test
+  compares the result against torch.median at five batch rows and two channels.
+- The sparsemax warm start had zero gradient. The logits started at +2 on the mean and -2 elsewhere, a gap of 4.
+  With logits [a, b, ..., b], sparsemax keeps every entry in its support only while a - b < 1, independent of the
+  number of statistics (at k = S the support condition S b > a + (S - 1) b - 1 reduces to b > a - 1), and its
+  Jacobian is zero outside the support. At a gap of 4 the weight was exactly one-hot on the mean and autograd
+  returned a gradient of exactly 0 for all five logits, so the default configuration would have trained a mixture
+  that cannot leave the mean: the cross-relation mean under another name, at the cost of a five-fold run. Softmax
+  was not frozen, but it started at 0.932 on the mean where sparsemax started at 1.0, so the two weightings did not
+  start from the same model either. The warm start is now given as the initial weight on the mean (0.9) and the gap
+  is solved for under each weighting: (S w - 1) / (S - 1) for sparsemax, which is below 1 exactly when w < 1, and
+  log(w (S - 1) / (1 - w)) for softmax. Both now start at 0.9 on the mean and 0.025 on each other statistic, and a
+  test checks that every logit receives a nonzero gradient under both.
+
+run_main_model.py had never passed normalisation, cross_relation_aggregator or mixture_weighting to the encoder, so
+neither the spectral arm nor the mixture was reachable from a slice configuration. They are now --normalisation,
+--cross-relation-aggregator and --mixture-weighting, with the node type index taken from the node table (gene,
+metabolite, reaction on the metabolic graph). The defaults reproduce the runs already recorded: with the mean
+aggregator the encoder builds no mixture and ignores the node type index.
+
 The decay is plain attenuation, and a median divisor of two does not produce 1e-10 at four edges, so the paths that
 reach the membrane potential run through the hub destinations of the same distribution whose maximum is 2048.
 

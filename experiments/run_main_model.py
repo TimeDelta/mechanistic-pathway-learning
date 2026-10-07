@@ -58,7 +58,12 @@ from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder impo
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
-from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
+from mechanistic_pathway_learning.models.linear_response_encoder import (
+    CROSS_RELATION_AGGREGATORS,
+    LinearResponseEncoder,
+    MIXTURE_WEIGHTINGS,
+    NORMALISATIONS,
+)
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
 from mechanistic_pathway_learning.models.soft_constraint_losses import evidence_weighted_binary_cross_entropy
@@ -163,11 +168,18 @@ def build_models(data, arguments, device):
                                                                 data.node_base_metabolite_id, data.node_display_name, data.is_currency,
                                                                 carrier_rule=arguments.carrier_rule))
             print(f"carrier edges given their own relations: {int(cofactor_edges.sum())} (rule {arguments.carrier_rule})")
+        distinct_node_types = sorted(set(data.node_types.tolist()))
+        node_type_index = torch.as_tensor([distinct_node_types.index(node_type) for node_type in data.node_types], dtype=torch.long)
         encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(node_feature_matrix(data, arguments)),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
                                         num_propagation_steps=arguments.propagation_steps,
-                                        propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping).to(device)
+                                        propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
+                                        normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
+                                        mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index).to(device)
+        print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
+              + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
+              + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})")
     else:
         if arguments.node_descriptors and arguments.node_features != "typed":
             raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
@@ -326,6 +338,12 @@ def main() -> None:
                              "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")
     parser.add_argument("--response-scale", choices=["linear", "signed_log"], default="linear",
                         help="linear-response encoder: read the response as it is, or through sign(h) log(1 + |h| / s) with a learned scale, so changes many edges away stay readable")
+    parser.add_argument("--normalisation", choices=NORMALISATIONS, default="in_degree",
+                        help="linear-response encoder: divide each message by the number of edges feeding the node (in_degree), or apply one global scale set by the spectral radius so the stoichiometric counts survive (spectral)")
+    parser.add_argument("--cross-relation-aggregator", choices=CROSS_RELATION_AGGREGATORS, default="mean",
+                        help="linear-response encoder: how the per-relation messages into a node combine; mean cancels exactly when a positive and a negative relation carry equal weight, softmax_mixture learns a weighting over order statistics instead")
+    parser.add_argument("--mixture-weighting", choices=MIXTURE_WEIGHTINGS, default="sparsemax",
+                        help="linear-response encoder: how --cross-relation-aggregator softmax_mixture turns its logits into weights; sparsemax can place exactly zero weight on a statistic, softmax cannot")
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=2)

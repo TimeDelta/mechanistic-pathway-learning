@@ -4,7 +4,8 @@ import torch
 
 from mechanistic_pathway_learning.models.linear_response_encoder import (CrossRelationAggregator, LinearResponseEncoder,
                                                                            project_onto_simplex,
-                                                                           MIXTURE_STATISTICS, NORMALISATIONS)
+                                                                           MIXTURE_STATISTICS, MIXTURE_WEIGHTINGS,
+                                                                           NORMALISATIONS)
 
 # gene 0 catalyses reaction 1, which turns substrate 2 into product 3; product 3 is the substrate of reaction 4,
 # which makes product 5
@@ -400,3 +401,57 @@ def test_signed_maximum_magnitude_breaks_a_tie_by_relation_order():
     negative_relation_first = float(aggregator(torch.tensor([[[[-0.5]]], [[[0.5]]]]), both_feed, node_type_index))
     assert positive_relation_first == 0.5
     assert negative_relation_first == -0.5
+
+
+def test_median_is_taken_per_batch_row_and_channel_not_broadcast_from_the_first():
+    """Regression: gather does not broadcast its index, so a [N, 1, 1] median index silently returned batch
+    row 0 of channel 0 for every row. Every aggregator test used one batch row and one channel, which is the
+    only shape where that is correct."""
+    num_relations, num_nodes, batch_size, num_channels = 3, 4, 5, 2
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=num_channels, statistics=("median",))
+    torch.manual_seed(0)
+    relation_messages = torch.randn(num_relations, num_nodes, batch_size, num_channels)
+    relation_feeds_node = torch.ones(num_relations, num_nodes, dtype=torch.bool)
+    with torch.no_grad():
+        aggregated = aggregator(relation_messages, relation_feeds_node, torch.zeros(num_nodes, dtype=torch.long))
+    assert aggregated.shape == (num_nodes, batch_size, num_channels)
+    expected_median = relation_messages.median(dim=0).values
+    assert torch.allclose(aggregated, expected_median, atol=1e-6)
+    # and the rows genuinely differ, so the comparison above is not vacuous
+    assert not torch.allclose(expected_median[:, 0, :], expected_median[:, 1, :], atol=1e-3)
+
+
+@pytest.mark.parametrize("weighting", MIXTURE_WEIGHTINGS)
+def test_every_statistic_keeps_a_gradient_at_the_warm_start(weighting):
+    """Regression: sparsemax has zero gradient outside its support, so a warm start that gave the other
+    statistics exactly zero weight froze the whole mixture at the mean for the duration of training."""
+    num_relations, num_nodes, batch_size, num_channels = 4, 6, 3, 2
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=num_channels, weighting=weighting)
+    torch.manual_seed(0)
+    relation_messages = torch.randn(num_relations, num_nodes, batch_size, num_channels)
+    relation_feeds_node = torch.ones(num_relations, num_nodes, dtype=torch.bool)
+    aggregator(relation_messages, relation_feeds_node, torch.zeros(num_nodes, dtype=torch.long)).pow(2).sum().backward()
+    gradient_per_statistic = aggregator.mixture_logit.grad[0, :, 0]
+    assert gradient_per_statistic.abs().min() > 0.0, f"a statistic cannot be learned under {weighting}"
+
+
+@pytest.mark.parametrize("weighting", MIXTURE_WEIGHTINGS)
+def test_the_warm_start_puts_the_requested_weight_on_the_mean_under_either_weighting(weighting):
+    """Both weightings must start from the same mixture, or a comparison between them is confounded."""
+    requested_mean_weight = 0.9
+    aggregator = CrossRelationAggregator(num_node_types=2, propagation_channels=3, weighting=weighting,
+                                         initial_mean_weight=requested_mean_weight)
+    weight = (torch.softmax(aggregator.mixture_logit, dim=1) if weighting == "softmax"
+              else project_onto_simplex(aggregator.mixture_logit, dim=1))
+    mean_position = MIXTURE_STATISTICS.index("mean")
+    assert torch.allclose(weight[:, mean_position, :], torch.full_like(weight[:, mean_position, :], requested_mean_weight), atol=1e-6)
+    remaining = torch.cat([weight[:, :mean_position, :], weight[:, mean_position + 1:, :]], dim=1)
+    expected_remaining = (1.0 - requested_mean_weight) / (len(MIXTURE_STATISTICS) - 1)
+    assert torch.allclose(remaining, torch.full_like(remaining, expected_remaining), atol=1e-6)
+
+
+def test_the_warm_start_rejects_a_weight_that_would_leave_a_statistic_without_a_gradient():
+    with pytest.raises(ValueError, match="initial_mean_weight"):
+        CrossRelationAggregator(num_node_types=1, propagation_channels=1, initial_mean_weight=1.0)
+    with pytest.raises(ValueError, match="initial_mean_weight"):
+        CrossRelationAggregator(num_node_types=1, propagation_channels=1, initial_mean_weight=0.1)
