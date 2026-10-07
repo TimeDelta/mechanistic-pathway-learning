@@ -9,9 +9,27 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r changed_file; case \"$changed_file\" in *mechanistic_pathway_learning/*.py|*tests/*.py) cd \"${CLAUDE_PROJECT_DIR:-.}\" && OMP_NUM_THREADS=1 nice -n 15 python3 -m pytest tests/ -q || exit 2 ;; esac; }",
+            "asyncRewake": true,
+            "timeout": 300,
+            "statusMessage": "Running the test suite"
+          }
+        ]
+      }
     ]
   },
   "permissions": {
-    "allow": ["mcp__claude-code-remote__create_trigger"]
+    "allow": [
+      "mcp__claude-code-remote__create_trigger",
+      "mcp__claude-code-remote__update_trigger",
+      "mcp__claude-code-remote__delete_trigger"
+    ]
   }
 }
