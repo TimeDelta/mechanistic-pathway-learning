@@ -52,9 +52,12 @@ close to an unsigned one. That count omitted the encoder's derived depletes_subs
 every negative sign in the model. On the relation stack the encoder builds, 7,811 of 21,337 destinations (36.6%) on
 this graph and 8,712 of 24,121 (36.1%) on graph_neuronal receive both signs.
 
-The corrected measurement points the other way, and harder. At equal gains the cross-relation mean annihilates those
-destinations outright: the cancellation ratio |net| / mean |sign| is below 0.01 at every one of them, because a
+The corrected measurement points the other way. At equal gains the aggregate row sum is zero at 7,437 of the 21,337
+nodes with any input, and every one is a metabolite, 7,437 of 8,460 (88%), while no reaction has one, because a
 metabolite that is both produced and consumed receives product_of with mean +1 and depletes_substrate with mean -1.
+Those metabolites are blind to whatever their production and consumption inputs share and pass on only the
+difference. The field there is not zero, since the two inputs carry different upstream states; what is lost is the
+shared part, and under attenuation the difference of two small similar numbers is where precision goes.
 Learned gains do not undo it. relation_gain() keeps signed relations positive and shares every gain across all
 nodes, so one global ratio of the product_of gain to the depletes_substrate gain fixes the net direction at every
 both-produced-and-consumed metabolite at once. The candidate cause of the null is therefore not that the signs carry

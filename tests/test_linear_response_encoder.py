@@ -2,7 +2,8 @@
 import pytest
 import torch
 
-from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
+from mechanistic_pathway_learning.models.linear_response_encoder import (CrossRelationAggregator, LinearResponseEncoder,
+                                                                           MIXTURE_STATISTICS)
 
 # gene 0 catalyses reaction 1, which turns substrate 2 into product 3; product 3 is the substrate of reaction 4,
 # which makes product 5
@@ -182,3 +183,137 @@ def test_the_exponent_redistributes_division_rather_than_reducing_it():
 def test_an_unknown_normalisation_is_refused():
     with pytest.raises(ValueError, match="normalisation must be one of"):
         _chain_encoder("row_stochastic")
+
+
+def build_mixed_sign_encoder(cross_relation_aggregator, mixture_statistics=None, dominant_statistic=None):
+    """One metabolite fed by a producing reaction and a consuming one, so it receives both signs.
+
+    Node 0 is the metabolite, nodes 1 and 2 are reactions, node 3 is the perturbed gene. The
+    substrate_of edge 0 -> 2 makes the encoder derive depletes_substrate 2 -> 0 with sign -1, while
+    product_of 1 -> 0 carries +1, so node 0 is exactly the case the cross-relation mean annihilates.
+    """
+    num_nodes = 4
+    relation_types = ["substrate_of", "product_of", "catalyzed_by"]
+    edge_source = torch.tensor([0, 1, 3, 3])
+    edge_target = torch.tensor([2, 0, 1, 2])
+    edge_relation = torch.tensor([0, 1, 2, 2])
+    edge_sign = torch.tensor([1.0, 1.0, 1.0, 1.0])
+    node_type_index = torch.tensor([0, 1, 1, 2])
+    torch.manual_seed(0)
+    encoder = LinearResponseEncoder(num_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
+                                    torch.eye(num_nodes), node_state_dim=3, propagation_channels=1,
+                                    num_propagation_steps=6, cross_relation_aggregator=cross_relation_aggregator,
+                                    node_type_index=node_type_index)
+    if dominant_statistic is not None:
+        with torch.no_grad():
+            statistics = encoder.cross_relation_mixture.statistics
+            encoder.cross_relation_mixture.mixture_logit.fill_(-8.0)
+            encoder.cross_relation_mixture.mixture_logit[:, statistics.index(dominant_statistic), :] = 8.0
+    return encoder
+
+
+def test_zero_input_gives_exactly_zero_field_under_both_aggregators():
+    """The difference-field property: the mixture is not linear, but zero still maps to zero, so the
+    unperturbed field is zero and the field is the difference."""
+    for aggregator in ("mean", "softmax_mixture"):
+        encoder = build_mixed_sign_encoder(aggregator)
+        response = encoder.response(torch.tensor([[3]]), torch.tensor([[[0.0, 1.0]]]))
+        assert float(response.abs().max()) == 0.0
+
+
+def test_mean_cancels_opposite_messages_where_the_signed_maximum_magnitude_keeps_one():
+    """The aggregator's own behaviour on the case the real graph presents at 88% of metabolites.
+
+    This is a statement about the operator, not about the field: a node whose incoming signs cancel has
+    an aggregate row sum of zero, so it is blind to any uniform change upstream and passes on only the
+    difference between its production and consumption inputs. The field there is not zero in the
+    dynamics, because those inputs carry different upstream states; what is zero is the response to the
+    part of the input they share.
+    """
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1)
+    opposite_messages = torch.tensor([[[[1.0]]], [[[-1.0]]]])  # [R=2, N=1, B=1, C=1]
+    both_relations_feed = torch.ones(2, 1, dtype=torch.bool)
+    node_type_index = torch.zeros(1, dtype=torch.long)
+    statistics = aggregator.statistics
+
+    with torch.no_grad():
+        aggregator.mixture_logit.fill_(-8.0)
+        aggregator.mixture_logit[:, statistics.index("mean"), :] = 8.0
+    assert abs(float(aggregator(opposite_messages, both_relations_feed, node_type_index))) < 1e-3
+
+    with torch.no_grad():
+        aggregator.mixture_logit.fill_(-8.0)
+        aggregator.mixture_logit[:, statistics.index("signed_maximum_magnitude"), :] = 8.0
+    assert float(aggregator(opposite_messages, both_relations_feed, node_type_index)) > 0.9
+
+
+def test_a_relation_that_does_not_feed_a_node_is_left_out_of_the_statistics():
+    """Otherwise a relation with no edge into the node contributes a zero that the median reads as a
+    real message, pulling the median of one positive message towards zero."""
+    aggregator = CrossRelationAggregator(num_node_types=1, propagation_channels=1)
+    with torch.no_grad():
+        aggregator.mixture_logit.fill_(-8.0)
+        aggregator.mixture_logit[:, aggregator.statistics.index("median"), :] = 8.0
+    one_message_and_one_absent_relation = torch.tensor([[[[0.6]]], [[[0.0]]]])
+    only_the_first_feeds = torch.tensor([[True], [False]])
+    node_type_index = torch.zeros(1, dtype=torch.long)
+    median_over_feeding_only = float(aggregator(one_message_and_one_absent_relation, only_the_first_feeds, node_type_index))
+    assert abs(median_over_feeding_only - 0.6) < 1e-3, f"expected 0.6, got {median_over_feeding_only}"
+
+
+def test_the_mixture_carries_more_field_than_the_mean_at_a_mixed_sign_node():
+    """In the dynamics the cancellation is partial rather than exact, so the claim is an inequality."""
+    mean_encoder = build_mixed_sign_encoder("mean")
+    maximum_encoder = build_mixed_sign_encoder("softmax_mixture", dominant_statistic="signed_maximum_magnitude")
+    for encoder in (mean_encoder, maximum_encoder):
+        with torch.no_grad():
+            encoder.gain_logit.fill_(0.0)  # equal gains, so the two signs arrive with equal weight
+    perturbation_index, perturbation_value = torch.tensor([[3]]), torch.tensor([[[1.0, 1.0]]])
+    mean_field = abs(float(mean_encoder.response(perturbation_index, perturbation_value)[0, 0, 0]))
+    maximum_field = abs(float(maximum_encoder.response(perturbation_index, perturbation_value)[0, 0, 0]))
+    assert maximum_field > mean_field, f"maximum {maximum_field} did not exceed mean {mean_field}"
+
+
+def test_mixture_stays_within_the_contraction_bound():
+    """Each statistic is bounded by the largest per-relation message and softmax weights are convex,
+    so the response cannot grow without bound however many steps are taken."""
+    for dominant_statistic in MIXTURE_STATISTICS:
+        encoder = build_mixed_sign_encoder("softmax_mixture", dominant_statistic=dominant_statistic)
+        perturbation_index, perturbation_value = torch.tensor([[3]]), torch.tensor([[[1.0, 1.0]]])
+        short_run = float(encoder.response(perturbation_index, perturbation_value, num_steps=4).abs().max())
+        long_run = float(encoder.response(perturbation_index, perturbation_value, num_steps=200).abs().max())
+        assert long_run < 1.0 / (1.0 - encoder.maximum_gain), f"{dominant_statistic} grew to {long_run}"
+        assert abs(long_run - float(encoder.response(perturbation_index, perturbation_value, num_steps=240).abs().max())) < 1e-5, (
+            f"{dominant_statistic} had not converged by 200 steps")
+        assert short_run > 0.0
+
+
+def test_mixture_rejects_an_unknown_statistic_and_a_mismatched_node_type_vector():
+    with pytest.raises(ValueError, match="unknown mixture statistics"):
+        CrossRelationAggregator(num_node_types=2, propagation_channels=1, statistics=("mean", "skewness"))
+    with pytest.raises(ValueError, match="at least one mixture statistic"):
+        CrossRelationAggregator(num_node_types=2, propagation_channels=1, statistics=())
+    with pytest.raises(ValueError, match="node_type_index must have one entry per graph node"):
+        LinearResponseEncoder(3, ["substrate_of"], torch.tensor([0]), torch.tensor([1]), torch.tensor([0]),
+                              torch.tensor([1.0]), torch.eye(3), node_state_dim=2,
+                              cross_relation_aggregator="softmax_mixture", node_type_index=torch.tensor([0, 1]))
+
+
+def test_unknown_cross_relation_aggregator_is_rejected():
+    with pytest.raises(ValueError, match="cross_relation_aggregator must be one of"):
+        LinearResponseEncoder(3, ["substrate_of"], torch.tensor([0]), torch.tensor([1]), torch.tensor([0]),
+                              torch.tensor([1.0]), torch.eye(3), node_state_dim=2,
+                              cross_relation_aggregator="median")
+
+
+def test_every_statistic_is_odd_so_the_response_mirrors_under_a_sign_flip():
+    """The property that ruled out the plain maximum, minimum and standard deviation: a gain of
+    function must produce the negative of the field a loss of function produces."""
+    for dominant_statistic in MIXTURE_STATISTICS:
+        encoder = build_mixed_sign_encoder("softmax_mixture", dominant_statistic=dominant_statistic)
+        perturbation_index = torch.tensor([[3]])
+        rising = encoder.response(perturbation_index, torch.tensor([[[1.0, 1.0]]]))
+        falling = encoder.response(perturbation_index, torch.tensor([[[-1.0, 1.0]]]))
+        largest_departure = float((rising + falling).abs().max())
+        assert largest_departure < 1e-6, f"{dominant_statistic} is not odd, mirror error {largest_departure}"
+        assert float(rising.abs().max()) > 1e-9, f"{dominant_statistic} produced no field at all"

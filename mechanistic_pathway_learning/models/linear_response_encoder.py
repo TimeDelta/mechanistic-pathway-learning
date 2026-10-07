@@ -76,6 +76,30 @@ DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
 COSUBSTRATE_RELATION = "cosubstrate_of"
 COPRODUCT_RELATION = "coproduct_of"
 UNSIGNED_RELATIONS = ("binds",)
+
+# How the messages of the relations feeding a node are combined into one. "mean" is the original
+# behaviour: each relation's normalised message is multiplied by its gain and the results are summed,
+# with the per-node divisor relations_feeding_node making that sum a mean. It annihilates a node that
+# receives both signs, which is 36% of destinations (docs/membrane_potential_reach.md): a metabolite
+# both produced and consumed gets product_of at mean +1 and depletes_substrate at mean -1, and their
+# mean is zero. "softmax_mixture" drops that divisor and combines the feeding relations through a
+# softmax over the statistics below, with separate weights per node type, so a destination that the
+# mean blanks still carries the largest, smallest or most dispersed of its messages. The mixture
+# changes which statistic is read, not the direction at an individual node, since its weights are per
+# node type and so shared by every node of that type; direction is the normalisation's business.
+CROSS_RELATION_AGGREGATORS = ("mean", "softmax_mixture")
+# Every statistic offered here is odd, f(-x) = -f(x), because the response must mirror: a gain of
+# function has to produce the negative of the field a loss of function produces (section 5.2). A plain
+# maximum is not odd and is worse than even, it is sign-biased: over negative messages it returns the
+# least negative, which at the first step is the zero of an untouched neighbour, so it suppresses the
+# whole falling branch of the response and a metabolite that should drop stays at exactly zero. The
+# minimum fails in mirror image, and a standard deviation is even, so it reports the same dispersion
+# whichever way the field moves. The odd forms keep what each statistic was wanted for:
+# signed_maximum_magnitude takes the single largest message with its sign, so the dominant contributor
+# survives a cancellation instead of being averaged into it; median is odd as it stands; and
+# signed_standard_deviation multiplies the dispersion by the sign of the mean, which is the
+# asymmetry-attached-to-dispersion idea in the only form that respects the mirror.
+MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_standard_deviation")
 # how the signed adjacency is scaled so the iteration contracts: "in_degree" divides each entry by the
 # destination's in-degree under its relation times the number of relations feeding it, which averages and so
 # decays the response steeply with path length; "spectral" divides every entry by one global constant, the
@@ -90,6 +114,79 @@ UNSIGNED_RELATIONS = ("binds",)
 NORMALISATIONS = ("in_degree", "in_degree_power", "spectral")
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
+
+
+class CrossRelationAggregator(nn.Module):
+    """Combines the gain-weighted messages of the relations feeding each node through a softmax over
+    simple statistics, with separate weights per node type and per propagation channel.
+
+    The mean annihilates a node fed by relations of opposite sign, so the statistics that survive sign
+    mixing are offered beside it and the weights are learned. Only the relations that actually feed a
+    node take part, since a relation with no edge into the node would otherwise contribute a zero that
+    the median and the signed maximum magnitude would both read as a real message. Every statistic is
+    odd, for the reason given at MIXTURE_STATISTICS, so the combination is odd and the response still
+    mirrors under a change of perturbation sign.
+
+    The contraction survives. With the per-node divisor dropped, each relation's rows sum to at most one
+    in absolute value, so every per-relation message is bounded by maximum_gain * max |h|. The maximum,
+    the minimum and the mean over a set of such values are bounded by the same quantity, and so is the
+    population standard deviation, since the dispersion of values inside an interval cannot exceed its
+    half-width times two. Softmax weights sum to one, so the combination is convex and keeps the bound.
+    Zero input still gives exactly zero output, so the unperturbed field stays zero and the response
+    stays positively homogeneous of degree one; it loses additivity, which linearity had supplied.
+    """
+
+    def __init__(self, num_node_types: int, propagation_channels: int,
+                 statistics: tuple[str, ...] = MIXTURE_STATISTICS) -> None:
+        super().__init__()
+        unknown = [statistic for statistic in statistics if statistic not in MIXTURE_STATISTICS]
+        if unknown:
+            raise ValueError(f"unknown mixture statistics {unknown}, expected from {MIXTURE_STATISTICS}")
+        if not statistics:
+            raise ValueError("at least one mixture statistic is required")
+        self.statistics = tuple(statistics)
+        # starts near the mean, so an untrained mixture reproduces the original behaviour up to the divisor
+        initial_logit = torch.full((num_node_types, len(self.statistics), propagation_channels), -2.0)
+        if "mean" in self.statistics:
+            initial_logit[:, self.statistics.index("mean"), :] = 2.0
+        self.mixture_logit = nn.Parameter(initial_logit)
+
+    def forward(self, relation_messages: Tensor, relation_feeds_node: Tensor, node_type_index: Tensor) -> Tensor:
+        """relation_messages [R, N, B, C] already multiplied by their gains, relation_feeds_node [R, N]
+        true where the relation has an edge into the node, node_type_index [N]; returns [N, B, C]."""
+        feeding = relation_feeds_node[:, :, None, None].to(relation_messages.dtype)
+        # a node with no incoming edge of any relation has no statistics to take, so its output is zero;
+        # without this guard the median gathers the padding value and returns an infinity
+        node_has_input = (feeding.sum(dim=0) > 0).to(relation_messages.dtype)
+        num_feeding = feeding.sum(dim=0).clamp_min(1.0)
+        masked = relation_messages * feeding
+
+        relation_mean = masked.sum(dim=0) / num_feeding
+        computed: list[Tensor] = []
+        for statistic in self.statistics:
+            if statistic == "mean":
+                computed.append(relation_mean)
+            elif statistic == "signed_maximum_magnitude":
+                # the message furthest from zero, keeping its sign; odd, and it survives a cancellation
+                largest = masked.abs().argmax(dim=0, keepdim=True)
+                computed.append(masked.gather(0, largest).squeeze(0))
+            elif statistic == "median":
+                # the median of the feeding relations only: non-feeding entries are pushed to one end by
+                # replacing them with the largest feeding magnitude plus one, then the median is read off
+                # the feeding count rather than off the full relation axis
+                padding = masked.abs().amax(dim=0, keepdim=True) + 1.0  # sorts above every real message
+                ordered, _ = torch.where(feeding == 0, padding.expand_as(masked), masked).sort(dim=0)
+                lower_index = ((num_feeding - 1) / 2).floor().long()
+                upper_index = ((num_feeding - 1) / 2).ceil().long()
+                computed.append(0.5 * (ordered.gather(0, lower_index[None]) + ordered.gather(0, upper_index[None])).squeeze(0))
+            else:  # signed_standard_deviation: population dispersion over the feeding relations, signed by the mean
+                squared_deviation = ((relation_messages - relation_mean[None]) ** 2) * feeding
+                dispersion = (squared_deviation.sum(dim=0) / num_feeding).clamp_min(0.0).sqrt()
+                computed.append(torch.sign(relation_mean) * dispersion)
+
+        stacked = torch.stack(computed, dim=0)  # [S, N, B, C]
+        weight = torch.softmax(self.mixture_logit, dim=1)[node_type_index]  # [N, S, C]
+        return (stacked * weight.permute(1, 0, 2)[:, :, None, :]).sum(dim=0) * node_has_input
 
 
 class LinearResponseEncoder(nn.Module):
@@ -112,6 +209,8 @@ class LinearResponseEncoder(nn.Module):
         contraction: float = 0.9,
         normalisation: str = "in_degree",
         normalisation_exponent: float = 0.5,
+        cross_relation_aggregator: str = "mean",
+        node_type_index: Tensor | None = None,
     ) -> None:
         super().__init__()
         if node_features.shape[0] != num_graph_nodes:
@@ -122,8 +221,13 @@ class LinearResponseEncoder(nn.Module):
         self.node_state_dim = node_state_dim
         self.num_propagation_steps = num_propagation_steps
         self.damping = damping
+        if cross_relation_aggregator not in CROSS_RELATION_AGGREGATORS:
+            raise ValueError(f"cross_relation_aggregator must be one of {CROSS_RELATION_AGGREGATORS}, not {cross_relation_aggregator!r}")
+        self.cross_relation_aggregator = cross_relation_aggregator
+        uses_mixture = cross_relation_aggregator == "softmax_mixture"
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
-                                                                          non_propagating_nodes, cofactor_edges, normalisation, normalisation_exponent)
+                                                                          non_propagating_nodes, cofactor_edges, normalisation, normalisation_exponent,
+                                                                          divide_by_relations_feeding=not uses_mixture)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         self.register_buffer("node_features", node_features.to(torch.float32), persistent=False)
@@ -142,6 +246,18 @@ class LinearResponseEncoder(nn.Module):
         self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
         self.channel_expansion = nn.Parameter(torch.randn(propagation_channels, node_state_dim) / propagation_channels**0.5)
         self.output_gate = nn.Linear(node_features.shape[1], node_state_dim)
+        if uses_mixture:
+            rows_with_an_edge = torch.zeros(len(relation_names) * num_graph_nodes, dtype=torch.bool)
+            rows_with_an_edge[stacked_adjacency.coalesce().indices()[0]] = True
+            self.register_buffer("relation_feeds_node", rows_with_an_edge.view(len(relation_names), num_graph_nodes), persistent=False)
+            # with no node types given, every node shares one set of mixture weights
+            given_types = torch.zeros(num_graph_nodes, dtype=torch.long) if node_type_index is None else node_type_index.long()
+            if given_types.shape[0] != num_graph_nodes:
+                raise ValueError("node_type_index must have one entry per graph node")
+            self.register_buffer("node_type_index", given_types, persistent=False)
+            self.cross_relation_mixture = CrossRelationAggregator(int(given_types.max()) + 1, propagation_channels)
+        else:
+            self.cross_relation_mixture = None
 
     @staticmethod
     def spectral_radius_of_unsigned_aggregate(num_graph_nodes: int, source: Tensor, target: Tensor, iterations: int = 200) -> float:
@@ -170,7 +286,8 @@ class LinearResponseEncoder(nn.Module):
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
                                  cofactor_edges: Tensor | None = None, normalisation: str = "in_degree",
-                                 normalisation_exponent: float = 1.0) -> tuple[Tensor, list[str]]:
+                                 normalisation_exponent: float = 1.0,
+                                 divide_by_relations_feeding: bool = True) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
         depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
         given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order."""
@@ -208,7 +325,8 @@ class LinearResponseEncoder(nn.Module):
             in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, torch.ones(len(row)))
             relations_feeding_node = (in_degree.view(len(relation_names), num_graph_nodes) > 0).sum(dim=0).clamp_min(1)
             exponent = 1.0 if normalisation == "in_degree" else float(normalisation_exponent)
-            values = sign / (in_degree[row] ** exponent * relations_feeding_node[target])
+            cross_relation_divisor = relations_feeding_node[target] if divide_by_relations_feeding else 1.0
+            values = sign / (in_degree[row] ** exponent * cross_relation_divisor)
             if exponent != 1.0:
                 # row sums of sum_r |S_r| are in_degree^(1 - exponent) / relations_feeding and so can exceed one, which
                 # would break the contraction; one global rescale by the largest of them restores it, and unlike the
@@ -244,7 +362,9 @@ class LinearResponseEncoder(nn.Module):
         state = node_major_input  # h(0) = u, so after k steps the response reaches k edges from the perturbed nodes
         for _ in range(self.num_propagation_steps if num_steps is None else num_steps):
             aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
-            relation_messages = (aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]).sum(dim=0)
+            per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
+            relation_messages = (per_relation.sum(dim=0) if self.cross_relation_mixture is None
+                                 else self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index))
             state = (1.0 - self.damping) * state + self.damping * (relation_messages + node_major_input)
         return state.permute(1, 0, 2)
 

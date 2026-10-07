@@ -75,11 +75,18 @@ The within-relation figure of 18 reproduces, so only the across-relation count w
 single sign; no edge differs in sign from its relation. The sign is therefore a property of the relation rather than
 of the edge, and all the mixing happens across relations.
 
-The cancellation is not partial but bimodal. Taking all gains equal, so that the net message at a destination is the
-mean over relations of the mean sign within each relation, the ratio |net| / mean |sign| is 1 at every destination
-that receives one sign and below 0.01 at every destination that receives both: 7,811 of 21,337 on the metabolic graph
-and 8,389 of 24,121 on the neuronal graph. The reason is arithmetic. A metabolite that is both produced and consumed
-receives product_of with mean +1 and depletes_substrate with mean -1, and the cross-relation mean of those is zero.
+The cancellation is exact, and it is a statement about the operator rather than about the field. Read the row sums
+of sum_r gain_r S_r at equal gains, which is the node's response to a change shared by all of its inputs: 7,437 of
+the 21,337 nodes with any input have a row sum of zero to within 1e-9, and every one of them is a metabolite, 7,437
+of 8,460 (88%). No reaction has one. The reason is arithmetic. A metabolite that is both produced and consumed
+receives product_of with mean +1 and depletes_substrate with mean -1, and their mean is zero.
+
+What that does and does not say. It does not say the field is zero at those metabolites: in the dynamics the
+producing and the consuming reactions carry different upstream states, so what arrives is their difference, not
+zero. A test written on the stronger reading failed and was rewritten. What it does say is that 88% of metabolites
+are blind to the part of their input that production and consumption share, and pass on only the difference between
+them. Under attenuation that is where precision goes: the two inputs are small and similar, and their difference is
+smaller still.
 
 Learned gains do not remove this, they only move it. relation_gain() maps signed relations through a sigmoid, so
 their gains are positive, and they are shared across every node. The net direction at a both-produced-and-consumed
@@ -90,10 +97,18 @@ attenuation recorded above and the null result in docs/graph_content_null_result
 
 Two consequences follow, and they reverse earlier rankings.
 
-1. A mixture over several aggregators per node or relation type, deprioritised on the retracted measurement, is
-   reinstated. It is the stated fix for exactly this: a maximum, a minimum or a signed asymmetry term survives where
-   the mean annihilates, and a third moment is available at the destinations that matter, since a destination
-   receiving both signs receives at least two messages by construction.
+1. A mixture over several aggregators per node type, deprioritised on the retracted measurement, is reinstated and
+   implemented (CrossRelationAggregator). Building it ruled out three of the four statistics first proposed. The
+   response has to mirror, so that a gain of function gives the negative of what a loss of function gives, which
+   requires every statistic to be odd. A plain maximum is not merely even but sign-biased: over negative messages it
+   returns the least negative, which at the first step is the zero of an untouched neighbour, so it suppresses the
+   whole falling branch and a metabolite that should drop stays at exactly zero. Measured on a four-node test graph,
+   a maximum-dominated mixture gave 3.8e-15 where the mean gave 0.048. The minimum fails in mirror image and a
+   standard deviation is even. The odd replacements keep what each was wanted for: the signed maximum magnitude
+   takes the largest message with its sign, the median is odd already, and the standard deviation multiplied by the
+   sign of the mean is the asymmetry-attached-to-dispersion idea in the only form that respects the mirror.
+   The mixture fixes blindness to the shared input, not direction: its weights are per node type, so all 8,460
+   metabolites still share one choice, exactly as they share one gain ratio.
 2. Averaging within a relation before combining relations is the questionable step, not the choice of statistic.
    Mass balance at a metabolite is a signed sum of production and consumption, not a mean of two means, so dividing
    by in-degree per relation discards the stoichiometric weighting that decides the direction. The spectral
