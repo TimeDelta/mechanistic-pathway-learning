@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1093/bioinformatics/btm170](https://doi.org/10.1093/bioinformatics/btm170) (PMID 17646318) | Q1 | `supports` | `analogous_mechanism` | `weak` | "In cross-validation tests, SPINE obtains very high accuracy in predicting knockout effects (99%)." | for Q1, a readout that an unsigned propagation over the same physical network can also be scored on (whether a knockout changes a gene at all, or a phenotype), since direction gives it nothing to predict; for the 99%, the counts of up and down effects among the held-out pairs and a split that holds out whole knockouts instead of single pairs | a direction task on expression, so Q1 is not reached and the readout is not a phenotype; the signs are fitted to the same knockout compendium they are scored on, with one or five pairs hidden per iteration, so the other pairs of the same knockout stay in the fit; the only baseline is another signed method (Yeang et al. 2004), and by the table as relayed the leave-one-out gap is 101 against 100 correct of 103 held-out pairs; no class balance or majority-direction rate in the part read; the figure is for the edge variant on a mating subnetwork of 58 interactions and 149 knockout pairs; the full text is not in PMC and was read through a publisher-page fetch that stopped in section 3.2 and relays only short quotes, so every figure beyond the abstract needs checking against the PDF |
 | [10.1093/bioinformatics/btaf674](https://doi.org/10.1093/bioinformatics/btaf674) (PMID 41429577) | Q1 | `supports` | `analogous_mechanism` | `weak` | "Evaluation by precision-recall analysis gave an area under the curve (AUPRC) of 0.8, indicating that SIGNAL accurately recapitulates TLM knockout phenotypes." | the telomere evaluation with its positive class and base rate stated, against an all-positive network (which predicts every path positive, the majority-direction baseline) and with the telomere genes' own knockouts excluded from the sign features | a direction task, so an unsigned propagation has no prediction to compare and Q1 is not reached; the AUPRC of 0.8 comes with no positive class or base rate, and with 456 'long' against 37 'short' pairs a constant predictor would score about 0.925 if 'long' were positive; those pair counts also contradict the gene counts (63 short-phenotype genes, 38 long), and the discussion calls the same figure an AUC; the knockout-signature reconstruction (precision-recall area 0.87) excludes the knockout's own features in training but also reports no base rate; the method rests on negatives being rare, the fourth row developed in that regime |
 | [10.1038/s41467-022-30684-y](https://doi.org/10.1038/s41467-022-30684-y) (PMID 35654811) | Q1 | `no_bearing` | `background` | `moderate` | "Here we develop a recurrent neural network framework constrained by prior knowledge of the signaling network with ligand-concentrations as input and transcription factor-activity as output." | the same cross-validation with the network constraint removed (a dense or randomly sparse recurrent network with as many parameters) and with the prior edge signs removed or permuted, r reported per fold | the abstract reports no model without the prior network and no unsigned variant, so whether the topology or its signs contribute is not shown; the readout is transcription factor activity, not a phenotype; whether the cross-validation (r = 0.8) holds out whole ligands is not stated; the knockout result (r = 0.8) is on synthetic data whose generating network is not stated. The full text is in PMC (PMC9163072) and would decide whether a network ablation exists; it was not fetched, since even a positive ablation on transcription factor activity would not reach Q1's phenotype comparison |
 | [10.1073/pnas.1720589115](https://doi.org/10.1073/pnas.1720589115) (PMID 29925605) | Q1 | `supports` | `analogous_mechanism` | `moderate` | "We find that simple dynamically agnostic models are sufficient to recover the strength and sign of the biochemical perturbation patterns observed in 87 biological models for which the underlying kinetics are known." | on the same 87 models, a sign-blind propagation beside the signed one for strength, and for direction the accuracy set against each model's majority-direction rate; for Q1 proper, a phenotype readout with unsigned diffusion run on the same network | the comparison it runs is topology against full kinetics, not signed against unsigned, so Q1 is not reached; the 65-80 percent and the ~80 percent chemotaxis figures come with no majority-direction baseline in the abstract or significance statement, and our own sign check shows why that matters (signed response 0.615 against 0.806 for always guessing the majority direction); the full text is not served through PMC, so the methods, the network sizes and whether the models contain frustrated loops are unread |
@@ -106,6 +107,33 @@ after it, the next slot goes to a new mechanism-named search. Commit only this f
 since the experiment session pushes to main as well. The literature session runs no experiment jobs: its container
 has no runs/ directory, so scripts/resume_jobs.sh has nothing to relaunch there, and it should not register any.
 
+### Slot log, literature session
+
+The gate's state is not in git, so the count is repeated here. A fresh clone seeds `appraisals_consumed` from the
+last line of this list.
+
+- Slot 11, 7 October 2026, 18:00 UTC: Ourfali 2007 appraised as PMID 17646318. Slots spent: 11 of 19.
+
+### Triage checks, reconstructed in the literature session
+
+The replacement-queue section refers to "the four checks recorded at the top of the rows" and the note on 29925605
+cites checks 1 to 3 by number, but the checks are not in this file or in the git history: they were part of the
+experiment session's firing instructions. The list below is a reconstruction from the notes in this file, used for
+triage from slot 11 on. Checks 1 to 3 follow the three distinctions in the note on 39976387 and agree with how the
+note on 29925605 uses the numbers. Check 4 is inferred from the slot-7 triage remark that signs were "fitted to the
+knockouts they explain" and is the least certain. Check 5 is added here from the base-rate remarks in the notes on
+29925605 and 41429577. The author should replace the list with the original wording where it differs.
+
+1. The sign belongs to a mechanistic edge (activation, inhibition, stoichiometry), not to the association label
+   being predicted.
+2. The propagation runs over a substrate that carries no label information and the scored units are held out, so
+   the result cannot come from the structure of the label graph.
+3. The signed component is isolated from the other fitted parts of the pipeline: the same pipeline is run without
+   signs or with signs permuted, on the same network and split.
+4. Where signs are fitted, they are not fitted to the outcome they are scored on.
+5. A direction or classification figure is reported beside its base rate, the score of always predicting the
+   majority class.
+
 ### Note on the first row
 
 The paper is a methods note, not a benchmark, so its weight is `weak` and its bearing is
@@ -132,7 +160,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416, 29925605, 35654811, 41429577.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416, 29925605, 35654811, 41429577, 17646318.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -155,10 +183,10 @@ predicting phenotype or disease genes". The free tier returns no PMID or DOI, so
 author, year and journal, and the firing that reads one resolves its PMID in the same single metadata call. Triage
 used only the search records, against the four checks recorded at the top of the rows.
 
-Remaining to read, in order of expected bearing on Q1:
-
-1. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
-   yeast. Same risk as Signorini 2025 (PMID 41429577), signs fitted to the knockouts they explain, and its readout is expression, not phenotype.
+Remaining to read: none. The four queued records are appraised: 29925605 (slot 8), 35654811 (slot 9), 41429577
+(slot 10) and 17646318, Ourfali 2007 (slot 11). The triage note for Ourfali, kept for the record: assigns activation
+or repression to explain knockout expression effects in yeast; same risk as Signorini 2025 (PMID 41429577), signs
+fitted to the knockouts they explain, and its readout is expression, not phenotype. Both points held on reading.
 
 Set aside from this search on the record, with the reason:
 
@@ -275,6 +303,63 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 17646318, the third direction task and a precedent for abstaining
+
+SPINE is the third of the four mechanism-named candidates whose test is the direction of a knockout's effect, after
+29925605 and 41429577. The same limit applies: a network without signs has no direction to predict, so the
+comparison Q1 asks for cannot be run on this readout. The row is `supports` for the premise only, that signs placed
+on a physical interaction network carry the direction of a perturbation's effect on expression.
+
+The abstract was read from the PubMed record. Everything else comes from the publisher page through a fetch tool
+that summarises the page, relays quotes of at most about 125 characters and stopped at "Interestingly, the" in
+section 3.2. The items below are therefore relayed, not read, and each needs checking against the PDF before use.
+
+- Data: the mating subnetwork defined by Yeang et al. (2004), "33 protein–DNA interactions, and 25 PPIs, covering a
+  set of 149 knockout pairs", with expression from Hughes et al. (2000).
+- Design: "at each iteration one or five knockout pairs were hidden", and "The accuracy represents the percentage
+  of correct predictions among predictions made."
+- Table 1 as relayed, in percent correct, incorrect and undecided. Leave-one-out, 103 trials: Yeang et al. 97.1,
+  2.9 and 0; SPINE edge variant 98, 1 and 1. Leave-five-out, 200 trials: Yeang et al. 96.5, 3.5 and 0; SPINE edge
+  variant 96.9, 0.4 and 2.7.
+
+Those percentages correspond to whole counts, checked by running the arithmetic. Leave-one-out, 103 held-out pairs:
+100 correct and 3 incorrect for Yeang et al.; 101 correct, 1 incorrect and 1 undecided for SPINE. Leave-five-out,
+1,000 held-out pairs: 965 correct and 35 incorrect against 969 correct, 4 incorrect and 27 undecided. Two points
+follow, both conditional on the relayed table being right.
+
+The abstract's 99% is accuracy among predictions made (101 of 102, and 969 of 973). Counted over all held-out pairs
+the two signed methods stand at 98.1% against 97.1% and at 96.9% against 96.5%, a difference of one pair in 103 and
+four in 1,000. In the leave-five-out test SPINE has 31 fewer incorrect pairs than the baseline, and 27 of that
+difference appears as undecided, not as correct. The counts are not paired, so they do not show which pairs moved.
+
+That is a published precedent for the design question raised on 7 October, what to do at a destination whose
+incoming signs conflict. A held-out pair is scored as predicted only when all of its explanatory paths agree
+(relayed in paraphrase, not as a quote), and the rest are reported as undecided instead of being resolved toward one
+sign. On the mating subnetwork that withholds 1 to 2.7% of pairs. On our metabolic graph the same rule would
+withhold a prediction at the 36.6% of destinations that receive both signs. The precedent supports reporting
+coverage beside accuracy; it does not show that abstaining is affordable here. The low undecided rate also fits the
+earlier pattern, signed methods developed where sign conflicts are rare, though the paper as read reports no
+balance or frustration measure.
+
+Two cautions on the 99%. No count of up-regulated against down-regulated effects and no majority-direction baseline
+was found in the part of the page that was read, and the hold-out unit is a pair, so the other pairs of the same
+knockout and of the same affected gene stay in the fit. The cross-validated figure also belongs to the edge variant,
+run for comparison with Yeang et al.; for the whole-network application (861 paths, 183 genes) the abstract reports
+"high agreement with current biological knowledge", not a held-out accuracy.
+
+No instruction-like or filler text was found in the abstract or reported from the page.
+
+Where Q1 stands after ten rows. The replacement queue is finished and the strict form of Q1 is still unanswered.
+Three of its four candidates scored direction, where unsigned diffusion has nothing to predict. The unsigned
+propagation papers set aside from the same search (Cowen 2017, Lee 2008) score ranking, where a sign is not needed.
+The two bodies of work are evaluated on different tasks, so a query asking whether signed beats unsigned keeps
+returning one or the other. The next search therefore names an outcome both can be scored on (gene essentiality,
+drug response, disease-gene or phenotype ranking) together with both comparators.
+
+A second gap. Every slot so far has gone to the signed half of Q1. No search has covered relation-typed
+propagation, for example message passing over a typed biomedical knowledge graph compared with diffusion or
+proximity baselines on a held-out disease split. One of the remaining slots should.
 
 ### Note on 41429577, and the rarity of negative edges
 
