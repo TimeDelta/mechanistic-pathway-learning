@@ -51,6 +51,8 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     mean_reciprocal_rank,
     per_symptom_auprc,
     per_symptom_auroc,
+    scorable_symptom,
+    scored_rows,
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
@@ -251,8 +253,8 @@ def predict(encoder, head, data, indices: np.ndarray, adjacencies, arguments, de
     return np.concatenate(predictions, axis=0) if predictions else np.zeros((0, len(data.symptoms)))
 
 
-def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray) -> float:
-    values = [per_symptom_auprc(predictions, outcomes, s) for s in range(outcomes.shape[1]) if MINIMUM_POSITIVES_TO_SCORE <= outcomes[:, s].sum() < outcomes.shape[0]]
+def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:
+    values = [per_symptom_auprc(predictions, outcomes, s, mask) for s in range(outcomes.shape[1]) if scorable_symptom(outcomes, s, MINIMUM_POSITIVES_TO_SCORE, mask)]
     return float(np.mean(values)) if values else float("nan")
 
 
@@ -314,6 +316,8 @@ def main() -> None:
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
+    parser.add_argument("--label-selection", type=Path, default=None,
+                        help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--selection-metric", choices=["loss", "auprc"], default="loss",
@@ -387,7 +391,13 @@ def main() -> None:
     signal.signal(signal.SIGUSR1, request_checkpoint)
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None)
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None,
+                                label_selection=arguments.label_selection)
+    if data.label_selection_summary is not None:
+        print(f"label selection: {data.label_selection_summary}")
+        if arguments.permute_labels or arguments.time_split_cutoff is not None:
+            raise ValueError("--label-selection is not implemented with --permute-labels or --time-split-cutoff")
+    label_mask = data.label_mask  # None without --label-selection: every pair is labelled
     if arguments.permute_labels:
         data.outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
     time_split = None
@@ -408,7 +418,11 @@ def main() -> None:
         split_name += "_permuted"
     encoder, head = build_models(data, arguments, device)
     if arguments.init_leak_from_base_rate and arguments.head == "noisy_or":
-        head.initialize_leak_from_base_rates(torch.as_tensor(data.outcomes[train_indices].mean(axis=0), dtype=torch.float32, device=device))
+        if label_mask is None:
+            base_rates = data.outcomes[train_indices].mean(axis=0)
+        else:  # over the labelled pairs only
+            base_rates = (data.outcomes[train_indices] * label_mask[train_indices]).sum(axis=0) / np.maximum(label_mask[train_indices].sum(axis=0), 1)
+        head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
     adjacencies = None  # the linear-response encoder builds its signed adjacency from the edges at construction
     if arguments.encoder == "message_passing":
         adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
@@ -449,11 +463,15 @@ def main() -> None:
 
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
     weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
+    if label_mask is not None:
+        weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)  # a pair set aside by the selection is neither positive nor negative
     positive_targets = None
     if arguments.positive_target_from_frequency:
         frequency = np.where(np.isnan(data.frequencies), arguments.positive_target, np.maximum(data.frequencies, arguments.minimum_frequency_target))
         positive_targets = torch.as_tensor(np.where(data.outcomes > 0, frequency, 0.0), dtype=torch.float32)
         weights = torch.as_tensor(np.where(data.outcomes > 0, 1.0, arguments.negative_weight), dtype=torch.float32)  # the frequency is the target, not the weight
+        if label_mask is not None:
+            weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)
     node_cost = float(np.log(len(data.node_ids)))
     started = time.time()
     last_checkpoint = time.time()
@@ -495,7 +513,7 @@ def main() -> None:
             entry["train_laboratory_loss"] = epoch_laboratory / max(1, len(order))
         if len(validation_indices):
             validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
-            entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices])
+            entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices], None if label_mask is None else label_mask[validation_indices])
             entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), outcomes[validation_indices], weights[validation_indices], positive_target=arguments.positive_target))
             improved = (entry["validation_loss"] < state["best_validation_loss"] - 1e-5) if arguments.selection_metric == "loss" else (entry["validation_macro_auprc"] > state["best_validation_auprc"] + 1e-4)
             if improved:
@@ -524,6 +542,7 @@ def main() -> None:
 
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
     test_outcomes = data.outcomes[test_indices]
+    test_mask = None if label_mask is None else label_mask[test_indices]
     laboratory_results = None
     if laboratory_readout is not None:
         laboratory_results = evaluate_laboratory_labels(encoder, laboratory_readout, laboratory_index, data, test_indices, adjacencies, arguments, device)
@@ -561,14 +580,15 @@ def main() -> None:
     for symptom_index, symptom in enumerate(data.symptoms):
         if time_split is not None:
             break
-        positives = test_outcomes[:, symptom_index].sum()
-        if positives < MINIMUM_POSITIVES_TO_SCORE or positives == len(test_indices):
+        if not scorable_symptom(test_outcomes, symptom_index, MINIMUM_POSITIVES_TO_SCORE, test_mask):
             continue
+        labelled_rows = scored_rows(len(test_outcomes), symptom_index, test_mask)
         per_symptom[symptom] = {
-            "positives": int(positives),
-            "auprc": bootstrap_interval(lambda p, y: per_symptom_auprc(p, y, symptom_index), predictions, test_outcomes, num_bootstrap=arguments.num_bootstrap).__dict__,
-            "auroc": bootstrap_interval(lambda p, y: per_symptom_auroc(p, y, symptom_index), predictions, test_outcomes, num_bootstrap=arguments.num_bootstrap).__dict__,
-            "base_rate": float(test_outcomes[:, symptom_index].mean()),
+            "positives": int(test_outcomes[labelled_rows, symptom_index].sum()),
+            "auprc": bootstrap_interval(lambda p, y, m=None: per_symptom_auprc(p, y, symptom_index, m), predictions, test_outcomes, num_bootstrap=arguments.num_bootstrap, mask=test_mask).__dict__,
+            "auroc": bootstrap_interval(lambda p, y, m=None: per_symptom_auroc(p, y, symptom_index, m), predictions, test_outcomes, num_bootstrap=arguments.num_bootstrap, mask=test_mask).__dict__,
+            "base_rate": float(test_outcomes[labelled_rows, symptom_index].mean()),
+            **({"masked_pairs": int((~labelled_rows).sum())} if test_mask is not None else {}),
         }
     results = {
         "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem) else arguments.fold, "holdout_module": arguments.holdout_module or None,
@@ -578,12 +598,13 @@ def main() -> None:
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
-        "mean_reciprocal_rank": mean_reciprocal_rank(predictions, test_outcomes), "hits_at_3": hits_at_k(predictions, test_outcomes, 3),
-        "expected_calibration_error": expected_calibration_error(predictions, test_outcomes), "per_symptom": per_symptom, "symptoms": data.symptoms,
+        "mean_reciprocal_rank": mean_reciprocal_rank(predictions, test_outcomes, test_mask), "hits_at_3": hits_at_k(predictions, test_outcomes, 3, test_mask),
+        "expected_calibration_error": expected_calibration_error(predictions, test_outcomes, mask=test_mask), "per_symptom": per_symptom, "symptoms": data.symptoms,
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
         "time_split": time_split_results,
         "code_provenance": state["code_provenance"],
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
+        "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
         "laboratory_labels": laboratory_results,
     }
     if time_split_results is not None:

@@ -8,6 +8,9 @@ expected calibration error). For hold-out splits (curated modules or reconstruct
 held-out sets are pooled the same way. Module supports and link matrices of noisy-OR runs are
 summarized (support sizes, number of symptoms per module above the link threshold).
 
+With --label-selection (experiments/build_label_selection.py) the positive pairs the selection sets aside are left out
+of every metric (ranking_and_calibration_metrics, mask), and a run trained on another selection is refused.
+
 Usage:
   python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disease_cluster runs/b3_sigmoid_disease_cluster \
       --baseline-results runs/baselines_disease_cluster/results.json --markdown-output docs/phase3_main_model.md
@@ -15,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -33,24 +37,35 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     per_symptom_auprc,
     per_symptom_auroc,
     rank_normalise_within_groups,
+    scorable_symptom,
+    scored_rows,
     stratified_auroc,
 )
 
 MINIMUM_POSITIVES_TO_SCORE = 5
 
 
-def macro_scores(predictions: np.ndarray, outcomes: np.ndarray) -> tuple[float, float]:
+def rows_of(mask: np.ndarray | None, rows) -> np.ndarray | None:
+    return None if mask is None else mask[rows]
+
+
+def file_sha256(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> tuple[float, float]:
     auprcs, aurocs = [], []
     for symptom_index in range(outcomes.shape[1]):
-        positives = outcomes[:, symptom_index].sum()
-        if positives < MINIMUM_POSITIVES_TO_SCORE or positives == outcomes.shape[0]:
+        if not scorable_symptom(outcomes, symptom_index, MINIMUM_POSITIVES_TO_SCORE, mask):
             continue
-        auprcs.append(per_symptom_auprc(predictions, outcomes, symptom_index))
-        aurocs.append(per_symptom_auroc(predictions, outcomes, symptom_index))
+        auprcs.append(per_symptom_auprc(predictions, outcomes, symptom_index, mask))
+        aurocs.append(per_symptom_auroc(predictions, outcomes, symptom_index, mask))
     return (float(np.mean(auprcs)) if auprcs else float("nan"), float(np.mean(aurocs)) if aurocs else float("nan"))
 
 
-def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> dict | None:
+def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None = None) -> dict | None:
     split_directories = sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists() and (path / "results.json").exists())
     split_directories = [path for path in split_directories if json.loads((path / "results.json").read_text()).get("time_split") is None]
     if not split_directories:
@@ -63,15 +78,19 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
     code_commits: set[str] = set()
     for split_directory in split_directories:
         results = json.loads((split_directory / "results.json").read_text())
+        if results.get("label_selection_sha256") != label_selection_sha256:
+            raise ValueError(f"{split_directory}: trained on a different label selection from the one given (--label-selection)")
         predictions = np.load(split_directory / "test_predictions.npy")
         rows = np.array([position_of[p] for p in results["test_perturbation_ids"] if p in position_of])
         if len(rows) != len(results["test_perturbation_ids"]):
             raise ValueError(f"{split_directory}: test perturbations not all present in the current evidence table")
         pooled_predictions[rows] = predictions
         scored[rows] = True
-        macro_auprc, macro_auroc = macro_scores(predictions, data.outcomes[rows])
+        split_mask = rows_of(data.label_mask, rows)
+        macro_auprc, macro_auroc = macro_scores(predictions, data.outcomes[rows], split_mask)
         per_split.append({"split": results["split"], "num_test": len(rows), "macro_auprc": macro_auprc, "macro_auroc": macro_auroc,
-                          "mean_reciprocal_rank": mean_reciprocal_rank(predictions, data.outcomes[rows]), "hits_at_3": hits_at_k(predictions, data.outcomes[rows], 3),
+                          "mean_reciprocal_rank": mean_reciprocal_rank(predictions, data.outcomes[rows], split_mask),
+                          "hits_at_3": hits_at_k(predictions, data.outcomes[rows], 3, split_mask),
                           "epochs_completed": results.get("epochs_completed"), "best_epoch": results.get("best_epoch")})
         epochs.append(results.get("epochs_completed", 0))
         code_commits.update(entry["commit"][:7] for entry in results.get("code_provenance", []) if entry.get("commit"))
@@ -80,19 +99,22 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
             support_sizes.append(results["module_support_sizes"])
             expected_support_sizes.append(results.get("module_expected_support_sizes", []))
             symptoms_per_module.append((links > 0.5).sum(axis=1).tolist())
-    outcomes, predictions = data.outcomes[scored], pooled_predictions[scored]
+    outcomes, predictions, mask = data.outcomes[scored], pooled_predictions[scored], rows_of(data.label_mask, scored)
     np.save(run_directory / "pooled_predictions.npy", pooled_predictions)
     np.save(run_directory / "pooled_scored_rows.npy", scored)
     per_symptom = {}
     for symptom_index, symptom in enumerate(data.symptoms):
-        positives = outcomes[:, symptom_index].sum()
-        if positives < MINIMUM_POSITIVES_TO_SCORE or positives == outcomes.shape[0]:
+        if not scorable_symptom(outcomes, symptom_index, MINIMUM_POSITIVES_TO_SCORE, mask):
             continue
-        per_symptom[symptom] = {
-            "positives": int(positives), "base_rate": float(outcomes[:, symptom_index].mean()),
-            "auprc": bootstrap_interval(lambda p, y: per_symptom_auprc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap).__dict__,
-            "auroc": bootstrap_interval(lambda p, y: per_symptom_auroc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap).__dict__,
-        }
+        labelled = scored_rows(len(outcomes), symptom_index, mask)
+        if mask is None:
+            auprc = bootstrap_interval(lambda p, y: per_symptom_auprc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap)
+            auroc = bootstrap_interval(lambda p, y: per_symptom_auroc(p, y, symptom_index), predictions, outcomes, num_bootstrap=num_bootstrap)
+        else:
+            auprc = bootstrap_interval(lambda p, y, m: per_symptom_auprc(p, y, symptom_index, m), predictions, outcomes, num_bootstrap=num_bootstrap, mask=mask)
+            auroc = bootstrap_interval(lambda p, y, m: per_symptom_auroc(p, y, symptom_index, m), predictions, outcomes, num_bootstrap=num_bootstrap, mask=mask)
+        per_symptom[symptom] = {"positives": int(outcomes[labelled, symptom_index].sum()), "base_rate": float(outcomes[labelled, symptom_index].mean()),
+                                "auprc": auprc.__dict__, "auroc": auroc.__dict__}
     fold_auprcs = [entry["macro_auprc"] for entry in per_split if not np.isnan(entry["macro_auprc"])]
     fold_aurocs = [entry["macro_auroc"] for entry in per_split if not np.isnan(entry["macro_auroc"])]
     first_results = json.loads((split_directories[0] / "results.json").read_text())
@@ -105,9 +127,10 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int) -> di
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "per_fold_macro_auprc_mean": float(np.mean(fold_auprcs)) if fold_auprcs else float("nan"), "per_fold_macro_auprc_sd": float(np.std(fold_auprcs)) if fold_auprcs else float("nan"),
         "per_fold_macro_auroc_mean": float(np.mean(fold_aurocs)) if fold_aurocs else float("nan"), "per_fold_macro_auroc_sd": float(np.std(fold_aurocs)) if fold_aurocs else float("nan"),
-        "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes), "hits_at_3": hits_at_k(predictions, outcomes, 3),
-        "expected_calibration_error": expected_calibration_error(predictions, outcomes),
-        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees[scored]),
+        "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes, mask), "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
+        "expected_calibration_error": expected_calibration_error(predictions, outcomes, mask=mask),
+        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees[scored], mask=mask),
+        "label_selection_sha256": label_selection_sha256,
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
     }
@@ -157,11 +180,11 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
     for name, predictions in predictions_by_name.items():
         rows = rows_by_name[name]
         normalised = rank_normalise_within_groups(predictions[rows], strata[rows])
-        outcomes = data.outcomes[rows]
-        scorable = [s for s in range(outcomes.shape[1]) if MINIMUM_POSITIVES_TO_SCORE <= outcomes[:, s].sum() < outcomes.shape[0]]
+        outcomes, mask = data.outcomes[rows], rows_of(data.label_mask, rows)
+        scorable = [s for s in range(outcomes.shape[1]) if scorable_symptom(outcomes, s, MINIMUM_POSITIVES_TO_SCORE, mask)]
         normalised_by_name[name] = (normalised, rows)
-        scores[name] = {"macro_auprc_within_degree_strata": float(np.mean([per_symptom_auprc(normalised, outcomes, s) for s in scorable])),
-                        "macro_auroc_stratified_by_degree": float(np.nanmean([stratified_auroc(predictions[rows], outcomes, strata[rows], s) for s in scorable])),
+        scores[name] = {"macro_auprc_within_degree_strata": float(np.mean([per_symptom_auprc(normalised, outcomes, s, mask) for s in scorable])),
+                        "macro_auroc_stratified_by_degree": float(np.nanmean([stratified_auroc(predictions[rows], outcomes, strata[rows], s, mask) for s in scorable])),
                         "num_strata": int(len(np.unique(degree_strata(data.perturbation_degrees))))}
     comparisons = []
     for run_name in aggregated:
@@ -177,7 +200,8 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
             other_positions = np.flatnonzero(other_rows)
             run_pick = np.isin(run_positions, np.flatnonzero(shared))
             other_pick = np.isin(other_positions, np.flatnonzero(shared))
-            difference = paired_bootstrap_macro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], per_symptom_auprc, num_bootstrap)
+            difference = paired_bootstrap_macro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], per_symptom_auprc, num_bootstrap,
+                                                           mask=rows_of(data.label_mask, shared))
             comparisons.append({"a": run_name, "b": other, "rows": int(shared.sum()), "macro_auprc_within_degree_strata": difference})
     return scores, comparisons
 
@@ -194,8 +218,10 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
             if first not in aggregated and second in aggregated:
                 first, second = second, first  # a run-versus-baseline pair is reported once, with the run as A
             rows = rows_by_name[first] & rows_by_name[second]
-            auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap)
-            auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap)
+            auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap,
+                                                      mask=rows_of(data.label_mask, rows))
+            auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap,
+                                                      mask=rows_of(data.label_mask, rows))
             comparisons.append({"a": first, "b": second, "rows": int(rows.sum()), "macro_auprc": auprc, "macro_auroc": auroc})
     return comparisons
 
@@ -214,15 +240,18 @@ def main() -> None:
     parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="disease_cluster")
     parser.add_argument("--baseline-results", type=Path, default=None, help="results.json of run_baselines.py for the same split, to put B0 and B1 in the same table")
     parser.add_argument("--baseline-split", default="grouped", help="key under 'splits' in the baseline results to show")
+    parser.add_argument("--label-selection", type=Path, default=None,
+                        help="the label selection the runs were trained on (experiments/build_label_selection.py); its set-aside pairs are left out of every metric")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--title", default="Phase 3: proposed model and sigmoid-head baseline")
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/phase3_main_model.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/phase3_aggregate.json"))
     arguments = parser.parse_args()
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by)
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
+    label_selection_sha256 = file_sha256(arguments.label_selection)
     aggregated = {}
     for run_directory in arguments.run_dirs:
-        entry = aggregate_run_directory(run_directory, data, arguments.num_bootstrap)
+        entry = aggregate_run_directory(run_directory, data, arguments.num_bootstrap, label_selection_sha256)
         if entry is None:
             print(f"{run_directory}: no finished splits")
             continue
@@ -232,7 +261,10 @@ def main() -> None:
     baseline_entries = {}
     baseline_directory = None
     if arguments.baseline_results and arguments.baseline_results.exists():
-        baseline_entries = json.loads(arguments.baseline_results.read_text())["splits"].get(arguments.baseline_split, {})
+        baseline_results = json.loads(arguments.baseline_results.read_text())
+        if (baseline_results.get("label_selection") or {}).get("sha256") != label_selection_sha256:
+            raise ValueError(f"{arguments.baseline_results}: baselines fitted on a different label selection from the one given (--label-selection)")
+        baseline_entries = baseline_results["splits"].get(arguments.baseline_split, {})
         baseline_directory = arguments.baseline_results.parent
     comparisons = paired_comparisons(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data, arguments.num_bootstrap)
     strata_scores, strata_comparisons = within_degree_strata(aggregated, *load_pooled_predictions(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data),

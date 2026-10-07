@@ -8,6 +8,7 @@ convention and is stated as such in the design (section 5.4).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import date
@@ -51,6 +52,8 @@ class ExperimentData:
     edge_sign: np.ndarray | None = None  # +1 activating, -1 inhibiting or repressing, 0 unsigned (binds); +1 where the graph has no sign column
     node_base_metabolite_id: np.ndarray | None = None  # metabolite id without compartment ("" for other node types)
     node_display_name: np.ndarray | None = None
+    label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
+    label_selection_summary: dict | None = None
 
     def structural_node_features(self) -> np.ndarray:
         """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
@@ -94,11 +97,17 @@ DEFAULT_LABEL_GRADES: tuple[str, ...] = ("A", "B")  # grades that count as posit
 SOFT_PRIOR_ONLY_GRADES: tuple[str, ...] = ("D", "E")  # literature grades: soft priors by design (section 4.2), never labels and never evaluation positives
 
 
-def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES) -> ExperimentData:
+def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES,
+                         label_selection: Path | None = None) -> ExperimentData:
     """group_by selects the leakage group for the grouped split: "gene" (the gene itself; drugs by dominant
     target) or "disease_cluster" (genes sharing a disease entry in HPO are held out together). label_grades restricts
     the rows that become positive labels (default A and B; None keeps every grade, which the version 0.3 ablation
-    table of grade C weight-0 positives relies on)."""
+    table of grade C weight-0 positives relies on).
+
+    label_selection is a parquet of (perturbation_id, symptom, keep) written by experiments/build_label_selection.py.
+    A positive pair with keep False stays a positive in outcomes but is masked out (label_mask False): the trainer gives
+    it zero weight and the metrics leave it out, so it is neither a positive nor a negative. Keeping outcome 1 means a
+    code path that ignores the mask behaves as it did before the selection, never as if the pair were negative."""
     if group_by not in GROUPING_COLUMNS:
         raise ValueError(f"group_by must be one of {sorted(GROUPING_COLUMNS)}")
     group_column = GROUPING_COLUMNS[group_by]
@@ -156,6 +165,23 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples if node_id in node_index], dtype=int)
             signs[row.perturbation_id] = np.array([sign for node_id, sign, _ in triples if node_id in node_index])
             magnitudes[row.perturbation_id] = np.array([magnitude for node_id, _, magnitude in triples if node_id in node_index])
+    label_mask, label_selection_summary = None, None
+    if label_selection is not None:
+        selection = pd.read_parquet(label_selection)
+        label_mask = np.ones_like(outcomes, dtype=bool)
+        perturbation_row = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
+        set_aside = selection[~selection.keep.astype(bool)]
+        masked, not_positive = 0, 0
+        for row in set_aside.itertuples(index=False):
+            position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
+            if position is None or column is None or outcomes[position, column] == 0:
+                not_positive += 1
+                continue
+            label_mask[position, column] = False
+            masked += 1
+        label_selection_summary = {"path": str(label_selection), "sha256": hashlib.sha256(Path(label_selection).read_bytes()).hexdigest(),
+                                   "positive_pairs": int(outcomes.sum()), "masked_pairs": masked,
+                                   "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum())}
     return ExperimentData(
         node_ids=node_ids,
         node_index=node_index,
@@ -189,4 +215,6 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_brain_expressed=(nodes.brain_expressed == True).to_numpy() if "brain_expressed" in nodes.columns else None,  # noqa: E712
         node_base_metabolite_id=nodes.base_metabolite_id.fillna("").to_numpy().astype(str) if "base_metabolite_id" in nodes.columns else None,
         node_display_name=nodes.display_name.fillna("").to_numpy().astype(str) if "display_name" in nodes.columns else None,
+        label_mask=label_mask,
+        label_selection_summary=label_selection_summary,
     )

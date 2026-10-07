@@ -151,6 +151,7 @@ Superseded numbers to avoid:
 | 2026-10-07 | No graph cut unless the full-graph runs show noise that paring would remove; graph_full and graph_full_neuronal are kept | user's decision; the blocked-reaction measurement was stopped before it finished |
 | 2026-10-07 | The paused full-graph B3 typed job (graph_full, v0.4 labels) is retired; B3 typed is rerun on graph_full_neuronal with the better labels, since the primary endpoint names it as a comparator | user left the choice to the assistant |
 | 2026-10-07 | Cell types enter as propagation channels with expression-weighted edges, one per cell class, not as graph copies; a dopaminergic class is required | user's direction |
+| 2026-10-07 | Better training examples fixed before any full-graph scoring: gene pairs at HPO frequency 0.30 or more; drug pairs at label frequency 1 percent or more or listed by both SIDER and OnSIDES; the rest masked, neither positive nor negative (1,735 of 3,260 positive pairs kept; docs/preregistration.md) | user approved the criteria; fixed from evidence properties only, before scoring |
 | 2026-10-07 | Gates get their own learning rate (--gate-learning-rate) | with the shared rate, supports were still shrinking at early stopping (finding 6) |
 | 2026-10-07 | Rewiring control at 50 swaps per edge with a null of 20 draws on the slice | 2 swaps per edge left the graph under-mixed (finding 8) |
 | 2026-10-07 | The 0.3 percent sign-mixing figure retracted | computed without the derived depletes_substrate relation (finding 11) |

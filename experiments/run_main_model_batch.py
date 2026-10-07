@@ -15,6 +15,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+FULL_GRAPH_ARGUMENTS = ["--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
+                        "--label-selection", "data/processed/label_selection/better_v1_full.parquet"]
+FULL_GRAPH_NODE_PROPERTIES = "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"
+
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
     "b6_absolute_mean": ["--head", "noisy_or", "--field", "absolute", "--pooling", "mean"],
@@ -98,18 +102,21 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b3_linear_response_cofactors_laboratory_neuronal_no_curation": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                                                      "--cofactor-relations", "--laboratory-label-weight", "1.0",
                                                                      "--graph-dir", "data/processed/graph_neuronal_no_curation"],
-    # the full-graph confirmatory runs (amendment of 7 October in docs/preregistration.md): graph_full_neuronal with the
-    # full evidence; full_linear_response_properties and full_linear_response differ in one argument, the node properties
-    # (protein, metabolite and reaction descriptors and brain region and cell-class expression)
-    "full_linear_response_properties": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
-                                        "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
-                                        "--node-descriptors", "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"],
-    "full_linear_response": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
-                             "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full"],
-    "full_b6_linear_response_properties": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
-                                           "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
-                                           "--node-descriptors", "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet",
-                                           "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
+    # the full-graph runs (amendment of 7 October in docs/preregistration.md): graph_full_neuronal with the full evidence
+    # and the better_v1 label selection, fixed before any of them was scored. full_linear_response_properties and
+    # full_linear_response differ in one argument, the node properties (protein, metabolite and reaction descriptors and
+    # brain region and cell-class expression); full_b3_typed_nodes_properties is the relational GNN comparator the primary
+    # endpoint names, given the same node properties.
+    "full_linear_response_properties": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                        *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+    "full_linear_response": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                             *FULL_GRAPH_ARGUMENTS],
+    "full_b6_linear_response_properties": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                           *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES,
+                                           "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
+                                           "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
+    "full_b3_typed_nodes_properties": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
+                                       *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],

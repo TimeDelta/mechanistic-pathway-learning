@@ -9,8 +9,10 @@ For each pair with five finished disease-cluster folds on both sides:
   - the same pooled AUPRC difference after each score is ranked inside one degree stratum of one test fold
     (rank_normalise_within_groups), which gives no credit for ordering perturbations by degree.
 
-A pair is set aside when the two runs' folds hold different perturbations, or when either run's per-fold macro AUPRC
-cannot be reproduced from its stored predictions and today's labels (the labels changed after it ran). A is the
+A pair is set aside when the two runs' folds hold different perturbations, when either run was trained on a label
+selection other than the one given here (--label-selection; none by default), or when either run's per-fold macro AUPRC
+cannot be reproduced from its stored predictions and today's labels (the labels changed after it ran). Under a label
+selection, the pairs it sets aside are left out of every reading (ranking_and_calibration_metrics, mask). A is the
 configuration carrying the extra argument, or the alphabetically later one when both carry the same argument with
 different values. Results are cached per pair under runs/twin_comparisons/, keyed on the fold results' modification
 times, so a rerun only scores pairs whose runs changed. Idempotent; rewrites its outputs.
@@ -18,10 +20,15 @@ times, so a rerun only scores pairs whose runs changed. Idempotent; rewrites its
 Usage:
   OMP_NUM_THREADS=1 python experiments/compare_twin_runs.py
   OMP_NUM_THREADS=1 python experiments/compare_twin_runs.py --pairs b3_linear_response_cofactors_spectral:b3_linear_response_cofactors
+  OMP_NUM_THREADS=1 python experiments/compare_twin_runs.py --graph-dir data/processed/graph_full_neuronal \
+      --evidence-dir data/processed/evidence_full --label-selection data/processed/label_selection/better_v1_full.parquet \
+      --pairs full_linear_response_properties:full_linear_response --cache-dir runs/twin_comparisons_full \
+      --markdown-output docs/twin_comparisons_full.md --json-output runs/twin_comparisons_full.json
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -38,9 +45,10 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     per_symptom_auprc,
     per_symptom_auroc,
     rank_normalise_within_groups,
+    scorable_symptom,
 )
 
-RUN_ROOTS = (Path("runs/encoder"), Path("runs"))
+RUN_ROOTS = (Path("runs/encoder"), Path("runs/full"), Path("runs"))
 MINIMUM_POSITIVES_TO_SCORE = 5
 NUM_FOLDS = 5
 LABEL_REPRODUCTION_TOLERANCE = 1e-6
@@ -89,11 +97,22 @@ def pooled_matrix(predictions: pd.DataFrame | None, data) -> tuple[np.ndarray, n
     return matrix, ~np.isnan(matrix).any(axis=1)
 
 
-def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray) -> float:
-    """Same rule as run_main_model.macro_auprc: symptoms with at least MINIMUM_POSITIVES_TO_SCORE positives and one negative."""
-    values = [per_symptom_auprc(predictions, outcomes, symptom) for symptom in range(outcomes.shape[1])
-              if MINIMUM_POSITIVES_TO_SCORE <= outcomes[:, symptom].sum() < outcomes.shape[0]]
+def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:
+    """Same rule as run_main_model.macro_auprc: symptoms with at least MINIMUM_POSITIVES_TO_SCORE labelled positives and one
+    labelled negative."""
+    values = [per_symptom_auprc(predictions, outcomes, symptom, mask) for symptom in range(outcomes.shape[1])
+              if scorable_symptom(outcomes, symptom, MINIMUM_POSITIVES_TO_SCORE, mask)]
     return float(np.mean(values)) if values else float("nan")
+
+
+def file_sha256(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def rows_of(mask: np.ndarray | None, rows) -> np.ndarray | None:
+    return None if mask is None else mask[rows]
 
 
 def labels_reproduce(results: list[dict], predictions: pd.DataFrame | None, data) -> bool:
@@ -106,7 +125,7 @@ def labels_reproduce(results: list[dict], predictions: pd.DataFrame | None, data
         if any(perturbation_id not in position_of for perturbation_id in result["test_perturbation_ids"]):
             return False
         rows = [position_of[perturbation_id] for perturbation_id in result["test_perturbation_ids"]]
-        if abs(macro_auprc(matrix[rows], data.outcomes[rows]) - result["macro_auprc"]) > LABEL_REPRODUCTION_TOLERANCE:
+        if abs(macro_auprc(matrix[rows], data.outcomes[rows], rows_of(data.label_mask, rows)) - result["macro_auprc"]) > LABEL_REPRODUCTION_TOLERANCE:
             return False
     return True
 
@@ -122,8 +141,10 @@ def describe_interval(lower: float, upper: float) -> str:
     return "excludes zero" if lower > 0 or upper < 0 else "includes zero"
 
 
-def compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: int, require_all_folds: bool = True) -> dict:
-    """Every reading of run minus reference, or a reason the pair is set aside."""
+def compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: int, require_all_folds: bool = True,
+            label_selection_sha256: str | None = None) -> dict:
+    """Every reading of run minus reference, or a reason the pair is set aside. label_selection_sha256 is the hash of the
+    label selection data was loaded with (None for none); a run trained on another selection is set aside."""
     run_results, run_predictions = read_run(run)
     reference_results, reference_predictions = read_run(reference)
     entry = {"a": run, "b": reference, "folds_a": len(run_results), "folds_b": len(reference_results)}
@@ -135,6 +156,9 @@ def compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: i
     shared_folds = sorted(set(run_by_fold) & set(reference_by_fold))
     if any(sorted(run_by_fold[fold]["test_perturbation_ids"]) != sorted(reference_by_fold[fold]["test_perturbation_ids"]) for fold in shared_folds):
         return {**entry, "set_aside": "the two runs' folds hold different perturbations"}
+    for name, results in ((run, run_results), (reference, reference_results)):
+        if any(result.get("label_selection_sha256") != label_selection_sha256 for result in results):
+            return {**entry, "set_aside": f"{name} was trained on a different label selection from the one given"}
     for name, results, predictions in ((run, run_results, run_predictions), (reference, reference_results, reference_predictions)):
         if not labels_reproduce(results, predictions, data):
             return {**entry, "set_aside": f"{name}'s per-fold scores do not reproduce from today's labels"}
@@ -149,12 +173,15 @@ def compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: i
     reference_matrix, reference_rows = pooled_matrix(reference_predictions, data)
     shared_rows = run_rows & reference_rows
     outcomes = data.outcomes[shared_rows]
+    shared_mask = rows_of(data.label_mask, shared_rows)
     entry["pooled_rows"] = int(shared_rows.sum())
-    entry["pooled_macro_auprc"] = paired_bootstrap_macro_difference(run_matrix[shared_rows], reference_matrix[shared_rows], outcomes, per_symptom_auprc, num_bootstrap)
-    entry["pooled_macro_auroc"] = paired_bootstrap_macro_difference(run_matrix[shared_rows], reference_matrix[shared_rows], outcomes, per_symptom_auroc, num_bootstrap)
+    entry["pooled_macro_auprc"] = paired_bootstrap_macro_difference(run_matrix[shared_rows], reference_matrix[shared_rows], outcomes, per_symptom_auprc, num_bootstrap,
+                                                                     mask=shared_mask)
+    entry["pooled_macro_auroc"] = paired_bootstrap_macro_difference(run_matrix[shared_rows], reference_matrix[shared_rows], outcomes, per_symptom_auroc, num_bootstrap,
+                                                                    mask=shared_mask)
     entry["within_degree_strata_macro_auprc"] = paired_bootstrap_macro_difference(
         rank_normalise_within_groups(run_matrix[shared_rows], strata[shared_rows]),
-        rank_normalise_within_groups(reference_matrix[shared_rows], strata[shared_rows]), outcomes, per_symptom_auprc, num_bootstrap)
+        rank_normalise_within_groups(reference_matrix[shared_rows], strata[shared_rows]), outcomes, per_symptom_auprc, num_bootstrap, mask=shared_mask)
     return entry
 
 
@@ -193,18 +220,20 @@ def fold_stamp(run: str) -> list[float]:
 
 
 def cached_compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: int, cache_directory: Path = DEFAULT_CACHE_DIRECTORY,
-                   require_all_folds: bool = True) -> dict:
+                   require_all_folds: bool = True, label_selection_sha256: str | None = None) -> dict:
     """compare(), reusing a stored result while neither run's folds have changed since it was written."""
     cache_directory.mkdir(parents=True, exist_ok=True)
     cache = cache_directory / f"{run}__{reference}.json"
     run_stamp, reference_stamp = fold_stamp(run), fold_stamp(reference)
     all_folds_present = len(run_stamp) == NUM_FOLDS and len(reference_stamp) == NUM_FOLDS  # then require_all_folds changes nothing
     stamp = {"a": run_stamp, "b": reference_stamp, "num_bootstrap": num_bootstrap, "require_all_folds": None if all_folds_present else require_all_folds}
+    if label_selection_sha256 is not None:  # absent without a selection, so caches written before the option stay valid
+        stamp["label_selection_sha256"] = label_selection_sha256
     if cache.exists():
         stored = json.loads(cache.read_text())
         if stored.get("stamp") == stamp:
             return stored["entry"]
-    entry = compare(run, reference, data, strata, num_bootstrap, require_all_folds)
+    entry = compare(run, reference, data, strata, num_bootstrap, require_all_folds, label_selection_sha256)
     cache.write_text(json.dumps({"stamp": stamp, "entry": entry}, indent=1))
     return entry
 
@@ -218,13 +247,16 @@ def main() -> None:
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"), help="the metabolic graph, whose degrees define the strata")
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
     parser.add_argument("--pairs", nargs="*", default=None, help="A:B pairs to score instead of every one-argument twin")
+    parser.add_argument("--label-selection", type=Path, default=None,
+                        help="the label selection both runs were trained on (experiments/build_label_selection.py); its set-aside pairs are left out of every reading")
     parser.add_argument("--num-bootstrap", type=int, default=1000)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIRECTORY)
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/twin_comparisons.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/twin_comparisons.json"))
     arguments = parser.parse_args()
 
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster")
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster", label_selection=arguments.label_selection)
+    label_selection_sha256 = file_sha256(arguments.label_selection)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, NUM_FOLDS, 0)
     strata = np.array([fold_by_perturbation[p] for p in data.perturbation_ids]) * 1000 + degree_strata(data.perturbation_degrees)
     if arguments.pairs:
@@ -233,7 +265,8 @@ def main() -> None:
         pairs = twin_pairs(CONFIGURATIONS)
     entries = []
     for run, reference, change in pairs:
-        entry = {**cached_compare(run, reference, data, strata, arguments.num_bootstrap, arguments.cache_dir), "change": change}
+        entry = {**cached_compare(run, reference, data, strata, arguments.num_bootstrap, arguments.cache_dir,
+                                  label_selection_sha256=label_selection_sha256), "change": change}
         entries.append(entry)
         print(f"{run} vs {reference}: {entry.get('set_aside') or format_interval(entry['pooled_macro_auprc'])}", flush=True)
     arguments.json_output.write_text(json.dumps(entries, indent=1))

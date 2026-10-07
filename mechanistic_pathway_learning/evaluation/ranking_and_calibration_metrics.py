@@ -2,6 +2,11 @@
 over perturbations, mean reciprocal rank and hits-at-k for symptom ranking per
 perturbation, and expected calibration error. Degree-bin and grade stratification
 is done by the caller passing the relevant row subset.
+
+Every metric takes an optional label mask (the same shape as outcomes, True where a pair is labelled). A pair masked
+out by a label selection (experiment_data.load_experiment_data, label_selection) is neither a positive nor a negative:
+it is left out of the per-symptom rankings, of the per-perturbation symptom rankings and of calibration. With no mask
+every pair is scored, as before.
 """
 from __future__ import annotations
 
@@ -20,18 +25,26 @@ class IntervalEstimate:
     upper: float
 
 
-def bootstrap_interval(statistic, predictions: np.ndarray, outcomes: np.ndarray, num_bootstrap: int = 1000, random_seed: int = 0, confidence: float = 0.95) -> IntervalEstimate:
-    """Percentile bootstrap over rows (perturbations) of a statistic(predictions, outcomes)."""
+def bootstrap_interval(statistic, predictions: np.ndarray, outcomes: np.ndarray, num_bootstrap: int = 1000, random_seed: int = 0, confidence: float = 0.95,
+                       mask: np.ndarray | None = None) -> IntervalEstimate:
+    """Percentile bootstrap over rows (perturbations) of a statistic(predictions, outcomes), or of
+    statistic(predictions, outcomes, mask) when a label mask is given (resampled with the same rows)."""
     generator = np.random.default_rng(random_seed)
     num_rows = predictions.shape[0]
-    point = statistic(predictions, outcomes)
+
+    def evaluate(rows):
+        if mask is None:
+            return statistic(predictions[rows], outcomes[rows])
+        return statistic(predictions[rows], outcomes[rows], mask[rows])
+
+    point = evaluate(np.arange(num_rows))
     resampled_values = []
     for _ in range(num_bootstrap):
         row_indices = generator.integers(0, num_rows, size=num_rows)
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                resampled_value = statistic(predictions[row_indices], outcomes[row_indices])
+                resampled_value = evaluate(row_indices)
         except ValueError:  # a resample with a single class, older scikit-learn
             continue
         if np.isnan(resampled_value):  # a resample with a single class, newer scikit-learn
@@ -43,18 +56,35 @@ def bootstrap_interval(statistic, predictions: np.ndarray, outcomes: np.ndarray,
     return IntervalEstimate(point, float(np.quantile(resampled_values, lower_quantile)), float(np.quantile(resampled_values, 1.0 - lower_quantile)))
 
 
-def per_symptom_auroc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int) -> float:
-    return float(roc_auc_score(outcomes[:, symptom_index], predictions[:, symptom_index]))
+def scored_rows(num_rows: int, symptom_index: int, mask: np.ndarray | None) -> np.ndarray:
+    """Boolean rows that carry a label for one symptom: every row without a mask."""
+    return np.ones(num_rows, dtype=bool) if mask is None else np.asarray(mask[:, symptom_index], dtype=bool)
 
 
-def per_symptom_auprc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int) -> float:
-    return float(average_precision_score(outcomes[:, symptom_index], predictions[:, symptom_index]))
+def per_symptom_auroc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int, mask: np.ndarray | None = None) -> float:
+    rows = scored_rows(len(outcomes), symptom_index, mask)
+    return float(roc_auc_score(outcomes[rows, symptom_index], predictions[rows, symptom_index]))
 
 
-def mean_reciprocal_rank(predictions: np.ndarray, outcomes: np.ndarray) -> float:
-    """For each perturbation with at least one positive symptom, 1 / rank of the best-ranked positive."""
+def per_symptom_auprc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int, mask: np.ndarray | None = None) -> float:
+    rows = scored_rows(len(outcomes), symptom_index, mask)
+    return float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index]))
+
+
+def scorable_symptom(outcomes: np.ndarray, symptom_index: int, minimum_positives: int, mask: np.ndarray | None = None) -> bool:
+    """At least minimum_positives positives and at least one negative among the labelled rows of a symptom."""
+    rows = scored_rows(len(outcomes), symptom_index, mask)
+    positives = outcomes[rows, symptom_index].sum()
+    return bool(positives >= minimum_positives and positives < rows.sum())
+
+
+def mean_reciprocal_rank(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:
+    """For each perturbation with at least one positive symptom, 1 / rank of the best-ranked positive (masked
+    symptoms of that perturbation are left out of its ranking)."""
     reciprocal_ranks = []
-    for row_predictions, row_outcomes in zip(predictions, outcomes):
+    for row_index, (row_predictions, row_outcomes) in enumerate(zip(predictions, outcomes)):
+        if mask is not None:
+            row_predictions, row_outcomes = row_predictions[mask[row_index]], row_outcomes[mask[row_index]]
         if row_outcomes.sum() == 0:
             continue
         ranking = np.argsort(-row_predictions)
@@ -63,9 +93,11 @@ def mean_reciprocal_rank(predictions: np.ndarray, outcomes: np.ndarray) -> float
     return float(np.mean(reciprocal_ranks)) if reciprocal_ranks else float("nan")
 
 
-def hits_at_k(predictions: np.ndarray, outcomes: np.ndarray, k: int = 3) -> float:
+def hits_at_k(predictions: np.ndarray, outcomes: np.ndarray, k: int = 3, mask: np.ndarray | None = None) -> float:
     hits = []
-    for row_predictions, row_outcomes in zip(predictions, outcomes):
+    for row_index, (row_predictions, row_outcomes) in enumerate(zip(predictions, outcomes)):
+        if mask is not None:
+            row_predictions, row_outcomes = row_predictions[mask[row_index]], row_outcomes[mask[row_index]]
         if row_outcomes.sum() == 0:
             continue
         top_k = np.argsort(-row_predictions)[:k]
@@ -73,9 +105,9 @@ def hits_at_k(predictions: np.ndarray, outcomes: np.ndarray, k: int = 3) -> floa
     return float(np.mean(hits)) if hits else float("nan")
 
 
-def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, num_bins: int = 10) -> float:
-    flat_predictions = predictions.ravel()
-    flat_outcomes = outcomes.ravel()
+def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, num_bins: int = 10, mask: np.ndarray | None = None) -> float:
+    flat_predictions = predictions.ravel() if mask is None else predictions[np.asarray(mask, dtype=bool)]
+    flat_outcomes = outcomes.ravel() if mask is None else outcomes[np.asarray(mask, dtype=bool)]
     bin_edges = np.linspace(0.0, 1.0, num_bins + 1)
     error = 0.0
     for lower, upper in zip(bin_edges[:-1], bin_edges[1:]):
@@ -86,7 +118,8 @@ def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, nu
     return float(error)
 
 
-def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, perturbation_degrees: np.ndarray, num_bins: int = 3, minimum_positives: int = 5) -> dict[str, float]:
+def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, perturbation_degrees: np.ndarray, num_bins: int = 3, minimum_positives: int = 5,
+                              mask: np.ndarray | None = None) -> dict[str, float]:
     """Macro AUPRC over symptoms inside each degree bin of the perturbations (design section 6.2, assumption A9).
 
     Bins are degree quantiles over the rows given; a symptom is scored inside a bin when it has at least
@@ -101,17 +134,18 @@ def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, per
         edges = [perturbation_degrees[rows].min() if len(rows) else float("nan"), perturbation_degrees[rows].max() if len(rows) else float("nan")]
         values = []
         for symptom_index in range(outcomes.shape[1]):
-            positives = outcomes[rows, symptom_index].sum()
-            if positives < minimum_positives or positives == len(rows):
+            labelled = rows[scored_rows(len(outcomes), symptom_index, mask)[rows]]
+            positives = outcomes[labelled, symptom_index].sum()
+            if positives < minimum_positives or positives == len(labelled):
                 continue
-            values.append(float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index])))
+            values.append(float(average_precision_score(outcomes[labelled, symptom_index], predictions[labelled, symptom_index])))
         label = f"degree_bin_{bin_index}_[{edges[0]:.0f},{edges[1]:.0f}]_n{len(rows)}"
         result[label] = float(np.mean(values)) if values else float("nan")
     return result
 
 
 def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, statistic=per_symptom_auprc, num_bootstrap: int = 1000,
-                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5) -> dict[str, float]:
+                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5, mask: np.ndarray | None = None) -> dict[str, float]:
     """Paired bootstrap over perturbations of macro(statistic of A) - macro(statistic of B) on the same rows (design section 7).
 
     Both prediction matrices are resampled with the same row indices, so the interval is for the paired
@@ -119,22 +153,25 @@ def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: 
     """
     generator = np.random.default_rng(random_seed)
 
-    def macro(predictions: np.ndarray, resampled_outcomes: np.ndarray) -> float:
+    def macro(predictions: np.ndarray, resampled_outcomes: np.ndarray, resampled_mask: np.ndarray | None) -> float:
         values = []
         for symptom_index in range(resampled_outcomes.shape[1]):
-            positives = resampled_outcomes[:, symptom_index].sum()
-            if positives < minimum_positives or positives == resampled_outcomes.shape[0]:
+            if not scorable_symptom(resampled_outcomes, symptom_index, minimum_positives, resampled_mask):
                 continue
-            values.append(statistic(predictions, resampled_outcomes, symptom_index))
+            if resampled_mask is None:
+                values.append(statistic(predictions, resampled_outcomes, symptom_index))
+            else:
+                values.append(statistic(predictions, resampled_outcomes, symptom_index, resampled_mask))
         return float(np.mean(values)) if values else float("nan")
 
-    point = macro(predictions_a, outcomes) - macro(predictions_b, outcomes)
+    point = macro(predictions_a, outcomes, mask) - macro(predictions_b, outcomes, mask)
     differences = []
     for _ in range(num_bootstrap):
         rows = generator.integers(0, outcomes.shape[0], size=outcomes.shape[0])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            difference = macro(predictions_a[rows], outcomes[rows]) - macro(predictions_b[rows], outcomes[rows])
+            resampled_mask = None if mask is None else mask[rows]
+            difference = macro(predictions_a[rows], outcomes[rows], resampled_mask) - macro(predictions_b[rows], outcomes[rows], resampled_mask)
         if not np.isnan(difference):
             differences.append(difference)
     lower_quantile = (1.0 - confidence) / 2.0
@@ -176,7 +213,7 @@ def rank_normalise_within_groups(predictions: np.ndarray, group_of_row: np.ndarr
     return normalised
 
 
-def stratified_auroc(predictions: np.ndarray, outcomes: np.ndarray, group_of_row: np.ndarray, symptom_index: int) -> float:
+def stratified_auroc(predictions: np.ndarray, outcomes: np.ndarray, group_of_row: np.ndarray, symptom_index: int, mask: np.ndarray | None = None) -> float:
     """AUROC from positive-negative pairs formed inside each group only (a within-hold-out Mann-Whitney statistic).
 
     Pairs that cross hold-outs never enter, so differences of base rate or score scale between hold-outs cannot
@@ -187,7 +224,7 @@ def stratified_auroc(predictions: np.ndarray, outcomes: np.ndarray, group_of_row
     for group in np.unique(group_of_row):
         if group < 0:
             continue
-        rows = np.flatnonzero(group_of_row == group)
+        rows = np.flatnonzero((group_of_row == group) & scored_rows(len(outcomes), symptom_index, mask))
         scores = predictions[rows, symptom_index]
         labels = outcomes[rows, symptom_index] > 0.5
         positive_scores, negative_scores = scores[labels], scores[~labels]

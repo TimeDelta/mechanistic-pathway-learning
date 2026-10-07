@@ -57,6 +57,28 @@ doi:10.1073/pnas.1708274114, on preregistration when "the data are preexisting")
   expression, the cell-class propagation channels (including a dopaminergic class) and the better training examples.
   Full-graph runs made before all of these exist are full-graph pilots and are reported as such.
 
+Better training examples, fixed on 7 October 2026 before any full-graph model was scored (experiments/build_label_selection.py;
+data/processed/label_selection/better_v1_full.parquet, selection version better_v1):
+
+- A gene pair (grade A, an HPO annotation) is kept when its frequency is at least 0.30, the lower bound of the HPO
+  frequency term Frequent (HP:0040282, present in 30 to 79 percent of cases). Pairs annotated Occasional or Very rare,
+  pairs with a counted frequency below 30 percent and pairs with no frequency are set aside.
+- A drug pair (grade B, SIDER or OnSIDES label) is kept when its label frequency is at least 1 percent, the lower bound of
+  the CIOMS frequency category common, or when both SIDER and OnSIDES list it (two separate label extractions). The rest,
+  most of them label statements with no frequency, are set aside.
+- A pair set aside is masked, not relabelled: it is neither a positive nor a negative in the loss or in any metric
+  (load_experiment_data, label_mask). Unobserved pairs stay unlabelled as before.
+- On evidence_full this keeps 1,735 of 3,260 positive pairs: 1,395 gene pairs over 844 genes and 340 drug pairs over
+  59 drugs. Elevated mood or mania keeps 11 positive pairs and psychomotor retardation keeps 1, so psychomotor
+  retardation leaves the macro average (five positives are needed) and elevated mood or mania is scored on few positives.
+- Layer contact was considered and not used, because it does not select on graph_full_neuronal: 2,286 of 2,425 gene pairs
+  and all 876 drug pairs already touch a non-metabolic layer.
+- Every full-graph run, baseline and comparison is trained and scored under this selection. A run trained on another
+  selection is refused by the scoring scripts (aggregate_main_model_runs.py, compare_twin_runs.py), which compare the
+  SHA-256 of the selection file (ffb06fb4… for better_v1_full). Before this rule, training already weighted each gene
+  positive by its frequency (mean weight 0.64 over the 796 gene pairs below 0.30, 1.0 at 0.30 or above and 1.0 with no
+  frequency), and every pair counted fully in scoring; the selection removes the set-aside pairs from both.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; number of flux samples per gene; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
