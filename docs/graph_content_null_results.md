@@ -1,4 +1,8 @@
-# The wiring carries signal; the mechanistic machinery adds nothing on top of diffusion (7 October 2026)
+# On the slice the wiring carries signal, and the mechanistic encoders have not been shown to add to diffusion (7 October 2026)
+
+Scope: one metabolic slice graph, 451 monogenic perturbations and ten symptoms in five disease-cluster folds. It is
+not a general rule about signed or typed propagation against unsigned walks; published work on other graphs and
+labels reports typed models ahead of diffusion (docs/literature_appraisal_staging.md, state of Q1 at the cap; unreviewed).
 
 This note was first written with the opposite conclusion, from a rewiring control that turned out to be too weak. The
 correction is the point of the note, so both versions are stated.
