@@ -319,6 +319,14 @@ reach the membrane potential run through the hub destinations of the same distri
   -0.007 [-0.020, +0.008] pooled and -0.009 [-0.028, +0.012] within degree strata. Keeping the counts at the price of
   the shrink neither helps nor measurably costs on symptoms; the arm's fold-to-fold spread is two and a half times the
   twin's. Whether the counts at full magnitude move the score is the total-in-degree run's question.
+  They do not (7 October 2026, experiments/compare_twin_runs.py): 0.265 +/- 0.020 against 0.266 +/- 0.025, with
+  per-fold differences +0.014, -0.006, -0.004, -0.007 and +0.000. Total in-degree minus twin, 95 percent intervals:
+  -0.000 [-0.011, +0.010] per fold, +0.001 [-0.004, +0.006] pooled and +0.003 [-0.005, +0.012] within degree strata.
+  The pooled interval is the narrowest of any one-argument comparison on the slice. Neither keeping the producing and
+  consuming counts nor the spectral shrink moves the symptom score, so on the slice the choice of normalisation is
+  not what limits the linear-response encoder. This is a statement about the slice's labels, which are mostly
+  metabolic-disease phenotypes reached in few steps; it does not test whether the counts matter for paths to the
+  membrane potential, which only the neuronal and full graphs carry.
 - `in_degree_power` (removed 7 October 2026): divided by in-degree raised to an exponent, then rescaled the whole matrix once so the
   row sums return below one. Note what this does and does not do. Where in-degrees are uniform the rescale exactly
   undoes the softening and the exponent changes nothing, which a test asserts. It acts only where in-degrees differ,
