@@ -36,15 +36,21 @@ anything resting on it is withdrawn.
 
 The graph matters, and the random walk already extracts what it has to give:
 
-| | per fold |
-|---|---|
-| b6_mechanistic_gate_time_scales, the best trained configuration | 0.292 ± 0.027 |
-| random walk with restart on the real graph | 0.293 ± 0.014 |
+| | per fold | pooled, paired against the random walk |
+|---|---|---|
+| b3_typed_nodes, highest per fold | 0.293 ± 0.031 | -0.031 [-0.055, -0.011] |
+| b6_mechanistic_gate_time_scales, closest pooled | 0.292 ± 0.024 | -0.020 [-0.043, +0.006] |
+| random walk with restart on the real graph | 0.293 ± 0.014 | |
 
-Sixteen trained configurations span 0.241 to 0.292 and none separates from the random walk by a paired interval
-excluding zero. So the open question is not whether the graph holds signal, nor whether the labels are learnable: it
-is why a signed, relation-typed, stoichiometric propagation with a noisy-OR head extracts no more of that signal than
-unsigned diffusion does.
+Eighteen trained configurations in docs/phase3_main_model.md span 0.241 to 0.293 per fold. None beats the random walk,
+and most fall below it: on the pooled paired difference, the pre-registered endpoint, 14 of the 18 have an interval
+entirely below zero, and the four that reach zero are b6_default, b6_mechanistic_gate_time_scales,
+b6_mechanistic_expected_gate and b6_linear_response_gate_time_scales_cofactors (upper bound -0.000). "Best" depends on
+the metric: b3_typed_nodes ties the random walk per fold and is reliably below it pooled. This note said earlier that
+sixteen configurations span 0.241 to 0.292 with none separating from the random walk; that undercounted the table and
+missed that the separations run against the trained models. So the open question is not whether the graph holds
+signal, nor whether the labels are learnable: it is why a signed, relation-typed, stoichiometric propagation with a
+noisy-OR head extracts less of that signal than unsigned diffusion does, or at best as much.
 
 One candidate explanation stood here and has been withdrawn, because the measurement under it was wrong. It read
 that at 99.7% of destinations every incoming message carries the same sign, so a signed propagation on this graph is
@@ -113,13 +119,18 @@ on top of it are small relative to the noise of a five-fold comparison.
 
 ## What is still not established
 
-One rewiring at one seed cannot say whether the 0.043 gap is larger than the spread across rewirings. The real score
-and the rewired one, 0.293 +/- 0.014 against 0.250 +/- 0.033, overlap on their fold-to-fold spread, and there is no
-null distribution to place the real score against, so the gap is suggestive rather than measured.
-experiments/run_rewiring_null_distribution.py repeats the rewiring over 20 seeds with the graph, the evidence, the
-fold assignment and the restart probability all held fixed, and reports how many rewirings match or beat the real
-graph. Twenty seeds bound the p-value below by 1/21, so a clean sweep is reportable at the 0.05 level. Its output is
-docs/rewiring_null_distribution.md.
+This section was written before the 20-rewiring null existed and said there was no distribution to place the real
+score against; the section above supersedes that. What the null leaves open:
+
+- The p-value of 0.048 is the floor that 20 draws allow, not a measure of the effect's size, and the margin over the
+  best single rewiring (0.006) is below the real graph's fold-to-fold spread (±0.014).
+- Rewiring keeps in-degree and out-degree per relation but not the bipartite metabolite-reaction structure, so part of
+  the gap may reflect the graph's plausibility as a graph rather than the correctness of its biology.
+- The full-data rewiring control in docs/phase2_baselines_full_disease_cluster.md ran at 2 swaps per edge, the strength
+  shown here to be under-mixed, so its reading that the full-data signal is degree and not topology is withdrawn until
+  it is rerun. experiments/run_baselines.py now defaults to 50 swaps per edge.
+- Every number here is the random walk. Whether the mechanistic encoder loses more than the random walk under rewiring
+  is the follow-up below.
 
 ## The decisive follow-up
 

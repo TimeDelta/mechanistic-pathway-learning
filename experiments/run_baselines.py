@@ -288,7 +288,10 @@ def main() -> None:
     parser.add_argument("--min-holdout-positives", type=int, default=10)
     parser.add_argument("--min-fold-size-for-macro", type=int, default=20)
     parser.add_argument("--skip-permutation-control", action="store_true")
-    parser.add_argument("--rewiring-swaps-per-edge", type=int, default=2, help="degree-preserving rewiring control for the random walk; 0 skips it")
+    parser.add_argument("--rewiring-swaps-per-edge", type=int, default=50,
+                        help="degree-preserving rewiring control for the random walk; 0 skips it. The default was 2 until 7 October 2026, "
+                             "which left the slice graph under-mixed (docs/graph_content_null_results.md); 50 matches "
+                             "experiments/run_rewiring_null_distribution.py. Documents generated before then say 2 in their rewiring heading")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
     parser.add_argument("--with-kg-embedding", action="store_true", help="also run baseline B2 (TransE over graph plus training evidence triples)")
     parser.add_argument("--kg-embedding-all-splits", action="store_true", help="run B2 on the pathway hold-outs too (many fits)")
