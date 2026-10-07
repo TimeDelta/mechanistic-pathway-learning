@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1038/s41591-024-03233-x](https://doi.org/10.1038/s41591-024-03233-x) (PMID 39322717) | Q1 | `supports` | `same_construct_other_domain` | `strong` | "However, TxGNN outperformed all methods across all nine disease areas for both tasks, demonstrating its broad generalizability and accuracy in zero-shot drug repurposing." | the per-baseline AUPRC under the disease-area split with its spread (diffusion state distance, network proximity and the plain relational network beside TxGNN), a run with all relation types merged into one, and a diffusion baseline given a trained readout on the same labels, so that typing is separated from supervision; for Q1 proper, a graph that does not contain the label relation | the graph has 29 undirected edge types and no signs, so only the relation-typed half of Q1 is touched; indication and contraindication are edge types of the same graph and the training diseases' label edges stay in it; the untyped baselines are unsupervised statistics, so typing is confounded with supervision, pretraining and the disease-similarity module; per-baseline numbers are in figures the served text omits, and the text names a language model as the best baseline for held-out indications in seven of nine areas and the plain relational network for contraindications in eight of nine, so the diffusion baselines were not the bar to clear; gains over the next best method run from 0.5% to 59.3% across areas; the abstract's 49.2% and 35.1% were not found in the body as served; the negative sampling that sets the AUPRC base rate is in a supplementary note that was not read |
 | [10.1186/1471-2105-15-238](https://doi.org/10.1186/1471-2105-15-238) (PMID 25015298) | Q1, Q2 | `mixed` | `analogous_mechanism` | `moderate` | "As in the previous example, performance results showed a more robust behavior of network-based features as compared to gene selection, for the majority of the learning algorithms used." | the same classifiers on backbone values computed three ways (the signed Laplacian as published, all edges made positive, signs permuted with the topology kept), scored across cohorts with intervals sized for test cohorts of about 24 patients; and a plain diffusion of the gene fold-changes over the same backbone as the unsigned baseline | no run removes or permutes the signs for prediction, so Q1 is not reached: the baselines are gene-level signatures and gene sets, not an unsigned propagation; the K statistic permutes backbone edges together with their signs and tests the perturbation score, not the classifier; for infliximab response the backbone signature is not the best performer (mean G-performance across cohorts 0.83, against 0.85 for a classifier on the genes downstream of one node and 0.80 for nearest shrunken centroids on all genes), with 47 pre-treatment patients over both cohorts; for smoking status all five backbone classifiers score 0.83 to 0.91 across data sets while gene-level ones range from 0.00 to 0.88; edge direction is discarded by the signed Laplacian; the inference runs backward from expression to upstream activity in a patient, not forward from a perturbation to a phenotype; standard errors are in a supplementary table that was not read; the fraction of nodes receiving both signs is not reported |
 | [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; checks 3 and 6 hold as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
 | [10.64898/2026.04.29.721775](https://doi.org/10.64898/2026.04.29.721775) (bioRxiv preprint, version 1, no PMID) | Q1, Q2 | `mixed` | `same_construct_other_domain` | `moderate` | "Without task-specific fine-tuning, FLASH consistently outperforms or matches nine state-of-the-art unsigned, relational, and signed graph baselines across drug mode-of-action prediction, clinical response modeling, and drug-drug interaction prediction, while substantially improving computational efficiency." | the same model with signs removed or permuted and nothing else changed, on a split that holds out whole drugs or diseases, with the majority-class score beside each accuracy; for Q1 proper, an outcome that is not itself an edge of the graph | the "clinical response" label is the sign of a compound-disease edge of the same graph (indication against contraindication), split by random edges, so this is the association-label design of 39976387; the unsigned baselines lose edge types as well as signs and differ in architecture, and the signed models receive the training labels as input edge signs, so the gain cannot be credited to sign propagation; contraindications are 92.6% of the labels and no majority-class score is given beside the binary accuracy of 0.9893; in the one drug-disjoint setting, on an unsigned outcome, the lead over the best baseline is not significant (p = 0.20 as relayed, three runs); balance is imposed by pruning edges in unbalanced cycles, which our graph could not survive; a preprint with unresolved table references; the body was read through a summarising fetch tool, so every figure beyond the abstract is relayed |
@@ -121,6 +122,7 @@ last line of this list.
 - Slot 14, 7 October 2026, 19:00 UTC: Silverbush 2019 appraised as PMID 31289271. Slots spent: 14 of 19.
 - Slot 15, 7 October 2026, 19:08 UTC: Martin 2014 appraised as PMID 25015298. Slots spent: 15 of 19.
 - Slot 16, 7 October 2026, 19:19 UTC: one Consensus search on the relation-typed half of Q1, 20 records. Slots spent: 16 of 19.
+- Slot 17, 7 October 2026, 19:27 UTC: Huang 2024 (TxGNN) appraised as PMID 39322717. Slots spent: 17 of 19.
 
 ### Triage checks: the original four and three additions
 
@@ -344,7 +346,8 @@ Queued from this search, with the reason:
 Added from the appraiser's recall, not returned by any search. The identifier and every claim are unverified until
 the slot that reads it:
 
-- Huang, 2024, Nature Medicine, "A foundation model for clinician-centered drug repurposing" (TxGNN), DOI recalled
+- Appraised in slot 17 as PMID 39322717; the recalled DOI resolved to this paper and the recalled baselines were
+  confirmed in the text. Huang, 2024, Nature Medicine, "A foundation model for clinician-centered drug repurposing" (TxGNN), DOI recalled
   as 10.1038/s41591-024-03233-x. Recalled as a relation-typed graph model on a medical knowledge graph, scored on
   indications and contraindications for held-out disease areas against baselines that include diffusion state
   distance, network proximity and untyped or typed graph networks. If the recall is right it is the most direct
@@ -484,6 +487,69 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 39322717, typed message passing ahead of diffusion on held-out diseases
+
+The full text was read from PMC (PMC11645266): main text and methods. Figures, equations and the supplementary notes
+are not in the served text, and those hold the per-baseline numbers, the split details and the negative sampling.
+
+What it is. A heterogeneous graph network with "a relationship-specific weight matrix" per edge type, trained on a
+medical knowledge graph that is "heterogeneous, with 10 types of nodes and 29 types of undirected edges" (123,527
+nodes, 8,063,026 edges), with a disease-similarity module added for diseases that have few neighbours. It predicts
+indications and contraindications, of which the graph holds 9,388 and 30,675.
+
+The comparison Q1 asks for is run, for relation types. "We compared TxGNN with eight methods": two divergence
+statistics, "graph-theoretical network proximity approach, diffusion state distance (DSD)", three graph networks
+(RGCN, HGT, HAN) and a language model (BioBERT). Three splits, in the order the paper presents them:
+
+- Random drug-disease pairs: "three of eight existing methods achieving AUPRC > 0.80 and HAN as the best at 0.873
+  AUPRC", against 0.913 for TxGNN.
+- Random held-out diseases with all their drugs removed: gains over the next best method of 19.0% AUPRC for
+  indications and 23.9% for contraindications.
+- Nine held-out disease areas: "relative AUPRC gains of 0.5–59.3% (average 25.72%) across 9 disease areas for
+  indications and 11.8–35.6% (average 18.67%) for contraindications."
+
+What the text does not let a reader credit to relation typing.
+
+- The untyped comparators are not trained. Diffusion state distance, proximity and the divergence statistics are
+  unsupervised scores, while TxGNN is pretrained on every relation and fine-tuned on the labels. Typing changes
+  together with supervision, pretraining and the disease-similarity module.
+- The plain typed network is itself a baseline, and it is not always the runner-up: "BioBERT performed best for
+  indication prediction in seven of nine disease areas, whereas RGCN was the best baseline for contraindications in
+  eight of nine." For held-out indications the strongest competitor reads text and uses no graph. Where the
+  diffusion baselines rank is shown only in figures.
+- No run merges the relation types. "Ablation analyses confirmed that each component of the TxGNN Predictor is
+  essential", with the components and numbers in a supplementary figure.
+- The labels are edges of the graph. For a held-out disease area "all drug indications and contraindications were
+  removed from the training dataset, along with a fraction of relationships between drug and other medical
+  concepts", but the label edges of the training diseases remain, and during fine-tuning "Other relationship types
+  remained in the KG to facilitate indirect information flow."
+
+Against the checks. Check 1: there are no signs, and the typed substrate is curated biomedical relations, but the
+two predicted relations are themselves edge types. Check 2 fails in part, as above. Check 3 holds: whole diseases
+and whole disease areas are held out. Check 4 does not arise. Check 5 fails for typing. Check 6 does not arise.
+Check 7 cannot be judged, since the negative sampling is in a supplementary note.
+
+Two details that touch our encoder. The aggregation is the one our encoder uses: "we aggregated on the incoming
+messages from neighboring nodes of each relation ... by taking the average of these messages", then combined the
+relations. Without signs that average cannot cancel, so the paper is no evidence about the cancellation at
+mixed-sign destinations. And the edges are undirected, so this row and 31289271 are evidence for two different
+attributes, type and direction, neither of them sign.
+
+The abstract's headline figures, 49.2% for indications and 35.1% for contraindications, were not found in the body
+text as served, whose figures are the three sets quoted above. They may come from a figure.
+
+No instruction-like text was found in the article.
+
+Where Q1 stands after slot 17. In its literal wording the relation-typed half now has one supporting row of strong
+weight: a typed model ahead of diffusion and proximity baselines on a clinical label, with whole disease areas held
+out. In the strict form this file has used (a mechanistic substrate without the labels, the plain baseline run
+through the same pipeline and the typed or signed component isolated) Q1 is still open, and for signs nothing
+appraised so far reaches it in either form. The chain continues on the strict reading. It also bears on how the
+null result is described: in this paper a trained typed model beats untrained diffusion by wide margins, which is
+the opposite of our pattern. One paper with the confounds listed above does not settle why, but the null result
+should not be written up as a general rule that an unsigned walk extracts all a graph has to give. It may reflect
+our graph, labels or split.
 
 ### Note on 25015298, a signed method built for networks that are not balanced
 
