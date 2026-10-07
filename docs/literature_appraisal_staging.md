@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.3390/e26020161](https://doi.org/10.3390/e26020161) (PMID 38392416) | Q2 | `no_bearing` | `background` | `moderate` | "negative cross-correlations have become pyramidally rare in the past three decades" | nothing: the network is US foreign exchange rates, inferred from detrended cross-correlation, with no biology and no phenotype | everything about Q1; it is kept only as a third instance of signed-network method development on a negative-sparse, balance-satisfying network |
 | [10.1093/bib/bbae573](https://doi.org/10.1093/bib/bbae573) (PMID 39523622) | Q1, Q2 | `supports` | `same_construct_other_domain` | `weak` | "combined with balance theory and state theory, molecular features are extracted from the point of social relations through the propagation and aggregation of signed graph attention network" | an ablation isolating the signed graph attention from the topological embedding, the denoising autoencoder and the GBDT classifier, and an unsigned baseline on the same network; the abstract reports neither | everything about attribution, and whether any of it holds on a network that violates balance, which ours does at 26.9% of edges |
 | [10.1093/bib/bbaf062](https://doi.org/10.1093/bib/bbaf062) (PMID 39976387) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "CSGDN uses a signed graph diffusion method to uncover the underlying regulatory associations between genes and phenotypes" | an unsigned diffusion baseline on the same graph and split, and an ablation separating the signed diffusion from the contrastive objective; they report neither | whether the gain comes from the signs or from the contrastive views, and whether anything survives when the signed graph is a mechanistic substrate rather than the label graph itself |
 | [10.1016/j.neunet.2021.04.007](https://doi.org/10.1016/j.neunet.2021.04.007) (PMID 33906083) | Q1, Q2 | `no_bearing` | `background` | `strong` | "we obtain some sufficient conditions which can guarantee that networks with signed graph topologies realize bipartite synchronization under any initial conditions and arbitrary switching signals" | nothing: it is a control-theory result about coupled reaction-diffusion systems, with no biological network, no phenotype and no unsigned comparison | everything about Q1, but it supplies the condition under which signed dynamics reduce to unsigned, which is testable on our graph |
@@ -110,7 +111,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -120,7 +121,7 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+Remaining to read: 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
 
 ### Note on 39148051
 
@@ -222,3 +223,24 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 38392416, and a problem with the queue
+
+The paper is US foreign exchange rates and has no bearing on anything here; PubMed indexes it because
+it appeared in Entropy. It is kept for one line in its abstract, that negative cross-correlations have
+become rare in that network, and for identifying balanced strong triads. That is the third appraised
+paper whose method is developed on a signed network which is negative-sparse and close to balanced,
+after the two association-network papers that invoke balance theory. The signed-network toolkit was
+built in that regime, social and financial networks among them, and a stoichiometric metabolic graph
+is in the opposite one: 26.9% of its edges are frustrated and every stoichiometric edge is frustrated
+by construction.
+
+The queue itself is the problem now. `("signed network" OR "signed graph" OR "signed networks") AND
+(propagation OR diffusion OR "random walk")` in title or abstract returns 19 records, of which six are
+appraised and three of the remaining were already set aside on their abstracts. The phrase is generic,
+so the recall is poor in the direction that matters: a paper that propagates inhibition through a
+signalling network and never calls its graph signed will not match. Before the cap is spent on the
+remainder, the query should be replaced with ones naming the mechanism rather than the formalism, for
+example inhibition or repression together with propagation and a phenotype, or metabolic or signalling
+network together with perturbation and prediction, and Consensus should be used beside PubMed since it
+searches semantically rather than by phrase.
