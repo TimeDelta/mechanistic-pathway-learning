@@ -10,19 +10,22 @@
 | knowledge_graph_embedding_transe | 0.213 | 0.256 ± 0.019 | 0.504 | 0.509 ± 0.028 | 0.408 | 0.488 | nan | 451 |
 | b3_sigmoid_disease_cluster | 0.208 | 0.260 ± 0.025 | 0.470 | 0.503 ± 0.018 | 0.627 | 0.814 | 0.227 | 451 |
 | b3_typed_nodes_disease_cluster | 0.214 | 0.293 ± 0.031 | 0.474 | 0.514 ± 0.023 | 0.657 | 0.798 | 0.239 | 451 |
-| b3_degree_only_disease_cluster | 0.198 | 0.246 ± 0.026 | 0.438 | 0.490 ± 0.027 | 0.655 | 0.820 | 0.246 | 451 |
-| b3_linear_response_disease_cluster | 0.202 | 0.262 ± 0.017 | 0.445 | 0.492 ± 0.021 | 0.653 | 0.818 | 0.250 | 451 |
-| b3_linear_response_cofactors_disease_cluster | 0.199 | 0.266 ± 0.023 | 0.447 | 0.500 ± 0.026 | 0.656 | 0.814 | 0.244 | 451 |
-| b3_linear_response_cofactors_log_disease_cluster | 0.208 | 0.267 ± 0.026 | 0.470 | 0.503 ± 0.016 | 0.623 | 0.807 | 0.237 | 451 |
 | b6_default_disease_cluster | 0.225 | 0.262 ± 0.028 | 0.477 | 0.491 ± 0.037 | 0.646 | 0.820 | 0.196 | 451 |
 | b6_mechanistic_disease_cluster | 0.216 | 0.272 ± 0.025 | 0.493 | 0.502 ± 0.035 | 0.646 | 0.820 | 0.199 | 451 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.221 | 0.281 ± 0.029 | 0.492 | 0.507 ± 0.033 | 0.646 | 0.820 | 0.232 | 451 |
+| b3_degree_only_disease_cluster | 0.198 | 0.246 ± 0.026 | 0.438 | 0.490 ± 0.027 | 0.655 | 0.820 | 0.246 | 451 |
+| b3_descriptors_only_disease_cluster | 0.201 | 0.260 ± 0.042 | 0.461 | 0.497 ± 0.018 | 0.631 | 0.858 | 0.250 | 451 |
+| b3_linear_response_cofactors_disease_cluster | 0.199 | 0.266 ± 0.023 | 0.447 | 0.500 ± 0.026 | 0.656 | 0.814 | 0.244 | 451 |
+| b3_linear_response_cofactors_log_disease_cluster | 0.208 | 0.267 ± 0.026 | 0.470 | 0.503 ± 0.016 | 0.623 | 0.807 | 0.237 | 451 |
+| b3_linear_response_disease_cluster | 0.202 | 0.262 ± 0.017 | 0.445 | 0.492 ± 0.021 | 0.653 | 0.818 | 0.250 | 451 |
+| b3_local_structural_disease_cluster | 0.197 | 0.241 ± 0.027 | 0.443 | 0.464 ± 0.015 | 0.659 | 0.816 | 0.241 | 451 |
+| b3_typed_nodes_descriptors_disease_cluster | 0.213 | 0.263 ± 0.026 | 0.461 | 0.497 ± 0.027 | 0.633 | 0.805 | 0.235 | 451 |
 | b6_linear_response_disease_cluster | 0.210 | 0.258 ± 0.022 | 0.473 | 0.492 ± 0.032 | 0.646 | 0.820 | 0.213 | 451 |
-| b6_linear_response_time_scales_disease_cluster | 0.209 | 0.259 ± 0.020 | 0.475 | 0.496 ± 0.023 | 0.646 | 0.820 | 0.175 | 451 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.223 | 0.288 ± 0.039 | 0.480 | 0.509 ± 0.061 | 0.660 | 0.867 | 0.124 | 451 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | 0.205 | 0.260 ± 0.015 | 0.478 | 0.507 ± 0.029 | 0.645 | 0.803 | 0.168 | 451 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | 0.206 | 0.259 ± 0.033 | 0.460 | 0.502 ± 0.047 | 0.649 | 0.816 | 0.261 | 451 |
+| b6_linear_response_time_scales_disease_cluster | 0.209 | 0.259 ± 0.020 | 0.475 | 0.496 ± 0.023 | 0.646 | 0.820 | 0.175 | 451 |
 | b6_mechanistic_gate_time_scales_disease_cluster | 0.224 | 0.292 ± 0.024 | 0.475 | 0.519 ± 0.027 | 0.656 | 0.823 | 0.097 | 451 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.223 | 0.288 ± 0.039 | 0.480 | 0.509 ± 0.061 | 0.660 | 0.867 | 0.124 | 451 |
 
 Macro AUPRC by perturbation degree tercile (pooled predictions):
 
@@ -34,19 +37,22 @@ Macro AUPRC by perturbation degree tercile (pooled predictions):
 | knowledge_graph_embedding_transe | 0.228 | 0.210 | 0.246 |
 | b3_sigmoid_disease_cluster | 0.220 | 0.213 | 0.232 |
 | b3_typed_nodes_disease_cluster | 0.241 | 0.217 | 0.229 |
-| b3_degree_only_disease_cluster | 0.203 | 0.187 | 0.221 |
-| b3_linear_response_disease_cluster | 0.224 | 0.206 | 0.230 |
-| b3_linear_response_cofactors_disease_cluster | 0.217 | 0.194 | 0.228 |
-| b3_linear_response_cofactors_log_disease_cluster | 0.207 | 0.216 | 0.239 |
 | b6_default_disease_cluster | 0.249 | 0.211 | 0.256 |
 | b6_mechanistic_disease_cluster | 0.218 | 0.227 | 0.231 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.260 | 0.227 | 0.236 |
+| b3_degree_only_disease_cluster | 0.203 | 0.187 | 0.221 |
+| b3_descriptors_only_disease_cluster | 0.218 | 0.209 | 0.231 |
+| b3_linear_response_cofactors_disease_cluster | 0.217 | 0.194 | 0.228 |
+| b3_linear_response_cofactors_log_disease_cluster | 0.207 | 0.216 | 0.239 |
+| b3_linear_response_disease_cluster | 0.224 | 0.206 | 0.230 |
+| b3_local_structural_disease_cluster | 0.206 | 0.199 | 0.213 |
+| b3_typed_nodes_descriptors_disease_cluster | 0.236 | 0.207 | 0.247 |
 | b6_linear_response_disease_cluster | 0.213 | 0.199 | 0.231 |
-| b6_linear_response_time_scales_disease_cluster | 0.225 | 0.222 | 0.225 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.249 | 0.215 | 0.243 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | 0.230 | 0.224 | 0.212 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | 0.212 | 0.195 | 0.230 |
+| b6_linear_response_time_scales_disease_cluster | 0.225 | 0.222 | 0.225 |
 | b6_mechanistic_gate_time_scales_disease_cluster | 0.243 | 0.238 | 0.256 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.249 | 0.215 | 0.243 |
 
 ## Paired bootstrap comparisons (design section 7)
 
@@ -55,170 +61,230 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | macro AUROC A - B [95% CI] |
 |---|---|---|---|---|---|
 | b3_sigmoid_disease_cluster | b3_typed_nodes_disease_cluster | 451 | -0.006 [-0.021, +0.011] | 0.27 | -0.004 [-0.035, +0.027] |
-| b3_sigmoid_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.009 [-0.006, +0.029] | 0.88 | +0.032 [+0.000, +0.068] |
-| b3_sigmoid_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.006 [-0.009, +0.023] | 0.78 | +0.025 [-0.006, +0.056] |
-| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.008 [-0.004, +0.029] | 0.89 | +0.023 [-0.010, +0.064] |
-| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.001 [-0.016, +0.017] | 0.47 | -0.000 [-0.030, +0.048] |
 | b3_sigmoid_disease_cluster | b6_default_disease_cluster | 451 | -0.018 [-0.039, -0.000] | 0.03 | -0.007 [-0.051, +0.050] |
 | b3_sigmoid_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.008 [-0.026, +0.012] | 0.21 | -0.023 [-0.063, +0.032] |
 | b3_sigmoid_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.014 [-0.040, +0.007] | 0.10 | -0.021 [-0.066, +0.025] |
+| b3_sigmoid_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.009 [-0.006, +0.029] | 0.88 | +0.032 [+0.000, +0.068] |
+| b3_sigmoid_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.006 [-0.009, +0.026] | 0.79 | +0.010 [-0.020, +0.046] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.008 [-0.004, +0.029] | 0.89 | +0.023 [-0.010, +0.064] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.001 [-0.016, +0.017] | 0.47 | -0.000 [-0.030, +0.048] |
+| b3_sigmoid_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.006 [-0.009, +0.023] | 0.78 | +0.025 [-0.006, +0.056] |
+| b3_sigmoid_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.011 [-0.001, +0.031] | 0.96 | +0.028 [-0.006, +0.062] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.005 [-0.024, +0.016] | 0.29 | +0.010 [-0.018, +0.039] |
 | b3_sigmoid_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.024, +0.016] | 0.38 | -0.002 [-0.036, +0.040] |
-| b3_sigmoid_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.001 [-0.023, +0.014] | 0.39 | -0.005 [-0.040, +0.041] |
+| b3_sigmoid_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.033, +0.000] | 0.03 | -0.010 [-0.047, +0.040] |
 | b3_sigmoid_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.002 [-0.021, +0.024] | 0.56 | -0.008 [-0.043, +0.030] |
 | b3_sigmoid_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.002 [-0.019, +0.021] | 0.61 | +0.010 [-0.021, +0.048] |
+| b3_sigmoid_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.001 [-0.023, +0.014] | 0.39 | -0.005 [-0.040, +0.041] |
 | b3_sigmoid_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.017 [-0.047, +0.008] | 0.08 | -0.005 [-0.052, +0.047] |
-| b3_sigmoid_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.033, +0.000] | 0.03 | -0.010 [-0.047, +0.040] |
 | b3_sigmoid_disease_cluster | degree_popularity | 451 | -0.003 [-0.019, +0.014] | 0.37 | -0.020 [-0.061, +0.032] |
 | b3_sigmoid_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.024, +0.014] | 0.26 | -0.034 [-0.070, +0.010] |
 | b3_sigmoid_disease_cluster | popularity | 451 | +0.018 [+0.012, +0.041] | 1.00 | +0.050 [+0.019, +0.085] |
 | b3_sigmoid_disease_cluster | random_walk_with_restart | 451 | -0.037 [-0.056, -0.011] | 0.01 | -0.061 [-0.097, -0.023] |
-| b3_typed_nodes_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.015 [-0.002, +0.036] | 0.95 | +0.036 [-0.001, +0.079] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.012 [-0.000, +0.025] | 0.95 | +0.029 [+0.002, +0.057] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.014 [+0.001, +0.028] | 0.98 | +0.027 [-0.000, +0.058] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.005 [-0.015, +0.022] | 0.70 | +0.004 [-0.031, +0.039] |
 | b3_typed_nodes_disease_cluster | b6_default_disease_cluster | 451 | -0.012 [-0.035, +0.010] | 0.07 | -0.003 [-0.045, +0.050] |
 | b3_typed_nodes_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.002 [-0.023, +0.018] | 0.34 | -0.018 [-0.055, +0.032] |
 | b3_typed_nodes_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.008 [-0.041, +0.011] | 0.21 | -0.017 [-0.057, +0.026] |
+| b3_typed_nodes_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.015 [-0.002, +0.036] | 0.95 | +0.036 [-0.001, +0.079] |
+| b3_typed_nodes_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.012 [-0.007, +0.030] | 0.88 | +0.014 [-0.020, +0.055] |
+| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.014 [+0.001, +0.028] | 0.98 | +0.027 [-0.000, +0.058] |
+| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.005 [-0.015, +0.022] | 0.70 | +0.004 [-0.031, +0.039] |
+| b3_typed_nodes_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.012 [-0.000, +0.025] | 0.95 | +0.029 [+0.002, +0.057] |
+| b3_typed_nodes_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.016 [+0.003, +0.031] | 0.99 | +0.032 [+0.001, +0.068] |
+| b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.001 [-0.020, +0.019] | 0.49 | +0.014 [-0.021, +0.044] |
 | b3_typed_nodes_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.019, +0.022] | 0.58 | +0.002 [-0.030, +0.043] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.005 [-0.019, +0.026] | 0.59 | -0.001 [-0.036, +0.049] |
+| b3_typed_nodes_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.029, +0.007] | 0.14 | -0.006 [-0.047, +0.042] |
 | b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.008 [-0.012, +0.026] | 0.76 | -0.003 [-0.039, +0.043] |
 | b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.008 [-0.015, +0.026] | 0.74 | +0.014 [-0.017, +0.047] |
+| b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.005 [-0.019, +0.026] | 0.59 | -0.001 [-0.036, +0.049] |
 | b3_typed_nodes_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.011 [-0.035, +0.009] | 0.15 | -0.001 [-0.037, +0.048] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.029, +0.007] | 0.14 | -0.006 [-0.047, +0.042] |
 | b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.003 [-0.016, +0.020] | 0.62 | -0.016 [-0.052, +0.036] |
 | b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.018, +0.019] | 0.46 | -0.030 [-0.063, +0.015] |
 | b3_typed_nodes_disease_cluster | popularity | 451 | +0.024 [+0.016, +0.043] | 1.00 | +0.054 [+0.025, +0.093] |
 | b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.031 [-0.055, -0.011] | 0.01 | -0.057 [-0.092, -0.011] |
-| b3_degree_only_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.018, +0.015] | 0.28 | -0.007 [-0.042, +0.028] |
-| b3_degree_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.001 [-0.016, +0.017] | 0.41 | -0.009 [-0.036, +0.024] |
-| b3_degree_only_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.010 [-0.028, +0.010] | 0.14 | -0.032 [-0.063, +0.008] |
-| b3_degree_only_disease_cluster | b6_default_disease_cluster | 451 | -0.027 [-0.045, -0.013] | 0.00 | -0.039 [-0.068, -0.007] |
-| b3_degree_only_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.017 [-0.038, -0.002] | 0.01 | -0.055 [-0.087, -0.012] |
-| b3_degree_only_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.023 [-0.049, -0.003] | 0.01 | -0.053 [-0.096, -0.016] |
-| b3_degree_only_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.002] | 0.04 | -0.034 [-0.070, +0.005] |
-| b3_degree_only_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.010 [-0.032, +0.006] | 0.06 | -0.037 [-0.065, +0.005] |
-| b3_degree_only_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.007 [-0.025, +0.008] | 0.12 | -0.040 [-0.072, -0.003] |
-| b3_degree_only_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.007 [-0.031, +0.007] | 0.16 | -0.022 [-0.051, +0.009] |
-| b3_degree_only_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.026 [-0.055, -0.008] | 0.00 | -0.037 [-0.068, +0.002] |
-| b3_degree_only_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.025 [-0.045, -0.011] | 0.00 | -0.042 [-0.073, -0.008] |
-| b3_degree_only_disease_cluster | degree_popularity | 451 | -0.012 [-0.031, +0.004] | 0.04 | -0.052 [-0.093, -0.009] |
-| b3_degree_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.014 [-0.033, +0.003] | 0.04 | -0.066 [-0.098, -0.025] |
-| b3_degree_only_disease_cluster | popularity | 451 | +0.009 [+0.002, +0.027] | 1.00 | +0.018 [-0.007, +0.044] |
-| b3_degree_only_disease_cluster | random_walk_with_restart | 451 | -0.046 [-0.071, -0.026] | 0.00 | -0.093 [-0.122, -0.060] |
-| b3_linear_response_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.003 [-0.004, +0.010] | 0.80 | -0.002 [-0.021, +0.015] |
-| b3_linear_response_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.006 [-0.027, +0.011] | 0.24 | -0.025 [-0.058, +0.013] |
-| b3_linear_response_disease_cluster | b6_default_disease_cluster | 451 | -0.023 [-0.047, -0.004] | 0.00 | -0.032 [-0.071, +0.009] |
-| b3_linear_response_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.013 [-0.033, +0.006] | 0.09 | -0.047 [-0.081, -0.006] |
-| b3_linear_response_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.019 [-0.050, +0.004] | 0.04 | -0.046 [-0.090, -0.008] |
-| b3_linear_response_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.008 [-0.031, +0.009] | 0.19 | -0.027 [-0.062, +0.010] |
-| b3_linear_response_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.007 [-0.029, +0.010] | 0.20 | -0.030 [-0.069, +0.019] |
-| b3_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.003 [-0.021, +0.011] | 0.28 | -0.032 [-0.063, +0.010] |
-| b3_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.004 [-0.026, +0.017] | 0.35 | -0.015 [-0.047, +0.020] |
-| b3_linear_response_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.022 [-0.049, -0.001] | 0.01 | -0.030 [-0.062, +0.009] |
-| b3_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.021 [-0.043, -0.003] | 0.01 | -0.035 [-0.077, +0.009] |
-| b3_linear_response_disease_cluster | degree_popularity | 451 | -0.009 [-0.028, +0.007] | 0.17 | -0.045 [-0.084, +0.002] |
-| b3_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.011 [-0.031, +0.006] | 0.10 | -0.059 [-0.093, -0.012] |
-| b3_linear_response_disease_cluster | popularity | 451 | +0.013 [+0.003, +0.032] | 0.99 | +0.025 [-0.006, +0.058] |
-| b3_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.066, -0.022] | 0.00 | -0.086 [-0.119, -0.047] |
-| b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.009 [-0.029, +0.009] | 0.15 | -0.023 [-0.058, +0.015] |
-| b3_linear_response_cofactors_disease_cluster | b6_default_disease_cluster | 451 | -0.026 [-0.048, -0.007] | 0.00 | -0.030 [-0.068, +0.005] |
-| b3_linear_response_cofactors_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.016 [-0.040, +0.003] | 0.04 | -0.046 [-0.081, -0.010] |
-| b3_linear_response_cofactors_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.022 [-0.048, -0.001] | 0.02 | -0.044 [-0.081, -0.012] |
-| b3_linear_response_cofactors_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.011 [-0.033, +0.008] | 0.10 | -0.025 [-0.060, +0.012] |
-| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.009 [-0.032, +0.009] | 0.12 | -0.028 [-0.065, +0.030] |
-| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.006 [-0.025, +0.010] | 0.17 | -0.031 [-0.065, +0.014] |
-| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.006 [-0.028, +0.011] | 0.21 | -0.013 [-0.046, +0.022] |
-| b3_linear_response_cofactors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.025 [-0.051, -0.005] | 0.01 | -0.028 [-0.061, +0.011] |
-| b3_linear_response_cofactors_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.024 [-0.045, -0.009] | 0.01 | -0.033 [-0.079, +0.007] |
-| b3_linear_response_cofactors_disease_cluster | degree_popularity | 451 | -0.011 [-0.030, +0.007] | 0.08 | -0.043 [-0.079, +0.005] |
-| b3_linear_response_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.013 [-0.031, +0.001] | 0.04 | -0.057 [-0.090, -0.016] |
-| b3_linear_response_cofactors_disease_cluster | popularity | 451 | +0.010 [-0.001, +0.028] | 0.96 | +0.027 [+0.001, +0.055] |
-| b3_linear_response_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.045 [-0.069, -0.024] | 0.00 | -0.084 [-0.123, -0.043] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_default_disease_cluster | 451 | -0.017 [-0.035, +0.001] | 0.04 | -0.007 [-0.051, +0.037] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.007 [-0.026, +0.012] | 0.27 | -0.023 [-0.063, +0.016] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.013 [-0.039, +0.007] | 0.07 | -0.021 [-0.061, +0.014] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.025, +0.016] | 0.45 | -0.002 [-0.049, +0.043] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.000 [-0.024, +0.013] | 0.46 | -0.005 [-0.049, +0.037] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.003 [-0.018, +0.018] | 0.59 | -0.008 [-0.047, +0.030] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.003 [-0.020, +0.021] | 0.60 | +0.010 [-0.036, +0.048] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.016 [-0.043, +0.006] | 0.10 | -0.005 [-0.047, +0.036] |
-| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.037, +0.001] | 0.03 | -0.010 [-0.048, +0.021] |
-| b3_linear_response_cofactors_log_disease_cluster | degree_popularity | 451 | -0.002 [-0.019, +0.014] | 0.34 | -0.020 [-0.065, +0.024] |
-| b3_linear_response_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.024, +0.013] | 0.32 | -0.034 [-0.071, +0.000] |
-| b3_linear_response_cofactors_log_disease_cluster | popularity | 451 | +0.019 [+0.010, +0.036] | 1.00 | +0.050 [+0.018, +0.083] |
-| b3_linear_response_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.059, -0.016] | 0.00 | -0.061 [-0.093, -0.029] |
 | b6_default_disease_cluster | b6_mechanistic_disease_cluster | 451 | +0.010 [-0.005, +0.028] | 0.93 | -0.016 [-0.035, +0.009] |
 | b6_default_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | +0.004 [-0.015, +0.022] | 0.66 | -0.014 [-0.045, +0.021] |
+| b6_default_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.027 [+0.013, +0.045] | 1.00 | +0.039 [+0.007, +0.068] |
+| b6_default_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.024 [+0.002, +0.045] | 0.97 | +0.017 [-0.034, +0.056] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.026 [+0.007, +0.048] | 1.00 | +0.030 [-0.005, +0.068] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.017 [-0.001, +0.035] | 0.96 | +0.007 [-0.037, +0.051] |
+| b6_default_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.023 [+0.004, +0.047] | 1.00 | +0.032 [-0.009, +0.071] |
+| b6_default_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.028 [+0.014, +0.050] | 1.00 | +0.035 [+0.002, +0.066] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.012 [-0.009, +0.033] | 0.90 | +0.017 [-0.032, +0.059] |
 | b6_default_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.015 [-0.000, +0.032] | 0.97 | +0.005 [-0.016, +0.033] |
-| b6_default_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.016 [+0.001, +0.033] | 0.98 | +0.002 [-0.022, +0.038] |
+| b6_default_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | +0.002 [-0.014, +0.022] | 0.58 | -0.003 [-0.048, +0.037] |
 | b6_default_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.020 [+0.004, +0.038] | 0.98 | -0.001 [-0.035, +0.039] |
 | b6_default_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.020 [+0.001, +0.037] | 0.98 | +0.017 [-0.007, +0.043] |
+| b6_default_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.016 [+0.001, +0.033] | 0.98 | +0.002 [-0.022, +0.038] |
 | b6_default_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | +0.001 [-0.023, +0.021] | 0.55 | +0.002 [-0.028, +0.038] |
-| b6_default_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | +0.002 [-0.014, +0.022] | 0.58 | -0.003 [-0.048, +0.037] |
 | b6_default_disease_cluster | degree_popularity | 451 | +0.014 [+0.002, +0.032] | 0.98 | -0.013 [-0.040, +0.021] |
 | b6_default_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.013 [-0.005, +0.030] | 0.90 | -0.027 [-0.066, +0.012] |
 | b6_default_disease_cluster | popularity | 451 | +0.036 [+0.025, +0.058] | 1.00 | +0.057 [+0.026, +0.090] |
 | b6_default_disease_cluster | random_walk_with_restart | 451 | -0.019 [-0.041, +0.001] | 0.04 | -0.054 [-0.095, -0.018] |
 | b6_mechanistic_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.006 [-0.030, +0.011] | 0.27 | +0.001 [-0.029, +0.030] |
+| b6_mechanistic_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.017 [+0.002, +0.038] | 0.98 | +0.055 [+0.012, +0.087] |
+| b6_mechanistic_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.014 [-0.009, +0.031] | 0.89 | +0.032 [-0.021, +0.065] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.016 [-0.003, +0.040] | 0.95 | +0.046 [+0.010, +0.081] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.007 [-0.012, +0.026] | 0.73 | +0.023 [-0.016, +0.063] |
+| b6_mechanistic_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.013 [-0.006, +0.033] | 0.92 | +0.047 [+0.006, +0.081] |
+| b6_mechanistic_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.018 [+0.003, +0.039] | 0.98 | +0.050 [+0.009, +0.080] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.002 [-0.021, +0.020] | 0.65 | +0.032 [-0.019, +0.071] |
 | b6_mechanistic_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.005 [-0.010, +0.019] | 0.78 | +0.020 [-0.005, +0.046] |
-| b6_mechanistic_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.007 [-0.013, +0.020] | 0.78 | +0.018 [-0.010, +0.052] |
+| b6_mechanistic_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.008 [-0.025, +0.009] | 0.13 | +0.013 [-0.039, +0.049] |
 | b6_mechanistic_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.010 [-0.007, +0.024] | 0.88 | +0.015 [-0.021, +0.047] |
 | b6_mechanistic_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.010 [-0.004, +0.021] | 0.94 | +0.033 [+0.003, +0.060] |
+| b6_mechanistic_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.007 [-0.013, +0.020] | 0.78 | +0.018 [-0.010, +0.052] |
 | b6_mechanistic_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.009 [-0.032, +0.008] | 0.16 | +0.018 [-0.007, +0.048] |
-| b6_mechanistic_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.008 [-0.025, +0.009] | 0.13 | +0.013 [-0.039, +0.049] |
 | b6_mechanistic_disease_cluster | degree_popularity | 451 | +0.005 [-0.007, +0.017] | 0.71 | +0.002 [-0.027, +0.032] |
 | b6_mechanistic_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.003 [-0.017, +0.024] | 0.56 | -0.012 [-0.063, +0.026] |
 | b6_mechanistic_disease_cluster | popularity | 451 | +0.026 [+0.017, +0.045] | 1.00 | +0.073 [+0.038, +0.102] |
 | b6_mechanistic_disease_cluster | random_walk_with_restart | 451 | -0.029 [-0.051, -0.010] | 0.00 | -0.039 [-0.084, -0.004] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.023 [+0.003, +0.049] | 0.98 | +0.053 [+0.016, +0.096] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.020 [-0.006, +0.048] | 0.94 | +0.031 [-0.009, +0.068] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.022 [+0.001, +0.048] | 0.98 | +0.044 [+0.012, +0.081] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.013 [-0.007, +0.039] | 0.93 | +0.021 [-0.014, +0.061] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.019 [-0.004, +0.050] | 0.96 | +0.046 [+0.008, +0.090] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.024 [+0.006, +0.056] | 0.99 | +0.049 [+0.018, +0.084] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.008 [-0.016, +0.034] | 0.75 | +0.031 [-0.008, +0.072] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.011 [-0.013, +0.040] | 0.80 | +0.019 [-0.018, +0.055] |
-| b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.013 [-0.014, +0.042] | 0.86 | +0.016 [-0.018, +0.059] |
+| b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.002 [-0.024, +0.029] | 0.39 | +0.012 [-0.030, +0.055] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.016 [-0.010, +0.044] | 0.90 | +0.014 [-0.028, +0.061] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.016 [-0.007, +0.042] | 0.92 | +0.031 [-0.004, +0.069] |
+| b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.013 [-0.014, +0.042] | 0.86 | +0.016 [-0.018, +0.059] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.003 [-0.025, +0.017] | 0.38 | +0.017 [-0.025, +0.060] |
-| b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.002 [-0.024, +0.029] | 0.39 | +0.012 [-0.030, +0.055] |
 | b6_mechanistic_expected_gate_disease_cluster | degree_popularity | 451 | +0.011 [-0.011, +0.041] | 0.84 | +0.001 [-0.032, +0.039] |
 | b6_mechanistic_expected_gate_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.009 [-0.015, +0.036] | 0.72 | -0.013 [-0.055, +0.024] |
 | b6_mechanistic_expected_gate_disease_cluster | popularity | 451 | +0.032 [+0.021, +0.063] | 1.00 | +0.072 [+0.037, +0.112] |
 | b6_mechanistic_expected_gate_disease_cluster | random_walk_with_restart | 451 | -0.023 [-0.049, +0.002] | 0.05 | -0.040 [-0.081, +0.004] |
-| b6_linear_response_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.001 [-0.010, +0.010] | 0.55 | -0.002 [-0.020, +0.022] |
+| b3_degree_only_disease_cluster | b3_descriptors_only_disease_cluster | 451 | -0.003 [-0.025, +0.012] | 0.35 | -0.022 [-0.059, +0.012] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.001 [-0.016, +0.017] | 0.41 | -0.009 [-0.036, +0.024] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.010 [-0.028, +0.010] | 0.14 | -0.032 [-0.063, +0.008] |
+| b3_degree_only_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.018, +0.015] | 0.28 | -0.007 [-0.042, +0.028] |
+| b3_degree_only_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.001 [-0.012, +0.017] | 0.63 | -0.004 [-0.030, +0.026] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.015 [-0.033, +0.001] | 0.04 | -0.022 [-0.058, +0.009] |
+| b3_degree_only_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.002] | 0.04 | -0.034 [-0.070, +0.005] |
+| b3_degree_only_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.025 [-0.045, -0.011] | 0.00 | -0.042 [-0.073, -0.008] |
+| b3_degree_only_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.007 [-0.025, +0.008] | 0.12 | -0.040 [-0.072, -0.003] |
+| b3_degree_only_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.007 [-0.031, +0.007] | 0.16 | -0.022 [-0.051, +0.009] |
+| b3_degree_only_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.010 [-0.032, +0.006] | 0.06 | -0.037 [-0.065, +0.005] |
+| b3_degree_only_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.026 [-0.055, -0.008] | 0.00 | -0.037 [-0.068, +0.002] |
+| b3_degree_only_disease_cluster | degree_popularity | 451 | -0.012 [-0.031, +0.004] | 0.04 | -0.052 [-0.093, -0.009] |
+| b3_degree_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.014 [-0.033, +0.003] | 0.04 | -0.066 [-0.098, -0.025] |
+| b3_degree_only_disease_cluster | popularity | 451 | +0.009 [+0.002, +0.027] | 1.00 | +0.018 [-0.007, +0.044] |
+| b3_degree_only_disease_cluster | random_walk_with_restart | 451 | -0.046 [-0.071, -0.026] | 0.00 | -0.093 [-0.122, -0.060] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.002 [-0.013, +0.021] | 0.59 | +0.013 [-0.021, +0.044] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.007 [-0.023, +0.013] | 0.20 | -0.010 [-0.041, +0.029] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.001 [-0.016, +0.019] | 0.47 | +0.015 [-0.017, +0.050] |
+| b3_descriptors_only_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.004 [-0.011, +0.023] | 0.73 | +0.018 [-0.014, +0.053] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.012 [-0.028, +0.008] | 0.11 | +0.000 [-0.031, +0.031] |
+| b3_descriptors_only_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.009 [-0.028, +0.012] | 0.19 | -0.012 [-0.047, +0.029] |
+| b3_descriptors_only_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.022 [-0.041, +0.000] | 0.03 | -0.019 [-0.058, +0.016] |
+| b3_descriptors_only_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.004 [-0.024, +0.014] | 0.29 | -0.017 [-0.053, +0.022] |
+| b3_descriptors_only_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.004 [-0.024, +0.015] | 0.33 | +0.000 [-0.032, +0.033] |
+| b3_descriptors_only_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.008 [-0.030, +0.015] | 0.23 | -0.014 [-0.049, +0.031] |
+| b3_descriptors_only_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.023 [-0.051, +0.004] | 0.06 | -0.014 [-0.053, +0.030] |
+| b3_descriptors_only_disease_cluster | degree_popularity | 451 | -0.010 [-0.026, +0.012] | 0.17 | -0.030 [-0.067, +0.019] |
+| b3_descriptors_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.011 [-0.029, +0.010] | 0.10 | -0.044 [-0.084, +0.003] |
+| b3_descriptors_only_disease_cluster | popularity | 451 | +0.012 [+0.004, +0.031] | 1.00 | +0.041 [+0.012, +0.067] |
+| b3_descriptors_only_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.066, -0.020] | 0.00 | -0.071 [-0.105, -0.032] |
+| b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.009 [-0.029, +0.009] | 0.15 | -0.023 [-0.058, +0.015] |
+| b3_linear_response_cofactors_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.003 [-0.010, +0.004] | 0.20 | +0.002 [-0.015, +0.021] |
+| b3_linear_response_cofactors_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.002 [-0.008, +0.016] | 0.72 | +0.004 [-0.023, +0.031] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.014 [-0.030, +0.000] | 0.04 | -0.013 [-0.050, +0.014] |
+| b3_linear_response_cofactors_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.011 [-0.033, +0.008] | 0.10 | -0.025 [-0.060, +0.012] |
+| b3_linear_response_cofactors_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.024 [-0.045, -0.009] | 0.01 | -0.033 [-0.079, +0.007] |
+| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.006 [-0.025, +0.010] | 0.17 | -0.031 [-0.065, +0.014] |
+| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.006 [-0.028, +0.011] | 0.21 | -0.013 [-0.046, +0.022] |
+| b3_linear_response_cofactors_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.009 [-0.032, +0.009] | 0.12 | -0.028 [-0.065, +0.030] |
+| b3_linear_response_cofactors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.025 [-0.051, -0.005] | 0.01 | -0.028 [-0.061, +0.011] |
+| b3_linear_response_cofactors_disease_cluster | degree_popularity | 451 | -0.011 [-0.030, +0.007] | 0.08 | -0.043 [-0.079, +0.005] |
+| b3_linear_response_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.013 [-0.031, +0.001] | 0.04 | -0.057 [-0.090, -0.016] |
+| b3_linear_response_cofactors_disease_cluster | popularity | 451 | +0.010 [-0.001, +0.028] | 0.96 | +0.027 [+0.001, +0.055] |
+| b3_linear_response_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.045 [-0.069, -0.024] | 0.00 | -0.084 [-0.123, -0.043] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.006 [-0.011, +0.027] | 0.76 | +0.025 [-0.013, +0.058] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.011 [-0.007, +0.031] | 0.91 | +0.028 [-0.009, +0.060] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.005 [-0.027, +0.017] | 0.30 | +0.010 [-0.036, +0.039] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.025, +0.016] | 0.45 | -0.002 [-0.049, +0.043] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.037, +0.001] | 0.03 | -0.010 [-0.048, +0.021] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.003 [-0.018, +0.018] | 0.59 | -0.008 [-0.047, +0.030] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.003 [-0.020, +0.021] | 0.60 | +0.010 [-0.036, +0.048] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.000 [-0.024, +0.013] | 0.46 | -0.005 [-0.049, +0.037] |
+| b3_linear_response_cofactors_log_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.016 [-0.043, +0.006] | 0.10 | -0.005 [-0.047, +0.036] |
+| b3_linear_response_cofactors_log_disease_cluster | degree_popularity | 451 | -0.002 [-0.019, +0.014] | 0.34 | -0.020 [-0.065, +0.024] |
+| b3_linear_response_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.024, +0.013] | 0.32 | -0.034 [-0.071, +0.000] |
+| b3_linear_response_cofactors_log_disease_cluster | popularity | 451 | +0.019 [+0.010, +0.036] | 1.00 | +0.050 [+0.018, +0.083] |
+| b3_linear_response_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.059, -0.016] | 0.00 | -0.061 [-0.093, -0.029] |
+| b3_linear_response_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.005 [-0.005, +0.017] | 0.87 | +0.003 [-0.024, +0.031] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.011 [-0.030, +0.004] | 0.07 | -0.015 [-0.049, +0.014] |
+| b3_linear_response_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.008 [-0.031, +0.009] | 0.19 | -0.027 [-0.062, +0.010] |
+| b3_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.021 [-0.043, -0.003] | 0.01 | -0.035 [-0.077, +0.009] |
+| b3_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.003 [-0.021, +0.011] | 0.28 | -0.032 [-0.063, +0.010] |
+| b3_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.004 [-0.026, +0.017] | 0.35 | -0.015 [-0.047, +0.020] |
+| b3_linear_response_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.007 [-0.029, +0.010] | 0.20 | -0.030 [-0.069, +0.019] |
+| b3_linear_response_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.022 [-0.049, -0.001] | 0.01 | -0.030 [-0.062, +0.009] |
+| b3_linear_response_disease_cluster | degree_popularity | 451 | -0.009 [-0.028, +0.007] | 0.17 | -0.045 [-0.084, +0.002] |
+| b3_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.011 [-0.031, +0.006] | 0.10 | -0.059 [-0.093, -0.012] |
+| b3_linear_response_disease_cluster | popularity | 451 | +0.013 [+0.003, +0.032] | 0.99 | +0.025 [-0.006, +0.058] |
+| b3_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.066, -0.022] | 0.00 | -0.086 [-0.119, -0.047] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.016 [-0.037, -0.001] | 0.02 | -0.018 [-0.053, +0.021] |
+| b3_local_structural_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.013 [-0.035, +0.004] | 0.07 | -0.030 [-0.063, +0.011] |
+| b3_local_structural_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.026 [-0.045, -0.010] | 0.00 | -0.037 [-0.070, -0.006] |
+| b3_local_structural_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.008 [-0.025, +0.005] | 0.09 | -0.035 [-0.063, -0.003] |
+| b3_local_structural_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.009 [-0.029, +0.006] | 0.14 | -0.018 [-0.048, +0.014] |
+| b3_local_structural_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.012 [-0.034, +0.003] | 0.07 | -0.032 [-0.062, +0.011] |
+| b3_local_structural_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.027 [-0.055, -0.006] | 0.00 | -0.032 [-0.064, +0.003] |
+| b3_local_structural_disease_cluster | degree_popularity | 451 | -0.014 [-0.031, +0.001] | 0.04 | -0.048 [-0.081, -0.007] |
+| b3_local_structural_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.016 [-0.034, -0.000] | 0.03 | -0.062 [-0.092, -0.027] |
+| b3_local_structural_disease_cluster | popularity | 451 | +0.008 [-0.000, +0.023] | 0.96 | +0.023 [-0.005, +0.053] |
+| b3_local_structural_disease_cluster | random_walk_with_restart | 451 | -0.048 [-0.071, -0.027] | 0.00 | -0.089 [-0.126, -0.047] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.017, +0.022] | 0.59 | -0.012 [-0.049, +0.035] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.030, +0.010] | 0.15 | -0.019 [-0.062, +0.025] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.008 [-0.015, +0.026] | 0.76 | -0.017 [-0.053, +0.032] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.007 [-0.012, +0.024] | 0.79 | +0.000 [-0.035, +0.045] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.004 [-0.019, +0.025] | 0.58 | -0.015 [-0.050, +0.038] |
+| b3_typed_nodes_descriptors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.011 [-0.042, +0.015] | 0.17 | -0.014 [-0.053, +0.038] |
+| b3_typed_nodes_descriptors_disease_cluster | degree_popularity | 451 | +0.002 [-0.017, +0.024] | 0.52 | -0.030 [-0.070, +0.026] |
+| b3_typed_nodes_descriptors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.000 [-0.023, +0.020] | 0.46 | -0.044 [-0.086, +0.004] |
+| b3_typed_nodes_descriptors_disease_cluster | popularity | 451 | +0.024 [+0.014, +0.046] | 1.00 | +0.041 [+0.011, +0.079] |
+| b3_typed_nodes_descriptors_disease_cluster | random_walk_with_restart | 451 | -0.032 [-0.053, -0.010] | 0.00 | -0.071 [-0.104, -0.021] |
+| b6_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.013 [-0.031, +0.007] | 0.08 | -0.007 [-0.052, +0.037] |
 | b6_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.005 [-0.009, +0.015] | 0.77 | -0.005 [-0.036, +0.025] |
 | b6_linear_response_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.004 [-0.009, +0.019] | 0.75 | +0.012 [-0.014, +0.038] |
+| b6_linear_response_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.001 [-0.010, +0.010] | 0.55 | -0.002 [-0.020, +0.022] |
 | b6_linear_response_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.014 [-0.042, +0.006] | 0.12 | -0.002 [-0.044, +0.044] |
-| b6_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.013 [-0.031, +0.007] | 0.08 | -0.007 [-0.052, +0.037] |
 | b6_linear_response_disease_cluster | degree_popularity | 451 | -0.001 [-0.010, +0.010] | 0.51 | -0.018 [-0.043, +0.009] |
 | b6_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.003 [-0.021, +0.016] | 0.40 | -0.032 [-0.074, +0.012] |
 | b6_linear_response_disease_cluster | popularity | 451 | +0.021 [+0.012, +0.046] | 1.00 | +0.053 [+0.017, +0.092] |
 | b6_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.035 [-0.058, -0.008] | 0.01 | -0.059 [-0.099, -0.021] |
-| b6_linear_response_time_scales_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.004 [-0.005, +0.013] | 0.82 | -0.003 [-0.027, +0.022] |
-| b6_linear_response_time_scales_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.003 [-0.011, +0.019] | 0.70 | +0.015 [-0.017, +0.041] |
-| b6_linear_response_time_scales_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.015 [-0.042, +0.005] | 0.12 | +0.000 [-0.040, +0.033] |
-| b6_linear_response_time_scales_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.014 [-0.032, +0.011] | 0.07 | -0.005 [-0.041, +0.033] |
-| b6_linear_response_time_scales_disease_cluster | degree_popularity | 451 | -0.002 [-0.010, +0.011] | 0.42 | -0.016 [-0.043, +0.012] |
-| b6_linear_response_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.021, +0.015] | 0.40 | -0.029 [-0.072, +0.011] |
-| b6_linear_response_time_scales_disease_cluster | popularity | 451 | +0.020 [+0.011, +0.044] | 1.00 | +0.055 [+0.018, +0.085] |
-| b6_linear_response_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.061, -0.011] | 0.00 | -0.057 [-0.097, -0.025] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.000 [-0.016, +0.019] | 0.48 | +0.017 [-0.007, +0.044] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.019 [-0.047, +0.003] | 0.05 | +0.003 [-0.033, +0.039] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.018 [-0.036, +0.006] | 0.04 | -0.002 [-0.036, +0.032] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | degree_popularity | 451 | -0.006 [-0.015, +0.008] | 0.17 | -0.013 [-0.042, +0.019] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.025, +0.010] | 0.21 | -0.027 [-0.069, +0.018] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | popularity | 451 | +0.016 [+0.010, +0.039] | 1.00 | +0.058 [+0.025, +0.084] |
-| b6_linear_response_time_scales_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.040 [-0.061, -0.014] | 0.00 | -0.054 [-0.090, -0.016] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.019 [-0.046, +0.001] | 0.04 | -0.015 [-0.049, +0.017] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.018 [-0.033, -0.001] | 0.02 | -0.020 [-0.053, +0.012] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | degree_popularity | 451 | -0.005 [-0.019, +0.011] | 0.23 | -0.030 [-0.061, +0.002] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.007 [-0.029, +0.013] | 0.24 | -0.044 [-0.081, -0.001] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | popularity | 451 | +0.016 [+0.009, +0.039] | 1.00 | +0.040 [+0.015, +0.064] |
-| b6_linear_response_time_scales_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.039 [-0.060, -0.018] | 0.00 | -0.071 [-0.103, -0.036] |
-| b6_mechanistic_gate_time_scales_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | +0.001 [-0.019, +0.024] | 0.49 | -0.005 [-0.052, +0.028] |
-| b6_mechanistic_gate_time_scales_disease_cluster | degree_popularity | 451 | +0.013 [-0.005, +0.042] | 0.92 | -0.016 [-0.054, +0.023] |
-| b6_mechanistic_gate_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.011 [-0.013, +0.040] | 0.83 | -0.029 [-0.074, +0.008] |
-| b6_mechanistic_gate_time_scales_disease_cluster | popularity | 451 | +0.035 [+0.022, +0.064] | 1.00 | +0.055 [+0.020, +0.086] |
-| b6_mechanistic_gate_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.020 [-0.043, +0.006] | 0.09 | -0.057 [-0.099, -0.020] |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.018 [-0.006, +0.036] | 0.95 | +0.002 [-0.032, +0.036] |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.018 [+0.001, +0.033] | 0.98 | +0.020 [-0.012, +0.053] |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.014 [-0.011, +0.032] | 0.93 | +0.005 [-0.033, +0.041] |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.001 [-0.024, +0.019] | 0.51 | +0.005 [-0.028, +0.052] |
 | b6_linear_response_gate_time_scales_cofactors_disease_cluster | degree_popularity | 451 | +0.012 [-0.004, +0.030] | 0.95 | -0.011 [-0.047, +0.029] |
 | b6_linear_response_gate_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.010 [-0.011, +0.028] | 0.86 | -0.024 [-0.062, +0.011] |
 | b6_linear_response_gate_time_scales_cofactors_disease_cluster | popularity | 451 | +0.034 [+0.027, +0.052] | 1.00 | +0.060 [+0.032, +0.089] |
 | b6_linear_response_gate_time_scales_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.022 [-0.043, -0.000] | 0.03 | -0.052 [-0.092, -0.015] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.000 [-0.016, +0.019] | 0.48 | +0.017 [-0.007, +0.044] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.004 [-0.013, +0.005] | 0.18 | +0.003 [-0.022, +0.027] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.019 [-0.047, +0.003] | 0.05 | +0.003 [-0.033, +0.039] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | degree_popularity | 451 | -0.006 [-0.015, +0.008] | 0.17 | -0.013 [-0.042, +0.019] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.025, +0.010] | 0.21 | -0.027 [-0.069, +0.018] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | popularity | 451 | +0.016 [+0.010, +0.039] | 1.00 | +0.058 [+0.025, +0.084] |
+| b6_linear_response_time_scales_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.040 [-0.061, -0.014] | 0.00 | -0.054 [-0.090, -0.016] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.003 [-0.019, +0.011] | 0.30 | -0.015 [-0.041, +0.017] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.019 [-0.046, +0.001] | 0.04 | -0.015 [-0.049, +0.017] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | degree_popularity | 451 | -0.005 [-0.019, +0.011] | 0.23 | -0.030 [-0.061, +0.002] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.007 [-0.029, +0.013] | 0.24 | -0.044 [-0.081, -0.001] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | popularity | 451 | +0.016 [+0.009, +0.039] | 1.00 | +0.040 [+0.015, +0.064] |
+| b6_linear_response_time_scales_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.039 [-0.060, -0.018] | 0.00 | -0.071 [-0.103, -0.036] |
+| b6_linear_response_time_scales_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.015 [-0.042, +0.005] | 0.12 | +0.000 [-0.040, +0.033] |
+| b6_linear_response_time_scales_disease_cluster | degree_popularity | 451 | -0.002 [-0.010, +0.011] | 0.42 | -0.016 [-0.043, +0.012] |
+| b6_linear_response_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.021, +0.015] | 0.40 | -0.029 [-0.072, +0.011] |
+| b6_linear_response_time_scales_disease_cluster | popularity | 451 | +0.020 [+0.011, +0.044] | 1.00 | +0.055 [+0.018, +0.085] |
+| b6_linear_response_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.061, -0.011] | 0.00 | -0.057 [-0.097, -0.025] |
+| b6_mechanistic_gate_time_scales_disease_cluster | degree_popularity | 451 | +0.013 [-0.005, +0.042] | 0.92 | -0.016 [-0.054, +0.023] |
+| b6_mechanistic_gate_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.011 [-0.013, +0.040] | 0.83 | -0.029 [-0.074, +0.008] |
+| b6_mechanistic_gate_time_scales_disease_cluster | popularity | 451 | +0.035 [+0.022, +0.064] | 1.00 | +0.055 [+0.020, +0.086] |
+| b6_mechanistic_gate_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.020 [-0.043, +0.006] | 0.09 | -0.057 [-0.099, -0.020] |
 | degree_popularity | knowledge_graph_embedding_transe | 451 | -0.002 [-0.021, +0.015] | 0.39 | -0.014 [-0.057, +0.030] |
 | degree_popularity | popularity | 451 | +0.022 [+0.013, +0.039] | 1.00 | +0.071 [+0.035, +0.105] |
 | degree_popularity | random_walk_with_restart | 451 | -0.034 [-0.057, -0.014] | 0.00 | -0.041 [-0.086, -0.001] |
@@ -234,19 +300,22 @@ Rankings scored inside groups of one degree stratum and one test fold (3 degree 
 |---|---|---|
 | b3_sigmoid_disease_cluster | 0.223 | 0.508 |
 | b3_typed_nodes_disease_cluster | 0.238 | 0.526 |
-| b3_degree_only_disease_cluster | 0.214 | 0.497 |
-| b3_linear_response_disease_cluster | 0.217 | 0.500 |
-| b3_linear_response_cofactors_disease_cluster | 0.223 | 0.509 |
-| b3_linear_response_cofactors_log_disease_cluster | 0.219 | 0.501 |
 | b6_default_disease_cluster | 0.232 | 0.474 |
 | b6_mechanistic_disease_cluster | 0.228 | 0.504 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.244 | 0.512 |
+| b3_degree_only_disease_cluster | 0.214 | 0.497 |
+| b3_descriptors_only_disease_cluster | 0.217 | 0.498 |
+| b3_linear_response_cofactors_disease_cluster | 0.223 | 0.509 |
+| b3_linear_response_cofactors_log_disease_cluster | 0.219 | 0.501 |
+| b3_linear_response_disease_cluster | 0.217 | 0.500 |
+| b3_local_structural_disease_cluster | 0.219 | 0.487 |
+| b3_typed_nodes_descriptors_disease_cluster | 0.220 | 0.497 |
 | b6_linear_response_disease_cluster | 0.216 | 0.484 |
-| b6_linear_response_time_scales_disease_cluster | 0.214 | 0.498 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.239 | 0.508 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | 0.227 | 0.512 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | 0.222 | 0.512 |
+| b6_linear_response_time_scales_disease_cluster | 0.214 | 0.498 |
 | b6_mechanistic_gate_time_scales_disease_cluster | 0.251 | 0.521 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | 0.239 | 0.508 |
 | degree_popularity | 0.214 | 0.500 |
 | knowledge_graph_embedding_transe | 0.222 | 0.523 |
 | popularity | 0.212 | 0.500 |
@@ -264,22 +333,6 @@ Paired bootstrap of the within-strata macro AUPRC, each run against each baselin
 | b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.017 [-0.006, +0.041] | 0.92 |
 | b3_typed_nodes_disease_cluster | popularity | 451 | +0.026 [+0.017, +0.050] | 1.00 |
 | b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.005 [-0.030, +0.019] | 0.29 |
-| b3_degree_only_disease_cluster | degree_popularity | 451 | -0.000 [-0.009, +0.012] | 0.56 |
-| b3_degree_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.029, +0.011] | 0.21 |
-| b3_degree_only_disease_cluster | popularity | 451 | +0.002 [-0.004, +0.022] | 0.89 |
-| b3_degree_only_disease_cluster | random_walk_with_restart | 451 | -0.030 [-0.054, -0.008] | 0.00 |
-| b3_linear_response_disease_cluster | degree_popularity | 451 | +0.004 [-0.013, +0.021] | 0.68 |
-| b3_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.030, +0.016] | 0.30 |
-| b3_linear_response_disease_cluster | popularity | 451 | +0.005 [-0.001, +0.022] | 0.96 |
-| b3_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.026 [-0.049, -0.006] | 0.01 |
-| b3_linear_response_cofactors_disease_cluster | degree_popularity | 451 | +0.009 [-0.009, +0.030] | 0.81 |
-| b3_linear_response_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.022, +0.023] | 0.53 |
-| b3_linear_response_cofactors_disease_cluster | popularity | 451 | +0.011 [+0.004, +0.033] | 0.99 |
-| b3_linear_response_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.021 [-0.046, +0.004] | 0.06 |
-| b3_linear_response_cofactors_log_disease_cluster | degree_popularity | 451 | +0.006 [-0.014, +0.023] | 0.77 |
-| b3_linear_response_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.002 [-0.027, +0.017] | 0.36 |
-| b3_linear_response_cofactors_log_disease_cluster | popularity | 451 | +0.007 [-0.000, +0.026] | 0.96 |
-| b3_linear_response_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.024 [-0.050, -0.006] | 0.00 |
 | b6_default_disease_cluster | degree_popularity | 451 | +0.019 [-0.000, +0.046] | 0.96 |
 | b6_default_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.011 [-0.016, +0.039] | 0.79 |
 | b6_default_disease_cluster | popularity | 451 | +0.020 [+0.006, +0.051] | 1.00 |
@@ -292,14 +345,42 @@ Paired bootstrap of the within-strata macro AUPRC, each run against each baselin
 | b6_mechanistic_expected_gate_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.022 [-0.004, +0.047] | 0.94 |
 | b6_mechanistic_expected_gate_disease_cluster | popularity | 451 | +0.032 [+0.022, +0.059] | 1.00 |
 | b6_mechanistic_expected_gate_disease_cluster | random_walk_with_restart | 451 | +0.000 [-0.023, +0.023] | 0.48 |
+| b3_degree_only_disease_cluster | degree_popularity | 451 | -0.000 [-0.009, +0.012] | 0.56 |
+| b3_degree_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.029, +0.011] | 0.21 |
+| b3_degree_only_disease_cluster | popularity | 451 | +0.002 [-0.004, +0.022] | 0.89 |
+| b3_degree_only_disease_cluster | random_walk_with_restart | 451 | -0.030 [-0.054, -0.008] | 0.00 |
+| b3_descriptors_only_disease_cluster | degree_popularity | 451 | +0.003 [-0.013, +0.028] | 0.71 |
+| b3_descriptors_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.025, +0.018] | 0.38 |
+| b3_descriptors_only_disease_cluster | popularity | 451 | +0.005 [+0.000, +0.032] | 0.98 |
+| b3_descriptors_only_disease_cluster | random_walk_with_restart | 451 | -0.027 [-0.047, -0.000] | 0.03 |
+| b3_linear_response_cofactors_disease_cluster | degree_popularity | 451 | +0.009 [-0.009, +0.030] | 0.81 |
+| b3_linear_response_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.022, +0.023] | 0.53 |
+| b3_linear_response_cofactors_disease_cluster | popularity | 451 | +0.011 [+0.004, +0.033] | 0.99 |
+| b3_linear_response_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.021 [-0.046, +0.004] | 0.06 |
+| b3_linear_response_cofactors_log_disease_cluster | degree_popularity | 451 | +0.006 [-0.014, +0.023] | 0.77 |
+| b3_linear_response_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.002 [-0.027, +0.017] | 0.36 |
+| b3_linear_response_cofactors_log_disease_cluster | popularity | 451 | +0.007 [-0.000, +0.026] | 0.96 |
+| b3_linear_response_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.024 [-0.050, -0.006] | 0.00 |
+| b3_linear_response_disease_cluster | degree_popularity | 451 | +0.004 [-0.013, +0.021] | 0.68 |
+| b3_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.030, +0.016] | 0.30 |
+| b3_linear_response_disease_cluster | popularity | 451 | +0.005 [-0.001, +0.022] | 0.96 |
+| b3_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.026 [-0.049, -0.006] | 0.01 |
+| b3_local_structural_disease_cluster | degree_popularity | 451 | +0.005 [-0.008, +0.019] | 0.78 |
+| b3_local_structural_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.003 [-0.029, +0.014] | 0.35 |
+| b3_local_structural_disease_cluster | popularity | 451 | +0.007 [+0.003, +0.023] | 0.99 |
+| b3_local_structural_disease_cluster | random_walk_with_restart | 451 | -0.025 [-0.053, -0.006] | 0.00 |
+| b3_typed_nodes_descriptors_disease_cluster | degree_popularity | 451 | +0.006 [-0.008, +0.025] | 0.77 |
+| b3_typed_nodes_descriptors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.002 [-0.026, +0.017] | 0.37 |
+| b3_typed_nodes_descriptors_disease_cluster | popularity | 451 | +0.008 [+0.003, +0.026] | 1.00 |
+| b3_typed_nodes_descriptors_disease_cluster | random_walk_with_restart | 451 | -0.024 [-0.047, -0.003] | 0.01 |
 | b6_linear_response_disease_cluster | degree_popularity | 451 | +0.002 [-0.013, +0.022] | 0.58 |
 | b6_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.006 [-0.034, +0.018] | 0.27 |
 | b6_linear_response_disease_cluster | popularity | 451 | +0.004 [-0.008, +0.032] | 0.81 |
 | b6_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.028 [-0.060, +0.001] | 0.04 |
-| b6_linear_response_time_scales_disease_cluster | degree_popularity | 451 | -0.000 [-0.012, +0.015] | 0.56 |
-| b6_linear_response_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.032, +0.012] | 0.24 |
-| b6_linear_response_time_scales_disease_cluster | popularity | 451 | +0.002 [-0.006, +0.024] | 0.88 |
-| b6_linear_response_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.030 [-0.054, -0.004] | 0.01 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | degree_popularity | 451 | +0.025 [+0.004, +0.054] | 0.99 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.017 [-0.006, +0.048] | 0.91 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | popularity | 451 | +0.027 [+0.017, +0.064] | 1.00 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.004 [-0.031, +0.029] | 0.44 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | degree_popularity | 451 | +0.013 [-0.005, +0.048] | 0.90 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.005 [-0.024, +0.041] | 0.62 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | popularity | 451 | +0.015 [+0.001, +0.052] | 0.98 |
@@ -308,14 +389,14 @@ Paired bootstrap of the within-strata macro AUPRC, each run against each baselin
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.000 [-0.022, +0.021] | 0.51 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | popularity | 451 | +0.010 [+0.005, +0.032] | 1.00 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | random_walk_with_restart | 451 | -0.022 [-0.047, -0.001] | 0.03 |
+| b6_linear_response_time_scales_disease_cluster | degree_popularity | 451 | -0.000 [-0.012, +0.015] | 0.56 |
+| b6_linear_response_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.032, +0.012] | 0.24 |
+| b6_linear_response_time_scales_disease_cluster | popularity | 451 | +0.002 [-0.006, +0.024] | 0.88 |
+| b6_linear_response_time_scales_disease_cluster | random_walk_with_restart | 451 | -0.030 [-0.054, -0.004] | 0.01 |
 | b6_mechanistic_gate_time_scales_disease_cluster | degree_popularity | 451 | +0.037 [+0.017, +0.068] | 1.00 |
 | b6_mechanistic_gate_time_scales_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.029 [-0.001, +0.058] | 0.97 |
 | b6_mechanistic_gate_time_scales_disease_cluster | popularity | 451 | +0.039 [+0.026, +0.073] | 1.00 |
 | b6_mechanistic_gate_time_scales_disease_cluster | random_walk_with_restart | 451 | +0.007 [-0.014, +0.032] | 0.71 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | degree_popularity | 451 | +0.025 [+0.004, +0.054] | 0.99 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.017 [-0.006, +0.048] | 0.91 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | popularity | 451 | +0.027 [+0.017, +0.064] | 1.00 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | random_walk_with_restart | 451 | -0.004 [-0.031, +0.029] | 0.44 |
 
 ## Configurations
 
@@ -325,34 +406,37 @@ Commits are those the splits ran under (recorded from 6 October 2026; 'not recor
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | b3_sigmoid_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 12.4 | not recorded |
 | b3_typed_nodes_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 14.2 | not recorded |
-| b3_degree_only_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 26.2 | 1b3efd6 |
-| b3_linear_response_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 20.0 | 0e9cfb3, 10e6cf4, e314e3b |
-| b3_linear_response_cofactors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.0 | 198c5b8, 4bc9e73 |
-| b3_linear_response_cofactors_log_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.6 | 1687e09, 198c5b8, 1b3efd6 |
 | b6_default_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 43.8 | not recorded |
 | b6_mechanistic_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 35.4 | not recorded |
 | b6_mechanistic_expected_gate_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 47.0 | 554018e, c84bf7f, e314e3b, f640f08 |
+| b3_degree_only_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 26.2 | 1b3efd6 |
+| b3_descriptors_only_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.2 | 173cf68 |
+| b3_linear_response_cofactors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.0 | 198c5b8, 4bc9e73 |
+| b3_linear_response_cofactors_log_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.6 | 1687e09, 198c5b8, 1b3efd6 |
+| b3_linear_response_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 20.0 | 0e9cfb3, 10e6cf4, e314e3b |
+| b3_local_structural_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 17.4 | 173cf68 |
+| b3_typed_nodes_descriptors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.6 | 173cf68, 6ac9eb1, f36d03c |
 | b6_linear_response_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 46.2 | 0e9cfb3, 1687e09, 198c5b8, 1b3efd6, 1cf0dcb, e314e3b |
-| b6_linear_response_time_scales_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 24.0 | 0e9cfb3, 1687e09, 1b3efd6, e314e3b |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 40.0 | 173cf68, 2acb995, 5000461, 540fbe5 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 22.2 | 0e9cfb3, 1687e09, 198c5b8, 1b3efd6, e314e3b |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 21.8 | 198c5b8, 4bc9e73 |
+| b6_linear_response_time_scales_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 24.0 | 0e9cfb3, 1687e09, 1b3efd6, e314e3b |
 | b6_mechanistic_gate_time_scales_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 29.8 | 540fbe5, 7b77807, cc2bdb9 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 40.0 | 173cf68, 2acb995, 5000461, 540fbe5 |
 
 ## Per-symptom AUPRC (pooled; 95 percent bootstrap interval over perturbations; base rate in parentheses)
 
-| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe | b3_sigmoid_disease_cluster | b3_typed_nodes_disease_cluster | b3_degree_only_disease_cluster | b3_linear_response_disease_cluster | b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | b6_default_disease_cluster | b6_mechanistic_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_disease_cluster | b6_linear_response_time_scales_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) | 0.256 [0.213, 0.324] (0.259) | 0.254 [0.212, 0.321] (0.259) | 0.280 [0.237, 0.345] (0.259) | 0.229 [0.187, 0.287] (0.259) | 0.251 [0.199, 0.332] (0.259) | 0.239 [0.193, 0.314] (0.259) | 0.239 [0.200, 0.291] (0.259) | 0.283 [0.223, 0.342] (0.259) | 0.269 [0.218, 0.333] (0.259) | 0.296 [0.244, 0.360] (0.259) | 0.224 [0.187, 0.271] (0.259) | 0.219 [0.184, 0.265] (0.259) | 0.221 [0.182, 0.271] (0.259) | 0.215 [0.177, 0.261] (0.259) | 0.282 [0.233, 0.378] (0.259) | 0.293 [0.237, 0.374] (0.259) |
-| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) | 0.434 [0.391, 0.489] (0.448) | 0.458 [0.398, 0.514] (0.448) | 0.496 [0.436, 0.556] (0.448) | 0.447 [0.396, 0.506] (0.448) | 0.469 [0.416, 0.538] (0.448) | 0.469 [0.406, 0.537] (0.448) | 0.429 [0.373, 0.485] (0.448) | 0.492 [0.433, 0.570] (0.448) | 0.455 [0.394, 0.524] (0.448) | 0.472 [0.417, 0.537] (0.448) | 0.450 [0.388, 0.519] (0.448) | 0.434 [0.378, 0.495] (0.448) | 0.440 [0.385, 0.507] (0.448) | 0.448 [0.375, 0.513] (0.448) | 0.484 [0.437, 0.553] (0.448) | 0.470 [0.414, 0.538] (0.448) |
-| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) | 0.227 [0.192, 0.283] (0.228) | 0.190 [0.158, 0.242] (0.228) | 0.189 [0.162, 0.238] (0.228) | 0.177 [0.144, 0.220] (0.228) | 0.185 [0.154, 0.232] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.238 [0.186, 0.302] (0.228) | 0.189 [0.157, 0.233] (0.228) | 0.203 [0.156, 0.256] (0.228) | 0.206 [0.162, 0.260] (0.228) | 0.195 [0.153, 0.243] (0.228) | 0.201 [0.158, 0.253] (0.228) | 0.193 [0.156, 0.244] (0.228) | 0.183 [0.149, 0.227] (0.228) | 0.193 [0.155, 0.247] (0.228) | 0.233 [0.186, 0.302] (0.228) |
-| elevated_mood_or_mania | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) | 0.205 [0.176, 0.259] (0.224) | 0.226 [0.186, 0.282] (0.224) | 0.218 [0.176, 0.297] (0.224) | 0.205 [0.175, 0.261] (0.224) | 0.193 [0.161, 0.250] (0.224) | 0.198 [0.166, 0.261] (0.224) | 0.218 [0.179, 0.272] (0.224) | 0.249 [0.202, 0.328] (0.224) | 0.195 [0.162, 0.254] (0.224) | 0.234 [0.198, 0.298] (0.224) | 0.266 [0.226, 0.356] (0.224) | 0.234 [0.198, 0.312] (0.224) | 0.224 [0.190, 0.294] (0.224) | 0.210 [0.176, 0.286] (0.224) | 0.282 [0.220, 0.373] (0.224) | 0.235 [0.198, 0.311] (0.224) |
-| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) | 0.055 [0.035, 0.111] (0.051) | 0.043 [0.027, 0.083] (0.051) | 0.048 [0.032, 0.082] (0.051) | 0.049 [0.029, 0.126] (0.051) | 0.050 [0.031, 0.130] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.044 [0.030, 0.084] (0.051) | 0.052 [0.031, 0.106] (0.051) | 0.080 [0.046, 0.168] (0.051) | 0.090 [0.045, 0.204] (0.051) | 0.069 [0.040, 0.154] (0.051) | 0.081 [0.042, 0.178] (0.051) | 0.071 [0.040, 0.171] (0.051) | 0.051 [0.034, 0.093] (0.051) | 0.065 [0.036, 0.159] (0.051) | 0.051 [0.034, 0.123] (0.051) |
-| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) | 0.406 [0.354, 0.482] (0.399) | 0.413 [0.357, 0.486] (0.399) | 0.413 [0.355, 0.474] (0.399) | 0.389 [0.347, 0.454] (0.399) | 0.410 [0.349, 0.475] (0.399) | 0.398 [0.340, 0.458] (0.399) | 0.395 [0.350, 0.468] (0.399) | 0.436 [0.384, 0.513] (0.399) | 0.415 [0.366, 0.494] (0.399) | 0.400 [0.347, 0.472] (0.399) | 0.387 [0.339, 0.450] (0.399) | 0.396 [0.348, 0.464] (0.399) | 0.388 [0.344, 0.460] (0.399) | 0.432 [0.374, 0.506] (0.399) | 0.391 [0.334, 0.461] (0.399) | 0.388 [0.341, 0.453] (0.399) |
-| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) | 0.103 [0.070, 0.166] (0.084) | 0.105 [0.068, 0.178] (0.084) | 0.096 [0.067, 0.144] (0.084) | 0.111 [0.063, 0.198] (0.084) | 0.086 [0.060, 0.152] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.111 [0.066, 0.215] (0.084) | 0.132 [0.084, 0.246] (0.084) | 0.110 [0.075, 0.173] (0.084) | 0.110 [0.069, 0.216] (0.084) | 0.108 [0.071, 0.186] (0.084) | 0.105 [0.067, 0.195] (0.084) | 0.091 [0.061, 0.157] (0.084) | 0.106 [0.070, 0.170] (0.084) | 0.107 [0.063, 0.211] (0.084) | 0.109 [0.062, 0.176] (0.084) |
-| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) | 0.162 [0.127, 0.227] (0.149) | 0.121 [0.094, 0.161] (0.149) | 0.132 [0.101, 0.177] (0.149) | 0.126 [0.097, 0.166] (0.149) | 0.122 [0.093, 0.159] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.135 [0.102, 0.185] (0.149) | 0.141 [0.116, 0.201] (0.149) | 0.142 [0.104, 0.205] (0.149) | 0.136 [0.098, 0.197] (0.149) | 0.134 [0.104, 0.186] (0.149) | 0.134 [0.105, 0.199] (0.149) | 0.147 [0.116, 0.204] (0.149) | 0.155 [0.117, 0.239] (0.149) | 0.149 [0.112, 0.218] (0.149) | 0.172 [0.123, 0.250] (0.149) |
-| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) | 0.067 [0.043, 0.112] (0.064) | 0.058 [0.038, 0.087] (0.064) | 0.052 [0.036, 0.080] (0.064) | 0.053 [0.036, 0.084] (0.064) | 0.053 [0.037, 0.079] (0.064) | 0.059 [0.039, 0.118] (0.064) | 0.069 [0.044, 0.113] (0.064) | 0.054 [0.036, 0.085] (0.064) | 0.070 [0.041, 0.121] (0.064) | 0.049 [0.032, 0.074] (0.064) | 0.059 [0.038, 0.103] (0.064) | 0.076 [0.040, 0.166] (0.064) | 0.073 [0.041, 0.158] (0.064) | 0.052 [0.035, 0.100] (0.064) | 0.066 [0.041, 0.115] (0.064) | 0.057 [0.040, 0.091] (0.064) |
+| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe | b3_sigmoid_disease_cluster | b3_typed_nodes_disease_cluster | b6_default_disease_cluster | b6_mechanistic_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | b3_degree_only_disease_cluster | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_disease_cluster | b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) | 0.256 [0.213, 0.324] (0.259) | 0.254 [0.212, 0.321] (0.259) | 0.280 [0.237, 0.345] (0.259) | 0.283 [0.223, 0.342] (0.259) | 0.269 [0.218, 0.333] (0.259) | 0.296 [0.244, 0.360] (0.259) | 0.229 [0.187, 0.287] (0.259) | 0.213 [0.177, 0.260] (0.259) | 0.239 [0.193, 0.314] (0.259) | 0.239 [0.200, 0.291] (0.259) | 0.251 [0.199, 0.332] (0.259) | 0.225 [0.182, 0.285] (0.259) | 0.277 [0.234, 0.340] (0.259) | 0.224 [0.187, 0.271] (0.259) | 0.293 [0.237, 0.374] (0.259) | 0.221 [0.182, 0.271] (0.259) | 0.215 [0.177, 0.261] (0.259) | 0.219 [0.184, 0.265] (0.259) | 0.282 [0.233, 0.378] (0.259) |
+| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) | 0.434 [0.391, 0.489] (0.448) | 0.458 [0.398, 0.514] (0.448) | 0.496 [0.436, 0.556] (0.448) | 0.492 [0.433, 0.570] (0.448) | 0.455 [0.394, 0.524] (0.448) | 0.472 [0.417, 0.537] (0.448) | 0.447 [0.396, 0.506] (0.448) | 0.409 [0.359, 0.466] (0.448) | 0.469 [0.406, 0.537] (0.448) | 0.429 [0.373, 0.485] (0.448) | 0.469 [0.416, 0.538] (0.448) | 0.453 [0.401, 0.515] (0.448) | 0.442 [0.385, 0.505] (0.448) | 0.450 [0.388, 0.519] (0.448) | 0.470 [0.414, 0.538] (0.448) | 0.440 [0.385, 0.507] (0.448) | 0.448 [0.375, 0.513] (0.448) | 0.434 [0.378, 0.495] (0.448) | 0.484 [0.437, 0.553] (0.448) |
+| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) | 0.227 [0.192, 0.283] (0.228) | 0.190 [0.158, 0.242] (0.228) | 0.189 [0.162, 0.238] (0.228) | 0.189 [0.157, 0.233] (0.228) | 0.203 [0.156, 0.256] (0.228) | 0.206 [0.162, 0.260] (0.228) | 0.177 [0.144, 0.220] (0.228) | 0.194 [0.159, 0.242] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.238 [0.186, 0.302] (0.228) | 0.185 [0.154, 0.232] (0.228) | 0.185 [0.153, 0.227] (0.228) | 0.179 [0.151, 0.221] (0.228) | 0.195 [0.153, 0.243] (0.228) | 0.233 [0.186, 0.302] (0.228) | 0.193 [0.156, 0.244] (0.228) | 0.183 [0.149, 0.227] (0.228) | 0.201 [0.158, 0.253] (0.228) | 0.193 [0.155, 0.247] (0.228) |
+| elevated_mood_or_mania | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) | 0.205 [0.176, 0.259] (0.224) | 0.226 [0.186, 0.282] (0.224) | 0.218 [0.176, 0.297] (0.224) | 0.249 [0.202, 0.328] (0.224) | 0.195 [0.162, 0.254] (0.224) | 0.234 [0.198, 0.298] (0.224) | 0.205 [0.175, 0.261] (0.224) | 0.197 [0.165, 0.248] (0.224) | 0.198 [0.166, 0.261] (0.224) | 0.218 [0.179, 0.272] (0.224) | 0.193 [0.161, 0.250] (0.224) | 0.198 [0.166, 0.249] (0.224) | 0.207 [0.173, 0.277] (0.224) | 0.266 [0.226, 0.356] (0.224) | 0.235 [0.198, 0.311] (0.224) | 0.224 [0.190, 0.294] (0.224) | 0.210 [0.176, 0.286] (0.224) | 0.234 [0.198, 0.312] (0.224) | 0.282 [0.220, 0.373] (0.224) |
+| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) | 0.055 [0.035, 0.111] (0.051) | 0.043 [0.027, 0.083] (0.051) | 0.048 [0.032, 0.082] (0.051) | 0.052 [0.031, 0.106] (0.051) | 0.080 [0.046, 0.168] (0.051) | 0.090 [0.045, 0.204] (0.051) | 0.049 [0.029, 0.126] (0.051) | 0.057 [0.032, 0.139] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.044 [0.030, 0.084] (0.051) | 0.050 [0.031, 0.130] (0.051) | 0.055 [0.033, 0.127] (0.051) | 0.049 [0.029, 0.097] (0.051) | 0.069 [0.040, 0.154] (0.051) | 0.051 [0.034, 0.123] (0.051) | 0.071 [0.040, 0.171] (0.051) | 0.051 [0.034, 0.093] (0.051) | 0.081 [0.042, 0.178] (0.051) | 0.065 [0.036, 0.159] (0.051) |
+| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) | 0.406 [0.354, 0.482] (0.399) | 0.413 [0.357, 0.486] (0.399) | 0.413 [0.355, 0.474] (0.399) | 0.436 [0.384, 0.513] (0.399) | 0.415 [0.366, 0.494] (0.399) | 0.400 [0.347, 0.472] (0.399) | 0.389 [0.347, 0.454] (0.399) | 0.453 [0.390, 0.526] (0.399) | 0.398 [0.340, 0.458] (0.399) | 0.395 [0.350, 0.468] (0.399) | 0.410 [0.349, 0.475] (0.399) | 0.405 [0.349, 0.471] (0.399) | 0.454 [0.374, 0.535] (0.399) | 0.387 [0.339, 0.450] (0.399) | 0.388 [0.341, 0.453] (0.399) | 0.388 [0.344, 0.460] (0.399) | 0.432 [0.374, 0.506] (0.399) | 0.396 [0.348, 0.464] (0.399) | 0.391 [0.334, 0.461] (0.399) |
+| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) | 0.103 [0.070, 0.166] (0.084) | 0.105 [0.068, 0.178] (0.084) | 0.096 [0.067, 0.144] (0.084) | 0.132 [0.084, 0.246] (0.084) | 0.110 [0.075, 0.173] (0.084) | 0.110 [0.069, 0.216] (0.084) | 0.111 [0.063, 0.198] (0.084) | 0.088 [0.057, 0.140] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.111 [0.066, 0.215] (0.084) | 0.086 [0.060, 0.152] (0.084) | 0.078 [0.052, 0.125] (0.084) | 0.084 [0.060, 0.119] (0.084) | 0.108 [0.071, 0.186] (0.084) | 0.109 [0.062, 0.176] (0.084) | 0.091 [0.061, 0.157] (0.084) | 0.106 [0.070, 0.170] (0.084) | 0.105 [0.067, 0.195] (0.084) | 0.107 [0.063, 0.211] (0.084) |
+| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) | 0.162 [0.127, 0.227] (0.149) | 0.121 [0.094, 0.161] (0.149) | 0.132 [0.101, 0.177] (0.149) | 0.141 [0.116, 0.201] (0.149) | 0.142 [0.104, 0.205] (0.149) | 0.136 [0.098, 0.197] (0.149) | 0.126 [0.097, 0.166] (0.149) | 0.135 [0.102, 0.199] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.135 [0.102, 0.185] (0.149) | 0.122 [0.093, 0.159] (0.149) | 0.127 [0.097, 0.172] (0.149) | 0.129 [0.106, 0.177] (0.149) | 0.134 [0.104, 0.186] (0.149) | 0.172 [0.123, 0.250] (0.149) | 0.147 [0.116, 0.204] (0.149) | 0.155 [0.117, 0.239] (0.149) | 0.134 [0.105, 0.199] (0.149) | 0.149 [0.112, 0.218] (0.149) |
+| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) | 0.067 [0.043, 0.112] (0.064) | 0.058 [0.038, 0.087] (0.064) | 0.052 [0.036, 0.080] (0.064) | 0.054 [0.036, 0.085] (0.064) | 0.070 [0.041, 0.121] (0.064) | 0.049 [0.032, 0.074] (0.064) | 0.053 [0.036, 0.084] (0.064) | 0.067 [0.041, 0.131] (0.064) | 0.059 [0.039, 0.118] (0.064) | 0.069 [0.044, 0.113] (0.064) | 0.053 [0.037, 0.079] (0.064) | 0.048 [0.034, 0.070] (0.064) | 0.096 [0.040, 0.206] (0.064) | 0.059 [0.038, 0.103] (0.064) | 0.057 [0.040, 0.091] (0.064) | 0.073 [0.041, 0.158] (0.064) | 0.052 [0.035, 0.100] (0.064) | 0.076 [0.040, 0.166] (0.064) | 0.066 [0.041, 0.115] (0.064) |
 
 ## Module structure, b6_default_disease_cluster
 
@@ -402,17 +486,17 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | fold3_seed0 | [13, 11, 10, 7, 11, 10, 8, 8] | [7499, 7515, 7540, 7513, 7525, 7518, 7503, 7540] | [0, 0, 0, 0, 0, 0, 0, 0] |
 | fold4_seed0 | [17, 9, 8, 9, 8, 10, 7, 14] | [6156, 6169, 6197, 6165, 6166, 6158, 6152, 6200] | [0, 0, 0, 0, 0, 0, 0, 0] |
 
-## Module structure, b6_linear_response_time_scales_disease_cluster
+## Module structure, b6_linear_response_gate_time_scales_cofactors_disease_cluster
 
 Support size counts gates above 0.5 in the evaluation gate (see the commits note under Configurations); expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.
 
 | split | support sizes | expected support sizes | symptoms per module above 0.5 |
 |---|---|---|---|
-| fold0_seed0 | [32, 32, 29, 32, 36, 33, 29, 32] | [12346, 12365, 12403, 12369, 12371, 12371, 12364, 12388] | [0, 0, 0, 0, 0, 0, 0, 0] |
-| fold1_seed0 | [30, 29, 29, 24, 34, 25, 27, 33] | [12130, 12149, 12184, 12154, 12153, 12150, 12141, 12173] | [0, 0, 0, 0, 0, 0, 0, 0] |
-| fold2_seed0 | [36, 32, 28, 32, 41, 32, 28, 33] | [12361, 12374, 12416, 12379, 12381, 12374, 12370, 12398] | [0, 0, 0, 0, 0, 0, 0, 0] |
-| fold3_seed0 | [27, 16, 20, 10, 21, 18, 21, 23] | [11262, 11269, 11310, 11272, 11278, 11279, 11270, 11294] | [0, 0, 0, 0, 0, 0, 0, 0] |
-| fold4_seed0 | [28, 18, 20, 17, 22, 25, 18, 24] | [11471, 11496, 11534, 11497, 11510, 11504, 11486, 11523] | [0, 0, 0, 0, 0, 0, 0, 0] |
+| fold0_seed0 | [16, 15, 15, 8, 10, 52, 33, 40] | [49, 56, 48, 42, 43, 98, 68, 85] | [4, 3, 4, 3, 2, 4, 3, 3] |
+| fold1_seed0 | [3, 25, 3, 12, 4, 46, 21, 47] | [68, 95, 66, 81, 69, 131, 84, 129] | [3, 3, 3, 2, 2, 2, 4, 4] |
+| fold2_seed0 | [4, 8, 6, 6, 5, 41, 12, 43] | [116, 135, 118, 122, 121, 184, 139, 185] | [3, 2, 3, 2, 3, 3, 3, 4] |
+| fold3_seed0 | [8, 13, 5, 6, 6, 50, 22, 35] | [104, 116, 102, 102, 104, 168, 128, 149] | [3, 3, 3, 4, 2, 2, 3, 1] |
+| fold4_seed0 | [6, 14, 1, 4, 2, 41, 15, 32] | [155, 168, 146, 154, 155, 222, 170, 214] | [3, 4, 3, 4, 2, 1, 4, 1] |
 
 ## Module structure, b6_linear_response_time_scales_cofactors_disease_cluster
 
@@ -438,6 +522,18 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | fold3_seed0 | [115, 125, 159, 133, 130, 132, 123, 134] | [13767, 13807, 13775, 13833, 13770, 13812, 13795, 13786] | [0, 0, 0, 0, 0, 0, 0, 0] |
 | fold4_seed0 | [27, 40, 45, 37, 10, 35, 34, 34] | [11233, 11290, 11234, 11235, 11110, 11260, 11294, 11271] | [0, 0, 0, 0, 0, 0, 0, 0] |
 
+## Module structure, b6_linear_response_time_scales_disease_cluster
+
+Support size counts gates above 0.5 in the evaluation gate (see the commits note under Configurations); expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.
+
+| split | support sizes | expected support sizes | symptoms per module above 0.5 |
+|---|---|---|---|
+| fold0_seed0 | [32, 32, 29, 32, 36, 33, 29, 32] | [12346, 12365, 12403, 12369, 12371, 12371, 12364, 12388] | [0, 0, 0, 0, 0, 0, 0, 0] |
+| fold1_seed0 | [30, 29, 29, 24, 34, 25, 27, 33] | [12130, 12149, 12184, 12154, 12153, 12150, 12141, 12173] | [0, 0, 0, 0, 0, 0, 0, 0] |
+| fold2_seed0 | [36, 32, 28, 32, 41, 32, 28, 33] | [12361, 12374, 12416, 12379, 12381, 12374, 12370, 12398] | [0, 0, 0, 0, 0, 0, 0, 0] |
+| fold3_seed0 | [27, 16, 20, 10, 21, 18, 21, 23] | [11262, 11269, 11310, 11272, 11278, 11279, 11270, 11294] | [0, 0, 0, 0, 0, 0, 0, 0] |
+| fold4_seed0 | [28, 18, 20, 17, 22, 25, 18, 24] | [11471, 11496, 11534, 11497, 11510, 11504, 11486, 11523] | [0, 0, 0, 0, 0, 0, 0, 0] |
+
 ## Module structure, b6_mechanistic_gate_time_scales_disease_cluster
 
 Support size counts gates above 0.5 in the evaluation gate (see the commits note under Configurations); expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.
@@ -449,18 +545,6 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | fold2_seed0 | [22, 12, 10, 29, 14, 28, 23, 29] | [170, 184, 160, 224, 204, 235, 181, 229] | [1, 0, 1, 0, 0, 0, 2, 1] |
 | fold3_seed0 | [24, 15, 19, 19, 25, 33, 30, 27] | [181, 155, 175, 200, 216, 222, 162, 240] | [1, 0, 0, 0, 0, 0, 2, 0] |
 | fold4_seed0 | [17, 22, 14, 25, 19, 24, 28, 38] | [153, 201, 136, 188, 204, 205, 159, 250] | [0, 0, 4, 0, 0, 0, 0, 1] |
-
-## Module structure, b6_linear_response_gate_time_scales_cofactors_disease_cluster
-
-Support size counts gates above 0.5 in the evaluation gate (see the commits note under Configurations); expected support is the hard-concrete expected number of nonzero gates. Symptoms per module counts links above 0.5.
-
-| split | support sizes | expected support sizes | symptoms per module above 0.5 |
-|---|---|---|---|
-| fold0_seed0 | [16, 15, 15, 8, 10, 52, 33, 40] | [49, 56, 48, 42, 43, 98, 68, 85] | [4, 3, 4, 3, 2, 4, 3, 3] |
-| fold1_seed0 | [3, 25, 3, 12, 4, 46, 21, 47] | [68, 95, 66, 81, 69, 131, 84, 129] | [3, 3, 3, 2, 2, 2, 4, 4] |
-| fold2_seed0 | [4, 8, 6, 6, 5, 41, 12, 43] | [116, 135, 118, 122, 121, 184, 139, 185] | [3, 2, 3, 2, 3, 3, 3, 4] |
-| fold3_seed0 | [8, 13, 5, 6, 6, 50, 22, 35] | [104, 116, 102, 102, 104, 168, 128, 149] | [3, 3, 3, 4, 2, 2, 3, 1] |
-| fold4_seed0 | [6, 14, 1, 4, 2, 41, 15, 32] | [155, 168, 146, 154, 155, 222, 170, 214] | [3, 4, 3, 4, 2, 1, 4, 1] |
 
 ## Per-split macro metrics
 
@@ -476,26 +560,6 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b3_typed_nodes_disease_cluster | fold2_seed0 | 90 | 0.263 | 0.513 | 0.658 | 0.811 | 12 | 3 |
 | b3_typed_nodes_disease_cluster | fold3_seed0 | 90 | 0.312 | 0.513 | 0.627 | 0.756 | 13 | 4 |
 | b3_typed_nodes_disease_cluster | fold4_seed0 | 90 | 0.267 | 0.478 | 0.695 | 0.856 | 18 | 9 |
-| b3_degree_only_disease_cluster | fold0_seed0 | 91 | 0.224 | 0.490 | 0.691 | 0.802 | 31 | 22 |
-| b3_degree_only_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.515 | 0.625 | 0.800 | 26 | 17 |
-| b3_degree_only_disease_cluster | fold2_seed0 | 90 | 0.226 | 0.524 | 0.628 | 0.778 | 25 | 16 |
-| b3_degree_only_disease_cluster | fold3_seed0 | 90 | 0.228 | 0.451 | 0.635 | 0.778 | 33 | 24 |
-| b3_degree_only_disease_cluster | fold4_seed0 | 90 | 0.262 | 0.468 | 0.694 | 0.944 | 16 | 7 |
-| b3_linear_response_disease_cluster | fold0_seed0 | 91 | 0.236 | 0.472 | 0.668 | 0.813 | 22 | 13 |
-| b3_linear_response_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.489 | 0.622 | 0.789 | 14 | 5 |
-| b3_linear_response_disease_cluster | fold2_seed0 | 90 | 0.256 | 0.527 | 0.627 | 0.778 | 28 | 19 |
-| b3_linear_response_disease_cluster | fold3_seed0 | 90 | 0.262 | 0.471 | 0.643 | 0.778 | 20 | 11 |
-| b3_linear_response_disease_cluster | fold4_seed0 | 90 | 0.265 | 0.502 | 0.705 | 0.933 | 16 | 7 |
-| b3_linear_response_cofactors_disease_cluster | fold0_seed0 | 91 | 0.231 | 0.469 | 0.666 | 0.802 | 19 | 10 |
-| b3_linear_response_cofactors_disease_cluster | fold1_seed0 | 90 | 0.301 | 0.517 | 0.624 | 0.778 | 15 | 6 |
-| b3_linear_response_cofactors_disease_cluster | fold2_seed0 | 90 | 0.274 | 0.536 | 0.626 | 0.767 | 25 | 16 |
-| b3_linear_response_cofactors_disease_cluster | fold3_seed0 | 90 | 0.258 | 0.471 | 0.665 | 0.778 | 20 | 11 |
-| b3_linear_response_cofactors_disease_cluster | fold4_seed0 | 90 | 0.265 | 0.508 | 0.700 | 0.944 | 16 | 7 |
-| b3_linear_response_cofactors_log_disease_cluster | fold0_seed0 | 91 | 0.229 | 0.528 | 0.636 | 0.747 | 16 | 7 |
-| b3_linear_response_cofactors_log_disease_cluster | fold1_seed0 | 90 | 0.307 | 0.512 | 0.596 | 0.778 | 24 | 15 |
-| b3_linear_response_cofactors_log_disease_cluster | fold2_seed0 | 90 | 0.259 | 0.486 | 0.608 | 0.833 | 19 | 10 |
-| b3_linear_response_cofactors_log_disease_cluster | fold3_seed0 | 90 | 0.265 | 0.486 | 0.643 | 0.789 | 15 | 6 |
-| b3_linear_response_cofactors_log_disease_cluster | fold4_seed0 | 90 | 0.277 | 0.502 | 0.634 | 0.889 | 24 | 15 |
 | b6_default_disease_cluster | fold0_seed0 | 91 | 0.217 | 0.492 | 0.691 | 0.802 | 40 | 31 |
 | b6_default_disease_cluster | fold1_seed0 | 90 | 0.281 | 0.497 | 0.625 | 0.800 | 40 | 31 |
 | b6_default_disease_cluster | fold2_seed0 | 90 | 0.291 | 0.472 | 0.628 | 0.778 | 60 | 53 |
@@ -511,16 +575,51 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b6_mechanistic_expected_gate_disease_cluster | fold2_seed0 | 90 | 0.268 | 0.517 | 0.628 | 0.778 | 49 | 40 |
 | b6_mechanistic_expected_gate_disease_cluster | fold3_seed0 | 90 | 0.333 | 0.543 | 0.635 | 0.778 | 45 | 36 |
 | b6_mechanistic_expected_gate_disease_cluster | fold4_seed0 | 90 | 0.261 | 0.457 | 0.650 | 0.944 | 42 | 33 |
+| b3_degree_only_disease_cluster | fold0_seed0 | 91 | 0.224 | 0.490 | 0.691 | 0.802 | 31 | 22 |
+| b3_degree_only_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.515 | 0.625 | 0.800 | 26 | 17 |
+| b3_degree_only_disease_cluster | fold2_seed0 | 90 | 0.226 | 0.524 | 0.628 | 0.778 | 25 | 16 |
+| b3_degree_only_disease_cluster | fold3_seed0 | 90 | 0.228 | 0.451 | 0.635 | 0.778 | 33 | 24 |
+| b3_degree_only_disease_cluster | fold4_seed0 | 90 | 0.262 | 0.468 | 0.694 | 0.944 | 16 | 7 |
+| b3_descriptors_only_disease_cluster | fold0_seed0 | 91 | 0.194 | 0.463 | 0.651 | 0.824 | 14 | 5 |
+| b3_descriptors_only_disease_cluster | fold1_seed0 | 90 | 0.327 | 0.502 | 0.632 | 0.844 | 10 | 1 |
+| b3_descriptors_only_disease_cluster | fold2_seed0 | 90 | 0.264 | 0.509 | 0.586 | 0.800 | 12 | 3 |
+| b3_descriptors_only_disease_cluster | fold3_seed0 | 90 | 0.259 | 0.495 | 0.626 | 0.878 | 10 | 1 |
+| b3_descriptors_only_disease_cluster | fold4_seed0 | 90 | 0.257 | 0.516 | 0.660 | 0.944 | 10 | 1 |
+| b3_linear_response_cofactors_disease_cluster | fold0_seed0 | 91 | 0.231 | 0.469 | 0.666 | 0.802 | 19 | 10 |
+| b3_linear_response_cofactors_disease_cluster | fold1_seed0 | 90 | 0.301 | 0.517 | 0.624 | 0.778 | 15 | 6 |
+| b3_linear_response_cofactors_disease_cluster | fold2_seed0 | 90 | 0.274 | 0.536 | 0.626 | 0.767 | 25 | 16 |
+| b3_linear_response_cofactors_disease_cluster | fold3_seed0 | 90 | 0.258 | 0.471 | 0.665 | 0.778 | 20 | 11 |
+| b3_linear_response_cofactors_disease_cluster | fold4_seed0 | 90 | 0.265 | 0.508 | 0.700 | 0.944 | 16 | 7 |
+| b3_linear_response_cofactors_log_disease_cluster | fold0_seed0 | 91 | 0.229 | 0.528 | 0.636 | 0.747 | 16 | 7 |
+| b3_linear_response_cofactors_log_disease_cluster | fold1_seed0 | 90 | 0.307 | 0.512 | 0.596 | 0.778 | 24 | 15 |
+| b3_linear_response_cofactors_log_disease_cluster | fold2_seed0 | 90 | 0.259 | 0.486 | 0.608 | 0.833 | 19 | 10 |
+| b3_linear_response_cofactors_log_disease_cluster | fold3_seed0 | 90 | 0.265 | 0.486 | 0.643 | 0.789 | 15 | 6 |
+| b3_linear_response_cofactors_log_disease_cluster | fold4_seed0 | 90 | 0.277 | 0.502 | 0.634 | 0.889 | 24 | 15 |
+| b3_linear_response_disease_cluster | fold0_seed0 | 91 | 0.236 | 0.472 | 0.668 | 0.813 | 22 | 13 |
+| b3_linear_response_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.489 | 0.622 | 0.789 | 14 | 5 |
+| b3_linear_response_disease_cluster | fold2_seed0 | 90 | 0.256 | 0.527 | 0.627 | 0.778 | 28 | 19 |
+| b3_linear_response_disease_cluster | fold3_seed0 | 90 | 0.262 | 0.471 | 0.643 | 0.778 | 20 | 11 |
+| b3_linear_response_disease_cluster | fold4_seed0 | 90 | 0.265 | 0.502 | 0.705 | 0.933 | 16 | 7 |
+| b3_local_structural_disease_cluster | fold0_seed0 | 91 | 0.203 | 0.478 | 0.691 | 0.802 | 24 | 15 |
+| b3_local_structural_disease_cluster | fold1_seed0 | 90 | 0.283 | 0.470 | 0.628 | 0.800 | 15 | 6 |
+| b3_local_structural_disease_cluster | fold2_seed0 | 90 | 0.227 | 0.476 | 0.628 | 0.778 | 12 | 3 |
+| b3_local_structural_disease_cluster | fold3_seed0 | 90 | 0.241 | 0.459 | 0.657 | 0.778 | 20 | 11 |
+| b3_local_structural_disease_cluster | fold4_seed0 | 90 | 0.253 | 0.437 | 0.693 | 0.922 | 16 | 7 |
+| b3_typed_nodes_descriptors_disease_cluster | fold0_seed0 | 91 | 0.227 | 0.525 | 0.638 | 0.780 | 11 | 2 |
+| b3_typed_nodes_descriptors_disease_cluster | fold1_seed0 | 90 | 0.306 | 0.504 | 0.605 | 0.789 | 11 | 2 |
+| b3_typed_nodes_descriptors_disease_cluster | fold2_seed0 | 90 | 0.264 | 0.523 | 0.651 | 0.822 | 13 | 4 |
+| b3_typed_nodes_descriptors_disease_cluster | fold3_seed0 | 90 | 0.267 | 0.454 | 0.649 | 0.778 | 12 | 3 |
+| b3_typed_nodes_descriptors_disease_cluster | fold4_seed0 | 90 | 0.250 | 0.481 | 0.619 | 0.856 | 11 | 2 |
 | b6_linear_response_disease_cluster | fold0_seed0 | 91 | 0.229 | 0.461 | 0.691 | 0.802 | 46 | 37 |
 | b6_linear_response_disease_cluster | fold1_seed0 | 90 | 0.291 | 0.519 | 0.625 | 0.800 | 34 | 25 |
 | b6_linear_response_disease_cluster | fold2_seed0 | 90 | 0.251 | 0.507 | 0.628 | 0.778 | 52 | 43 |
 | b6_linear_response_disease_cluster | fold3_seed0 | 90 | 0.272 | 0.526 | 0.635 | 0.778 | 45 | 36 |
 | b6_linear_response_disease_cluster | fold4_seed0 | 90 | 0.245 | 0.447 | 0.650 | 0.944 | 54 | 45 |
-| b6_linear_response_time_scales_disease_cluster | fold0_seed0 | 91 | 0.230 | 0.460 | 0.691 | 0.802 | 22 | 13 |
-| b6_linear_response_time_scales_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.512 | 0.625 | 0.800 | 23 | 14 |
-| b6_linear_response_time_scales_disease_cluster | fold2_seed0 | 90 | 0.251 | 0.517 | 0.628 | 0.778 | 22 | 13 |
-| b6_linear_response_time_scales_disease_cluster | fold3_seed0 | 90 | 0.273 | 0.517 | 0.632 | 0.778 | 27 | 18 |
-| b6_linear_response_time_scales_disease_cluster | fold4_seed0 | 90 | 0.251 | 0.477 | 0.655 | 0.944 | 26 | 17 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold0_seed0 | 91 | 0.242 | 0.499 | 0.701 | 0.879 | 60 | 56 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold1_seed0 | 90 | 0.329 | 0.545 | 0.634 | 0.856 | 45 | 36 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold2_seed0 | 90 | 0.266 | 0.425 | 0.628 | 0.778 | 32 | 23 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold3_seed0 | 90 | 0.339 | 0.602 | 0.643 | 0.878 | 35 | 26 |
+| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold4_seed0 | 90 | 0.261 | 0.473 | 0.694 | 0.944 | 28 | 19 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | fold0_seed0 | 91 | 0.237 | 0.485 | 0.691 | 0.802 | 19 | 10 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | fold1_seed0 | 90 | 0.284 | 0.505 | 0.614 | 0.800 | 17 | 8 |
 | b6_linear_response_time_scales_cofactors_disease_cluster | fold2_seed0 | 90 | 0.261 | 0.562 | 0.628 | 0.778 | 23 | 14 |
@@ -531,13 +630,13 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | fold2_seed0 | 90 | 0.255 | 0.540 | 0.628 | 0.778 | 25 | 16 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | fold3_seed0 | 90 | 0.276 | 0.525 | 0.623 | 0.778 | 16 | 7 |
 | b6_linear_response_time_scales_cofactors_log_disease_cluster | fold4_seed0 | 90 | 0.240 | 0.414 | 0.692 | 0.922 | 28 | 19 |
+| b6_linear_response_time_scales_disease_cluster | fold0_seed0 | 91 | 0.230 | 0.460 | 0.691 | 0.802 | 22 | 13 |
+| b6_linear_response_time_scales_disease_cluster | fold1_seed0 | 90 | 0.289 | 0.512 | 0.625 | 0.800 | 23 | 14 |
+| b6_linear_response_time_scales_disease_cluster | fold2_seed0 | 90 | 0.251 | 0.517 | 0.628 | 0.778 | 22 | 13 |
+| b6_linear_response_time_scales_disease_cluster | fold3_seed0 | 90 | 0.273 | 0.517 | 0.632 | 0.778 | 27 | 18 |
+| b6_linear_response_time_scales_disease_cluster | fold4_seed0 | 90 | 0.251 | 0.477 | 0.655 | 0.944 | 26 | 17 |
 | b6_mechanistic_gate_time_scales_disease_cluster | fold0_seed0 | 91 | 0.273 | 0.542 | 0.697 | 0.802 | 22 | 13 |
 | b6_mechanistic_gate_time_scales_disease_cluster | fold1_seed0 | 90 | 0.313 | 0.532 | 0.623 | 0.811 | 30 | 21 |
 | b6_mechanistic_gate_time_scales_disease_cluster | fold2_seed0 | 90 | 0.272 | 0.512 | 0.625 | 0.789 | 31 | 22 |
 | b6_mechanistic_gate_time_scales_disease_cluster | fold3_seed0 | 90 | 0.328 | 0.542 | 0.634 | 0.811 | 33 | 24 |
 | b6_mechanistic_gate_time_scales_disease_cluster | fold4_seed0 | 90 | 0.272 | 0.469 | 0.699 | 0.900 | 33 | 24 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold0_seed0 | 91 | 0.242 | 0.499 | 0.701 | 0.879 | 60 | 56 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold1_seed0 | 90 | 0.329 | 0.545 | 0.634 | 0.856 | 45 | 36 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold2_seed0 | 90 | 0.266 | 0.425 | 0.628 | 0.778 | 32 | 23 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold3_seed0 | 90 | 0.339 | 0.602 | 0.643 | 0.878 | 35 | 26 |
-| b6_linear_response_gate_time_scales_cofactors_disease_cluster | fold4_seed0 | 90 | 0.261 | 0.473 | 0.694 | 0.944 | 28 | 19 |
