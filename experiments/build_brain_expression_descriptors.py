@@ -18,8 +18,8 @@ import numpy as np
 import pandas as pd
 
 from mechanistic_pathway_learning.graph.brain_expression_descriptors import (
-    brain_expression_blocks, gene_node_ensembl_ids, gtex_brain_and_other_maximum, hpa_cell_class_table, hpa_region_table,
-    read_zipped_table, unambiguous_symbol_to_ensembl)
+    add_dopaminergic_class, brain_expression_blocks, gene_node_ensembl_ids, gtex_brain_and_other_maximum, hpa_cell_class_table,
+    hpa_region_table, read_zipped_table, unambiguous_symbol_to_ensembl)
 
 ANCHOR_GENES = ["PAH", "OTC", "CPS1", "GCH1", "TH", "DDC", "DBH", "MAOA", "COMT", "SLC6A3", "SLC18A2", "GAD1", "ALDH5A1",
                 "ATP1A3", "SLC12A5"]
@@ -34,15 +34,21 @@ def main() -> None:
     parser.add_argument("--gtex", type=Path, default=Path("data/raw/gtex/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz"))
     parser.add_argument("--hpa-region", type=Path, default=Path("data/raw/hpa/rna_brain_region_hpa/rna_brain_region_hpa.tsv.zip"))
     parser.add_argument("--hpa-cluster-type", type=Path, default=Path("data/raw/hpa/rna_single_nuclei_cluster_type/rna_single_nuclei_cluster_type.tsv.zip"))
+    parser.add_argument("--dopaminergic-expression", type=Path, default=Path("data/processed/brain_expression/dopaminergic_siletti_cluster395.parquet"),
+                        help="ncpm_aligned of experiments/build_dopaminergic_expression.py, the class_dopaminergic_neuron column; --no-dopaminergic-class leaves it out")
+    parser.add_argument("--no-dopaminergic-class", action="store_true")
     parser.add_argument("--output", type=Path, default=Path("data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"))
     arguments = parser.parse_args()
 
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
     region_table = read_zipped_table(arguments.hpa_region)
+    cell_class_table = hpa_cell_class_table(read_zipped_table(arguments.hpa_cluster_type))
+    if not arguments.no_dopaminergic_class:
+        cell_class_table = add_dopaminergic_class(cell_class_table, pd.read_parquet(arguments.dopaminergic_expression)["ncpm_aligned"])
     gene_expression = pd.concat([
         gtex_brain_and_other_maximum(arguments.gtex),
         hpa_region_table(region_table),
-        hpa_cell_class_table(read_zipped_table(arguments.hpa_cluster_type)),
+        cell_class_table,
     ], axis=1)
     symbol_to_ensembl = unambiguous_symbol_to_ensembl(region_table["Gene name"], region_table["Gene"])
     blocks = brain_expression_blocks(nodes, gene_expression, symbol_to_ensembl)
@@ -72,6 +78,7 @@ def main() -> None:
         anchors[symbol]["top_cell_class"] = str(raw[class_columns].astype(float).idxmax()) if raw[class_columns].notna().any() else None
     summary = {
         "output": str(arguments.output), "graph_dir": str(arguments.graph_dir), "nodes": len(table), "columns": len(table.columns),
+        "dopaminergic_expression": None if arguments.no_dopaminergic_class else str(arguments.dopaminergic_expression),
         "brain_columns": [column for column in blocks.columns],
         "gene_nodes": int(is_gene.sum()), "gene_nodes_without_own_ensembl_id": int(nodes.ensembl_gene_id[is_gene].isna().sum()),
         "gene_nodes_resolved_by_symbol": int((nodes.ensembl_gene_id[is_gene].isna() & gene_ensembl.notna().to_numpy()).sum()),

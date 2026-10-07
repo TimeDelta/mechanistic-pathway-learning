@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from mechanistic_pathway_learning.graph.brain_expression_descriptors import (
-    CELL_CLASS_OF_CLUSTER_TYPE, brain_expression_blocks, evaluate_gene_rule, hpa_cell_class_table, hpa_region_table)
+    CELL_CLASS_OF_CLUSTER_TYPE, DOPAMINERGIC_CLASS_COLUMN, add_dopaminergic_class, brain_expression_blocks, counts_per_million,
+    evaluate_gene_rule, hpa_cell_class_table, hpa_region_table, trimmed_mean_scale_factor)
 
 
 def test_gene_rule_takes_minimum_over_and_and_maximum_over_or():
@@ -74,3 +75,20 @@ def test_gene_nodes_without_an_ensembl_id_are_found_by_unambiguous_symbol():
     blocks = brain_expression_blocks(nodes, hpa_region_table(regions), mapping)
     assert blocks.loc["GENE:A", "gene_brain_has_expression"] == 1.0
     assert blocks.loc["GENE:B", "gene_brain_has_expression"] == 0.0
+
+
+def test_trimmed_mean_scale_factor_recovers_a_uniform_factor_despite_marker_genes():
+    generator = np.random.default_rng(0)
+    reference = pd.Series(np.exp(generator.normal(3.0, 1.5, 2000)), index=[f"g{index}" for index in range(2000)])
+    values = reference * 4.0
+    values.iloc[:100] *= 50.0  # markers of the population, trimmed away
+    values.iloc[100:200] = 0.0  # genes it does not express, below the minimum
+    assert abs(trimmed_mean_scale_factor(values, reference) - 4.0) < 1e-9
+
+
+def test_add_dopaminergic_class_leaves_missing_genes_missing():
+    table = pd.DataFrame({"class_astrocyte": [5.0, 1.0]}, index=pd.Index(["ENSG1", "ENSG2"], name="ensembl_gene_id"))
+    result = add_dopaminergic_class(table, pd.Series({"ENSG1": 7.0, "ENSG9": 3.0}))
+    assert result[DOPAMINERGIC_CLASS_COLUMN].iloc[0] == 7.0
+    assert np.isnan(result[DOPAMINERGIC_CLASS_COLUMN].iloc[1])
+    assert counts_per_million(pd.Series([1.0, 3.0])).tolist() == [250000.0, 750000.0]

@@ -14,8 +14,11 @@ Columns, per gene (log1p of the expression value, standardised over the nodes of
     adult human brain atlas of Siletti et al. 2023), the largest value over the cluster types of each of 10 cell
     classes in CELL_CLASS_OF_CLUSTER_TYPE. The 34 types are grouped to keep the column count low for 451 training
     perturbations; the grouping follows the atlas's own superclusters, with striatal medium spiny neurons kept apart
-    from other inhibitory neurons because of their place in reward and motor circuits. The atlas has no dopaminergic
-    cluster: SLC6A3 peaks at 0.6 nCPM, so midbrain dopamine neurons are not represented here;
+    from other inhibitory neurons because of their place in reward and motor circuits. HPA's 34 cluster types have no
+    dopaminergic one (SLC6A3 peaks at 0.6 nCPM), so an 11th class, class_dopaminergic_neuron, comes from the atlas's
+    own dopaminergic cluster (cluster 395, "DA VGLUT2", 998 nuclei, 93 percent midbrain), summed from the per-dissection
+    count files on CZ CELLxGENE (experiments/build_dopaminergic_expression.py) and put on HPA's nCPM scale by
+    trimmed_mean_scale_factor against HPA's splatter cluster type, the supercluster cluster 395 belongs to;
   - has_expression: 1 when the gene (or a gene in the reaction's rule) is in the HPA region table.
 
 Reactions take their value from the Human-GEM gene rule, minimum over "and" (every subunit is needed) and maximum over
@@ -62,6 +65,7 @@ CELL_CLASS_OF_CLUSTER_TYPE = {
     "fibroblast": "vascular",
     "ependymal cell": "ependymal_choroid", "choroid plexus epithelial cell": "ependymal_choroid",
 }
+DOPAMINERGIC_CLASS_COLUMN = "class_dopaminergic_neuron"
 RULE_TOKEN = re.compile(r"\(|\)|\band\b|\bor\b|[^\s()]+")
 
 
@@ -103,6 +107,39 @@ def hpa_cell_class_table(cluster_table: pd.DataFrame) -> pd.DataFrame:
     wide = with_class.pivot_table(index="Gene", columns="cell_class", values="nCPM", aggfunc="max")
     wide.columns = ["class_" + str(name) for name in wide.columns]
     return wide.rename_axis("ensembl_gene_id")
+
+
+def counts_per_million(counts: pd.Series) -> pd.Series:
+    return counts.astype(float) / float(counts.sum()) * 1e6
+
+
+def trimmed_mean_scale_factor(values: pd.Series, reference: pd.Series, log_ratio_trim: float = 0.30, abundance_trim: float = 0.05,
+                              minimum_value: float = 1.0) -> float:
+    """Factor f such that values / f is on the scale of reference (both indexed by gene).
+
+    f is 2 to the mean of log2(values / reference) over the genes at least minimum_value in both profiles, after the
+    log_ratio_trim fraction of the log ratios and the abundance_trim fraction of the mean log values are trimmed at each
+    end. This is the trimmed mean of M values of Robinson and Oshlack 2010 (doi:10.1186/gb-2010-11-3-r25; the same trims,
+    0.3 and 0.05, are edgeR's defaults) without its precision weights, which need the raw counts of both profiles. It
+    assumes most genes are not differentially expressed between the two profiles, so the reference should be a related
+    cell population.
+    """
+    shared = values.index.intersection(reference.index)
+    first, second = values.loc[shared].astype(float), reference.loc[shared].astype(float)
+    both = (first >= minimum_value) & (second >= minimum_value)
+    log_ratio = np.log2(first[both] / second[both])
+    abundance = 0.5 * np.log2(first[both] * second[both])
+    if len(log_ratio) == 0:
+        raise ValueError("no gene reaches minimum_value in both profiles")
+    keep = (log_ratio.between(log_ratio.quantile(log_ratio_trim), log_ratio.quantile(1.0 - log_ratio_trim))
+            & abundance.between(abundance.quantile(abundance_trim), abundance.quantile(1.0 - abundance_trim)))
+    return float(2.0 ** log_ratio[keep].mean())
+
+
+def add_dopaminergic_class(cell_class_table: pd.DataFrame, dopaminergic_ncpm: pd.Series) -> pd.DataFrame:
+    """cell_class_table with DOPAMINERGIC_CLASS_COLUMN from an Ensembl-indexed profile already on the nCPM scale; a gene
+    absent from the profile gets a missing value, as a gene absent from the HPA table does."""
+    return cell_class_table.assign(**{DOPAMINERGIC_CLASS_COLUMN: dopaminergic_ncpm.reindex(cell_class_table.index).astype(float)})
 
 
 def evaluate_gene_rule(rule: str, values: dict[str, float]) -> float:
