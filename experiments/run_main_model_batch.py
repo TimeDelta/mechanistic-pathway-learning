@@ -98,6 +98,18 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b3_linear_response_cofactors_laboratory_neuronal_no_curation": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
                                                                      "--cofactor-relations", "--laboratory-label-weight", "1.0",
                                                                      "--graph-dir", "data/processed/graph_neuronal_no_curation"],
+    # the full-graph confirmatory runs (amendment of 7 October in docs/preregistration.md): graph_full_neuronal with the
+    # full evidence; full_linear_response_properties and full_linear_response differ in one argument, the node properties
+    # (protein, metabolite and reaction descriptors and brain region and cell-class expression)
+    "full_linear_response_properties": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                        "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
+                                        "--node-descriptors", "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"],
+    "full_linear_response": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                             "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full"],
+    "full_b6_linear_response_properties": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                           "--cofactor-relations", "--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
+                                           "--node-descriptors", "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet",
+                                           "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],
