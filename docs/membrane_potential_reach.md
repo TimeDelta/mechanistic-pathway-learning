@@ -74,6 +74,42 @@ clips the falling half of the field: the messages at a node carry both signs wha
 is, so a maximum over negative messages returns the least negative, which at the first step is the
 zero of an untouched neighbour. That is about message signs rather than input signs.
 
+## In-degree normalisation dilutes, and it dilutes the readouts hardest (7 October 2026)
+
+Within a relation the encoder takes a mean, so the message a node receives is independent of how many
+edges feed it and each edge contributes one over that count. The intuition that a well-connected
+metabolite should feel a change more strongly, directly rather than inversely with its edge count, is
+the sum, which is what dropping the per-node divisor gives.
+
+The dilution is modest at a typical metabolite and severe in a tail. Producing reactions per metabolite
+run at a median of 2 and a 90th percentile of 4, so one perturbed producer contributes a half or a
+quarter of its own signal. Excluding the 229 currency metabolites, the heaviest are arginine at 114
+producing reactions, tryptophan at 111, phenylalanine at 108, lysine at 103, alanine at 100 and
+tyrosine at 99, from protein turnover; 3.4% of non-currency metabolites are diluted at least tenfold
+and 0.4% at least fiftyfold.
+
+The tail is not where it would do least harm. Taking the 157 base metabolites the laboratory labels
+read out, which map to 515 graph nodes:
+
+| diluted by at least | laboratory readout nodes | all metabolite nodes |
+|---|---|---|
+| 10x | 135 of 501 (26.9%) | 4.6% |
+| 50x | 36 of 501 (7.2%) | 1.0% |
+
+A readout node is diluted tenfold about six times as often as a metabolite node in general, and the
+reason is selection rather than anything about the model: a clinical laboratory measures the abundant,
+central metabolites because those are the measurable ones, and central is the same thing as
+well-connected here. In-degree normalisation therefore attenuates the signal most at the nodes the
+laboratory sign agreement and AUROC are computed on, and phenylalanine and tyrosine, the readouts for
+the one mechanism the design validates by hand, sit at 108 and 99 producing reactions. This is a
+further argument for scoring the spectral arm, independent of the cancellation argument above.
+
+**Not a defect, checked and withdrawn.** Of the 515 readout nodes, 73 are marked `is_currency`,
+covering 16 of the 157 base metabolites and 869 of 4,930 label rows. That does not make those labels
+unpredictable: `signed_stacked_adjacency` drops edges whose source is a non-propagating node, so a
+currency metabolite receives the response and only declines to pass it on, which is what assumption A9
+intends. The field at those nodes is intact.
+
 ## What can break an exact cancellation, and what cannot (7 October 2026)
 
 An exact cancellation cannot be resolved from the message values: every statistic in the mixture is
