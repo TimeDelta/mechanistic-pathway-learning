@@ -21,8 +21,10 @@ from pathlib import Path
 import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
+    degree_strata,
     expected_calibration_error,
     hits_at_k,
     macro_auprc_by_degree_bin,
@@ -30,6 +32,8 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     paired_bootstrap_macro_difference,
     per_symptom_auprc,
     per_symptom_auroc,
+    rank_normalise_within_groups,
+    stratified_auroc,
 )
 
 MINIMUM_POSITIVES_TO_SCORE = 5
@@ -119,8 +123,8 @@ def collect_time_split_runs(run_directories: list[Path]) -> list[dict]:
     return rows
 
 
-def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int, include_baseline_pairs: bool = True) -> list[dict]:
-    """Paired bootstrap of the pooled macro AUPRC and AUROC difference between every run and every baseline (and between runs) on the rows both scored."""
+def load_pooled_predictions(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data) -> tuple[dict, dict]:
+    """Pooled out-of-split predictions and scored-row masks of every aggregated run and every baseline."""
     predictions_by_name: dict[str, np.ndarray] = {}
     rows_by_name: dict[str, np.ndarray] = {}
     for run_directory in run_directories:
@@ -135,6 +139,52 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
                 name = prediction_path.stem[len(f"predictions_{baseline_split}_"):]
                 predictions_by_name[name] = np.load(prediction_path)
                 rows_by_name[name] = np.load(rows_path) if rows_path.exists() else np.ones(len(data.perturbation_ids), dtype=bool)
+    return predictions_by_name, rows_by_name
+
+
+def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_name: dict, data, num_bootstrap: int, num_folds: int = 5, seed: int = 0) -> tuple[dict, list[dict]]:
+    """Scores that give no credit for ordering perturbations by degree: macro AUPRC after ranking each score inside its
+    group (rank_normalise_within_groups) and macro AUROC from pairs inside a group only (stratified_auroc), plus the
+    paired bootstrap of the first between every run and every baseline. A group is a degree stratum inside one test
+    fold: pooled out-of-fold scores carry a fold effect (each fold's model learns its own training base rate, which runs
+    opposite to its test fold's), and strata that cut across folds would score it (popularity, constant within a
+    symptom and fold, reached a stratified AUROC of 0.419 with strata across folds). Runs and baselines share the
+    fold assignment (assign_grouped_folds, same seed), and strata come from all perturbations."""
+    fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_folds, seed)
+    fold_of_row = np.array([fold_by_perturbation[p] for p in data.perturbation_ids])
+    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees)
+    scores, normalised_by_name = {}, {}
+    for name, predictions in predictions_by_name.items():
+        rows = rows_by_name[name]
+        normalised = rank_normalise_within_groups(predictions[rows], strata[rows])
+        outcomes = data.outcomes[rows]
+        scorable = [s for s in range(outcomes.shape[1]) if MINIMUM_POSITIVES_TO_SCORE <= outcomes[:, s].sum() < outcomes.shape[0]]
+        normalised_by_name[name] = (normalised, rows)
+        scores[name] = {"macro_auprc_within_degree_strata": float(np.mean([per_symptom_auprc(normalised, outcomes, s) for s in scorable])),
+                        "macro_auroc_stratified_by_degree": float(np.nanmean([stratified_auroc(predictions[rows], outcomes, strata[rows], s) for s in scorable])),
+                        "num_strata": int(len(np.unique(degree_strata(data.perturbation_degrees))))}
+    comparisons = []
+    for run_name in aggregated:
+        if run_name not in normalised_by_name:
+            continue
+        for other in normalised_by_name:
+            if other in aggregated:
+                continue
+            run_normalised, run_rows = normalised_by_name[run_name]
+            other_normalised, other_rows = normalised_by_name[other]
+            shared = run_rows & other_rows
+            run_positions = np.flatnonzero(run_rows)
+            other_positions = np.flatnonzero(other_rows)
+            run_pick = np.isin(run_positions, np.flatnonzero(shared))
+            other_pick = np.isin(other_positions, np.flatnonzero(shared))
+            difference = paired_bootstrap_macro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], per_symptom_auprc, num_bootstrap)
+            comparisons.append({"a": run_name, "b": other, "rows": int(shared.sum()), "macro_auprc_within_degree_strata": difference})
+    return scores, comparisons
+
+
+def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int, include_baseline_pairs: bool = True) -> list[dict]:
+    """Paired bootstrap of the pooled macro AUPRC and AUROC difference between every run and every baseline (and between runs) on the rows both scored."""
+    predictions_by_name, rows_by_name = load_pooled_predictions(aggregated, run_directories, baseline_directory, baseline_split, data)
     comparisons = []
     names = list(predictions_by_name)
     for position, first in enumerate(names):
@@ -185,11 +235,14 @@ def main() -> None:
         baseline_entries = json.loads(arguments.baseline_results.read_text())["splits"].get(arguments.baseline_split, {})
         baseline_directory = arguments.baseline_results.parent
     comparisons = paired_comparisons(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data, arguments.num_bootstrap)
+    strata_scores, strata_comparisons = within_degree_strata(aggregated, *load_pooled_predictions(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data),
+                                                             data, arguments.num_bootstrap)
     for comparison in comparisons:
         print(f"{comparison['a']:34s} vs {comparison['b']:28s} macro AUPRC diff {comparison['macro_auprc']['difference']:+.3f} [{comparison['macro_auprc']['lower']:+.3f}, {comparison['macro_auprc']['upper']:+.3f}]  "
               f"macro AUROC diff {comparison['macro_auroc']['difference']:+.3f} [{comparison['macro_auroc']['lower']:+.3f}, {comparison['macro_auroc']['upper']:+.3f}]")
     arguments.json_output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.json_output.write_text(json.dumps({"runs": aggregated, "paired_comparisons": comparisons}, indent=1))
+    arguments.json_output.write_text(json.dumps({"runs": aggregated, "paired_comparisons": comparisons, "within_degree_strata": strata_scores,
+                                                 "within_degree_strata_comparisons": strata_comparisons}, indent=1))
 
     lines = [f"# {arguments.title} (generated by experiments/aggregate_main_model_runs.py)", "",
              f"{len(data.perturbation_ids)} perturbations, {len(data.symptoms)} symptoms, leakage groups by {arguments.group_by}. Out-of-split predictions pooled; per-fold values are mean ± standard deviation over splits. "
@@ -211,6 +264,17 @@ def main() -> None:
         for comparison in comparisons:
             a, r = comparison["macro_auprc"], comparison["macro_auroc"]
             lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {a['difference']:+.3f} [{a['lower']:+.3f}, {a['upper']:+.3f}] | {a['fraction_resamples_favoring_a']:.2f} | {r['difference']:+.3f} [{r['lower']:+.3f}, {r['upper']:+.3f}] |")
+    if strata_scores:
+        lines += ["", "## Within degree strata", "",
+                  f"Rankings scored inside groups of one degree stratum and one test fold ({next(iter(strata_scores.values()))['num_strata']} degree strata from quantile edges, equal degrees always together), so ordering perturbations by degree earns nothing and the fold effect of pooled out-of-fold scores cannot enter: "
+                  "macro AUPRC after each score is replaced by its rank inside its group, and macro AUROC from positive-negative pairs inside a group only. Degree-scaled popularity can still order perturbations of different degree inside a wide stratum.", "",
+                  "| model | macro AUPRC within degree strata | macro AUROC stratified by degree |", "|---|---|---|"]
+        for name, score in strata_scores.items():
+            lines.append(f"| {name} | {score['macro_auprc_within_degree_strata']:.3f} | {score['macro_auroc_stratified_by_degree']:.3f} |")
+        lines += ["", "Paired bootstrap of the within-strata macro AUPRC, each run against each baseline (95 percent interval):", "", "| A | B | rows | difference [95% CI] | resamples favoring A |", "|---|---|---|---|---|"]
+        for comparison in strata_comparisons:
+            d = comparison["macro_auprc_within_degree_strata"]
+            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {d['difference']:+.3f} [{d['lower']:+.3f}, {d['upper']:+.3f}] | {d['fraction_resamples_favoring_a']:.2f} |")
     lines += ["", "## Configurations", "", "Commits are those the splits ran under (recorded from 6 October 2026; 'not recorded' marks earlier runs, which evaluated noisy-OR gates with the Louizos test-time estimator rather than the expected training gate).", "",
               "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs | commits |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():

@@ -143,6 +143,17 @@ def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: 
             "fraction_resamples_favoring_a": float(np.mean(np.array(differences) > 0)) if differences else float("nan"), "num_resamples": len(differences)}
 
 
+def degree_strata(perturbation_degrees: np.ndarray, num_strata: int = 5) -> np.ndarray:
+    """Stratum index per perturbation from quantile edges of its degree, with equal degrees always in one stratum.
+
+    Degree is coarse and heavily tied (on the metabolic slice 30 percent of perturbations have degree 1), so the
+    edges are deduplicated and fewer than num_strata strata can result. Used to score rankings within degree strata,
+    which gives a model no credit for ordering perturbations by degree (design section 6.2).
+    """
+    edges = np.unique(np.quantile(perturbation_degrees, np.linspace(0.0, 1.0, num_strata + 1)[1:-1]))
+    return np.searchsorted(edges, perturbation_degrees, side="right")
+
+
 def rank_normalise_within_groups(predictions: np.ndarray, group_of_row: np.ndarray) -> np.ndarray:
     """Replace each score by its tie-averaged rank divided by (group size + 1), per symptom column, inside each group.
 

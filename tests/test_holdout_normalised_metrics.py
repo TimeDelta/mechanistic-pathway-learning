@@ -24,3 +24,20 @@ def test_ranks_are_tie_averaged_and_rows_outside_groups_are_untouched() -> None:
     assert np.allclose(normalised[3], [0.5, 0.5])
     outcomes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [0.0, 0.0]])
     assert stratified_auroc(predictions, outcomes, group, 0) == 1.0 and stratified_auroc(predictions, outcomes, group, 1) == 1.0
+
+
+def test_degree_strata_keep_equal_degrees_together_and_remove_credit_for_ordering_by_degree() -> None:
+    import numpy as np
+
+    from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import degree_strata, per_symptom_auprc, rank_normalise_within_groups
+
+    degrees = np.array([1, 1, 1, 1, 1, 1, 2, 2, 3, 5, 8, 13, 40, 90, 140, 145], dtype=float)
+    strata = degree_strata(degrees, num_strata=5)
+    for degree in np.unique(degrees):
+        assert len(np.unique(strata[degrees == degree])) == 1  # ties never split
+    outcomes = (degrees > 10).astype(float)[:, None]  # positives are exactly the high-degree perturbations
+    degree_scores = np.log1p(degrees)[:, None]
+    assert per_symptom_auprc(degree_scores, outcomes, 0) == 1.0  # ranking by degree is perfect on raw scores
+    normalised = rank_normalise_within_groups(degree_scores, strata)
+    raw_strata_with_mixed_labels = [s for s in np.unique(strata) if 0 < outcomes[strata == s, 0].sum() < (strata == s).sum()]
+    assert not raw_strata_with_mixed_labels or per_symptom_auprc(normalised, outcomes, 0) < 1.0  # within strata the degree ordering earns less
