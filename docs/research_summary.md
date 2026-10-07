@@ -39,7 +39,7 @@ needed (findings 2 and 8).
 
 ### Aim 2. Test whether the pathway-module model beats the best baseline
 
-Status: slice done (negative); full-data test not run. The full-data runs need more compute than the 4-core cloud
+Status: slice pilot done (negative); full-graph test being prepared (7 October). The full-data runs need more compute than the 4-core cloud
 container; cluster access is not confirmed.
 
 - Hypothesis: the proposed model (B6) beats popularity and the random walk with restart under the disease-cluster
@@ -48,7 +48,9 @@ container; cluster access is not confirmed.
   abandoned before the ablations run.
 - Primary endpoint: macro AUPRC difference of at least 0.05 with a 95 percent paired-bootstrap interval excluding
   zero.
-- Slice result: no trained configuration beats the random walk, and the criterion is met (finding 5).
+- Slice result: no trained configuration beats the random walk (finding 5). The slice is a pilot and does not
+  trigger the criterion; the criterion applies to the full-graph test (amendment of 7 October in
+  docs/preregistration.md).
 - Module diagnosis: done (finding 6). The modules were unused because training stopped while the gates were still
   shrinking. With their own learning rate they carry links, but no module passes the sufficiency test yet.
 - Open question: the graph carries signal the random walk reads (finding 8), so the question is why a signed,
@@ -141,6 +143,7 @@ Superseded numbers to avoid:
 | 2026-10-03 | Disease-cluster grouping is the default split (design v0.4) | gene-wise grouping leaked through shared diseases (finding 1) |
 | 2026-10-06 | PubTator3 pinned to the 6 October bulk file | NCBI no longer serves the 17 August file |
 | 2026-10-06 | Flux route deferred until a B4 test shows signal (proposed, not decided) | coverage and medium problems of finding 7 |
+| 2026-10-07 | The slice is a pilot; the mechanistic encoder and node descriptors stay until the full graph with all layers and better (not more) training examples is tested; the confirmatory test moves to graph_full_neuronal | user's decision; the slice cannot separate a weak mechanism from too few labels (findings 5 and 16) |
 | 2026-10-07 | Gates get their own learning rate (--gate-learning-rate) | with the shared rate, supports were still shrinking at early stopping (finding 6) |
 | 2026-10-07 | Rewiring control at 50 swaps per edge with a null of 20 draws on the slice | 2 swaps per edge left the graph under-mixed (finding 8) |
 | 2026-10-07 | The 0.3 percent sign-mixing figure retracted | computed without the derived depletes_substrate relation (finding 11) |

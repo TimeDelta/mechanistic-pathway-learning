@@ -214,5 +214,7 @@ score against; the section above supersedes that. What the null leaves open:
 
 The same rewiring control against a mechanistic encoder rather than the random walk. The encoder uses edge signs,
 relation types and stoichiometry that a random walk discards, so if those contribute anything the encoder should lose
-more from rewiring than the random walk's 0.043. If it loses the same amount, the mechanistic layer is decorative.
+more from rewiring than the random walk's 0.043. If it loses the same amount, the signs, relation types and
+stoichiometry add nothing that degree does not on the graph it is run on; run on the slice, that would not decide
+the question for the full graph (amendment of 7 October in docs/preregistration.md).
 That is a five-fold run and it bears on the experiment's central claim, so it waits for the user.

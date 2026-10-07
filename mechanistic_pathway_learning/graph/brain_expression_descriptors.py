@@ -153,11 +153,36 @@ def evaluate_gene_rule(rule: str, values: dict[str, float]) -> float:
     return value
 
 
-def brain_expression_blocks(nodes: pd.DataFrame, gene_expression: pd.DataFrame) -> pd.DataFrame:
+def unambiguous_symbol_to_ensembl(symbols: pd.Series, ensembl_ids: pd.Series) -> dict[str, str]:
+    """Symbol to Ensembl id over the pairs given, keeping only symbols that name exactly one Ensembl id."""
+    pairs = pd.DataFrame({"symbol": symbols.astype(str), "ensembl": ensembl_ids.astype(str)}).drop_duplicates()
+    counts = pairs.symbol.value_counts()
+    unique = pairs[pairs.symbol.isin(counts.index[counts == 1])]
+    return dict(zip(unique.symbol, unique.ensembl))
+
+
+def gene_node_ensembl_ids(nodes: pd.DataFrame, symbol_to_ensembl: dict[str, str] | None) -> pd.Series:
+    """The Ensembl id of each gene node: its own when given, else its symbol's through symbol_to_ensembl.
+
+    The full graphs take most gene nodes from OmniPath and CollecTRI, which name genes by symbol only (9,962 of 12,810
+    gene nodes of graph_full_neuronal have no Ensembl id).
+    """
+    is_gene = nodes.node_type == "gene"
+    own = nodes.ensembl_gene_id.where(is_gene)
+    if symbol_to_ensembl is None:
+        return own
+    from_symbol = nodes.gene_symbol.where(is_gene).map(symbol_to_ensembl)
+    return own.where(own.notna(), from_symbol)
+
+
+def brain_expression_blocks(nodes: pd.DataFrame, gene_expression: pd.DataFrame,
+                            symbol_to_ensembl: dict[str, str] | None = None) -> pd.DataFrame:
     """node_id-indexed gene_brain_* and reaction_brain_* blocks from an Ensembl-indexed table of raw expression values.
 
     gene_expression holds gtex_brain_max, gtex_other_max, region_* and class_* columns (raw TPM or nCPM). Values are
-    log1p transformed, then each block is standardised over its own node type.
+    log1p transformed, then each block is standardised over its own node type. Gene nodes without an Ensembl id are
+    looked up by symbol in symbol_to_ensembl when given. Other node types (metabolites, the Reactome protein entities
+    and the membrane potential) get zeros.
     """
     node_index = pd.Index(nodes.node_id, name="node_id")
     value_columns = list(gene_expression.columns)
@@ -166,10 +191,11 @@ def brain_expression_blocks(nodes: pd.DataFrame, gene_expression: pd.DataFrame) 
     blocks = []
 
     is_gene = (nodes.node_type == "gene").to_numpy()
-    per_gene = logged.reindex(nodes.ensembl_gene_id[is_gene].to_numpy())
+    gene_ensembl = gene_node_ensembl_ids(nodes, symbol_to_ensembl)[is_gene]
+    per_gene = logged.reindex(gene_ensembl.to_numpy())
     block = pd.DataFrame(0.0, index=node_index, columns=value_columns + ["has_expression"])
     block.loc[is_gene, value_columns] = standardise(per_gene).to_numpy()
-    block.loc[is_gene, "has_expression"] = nodes.ensembl_gene_id[is_gene].isin(known_genes).astype(float).to_numpy()
+    block.loc[is_gene, "has_expression"] = gene_ensembl.isin(known_genes).astype(float).to_numpy()
     blocks.append(block.add_prefix("gene_brain_"))
 
     is_reaction = (nodes.node_type == "reaction").to_numpy()

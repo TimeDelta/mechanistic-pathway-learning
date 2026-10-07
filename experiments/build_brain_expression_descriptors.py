@@ -18,7 +18,8 @@ import numpy as np
 import pandas as pd
 
 from mechanistic_pathway_learning.graph.brain_expression_descriptors import (
-    brain_expression_blocks, gtex_brain_and_other_maximum, hpa_cell_class_table, hpa_region_table, read_zipped_table)
+    brain_expression_blocks, gene_node_ensembl_ids, gtex_brain_and_other_maximum, hpa_cell_class_table, hpa_region_table,
+    read_zipped_table, unambiguous_symbol_to_ensembl)
 
 ANCHOR_GENES = ["PAH", "OTC", "CPS1", "GCH1", "TH", "DDC", "DBH", "MAOA", "COMT", "SLC6A3", "SLC18A2", "GAD1", "ALDH5A1",
                 "ATP1A3", "SLC12A5"]
@@ -37,12 +38,15 @@ def main() -> None:
     arguments = parser.parse_args()
 
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
+    region_table = read_zipped_table(arguments.hpa_region)
     gene_expression = pd.concat([
         gtex_brain_and_other_maximum(arguments.gtex),
-        hpa_region_table(read_zipped_table(arguments.hpa_region)),
+        hpa_region_table(region_table),
         hpa_cell_class_table(read_zipped_table(arguments.hpa_cluster_type)),
     ], axis=1)
-    blocks = brain_expression_blocks(nodes, gene_expression)
+    symbol_to_ensembl = unambiguous_symbol_to_ensembl(region_table["Gene name"], region_table["Gene"])
+    blocks = brain_expression_blocks(nodes, gene_expression, symbol_to_ensembl)
+    gene_ensembl = gene_node_ensembl_ids(nodes, symbol_to_ensembl)[(nodes.node_type == "gene").to_numpy()]
     if arguments.no_base_descriptors:
         table = blocks
     else:
@@ -54,9 +58,9 @@ def main() -> None:
     is_gene = (nodes.node_type == "gene").to_numpy()
     is_reaction = (nodes.node_type == "reaction").to_numpy()
     anchors = {}
-    symbol_to_ensembl = dict(zip(nodes.gene_symbol[is_gene], nodes.ensembl_gene_id[is_gene]))
+    node_symbol_to_ensembl = dict(zip(nodes.gene_symbol[is_gene], gene_node_ensembl_ids(nodes, symbol_to_ensembl)[is_gene]))
     for symbol in ANCHOR_GENES:
-        ensembl = symbol_to_ensembl.get(symbol)
+        ensembl = node_symbol_to_ensembl.get(symbol)
         if ensembl is None or ensembl not in gene_expression.index:
             anchors[symbol] = None
             continue
@@ -69,7 +73,9 @@ def main() -> None:
     summary = {
         "output": str(arguments.output), "graph_dir": str(arguments.graph_dir), "nodes": len(table), "columns": len(table.columns),
         "brain_columns": [column for column in blocks.columns],
-        "gene_nodes": int(is_gene.sum()), "gene_nodes_with_expression": int(blocks.loc[is_gene, "gene_brain_has_expression"].sum()),
+        "gene_nodes": int(is_gene.sum()), "gene_nodes_without_own_ensembl_id": int(nodes.ensembl_gene_id[is_gene].isna().sum()),
+        "gene_nodes_resolved_by_symbol": int((nodes.ensembl_gene_id[is_gene].isna() & gene_ensembl.notna().to_numpy()).sum()),
+        "gene_nodes_with_expression": int(blocks.loc[is_gene, "gene_brain_has_expression"].sum()),
         "reaction_nodes": int(is_reaction.sum()),
         "reaction_nodes_with_rule": int((nodes.gene_reaction_rule[is_reaction].fillna("") != "").sum()),
         "reaction_nodes_with_expression": int(blocks.loc[is_reaction, "reaction_brain_has_expression"].sum()),

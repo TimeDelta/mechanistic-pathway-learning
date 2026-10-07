@@ -60,3 +60,17 @@ def test_blocks_fill_gene_and_reaction_rows_only():
     assert blocks.loc["GENE:A", "gene_brain_region_amygdala"] < blocks.loc["GENE:B", "gene_brain_region_amygdala"]
     assert (blocks.filter(like="reaction_brain_").loc[["GENE:A", "GENE:B"]] == 0.0).all().all()
     assert np.isfinite(blocks.to_numpy()).all()
+
+
+def test_gene_nodes_without_an_ensembl_id_are_found_by_unambiguous_symbol():
+    from mechanistic_pathway_learning.graph.brain_expression_descriptors import unambiguous_symbol_to_ensembl
+    mapping = unambiguous_symbol_to_ensembl(pd.Series(["A", "B", "B"]), pd.Series(["EA", "EB1", "EB2"]))
+    assert mapping == {"A": "EA"}
+    nodes = pd.DataFrame({
+        "node_id": ["GENE:A", "GENE:B"], "node_type": ["gene", "gene"], "gene_symbol": ["A", "B"],
+        "ensembl_gene_id": [None, None], "gene_reaction_rule": [None, None],
+    })
+    regions = pd.DataFrame({"Gene": ["EA"], "Gene name": ["A"], "Brain region": ["amygdala"], "TPM": [1.0], "pTPM": [1.0], "nTPM": [10.0]})
+    blocks = brain_expression_blocks(nodes, hpa_region_table(regions), mapping)
+    assert blocks.loc["GENE:A", "gene_brain_has_expression"] == 1.0
+    assert blocks.loc["GENE:B", "gene_brain_has_expression"] == 0.0

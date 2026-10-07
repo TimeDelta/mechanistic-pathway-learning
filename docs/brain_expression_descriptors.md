@@ -65,3 +65,13 @@ graph. Machado and Herrgård found that "for many conditions, the predictions ob
 using growth maximization and parsimony criteria are as good or better than those obtained using methods that
 incorporate transcriptomic data", so a null here would not be surprising and would not by itself say the regional or
 cell-type information is useless; the slice labels are mostly metabolic-disease phenotypes reached in few steps.
+
+## The full neuronal graph (7 October 2026)
+
+The same table for data/processed/graph_full_neuronal (data/processed/node_descriptors/
+full_neuronal_descriptors_brain_expression.parquet, after experiments/build_node_descriptors.py wrote the 83 base
+columns for that graph). Most of its gene nodes come from OmniPath and CollecTRI, which name genes by symbol only:
+9,962 of 12,810 have no Ensembl id, and 9,783 of those are found through the Human Protein Atlas symbol table (symbols
+that name more than one Ensembl id are not used). In all, 12,626 of 12,810 gene nodes and 7,752 of the 7,759 reactions
+with a gene rule carry expression. The 1,681 Reactome protein entities (complexes and sets) and the membrane-potential
+node get zeros; giving a complex the minimum over its members would follow the reaction rule, and is not done yet.
