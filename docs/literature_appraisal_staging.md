@@ -121,7 +121,47 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+Superseded unread on 7 October 2026 by the replacement query below, not discarded: 35364845, 40103114,
+40680519, 36049951, 42481621 and the four records beyond the first fifteen. They matched only the generic phrase,
+and the slots are better spent on the candidates the mechanism-named query found; read them only if the cap allows
+after the replacement queue is done.
+
+### Replacement queue (slot 7, one Consensus search, 10 records)
+
+Query, run through Consensus because it matches meaning rather than phrase: "propagating gene knockout or
+inhibition effects through a signed signaling or metabolic network outperforms unsigned network diffusion for
+predicting phenotype or disease genes". The free tier returns no PMID or DOI, so candidates are listed by first
+author, year and journal, and the firing that reads one resolves its PMID in the same single metadata call. Triage
+used only the search records, against the four checks recorded at the top of the rows.
+
+Remaining to read, in order of expected bearing on Q1:
+
+1. Santolini, 2018, PNAS. Recovers the sign and strength of perturbation patterns in 87 kinetic models from
+   topology alone, and the direction of knockout effects in bacterial chemotaxis. A mechanistic network, a
+   perturbation readout and a sign; the question for the row is whether a sign-blind model is reported beside
+   the signed one, which would make it the first direct Q1 test.
+2. Nilsson, 2021, Nature Communications. A recurrent network constrained by a prior-knowledge signalling network,
+   predicting knockout effects; the nearest architecture to the linear-response encoder found so far. Check
+   whether the signed prior is ablated and whether the split holds out whole ligands.
+3. Signorini, 2025, Bioinformatics. Infers protein-interaction signs by network propagation over cause-effect
+   data and uses them to predict knockout effects on expression and telomere length. Check 2 decides it: if the
+   signs are fitted on the same knockouts they are scored on, the row cannot credit the sign.
+4. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
+   yeast. Same risk as 3, and its readout is expression, not phenotype.
+
+Set aside from this search on the record, with the reason:
+
+- Cowen, 2017, Nature Reviews Genetics; Visonà, 2024, Briefings in Bioinformatics; Lee, 2008, Nature Genetics:
+  unsigned propagation throughout. Background for the unsigned baseline, no signed component to test. Lee 2008
+  is the standard citation that unsigned functional networks already predict loss-of-function phenotypes, which
+  is the bar a signed method has to clear.
+- Pan, 2024, Briefings in Bioinformatics (a contrastive signed graph diffusion network): the sign is the
+  gene-phenotype association label being predicted, the fourth paper of that type; fails check 1.
+- Picart-Armada, 2018, PLoS Computational Biology: unsigned, but its finding that standard cross-validation is
+  over-optimistic because of protein complexes, and its complex-aware splits, bear on the disease-cluster split
+  rather than on Q1. Note for the split section of the design document, not a Q1 row.
+- Shim, 2015, PLoS ONE: direct neighbourhood against whole-network diffusion, unsigned; the finding that pathway
+  connectivity decides which wins bears on the reach question in docs/membrane_potential_reach.md, not on Q1.
 
 ### Note on 39148051
 
