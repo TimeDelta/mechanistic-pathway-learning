@@ -34,6 +34,12 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b6_linear_response_time_scales": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5",
                                        "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002"],
     "b3_linear_response_cofactors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations"],
+    # task 25: one global spectral scale and no per-node divisor, so stoichiometric counts survive; the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_spectral": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                              "--normalisation", "spectral"],
+    # task 24: a sparsemax-weighted mixture of odd statistics across relations in place of their mean; the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_mixture": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                             "--cross-relation-aggregator", "softmax_mixture", "--mixture-weighting", "sparsemax"],
     "b6_linear_response_time_scales_cofactors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                                  "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002"],
     "b3_linear_response_cofactors_log": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations", "--response-scale", "signed_log"],
