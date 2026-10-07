@@ -103,20 +103,34 @@ the random walk is reading the graph rather than the degree sequence.
 
 ## Which earlier interventions were and were not null
 
-These paired differences stand, since they do not depend on the rewiring control. Each intervention against its own
-twin, paired over five folds:
+Rescored 7 October 2026 by experiments/compare_twin_runs.py (docs/twin_comparisons.md), which takes every two slice
+configurations differing in one argument with five folds each, 20 pairs, and reads each three ways: paired per fold
+with a t interval on four degrees of freedom, pooled out-of-fold with a paired bootstrap over the 451 perturbations,
+and pooled within degree strata. The table this replaces gave single numbers and, where it gave an interval, a
+percentile bootstrap over the five fold differences, which runs about a third narrower than the t interval (the
+manganese row read [-0.005, +0.002]). Macro AUPRC, A minus its twin; 95 percent intervals, not corrected:
 
-| intervention | difference | interval |
-|---|---|---|
-| manganese cofactor layer | -0.002 | [-0.005, +0.002] |
-| signed logarithm (b3 cofactors) | +0.001 | within noise |
-| signed logarithm (b6 time scales) | -0.001 | within noise |
-| auxiliary laboratory loss (b3 cofactors) | -0.002 | within noise |
-| protein descriptors | -0.030 | the one clear effect, and it is harmful |
+| intervention (twin) | per fold, t | pooled | within degree strata |
+|---|---|---|---|
+| manganese cofactor layer (b3 cofactors laboratory) | -0.002 [-0.008, +0.005] | +0.004 [-0.002, +0.014] | -0.004 [-0.015, +0.009] |
+| neuronal and oxidative variant (same) | +0.012 [-0.028, +0.053] | +0.004 [-0.009, +0.015] | +0.014 [-0.007, +0.037] |
+| that variant's curated layers (variant without them) | +0.007 [-0.029, +0.043] | +0.005 [-0.005, +0.013] | +0.015 [-0.004, +0.031] |
+| signed logarithm (b3 cofactors) | +0.002 [-0.012, +0.015] | +0.009 [-0.006, +0.029] | -0.004 [-0.023, +0.015] |
+| signed logarithm (b6 time scales) | -0.001 [-0.027, +0.024] | +0.000 [-0.017, +0.014] | -0.005 [-0.037, +0.019] |
+| auxiliary laboratory loss (b3 cofactors) | -0.002 [-0.008, +0.005] | +0.000 [-0.001, +0.001] | +0.000 [-0.002, +0.002] |
+| auxiliary laboratory loss (b3 typed nodes) | -0.007 [-0.036, +0.022] | -0.000 [-0.013, +0.012] | +0.002 [-0.015, +0.020] |
+| cofactor relations (b3 linear response) | +0.004 [-0.009, +0.017] | -0.003 [-0.011, +0.004] | +0.006 [-0.002, +0.016] |
+| protein descriptors (b3 typed nodes) | -0.030 [-0.056, -0.004] | -0.001 [-0.017, +0.018] | -0.018 [-0.039, -0.002] |
 
-So individual additions to the graph's content have not moved the score, while removing the wiring wholesale does.
-Those are consistent: the signal lives in the gross connectivity the random walk reads, and the specific layers added
-on top of it are small relative to the noise of a five-fold comparison.
+Read across the 20 pairs, three per-fold intervals exclude zero (protein descriptors, p = 0.034, and the
+local-descriptor encoder against the plain message-passing encoder and against the linear response, p = 0.009 and
+0.015), one within-strata interval does (protein descriptors) and no pooled interval does. Twenty comparisons at the
+0.05 level should produce about one such interval by chance, and after Holm's correction across the 20 per-fold tests
+none survives (smallest adjusted p 0.18). So the protein descriptors are the only addition with any sign of an effect,
+in the harmful direction on two of the three readings, and calling it established was too strong. Individual
+additions to the graph's content have not moved the score, while removing the wiring wholesale does; the signal lives
+in the gross connectivity the random walk reads, and the layers added on top of it are small relative to the noise of
+a five-fold comparison on 451 perturbations.
 
 ## What is still not established
 

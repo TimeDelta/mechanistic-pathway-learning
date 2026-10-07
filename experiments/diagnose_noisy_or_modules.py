@@ -4,8 +4,11 @@ training gate and the evaluation gate, read from the saved checkpoints and test 
 For each split it reports how far the link logits and the median gate log-alpha moved from their initial values
 against the largest distance Adam could move them (about one learning rate per optimizer step up to the best epoch),
 the mean expected support size per module (hard-concrete expected number of nonzero gates),
-the evaluation and expected training gate at the median log-alpha, and how much the test-set module activations vary
-across perturbations and agree between modules.
+the evaluation and expected training gate at the median log-alpha, how much the test-set module activations vary
+across perturbations and agree between modules, and how many held-out perturbations get the split's most common
+prediction exactly or to within PREDICTION_TIE_TOLERANCE (a noisy-OR head without a degree offset gives two
+perturbations the same prediction only when their module activations agree, so these are ranked by a tie or by
+float noise rather than by anything about the perturbation).
 
 Usage:
   python experiments/diagnose_noisy_or_modules.py --run-dirs runs/b6_default_disease_cluster runs/b6_mechanistic_disease_cluster \
@@ -23,6 +26,7 @@ import torch
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import HardConcreteNodeGate
 
 INITIAL_LINK_LOGIT = -3.0  # NoisyOrPathwayModuleHead default
+PREDICTION_TIE_TOLERANCE = 1e-6
 
 
 def gate_values_at(log_alpha: float) -> tuple[float, float]:
@@ -40,6 +44,16 @@ def evaluation_gate_of_run(results: dict) -> tuple[str, str]:
     if commits or results.get("arguments", {}).get("gate_evaluation") == "expected":
         return "expected", ", ".join(commits) or "f6985fc"
     return "louizos", "not recorded"
+
+
+def modal_prediction_shares(predictions: np.ndarray) -> tuple[float, float]:
+    """(share of rows equal to the most common prediction row, share within PREDICTION_TIE_TOLERANCE of it in every column)."""
+    if len(predictions) == 0:
+        return float("nan"), float("nan")
+    distinct_rows, counts = np.unique(predictions, axis=0, return_counts=True)
+    modal_row = distinct_rows[counts.argmax()]
+    within_tolerance = np.abs(predictions - modal_row).max(axis=1) <= PREDICTION_TIE_TOLERANCE
+    return float(counts.max() / len(predictions)), float(within_tolerance.mean())
 
 
 def diagnose_split(split_directory: Path) -> dict:
@@ -86,6 +100,8 @@ def diagnose_split(split_directory: Path) -> dict:
         "activation_mean": float(activations.mean()),
         "activation_standard_deviation_across_perturbations": float(activations.std(axis=0).mean()),
         "activation_correlation_between_modules": float(np.mean(np.corrcoef(activations.T)[off_diagonal])) if activations.std(axis=0).min() > 0 else float("nan"),
+        "held_out_at_modal_prediction": modal_prediction_shares(np.load(split_directory / "test_predictions.npy"))[0],
+        "held_out_within_tolerance_of_modal": modal_prediction_shares(np.load(split_directory / "test_predictions.npy"))[1],
         "test_macro_auprc": results.get("macro_auprc"),
     }
 
@@ -114,7 +130,10 @@ def main() -> None:
             "expected_support_size_mean is the mean hard-concrete expected number of nonzero gates per module. louizos_gate_at_median is the test-time estimator of Louizos et al. "
             "at the median log-alpha and expected_training_gate_at_median the mean gate the training passes saw there; evaluation_gate "
             "names the one the run evaluated with, and code_commits the commits it ran under (runs before commit recording used the "
-            "Louizos estimator).\n\n" + table + "\n")
+            "Louizos estimator). held_out_at_modal_prediction is the share of the split's held-out perturbations given exactly its most "
+            f"common prediction, and held_out_within_tolerance_of_modal the share within {PREDICTION_TIE_TOLERANCE:g} of it in every symptom; "
+            "without a degree offset the head gives two perturbations the same prediction only when their module activations agree, "
+            "so those perturbations are ranked by a tie or by float noise.\n\n" + table + "\n")
 
 
 if __name__ == "__main__":
