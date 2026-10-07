@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1016/j.neunet.2021.04.007](https://doi.org/10.1016/j.neunet.2021.04.007) (PMID 33906083) | Q1, Q2 | `no_bearing` | `background` | `strong` | "we obtain some sufficient conditions which can guarantee that networks with signed graph topologies realize bipartite synchronization under any initial conditions and arbitrary switching signals" | nothing: it is a control-theory result about coupled reaction-diffusion systems, with no biological network, no phenotype and no unsigned comparison | everything about Q1, but it supplies the condition under which signed dynamics reduce to unsigned, which is testable on our graph |
 | [10.1186/s12915-024-01968-0](https://doi.org/10.1186/s12915-024-01968-0) (PMID 39148051) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "A novel strategy for propagating signed message in signed networks addresses heterogeneity and consistency among nodes connected by signed edges" | an ablation replacing their signed propagation with an unsigned one, same features and same split; the abstract reports neither | whether the reported AUROC of 0.9742 owes anything to the signed strategy, and whether any of it transfers off a similarity-feature bipartite graph |
 | [10.1186/1756-0500-7-516](https://doi.org/10.1186/1756-0500-7-516) (PMID 25113603) | Q1, Q2 | `supports` | `analogous_mechanism` | `weak` | "the aggregation method we used is limited to a specific class of causal network models called \"causally consistent\", which is equivalent to the notion of balance of a signed graph used in graph theory" | a held-out comparison of their signed aggregation against an unsigned random walk on the same networks and the same readout; they report neither | whether an unsigned walk would have scored the same, which is our whole question |
 
@@ -107,7 +108,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -117,8 +118,7 @@ Set aside as out of scope on the abstract, with the reason:
 - 35131567 — signed network representation scored on sign prediction and link prediction,
   not on a phenotype label; keep for Q2 if the node-proximity metric reports sign mixing
 
-Remaining to read: 39976387, 39523622, 38392416, 35364845, 40103114, 33906083,
-40680519, 36049951, 42481621, and the four records beyond the first fifteen.
+Remaining to read: 39976387, 39523622, 38392416, 35364845, 40103114, 40680519, 36049951, 42481621, and the four records beyond the first fifteen.
 
 ### Note on 39148051
 
@@ -135,3 +135,34 @@ can reach that figure without the propagation contributing anything.
 What it does settle: a dedicated strategy for signed message propagation, in place of a plain
 mean over signed neighbours, is published and not novel. Task #24 is therefore a measurement
 on a mechanistic network rather than a new idea, which is the weaker and more defensible claim.
+
+### Note on 33906083, and the balance question it closes
+
+The row is `no_bearing` on Q1 and `strong` on weight, which is the point of keeping the two axes apart:
+the paper proves its own claim properly and its claim is not about anything we are asking. It is
+Lyapunov analysis of pinning control for coupled reaction-diffusion systems whose coupling topology is
+a signed graph.
+
+What it contributes is the term for the condition that would make our signed encoder redundant.
+Bipartite synchronisation holds when a signed network is structurally balanced, and a balanced signed
+graph is switching-equivalent to the all-positive one, so propagation over it differs from unsigned
+propagation by a node-wise sign that a linear readout absorbs. Reading that against our construction
+settles it on paper, without a run.
+
+Our graph is frustrated at every stoichiometric edge, by construction. Balance requires a node
+labelling in plus and minus ones with node_sign[source] * node_sign[target] equal to the edge sign for
+every edge. Each substrate_of edge from metabolite m to reaction r carries +1 and so demands
+node_sign[m] * node_sign[r] = +1, while the depletes_substrate edge the encoder derives from that same
+edge runs r to m with -1 and demands the same product be -1. Every substrate_of edge therefore forms a
+two-cycle of negative sign product with its own derived reverse edge: 34,791 such pairs on the
+metabolic graph and 36,562 on the neuronal graph. No labelling satisfies them, so the graph is as far
+from balanced as a signed graph gets, and switching equivalence does not apply.
+
+That closes the balance thread opened by the first row. The signs are not reducible to an unsigned
+graph, so the null result cannot be explained by the signs carrying no structure. It is explained, if
+at all, by the encoder discarding the structure they carry, which is what the row-sum measurement in
+docs/membrane_potential_reach.md shows.
+
+**Measurement that now has a point:** run `experiments/measure_signed_graph_balance.py` on the derived
+relation stack rather than the stored edge table, to report the frustration per relation and confirm
+the count above rather than deriving it.
