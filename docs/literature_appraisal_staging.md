@@ -5,6 +5,12 @@ copied into `docs/experiment_design.md`, `docs/references.bib` or any other docu
 until it has been read against the cited source. Rows are written by the paced
 appraisal task described at the end of this file.
 
+Exception, 7 October 2026, at the author's request: the bibliographic records of the sixteen appraised sources are
+in `docs/references.bib`, so that a reference manager can hold them. Only the records were copied (authors, title,
+journal and identifiers, from PubMed or bioRxiv), not the grades, quotes or notes, and each entry's note says the
+appraisal is unreviewed. Two of the sixteen, 31289271 and 39322717, had already been added there by the experiment
+session. Queued and set-aside sources that were never read have no entry.
+
 ## What each row must carry
 
 A row is admissible only with a PMID or DOI and a quoted sentence from the source.
@@ -549,7 +555,10 @@ Corrections made to this file in the literature session:
 - The triage checks cited by the slot 7 section were never in the file. A reconstruction was used for slots 11 to
   14, then replaced by the author's original four, with three additions kept apart as checks 5 to 7.
 - The running claim that published signed methods lean on balance and that nothing addresses a frustrated graph was
-  corrected by 25015298, a signed method built for networks that are not causally consistent.
+  corrected by 25015298, a signed method built for networks that are not causally consistent. The first row,
+  25113603, turned out to propose such an extension as well (correction in the note on 25015298).
+- At the author's request the bibliographic records of the sixteen appraised sources were added to
+  docs/references.bib, as the exception under the status line describes.
 
 Suggestions for the experiment session that came out of these rows. None was run here. The repository has since
 gained experiments/score_directed_random_walk.py, experiments/score_trained_diffusion_readout.py and a sign
@@ -720,6 +729,13 @@ restriction named in the quoted sentence of the first row (25113603) is the one 
 first row belongs to the same framework could not be confirmed, because the reference list is not in the served
 text.
 
+Correction, 7 October 2026. The PubMed record of 25113603, fetched for the bibliography and not as an appraisal
+slot, settles this. The two papers share authors (Martin and Sewer), and the first row's own abstract says its
+algorithm "extends our published aggregation method to causally inconsistent network models". So both papers from
+this group address networks that are not balanced. Earlier notes in this file describe 25113603 only by the
+restriction it names, and the note on 10.64898/2026.04.29.721775 listed it among methods confined to the balanced
+regime; that listing was wrong and has been removed. The first row's grades were not revisited.
+
 How it handles signs. Node values on the signed backbone are fitted by least squares to the gene fold-changes: the
 "smoothest" vector under the signed Laplacian with the measured genes as a boundary condition. The network-level
 score is a sum of per-edge quadratic terms, chosen because "we should avoid canceling out (“destructive
@@ -852,8 +868,7 @@ things change at once. Check 7: always predicting contraindication scores 0.9256
 here), and no such baseline is printed beside the 0.9893.
 
 What it adds for Q2 and for our graph. This is one more appraised source whose signed method lives in the balanced
-regime, after 25113603, 39523622 and 38392416, and the first to produce that regime by deleting the edges that
-violate it. On our metabolic graph the
+regime, after 39523622 and 38392416, and the first to produce that regime by deleting the edges that violate it. On our metabolic graph the
 violating edges are the derived depletes_substrate reverses, 26.9% of all edges, each in a negative two-cycle with
 its own substrate_of edge. Pruning to balance would remove the stoichiometry the encoder exists to represent. The
 fraction of nodes that receive both signs is not reported.
