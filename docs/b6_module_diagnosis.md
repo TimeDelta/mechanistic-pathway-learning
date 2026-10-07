@@ -19,11 +19,18 @@ Links start at logit -3 and Adam moves a parameter by about one learning rate pe
 | b6_mechanistic_expected_gate_disease_cluster | fold2_seed0 | expected | 554018e | 40 | 820 | 1.640 | 1.373 | 0.103 | -2.715 | -2.593 | -0.982 | 0.000 | 0.087 | 0.602 | 0.341 | 0.703 | 0.268 |
 | b6_mechanistic_expected_gate_disease_cluster | fold3_seed0 | expected | e314e3b, f640f08 | 36 | 740 | 1.480 | 1.243 | 0.101 | -2.756 | -2.440 | -1.002 | 0.000 | 0.099 | 0.804 | 0.237 | 0.299 | 0.333 |
 | b6_mechanistic_expected_gate_disease_cluster | fold4_seed0 | expected | e314e3b | 33 | 680 | 1.360 | 1.193 | 0.096 | -2.804 | -2.329 | -0.929 | 0.006 | 0.109 | 0.657 | 0.288 | 0.625 | 0.261 |
-| b6_mechanistic_expected_gate_fast_scalars_disease_cluster | fold0_seed0 | expected | f6985fc | 6 | 140 | 2.800 | 2.389 | 0.259 | -1.824 | -1.277 | -0.117 | 0.162 | 0.244 | 0.414 | 0.212 | -0.122 | 0.223 |
-| b6_mechanistic_expected_gate_fast_scalars_disease_cluster | fold1_seed0 | expected | 554018e | 6 | 140 | 2.800 | 2.710 | 0.248 | -1.844 | -1.277 | -0.119 | 0.162 | 0.244 | 0.305 | 0.202 | -0.068 | 0.272 |
-| b6_mechanistic_expected_gate_fast_scalars_disease_cluster | fold2_seed0 | expected | 554018e | 14 | 300 | 6.000 | 3.086 | 0.370 | -1.749 | -1.614 | -0.436 | 0.099 | 0.192 | 0.253 | 0.172 | 0.112 | 0.242 |
-| b6_mechanistic_time_scales_disease_cluster | fold0_seed0 | expected | d0b5189 | 6 | 140 | 2.800 | 2.422 | 0.266 | -2.840 | -1.277 | -0.117 | 0.162 | 0.244 | 0.637 | 0.177 | -0.039 | 0.233 |
-| b6_mechanistic_time_scales_disease_cluster | fold1_seed0 | expected | c84bf7f, e314e3b | 6 | 140 | 2.800 | 2.700 | 0.306 | -2.836 | -1.277 | -0.118 | 0.162 | 0.244 | 0.608 | 0.207 | -0.054 | 0.285 |
-| b6_mechanistic_time_scales_disease_cluster | fold2_seed0 | expected | e314e3b | 35 | 720 | 14.400 | 4.349 | 0.433 | -2.728 | -2.396 | -0.847 | 0.000 | 0.103 | 0.407 | 0.212 | 0.192 | 0.272 |
 | b6_linear_response_disease_cluster | fold0_seed0 | expected | 1cf0dcb, e314e3b | 37 | 760 | 1.520 | 1.318 | 0.110 | -2.543 | -2.471 | -1.039 | 0.000 | 0.096 | 0.539 | 0.233 | 0.646 | 0.229 |
 | b6_linear_response_disease_cluster | fold1_seed0 | expected | e314e3b | 25 | 520 | 1.040 | 1.196 | 0.098 | -2.589 | -2.029 | -0.812 | 0.039 | 0.139 | 0.671 | 0.236 | 0.552 | 0.291 |
+| b6_linear_response_disease_cluster | fold2_seed0 | expected | 0e9cfb3, e314e3b | 43 | 880 | 1.760 | 1.465 | 0.115 | -2.548 | -2.671 | -1.090 | 0.000 | 0.081 | 0.334 | 0.184 | 0.722 | 0.251 |
+| b6_linear_response_disease_cluster | fold3_seed0 | expected | 1687e09, 1b3efd6 | 36 | 740 | 1.480 | 1.292 | 0.109 | -2.561 | -2.447 | -1.038 | 0.000 | 0.098 | 0.532 | 0.235 | 0.638 | 0.272 |
+| b6_linear_response_disease_cluster | fold4_seed0 | expected | 1687e09, 198c5b8 | 45 | 920 | 1.840 | 1.511 | 0.107 | -2.571 | -2.737 | -1.109 | 0.000 | 0.076 | 0.440 | 0.227 | 0.811 | 0.245 |
+| b6_linear_response_time_scales_disease_cluster | fold0_seed0 | expected | e314e3b | 13 | 280 | 5.600 | 2.606 | 0.329 | -2.695 | -1.552 | -0.381 | 0.110 | 0.201 | 0.267 | 0.186 | 0.828 | 0.230 |
+| b6_linear_response_time_scales_disease_cluster | fold1_seed0 | expected | 0e9cfb3 | 14 | 300 | 6.000 | 4.012 | 0.349 | -2.683 | -1.591 | -0.415 | 0.103 | 0.195 | 0.266 | 0.158 | 0.769 | 0.289 |
+| b6_linear_response_time_scales_disease_cluster | fold2_seed0 | expected | 0e9cfb3 | 13 | 280 | 5.600 | 2.655 | 0.375 | -2.685 | -1.551 | -0.377 | 0.110 | 0.201 | 0.244 | 0.153 | 0.752 | 0.251 |
+| b6_linear_response_time_scales_disease_cluster | fold3_seed0 | expected | 1b3efd6 | 18 | 380 | 7.600 | 3.009 | 0.381 | -2.656 | -1.747 | -0.547 | 0.078 | 0.174 | 0.236 | 0.174 | 0.872 | 0.273 |
+| b6_linear_response_time_scales_disease_cluster | fold4_seed0 | expected | 1687e09 | 17 | 360 | 7.200 | 2.635 | 0.275 | -2.647 | -1.708 | -0.508 | 0.084 | 0.179 | 0.277 | 0.159 | 0.760 | 0.251 |
+| b6_linear_response_time_scales_cofactors_disease_cluster | fold0_seed0 | expected | e314e3b | 10 | 220 | 4.400 | 2.479 | 0.373 | -2.716 | -1.436 | -0.266 | 0.131 | 0.219 | 0.244 | 0.178 | 0.864 | 0.237 |
+| b6_linear_response_time_scales_cofactors_disease_cluster | fold1_seed0 | expected | 0e9cfb3 | 8 | 180 | 3.600 | 3.151 | 0.366 | -2.734 | -1.357 | -0.190 | 0.146 | 0.231 | 0.223 | 0.146 | 0.844 | 0.284 |
+| b6_linear_response_time_scales_cofactors_disease_cluster | fold2_seed0 | expected | 0e9cfb3 | 14 | 300 | 6.000 | 2.742 | 0.332 | -2.663 | -1.592 | -0.410 | 0.103 | 0.195 | 0.215 | 0.123 | 0.779 | 0.261 |
+| b6_linear_response_time_scales_cofactors_disease_cluster | fold3_seed0 | expected | 1687e09, 1b3efd6 | 18 | 380 | 7.600 | 2.901 | 0.427 | -2.643 | -1.748 | -0.539 | 0.078 | 0.174 | 0.188 | 0.126 | 0.866 | 0.265 |
+| b6_linear_response_time_scales_cofactors_disease_cluster | fold4_seed0 | expected | 1687e09, 198c5b8 | 16 | 340 | 6.800 | 2.766 | 0.329 | -2.656 | -1.670 | -0.474 | 0.090 | 0.184 | 0.221 | 0.116 | 0.696 | 0.252 |
