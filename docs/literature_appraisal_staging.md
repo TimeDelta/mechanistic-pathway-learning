@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1016/j.artmed.2025.103177](https://doi.org/10.1016/j.artmed.2025.103177) (PMID 40446589) | Q1 | `no_bearing` | `background` | `weak` | "PhenoLinker consistently outperforms existing models in both retrospective and temporal validation tasks." | the full text: the baselines by name, whether one is a diffusion or an untyped network on the same graph, what the temporal split holds out and the figures with their spread | graded on the PubMed abstract alone, because the article is not in PMC and the publisher page needed a permission that went unanswered; the abstract names no baseline and gives no number, so whether a typed model is compared with an untyped one cannot be told; the model also adds node attributes ("Unlike previous approaches, PhenoLinker integrates gene and phenotype attributes"), so typing would not be the only change; the direction is `no_bearing` as reported in the abstract, not as established, and the full text could move it |
 | [10.1093/bioinformatics/btag413](https://doi.org/10.1093/bioinformatics/btag413) (PMID 42635203) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "RGCN achieves the strongest performance across all metrics—accuracy 0.9521, macro recall 0.7196, and macro F1 0.6940." | the same comparison over several seeds and on a drug-disjoint split, with an untyped network given as many parameters as the typed one, and with the training interaction edges left out of message passing so that the typed propagation runs over the biological relations alone; for Q1 proper, a diffusion baseline and a phenotype outcome | transductive by the authors' own statement, with a random 80/10/10 split of edges and no unseen drugs; 997,766 of the 1,679,387 edges that messages pass over are training edges of the predicted relation, so this is propagation over the label graph; one run with no seeds, folds or spread, so the 0.068 gap in macro F1 between the typed and the untyped network on the same graph (0.6940 against 0.6259) has no noise estimate; the other typed model, HGT, is below the untyped network on macro F1 (0.6185) though above it on accuracy; the typed network has a weight matrix per relation and so more parameters, with no size-matched untyped control; no diffusion baseline, no signs and no majority-class figure for a label set with a 19,004 to 1 imbalance; the outcome is an interaction class, not a phenotype |
 | [10.1038/s41591-024-03233-x](https://doi.org/10.1038/s41591-024-03233-x) (PMID 39322717) | Q1 | `supports` | `same_construct_other_domain` | `strong` | "However, TxGNN outperformed all methods across all nine disease areas for both tasks, demonstrating its broad generalizability and accuracy in zero-shot drug repurposing." | the per-baseline AUPRC under the disease-area split with its spread (diffusion state distance, network proximity and the plain relational network beside TxGNN), a run with all relation types merged into one, and a diffusion baseline given a trained readout on the same labels, so that typing is separated from supervision; for Q1 proper, a graph that does not contain the label relation | the graph has 29 undirected edge types and no signs, so only the relation-typed half of Q1 is touched; indication and contraindication are edge types of the same graph and the training diseases' label edges stay in it; the untyped baselines are unsupervised statistics, so typing is confounded with supervision, pretraining and the disease-similarity module; per-baseline numbers are in figures the served text omits, and the text names a language model as the best baseline for held-out indications in seven of nine areas and the plain relational network for contraindications in eight of nine, so the diffusion baselines were not the bar to clear; gains over the next best method run from 0.5% to 59.3% across areas; the abstract's 49.2% and 35.1% were not found in the body as served; the negative sampling that sets the AUPRC base rate is in a supplementary note that was not read |
 | [10.1186/1471-2105-15-238](https://doi.org/10.1186/1471-2105-15-238) (PMID 25015298) | Q1, Q2 | `mixed` | `analogous_mechanism` | `moderate` | "As in the previous example, performance results showed a more robust behavior of network-based features as compared to gene selection, for the majority of the learning algorithms used." | the same classifiers on backbone values computed three ways (the signed Laplacian as published, all edges made positive, signs permuted with the topology kept), scored across cohorts with intervals sized for test cohorts of about 24 patients; and a plain diffusion of the gene fold-changes over the same backbone as the unsigned baseline | no run removes or permutes the signs for prediction, so Q1 is not reached: the baselines are gene-level signatures and gene sets, not an unsigned propagation; the K statistic permutes backbone edges together with their signs and tests the perturbation score, not the classifier; for infliximab response the backbone signature is not the best performer (mean G-performance across cohorts 0.83, against 0.85 for a classifier on the genes downstream of one node and 0.80 for nearest shrunken centroids on all genes), with 47 pre-treatment patients over both cohorts; for smoking status all five backbone classifiers score 0.83 to 0.91 across data sets while gene-level ones range from 0.00 to 0.88; edge direction is discarded by the signed Laplacian; the inference runs backward from expression to upstream activity in a patient, not forward from a perturbation to a phenotype; standard errors are in a supplementary table that was not read; the fraction of nodes receiving both signs is not reported |
@@ -125,6 +126,8 @@ last line of this list.
 - Slot 16, 7 October 2026, 19:19 UTC: one Consensus search on the relation-typed half of Q1, 20 records. Slots spent: 16 of 19.
 - Slot 17, 7 October 2026, 19:27 UTC: Huang 2024 (TxGNN) appraised as PMID 39322717. Slots spent: 17 of 19.
 - Slot 18, 7 October 2026, 19:36 UTC: Venkatesh 2026 appraised as PMID 42635203. Slots spent: 18 of 19.
+- Slot 19, 7 October 2026, 19:44 UTC: Mellina Andreu 2025 appraised as PMID 40446589, from the abstract only.
+  Slots spent: 19 of 19. The cap is spent and the chain has ended.
 
 ### Triage checks: the original four and three additions
 
@@ -330,7 +333,8 @@ Queued from this search, with the reason:
    0.720), with relation-specific weight matrices proving the critical factor". The same graph with and without
    relation types is the isolation check 5 asks for, applied to types. The outcome is the class of a drug-drug
    interaction, not a phenotype, and the split is not stated in the abstract.
-2. Mellina Andreu, 2024, Artificial Intelligence in Medicine, 10.1016/j.artmed.2025.103177. A heterogeneous graph
+2. Appraised in slot 19 as PMID 40446589, from the abstract only; PubMed dates the journal version to 2025.
+   Mellina Andreu, 2024, Artificial Intelligence in Medicine, 10.1016/j.artmed.2025.103177. A heterogeneous graph
    model for phenotype-gene links that "consistently outperforms existing models in both retrospective and temporal
    validation tasks". The outcome is the kind this project predicts and a temporal split is stricter than a random
    one. The abstract does not say whether any baseline is a diffusion.
@@ -489,6 +493,105 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### State of Q1 when the cap was spent (7 October 2026)
+
+Everything below is unreviewed, like the rest of this file.
+
+Q1 asks whether signed or relation-typed propagation on a biological network has been shown to beat unsigned
+diffusion for predicting a phenotype or a clinical label. Sixteen rows and three searches give this answer.
+
+- Signs, literal wording: not shown. No appraised source runs a signed and an unsigned propagation on the same
+  network and scores both on a phenotype or clinical label. The three mechanistic signed papers score direction
+  (29925605, 41429577, 17646318), where an unsigned model has no prediction. The preprint that does run unsigned
+  baselines (10.64898/2026.04.29.721775) predicts an edge sign of its own graph and changes architecture and edge
+  types together with signs. The signed method for unbalanced networks (25015298) is compared with gene-level
+  features, not with an unsigned propagation.
+- Signs, strict form (a substrate without the labels, the same pipeline with the signs removed or permuted): open.
+  Two reworded searches returned overlapping sets, so the comparison may not exist in print. That makes it an open
+  question, not a settled negative.
+- Relation types, literal wording: supported. One row of strong weight (39322717, a typed model ahead of diffusion
+  and proximity baselines on indications with whole disease areas held out) and one of weak weight (42635203, typed
+  against untyped on the same graph).
+- Relation types, strict form: open. In 39322717 typing changes together with supervision and the graph holds the
+  labels of the training diseases. In 42635203 typing is isolated, but on one run of a transductive task whose
+  graph is 59.4% label edges.
+- Edge direction, which is neither: one row of moderate weight (31289271), against a baseline below chance.
+
+Rows and searches from the literature session:
+
+| slot | source | direction | bearing | weight | how it was read |
+|---|---|---|---|---|---|
+| 11 | 17646318 | `supports` | `analogous_mechanism` | `weak` | abstract direct, body relayed by a summarising tool |
+| 12 | Consensus search, 20 records | | | | |
+| 13 | 10.64898/2026.04.29.721775 | `mixed` | `same_construct_other_domain` | `moderate` | abstract direct, body relayed by a summarising tool |
+| 14 | 31289271 | `supports` | `same_construct_other_domain` | `moderate` | PMC full text |
+| 15 | 25015298 | `mixed` | `analogous_mechanism` | `moderate` | PMC full text, tables flattened |
+| 16 | Consensus search, 20 records | | | | |
+| 17 | 39322717 | `supports` | `same_construct_other_domain` | `strong` | PMC full text, figures and supplement absent |
+| 18 | 42635203 | `supports` | `same_construct_other_domain` | `weak` | PMC full text |
+| 19 | 40446589 | `no_bearing` | `background` | `weak` | abstract only |
+
+What to check by hand first, in order of how much rests on text that was not read directly:
+
+1. 17646318: Table 1 of the cross-validation and the rule for undecided pairs, both relayed. The abstention
+   precedent rests on them.
+2. 10.64898/2026.04.29.721775: every figure outside the abstract, all relayed, in particular the label counts
+   behind the 92.6% base rate and the drug-disjoint result.
+3. 25015298: the pairing of method names with numbers in Tables 7 and 8, which arrived as flat lists of cells.
+4. 39322717: where diffusion state distance and proximity rank in the figures, and the supplementary note on
+   negative sampling.
+5. 31289271: the exponents of the p-values, and whether "completely unoriented" strips the curated directions.
+6. 40446589: the whole article.
+
+Corrections made to this file in the literature session:
+
+- The triage checks cited by the slot 7 section were never in the file. A reconstruction was used for slots 11 to
+  14, then replaced by the author's original four, with three additions kept apart as checks 5 to 7.
+- The running claim that published signed methods lean on balance and that nothing addresses a frustrated graph was
+  corrected by 25015298, a signed method built for networks that are not causally consistent.
+
+Suggestions for the experiment session that came out of these rows. None was run here. The repository has since
+gained experiments/score_directed_random_walk.py, experiments/score_trained_diffusion_readout.py and a sign
+ablation in the linear-response encoder; their results are not in this file.
+
+- Separate direction from sign with a directed unsigned arm (note on 31289271).
+- Give the diffusion baseline a trained readout before comparing it with a trained encoder, so supervision is not
+  confounded with the graph attributes (note on 39322717).
+- Run the same encoder with signs removed or permuted and nothing else changed (check 5).
+- Compute the smallest eigenvalue of the signed Laplacian of the derived relation stack as a continuous frustration
+  measure (note on 25015298).
+- If mixed-sign destinations are left undecided, report coverage beside accuracy (note on 17646318). If they are
+  resolved, carry a sign-invariant quantity beside the signed value (note on 25015298).
+- Report the majority-class score beside every direction or classification figure (check 7).
+- Do not describe the null result as a general rule about unsigned walks (note on 39322717).
+
+Queued and unread:
+
+- From the slot 16 search: Hu 2026 (10.1038/s41551-025-01598-z), Macaulay 2024 (10.1101/2024.09.24.614782), Hu
+  2025 (10.1093/bioadv/vbaf187) and Bang 2023 (10.1038/s41467-023-39301-y). The full text of 40446589
+  (10.1016/j.artmed.2025.103177) is also unread.
+- From the slot 12 search: Trinh 2016 (10.1093/bioinformatics/btw464) and Gates 2021 (10.1073/pnas.2022598118).
+  Set aside there as notes for the design question on conflicting signs: Thiele 2015
+  (10.1186/s12859-015-0733-7) and Le Bars 2023 (10.1186/s12859-023-05429-3).
+- From the original PubMed queue: the records listed as superseded unread under "Queue for Q1".
+
+Q2 and Q3 had no slot. For Q2, no appraised source reports the fraction of nodes that receive messages of both
+signs. For Q3, nothing was searched.
+
+### Note on 40446589, graded on the abstract alone
+
+The article is not in PMC. The publisher page needed a permission in the author's app that was not answered, so
+it was not opened, and no other route to the text was tried. The row therefore rests on the PubMed abstract.
+
+The abstract describes "heterogeneous information networks and a convolutional neural network-based model for
+graphs" for phenotype-gene links, the outcome this project predicts, with retrospective and temporal validation. It
+names no baseline, gives no figure and does not say whether the phenotype-gene links used for training are edges
+that messages pass over. Checks 1 to 7 cannot be judged. The grade is `no_bearing` because nothing reported in the
+abstract tests typed against untyped propagation, which is how 35654811 was graded on its abstract.
+
+PubMed dates the journal version to May 2025, where the search record gave 2024. No instruction-like text was
+found in the abstract.
 
 ### Note on 42635203, relation typing isolated on a graph that is mostly labels
 
