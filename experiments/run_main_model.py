@@ -36,8 +36,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
-from mechanistic_pathway_learning.evaluation.negative_controls import permute_symptom_labels_within_degree_strata
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
+from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
@@ -49,6 +49,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     expected_calibration_error,
     hits_at_k,
     mean_reciprocal_rank,
+    micro_auprc,
     per_symptom_auprc,
     per_symptom_auroc,
     scorable_symptom,
@@ -258,8 +259,9 @@ def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray 
     return float(np.mean(values)) if values else float("nan")
 
 
-def split_indices(data, arguments) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
-    """Return (train, validation, test) index arrays and a name for the split directory."""
+def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+    """Return (train, validation, test) index arrays and a name for the split directory. With in_lockbox (--score-lockbox)
+    the test set is the lockbox and training and validation come from the development perturbations."""
     all_indices = np.arange(len(data.perturbation_ids))
     if arguments.time_split_cutoff is not None:
         test_mask = np.ones(len(all_indices), dtype=bool)  # every perturbation is scored at the pair level; training uses pre-cutoff positives only
@@ -272,7 +274,10 @@ def split_indices(data, arguments) -> tuple[np.ndarray, np.ndarray, np.ndarray, 
             validation = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] == 0])
             train_pool = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] != 0])
         return train_pool, validation, all_indices[test_mask], split_name
-    if arguments.holdout_module:
+    if in_lockbox is not None:
+        test_mask = np.asarray(in_lockbox, dtype=bool)
+        split_name = f"lockbox_seed{arguments.seed}"
+    elif arguments.holdout_module:
         module_genes = read_curated_modules(arguments.curated_modules)[arguments.holdout_module]
         module_nodes = {data.node_index[f"GENE:{symbol}"] for symbol in module_genes if f"GENE:{symbol}" in data.node_index}
         test_mask = np.array(perturbations_anchored_in_module(data.perturbation_seeds, module_nodes))
@@ -311,7 +316,14 @@ def main() -> None:
     parser.add_argument("--num-folds", type=int, default=5)
     parser.add_argument("--holdout-module", type=str, default="", help="pathway-wise split: curated module id to hold out instead of a grouped fold")
     parser.add_argument("--holdout-subsystem", type=str, default="", help="pathway-wise split: Human-GEM subsystem whose genes (by primary subsystem) are held out")
-    parser.add_argument("--permute-labels", action="store_true", help="negative control: permute outcome rows within degree strata before training and testing")
+    parser.add_argument("--permute-labels", action="store_true",
+                        help="negative control: permute perturbation rows (outcomes with their pair weights, frequencies and label mask) within degree strata, and within the lockbox and the development set apart, before training and testing")
+    parser.add_argument("--lockbox", type=Path, default=None,
+                        help="lockbox file from experiments/draw_lockbox.py; its perturbations are removed before the split, so pilot folds never see them")
+    parser.add_argument("--score-lockbox", action="store_true",
+                        help="with --lockbox: train on every development perturbation (validation drawn from them) and score the lockbox once; the confirmatory runs (docs/preregistration.md)")
+    parser.add_argument("--rewire-swaps-per-edge", type=int, default=0,
+                        help="negative control: degree-preserving rewiring of the graph within each relation before the model is built (attempted swaps per edge; 0 = the real graph); seeded by --seed")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
@@ -395,11 +407,40 @@ def main() -> None:
                                 label_selection=arguments.label_selection)
     if data.label_selection_summary is not None:
         print(f"label selection: {data.label_selection_summary}")
-        if arguments.permute_labels or arguments.time_split_cutoff is not None:
-            raise ValueError("--label-selection is not implemented with --permute-labels or --time-split-cutoff")
+        if arguments.time_split_cutoff is not None:
+            raise ValueError("--label-selection is not implemented with --time-split-cutoff")
+    if arguments.permute_labels and arguments.time_split_cutoff is not None:
+        raise ValueError("--permute-labels is not defined with --time-split-cutoff (the time split permutes its new positives itself)")
+    in_lockbox, lockbox_summary = None, None
+    if arguments.score_lockbox and arguments.lockbox is None:
+        raise ValueError("--score-lockbox needs --lockbox")
+    if arguments.lockbox is not None:
+        if arguments.holdout_module or arguments.holdout_subsystem or arguments.time_split_cutoff is not None:
+            raise ValueError("--lockbox is defined for the grouped split only")
+        in_lockbox = read_lockbox(arguments.lockbox, data)
+        lockbox_summary = {"path": str(arguments.lockbox), "sha256": file_sha256(arguments.lockbox), "num_lockbox_perturbations": int(in_lockbox.sum()),
+                           "role": "scored" if arguments.score_lockbox else "removed before the split"}
+        print(f"lockbox: {lockbox_summary}")
+        if not arguments.score_lockbox:
+            data = restrict_to_perturbations(data, ~in_lockbox)
+            in_lockbox = None
+    if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
+        source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=arguments.seed, partition=in_lockbox)
+        data.outcomes, data.weights = data.outcomes[source_row], data.weights[source_row]
+        if data.frequencies is not None:
+            data.frequencies = data.frequencies[source_row]
+        if data.label_mask is not None:
+            data.label_mask = data.label_mask[source_row]
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
-    if arguments.permute_labels:
-        data.outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
+    rewiring_summary = None
+    if arguments.rewire_swaps_per_edge > 0:
+        original_edges = np.stack([data.edge_source, data.edge_target])
+        rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewire_swaps_per_edge, random_seed=arguments.seed)
+        rewiring_summary = {"swaps_per_edge": arguments.rewire_swaps_per_edge, "seed": arguments.seed, "num_edges": int(rewired.shape[1]),
+                            "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
+                            "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
+        data.edge_source, data.edge_target = rewired[0], rewired[1]  # before the encoder and the adjacencies are built
+        print(f"rewired graph: {rewiring_summary}")
     time_split = None
     if arguments.time_split_cutoff is not None:
         if data.evidence_dates is None or (data.evidence_dates > 0).sum() == 0:
@@ -413,9 +454,11 @@ def main() -> None:
         }
         data.outcomes = ((full_outcomes > 0) & dated & (data.evidence_dates <= cutoff_ordinal)).astype(float)  # the model only ever sees pre-cutoff positives
         time_split["scored_pairs"] = ~(data.outcomes > 0) & ~time_split["undated_positive"]
-    train_indices, validation_indices, test_indices, split_name = split_indices(data, arguments)
+    train_indices, validation_indices, test_indices, split_name = split_indices(data, arguments, in_lockbox)
     if arguments.permute_labels:
         split_name += "_permuted"
+    if arguments.rewire_swaps_per_edge > 0:
+        split_name += "_rewired"
     encoder, head = build_models(data, arguments, device)
     if arguments.init_leak_from_base_rate and arguments.head == "noisy_or":
         if label_mask is None:
@@ -435,7 +478,13 @@ def main() -> None:
     optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments, list(laboratory_readout.parameters()) if laboratory_readout is not None else ()),
                                   lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
     split_directory = arguments.run_dir / split_name
+    split_signature = {"test_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in test_indices).encode()).hexdigest(),
+                       "train_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in train_indices).encode()).hexdigest(),
+                       "lockbox_sha256": (lockbox_summary or {}).get("sha256"), "rewiring": rewiring_summary, "labels_permuted": bool(arguments.permute_labels)}
     if arguments.resume and (split_directory / "DONE").exists():
+        finished = json.loads((split_directory / "results.json").read_text()) if (split_directory / "results.json").exists() else {}
+        if "test_perturbation_ids" in finished and finished["test_perturbation_ids"] != [data.perturbation_ids[i] for i in test_indices]:
+            raise SystemExit(f"{split_directory} is DONE for other test perturbations (another lockbox or grouping); use another --run-dir")
         print(f"{split_name}: DONE marker present; skipping (delete the marker to retrain)")
         return
     split_directory.mkdir(parents=True, exist_ok=True)
@@ -449,12 +498,15 @@ def main() -> None:
             laboratory_readout.load_state_dict(checkpoint["laboratory_readout"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         state = checkpoint["state"]
+        if state.get("split_signature", split_signature) != split_signature:
+            raise SystemExit(f"{checkpoint_path} was written for another split (signature {state['split_signature']}); use another --run-dir")
         print(f"resumed at epoch {state['epoch']}")
     if "code_provenance" not in state:  # a checkpoint written before commits were recorded: its epochs ran under unrecorded code
         state["code_provenance"] = [{"started_at_epoch": 0, "commit": None, "tracked_changes": None}] if state["epoch"] > 0 else []
     provenance = git_provenance()
     if provenance["tracked_changes"]:
         print(f"warning: tracked files differ from commit {provenance['commit']}: {provenance['tracked_changes']}")
+    state["split_signature"] = split_signature
     state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance})  # one entry per process, so a resumed run lists every commit it ran under
 
     def save_checkpoint() -> None:
@@ -591,13 +643,14 @@ def main() -> None:
             **({"masked_pairs": int((~labelled_rows).sum())} if test_mask is not None else {}),
         }
     results = {
-        "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem) else arguments.fold, "holdout_module": arguments.holdout_module or None,
+        "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem or arguments.score_lockbox) else arguments.fold, "holdout_module": arguments.holdout_module or None,
         "holdout_subsystem": arguments.holdout_subsystem or None, "labels_permuted": bool(arguments.permute_labels), "seed": arguments.seed,
         "arguments": {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(arguments).items()},
         "num_train": int(len(train_indices)), "num_validation": int(len(validation_indices)), "num_test": int(len(test_indices)),
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
+        "micro_auprc": micro_auprc(predictions, test_outcomes, test_mask) if time_split is None else float("nan"),
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, test_outcomes, test_mask), "hits_at_3": hits_at_k(predictions, test_outcomes, 3, test_mask),
         "expected_calibration_error": expected_calibration_error(predictions, test_outcomes, mask=test_mask), "per_symptom": per_symptom, "symptoms": data.symptoms,
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
@@ -606,6 +659,7 @@ def main() -> None:
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
         "laboratory_labels": laboratory_results,
+        "lockbox": lockbox_summary, "rewiring": rewiring_summary,
     }
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]

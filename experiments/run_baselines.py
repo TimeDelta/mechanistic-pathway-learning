@@ -38,6 +38,12 @@ positive nor an undated positive, labelled 1 when dated after the cutoff and 0 o
 AUPRC and AUROC are computed over those pairs, with the base rate of new positives shown, and the same
 evaluation is run with the new-positive labels permuted among the scored pairs of each symptom.
 
+Lockbox (docs/preregistration.md). --lockbox removes the lockbox perturbations of configs/lockbox_v1.json before
+anything else, so every split above runs on the development set. --lockbox with --score-lockbox fits once on the
+development set and scores the lockbox (split "lockbox", with its label-permutation and rewired-graph controls); the
+pathway-wise splits and the time split are not run then. The labels are permuted within the lockbox and within the
+development set apart, so no lockbox label reaches the fit.
+
 Writes runs/baselines/results.json and docs/phase2_baselines.md.
 """
 from __future__ import annotations
@@ -49,8 +55,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
-from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, permute_symptom_labels_within_degree_strata
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
+from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
@@ -310,6 +316,11 @@ def main() -> None:
                         help="degree-preserving rewiring control for the random walk; 0 skips it. The default was 2 until 7 October 2026, "
                              "which left the slice graph under-mixed (docs/graph_content_null_results.md); 50 matches "
                              "experiments/run_rewiring_null_distribution.py. Documents generated before then say 2 in their rewiring heading")
+    parser.add_argument("--rewiring-method", choices=["pair_sampling", "integer_draws"], default="pair_sampling",
+                        help="pair_sampling: degree_preserving_rewiring, O(edges) per swap, behind every rewiring result before 7 October 2026; "
+                             "integer_draws: fast_degree_preserving_rewiring, the same swap rule at O(1) per swap (the full graph)")
+    parser.add_argument("--lockbox", type=Path, default=None, help="lockbox file from experiments/draw_lockbox.py; its perturbations are removed before every split")
+    parser.add_argument("--score-lockbox", action="store_true", help="with --lockbox: fit on the development set and score the lockbox once")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
     parser.add_argument("--with-kg-embedding", action="store_true", help="also run baseline B2 (TransE over graph plus training evidence triples)")
     parser.add_argument("--kg-embedding-all-splits", action="store_true", help="run B2 on the pathway hold-outs too (many fits)")
@@ -319,48 +330,73 @@ def main() -> None:
     arguments = parser.parse_args()
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None,
                                 label_selection=arguments.label_selection)
-    label_mask = data.label_mask  # None without --label-selection
     if data.label_selection_summary is not None:
         print(f"label selection: {data.label_selection_summary}")
-    fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
-    fold_of_perturbation = np.array([fold_by_perturbation[p] for p in data.perturbation_ids])
-    grouped_masks = [fold_of_perturbation == fold for fold in range(arguments.num_folds)]
-    pathway_masks, pathway_module_ids = pathway_wise_test_masks(data, arguments.curated_modules, arguments.min_holdout_positives)
-    subsystem_masks, subsystem_labels = subsystem_test_masks(data, arguments.min_holdout_positives)
+    if arguments.score_lockbox and arguments.lockbox is None:
+        raise SystemExit("--score-lockbox needs --lockbox")
+    in_lockbox, lockbox_summary = None, None
+    if arguments.lockbox is not None:
+        in_lockbox = read_lockbox(arguments.lockbox, data)
+        lockbox_summary = {"path": str(arguments.lockbox), "num_lockbox_perturbations": int(in_lockbox.sum()),
+                           "role": "scored" if arguments.score_lockbox else "removed before every split"}
+        print(f"lockbox: {lockbox_summary}")
+        if not arguments.score_lockbox:
+            data = restrict_to_perturbations(data, ~in_lockbox)
+            in_lockbox = None
+    label_mask = data.label_mask  # None without --label-selection
+    primary_split = "lockbox" if arguments.score_lockbox else "grouped"
+    if arguments.score_lockbox:
+        grouped_masks, grouped_labels = [in_lockbox], ["lockbox"]
+        pathway_masks, pathway_module_ids, subsystem_masks, subsystem_labels = [], [], [], []
+    else:
+        fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
+        fold_of_perturbation = np.array([fold_by_perturbation[p] for p in data.perturbation_ids])
+        grouped_masks, grouped_labels = [fold_of_perturbation == fold for fold in range(arguments.num_folds)], [str(fold) for fold in range(arguments.num_folds)]
+        pathway_masks, pathway_module_ids = pathway_wise_test_masks(data, arguments.curated_modules, arguments.min_holdout_positives)
+        subsystem_masks, subsystem_labels = subsystem_test_masks(data, arguments.min_holdout_positives)
     normalized_adjacency = build_normalized_adjacency(len(data.node_ids), data.edge_source, data.edge_target, np.where(data.is_currency)[0])
-    permuted_outcomes = permute_symptom_labels_within_degree_strata(data.outcomes, data.perturbation_degrees, random_seed=arguments.seed)
-    permuted_label_mask = None
-    if label_mask is not None:  # rows move whole, so the mask is permuted with its outcomes: code 0 negative, 1 positive, 2 set aside
-        permuted_code = permute_symptom_labels_within_degree_strata(np.where(label_mask, data.outcomes, 2.0), data.perturbation_degrees, random_seed=arguments.seed)
-        permuted_outcomes, permuted_label_mask = (permuted_code > 0).astype(float), permuted_code != 2.0
+    # rows move whole, so a pair keeps its label-mask entry; within the lockbox and the development set apart under --score-lockbox
+    permutation_source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=arguments.seed, partition=in_lockbox)
+    permuted_outcomes = data.outcomes[permutation_source_row]
+    permuted_label_mask = None if label_mask is None else label_mask[permutation_source_row]
 
     num_genes = sum(t == "gene" for t in data.perturbation_types)
     num_drugs = sum(t == "drug" for t in data.perturbation_types)
     results = {
         "num_perturbations": len(data.perturbation_ids), "num_genes": num_genes, "num_drugs": num_drugs, "num_symptoms": len(data.symptoms), "symptoms": data.symptoms,
-        "group_by": arguments.group_by, "num_groups": len(set(data.group_ids)), "num_folds": arguments.num_folds, "label_selection": data.label_selection_summary,
+        "group_by": arguments.group_by, "num_groups": len(set(data.group_ids)), "num_folds": 1 if arguments.score_lockbox else arguments.num_folds, "label_selection": data.label_selection_summary,
+        "lockbox": lockbox_summary, "seed": arguments.seed,
         "kg_embedding_settings": KG_EMBEDDING_SETTINGS if arguments.with_kg_embedding else None,
         "pathway_wise_modules": pathway_module_ids, "pathway_wise_holdout_sizes": [int(mask.sum()) for mask in pathway_masks],
         "pathway_wise_positives": [int(data.outcomes[mask].sum()) for mask in pathway_masks],
         "subsystem_wise_subsystems": subsystem_labels, "subsystem_wise_holdout_sizes": [int(mask.sum()) for mask in subsystem_masks],
         "subsystem_wise_positives": [int(data.outcomes[mask].sum()) for mask in subsystem_masks],
-        "splits": {"grouped": {}, "pathway_wise": {}, "subsystem_wise": {}, "grouped_label_permutation": {}, "pathway_wise_label_permutation": {}, "subsystem_wise_label_permutation": {}, "grouped_rewired_graph": {}},
+        "splits": {primary_split: {}, "pathway_wise": {}, "subsystem_wise": {}, f"{primary_split}_label_permutation": {}, "pathway_wise_label_permutation": {}, "subsystem_wise_label_permutation": {},
+                   f"{primary_split}_rewired_graph": {}},
     }
+    arguments.output_dir.mkdir(parents=True, exist_ok=True)
+    np.save(arguments.output_dir / "permutation_source_rows.npy", permutation_source_row)  # the permuted labels are data.outcomes[these rows]
     if arguments.rewiring_swaps_per_edge > 0:
-        rewired = degree_preserving_rewiring(np.stack([data.edge_source, data.edge_target]), data.edge_relation, num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
+        original_edges = np.stack([data.edge_source, data.edge_target])
+        rewire = fast_degree_preserving_rewiring if arguments.rewiring_method == "integer_draws" else degree_preserving_rewiring
+        rewired = rewire(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
+        results["rewiring"] = {"method": arguments.rewiring_method, "swaps_per_edge": arguments.rewiring_swaps_per_edge, "seed": arguments.seed,
+                               "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
+                               "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
         rewired_adjacency = build_normalized_adjacency(len(data.node_ids), rewired[0], rewired[1], np.where(data.is_currency)[0])
         predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro,
-                                                             label_mask=label_mask)
-        results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
-        entry = results["splits"]["grouped_rewired_graph"]["random_walk_with_restart"]
-        print(f"{'grouped_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
-    split_plan = [("grouped", grouped_masks, [str(fold) for fold in range(arguments.num_folds)]), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
+                                                             grouped_labels, label_mask=label_mask)
+        results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
+        np.save(arguments.output_dir / f"predictions_{primary_split}_rewired_graph_random_walk_with_restart.npy", predictions)
+        entry = results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"]
+        print(f"{primary_split + '_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
+    split_plan = [(primary_split, grouped_masks, grouped_labels), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
     model_names = list(BASELINE_NAMES) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else [])
     for model_name in model_names:
         for split_name, masks, labels in split_plan:
             if not masks:
                 continue
-            if model_name == KG_EMBEDDING_NAME and split_name != "grouped" and not arguments.kg_embedding_all_splits:
+            if model_name == KG_EMBEDDING_NAME and split_name != primary_split and not arguments.kg_embedding_all_splits:
                 continue
             predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
                                                                  label_mask=label_mask)
@@ -372,15 +408,16 @@ def main() -> None:
                 predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
                                                                      label_mask=permuted_label_mask)
                 results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask)
+                np.save(arguments.output_dir / f"predictions_{split_name}_label_permutation_{model_name}.npy", predictions)
         for split_name, entries in results["splits"].items():
             if model_name in entries:
                 entry = entries[model_name]
                 print(f"{split_name:26s} {model_name:26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
                       f"macro AUROC {entry['macro_auroc']:.3f} (per fold {entry['per_fold_macro_auroc_mean']:.3f}; rank within hold-out AUPRC {entry.get('macro_auprc_rank_normalised', float('nan')):.3f} AUROC {entry.get('macro_auroc_rank_normalised', float('nan')):.3f} stratified {entry.get('macro_auroc_stratified', float('nan')):.3f})  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}")
     results["time_split"] = {}
-    if label_mask is not None:
-        model_names_for_time_split = []  # the time split scores new positive pairs; it is not defined under a label selection
-        results["time_split_not_run"] = "not implemented with --label-selection"
+    if label_mask is not None or arguments.score_lockbox:
+        model_names_for_time_split = []  # the time split scores new positive pairs; it is not defined under a label selection, and it would score the lockbox
+        results["time_split_not_run"] = "not run with --score-lockbox" if arguments.score_lockbox else "not implemented with --label-selection"
     else:
         model_names_for_time_split = model_names
     for model_name in model_names_for_time_split:
@@ -400,14 +437,16 @@ def main() -> None:
 
     lines = ["# Phase 2 baselines (generated by experiments/run_baselines.py)", "",
              f"{len(data.perturbation_ids)} perturbations ({num_genes} genes, {num_drugs} drugs), {len(data.symptoms)} symptoms, relation induces. "
-             f"Grouped split: {arguments.num_folds}-fold cross-validation with leakage groups by {arguments.group_by} ({len(set(data.group_ids))} groups); out-of-fold predictions pooled. "
-             "Unobserved pairs count as negatives (positive-unlabelled convention). " + (f"Label selection {data.label_selection_summary['path']}: {data.label_selection_summary['masked_pairs']} of {data.label_selection_summary['positive_pairs']} positive pairs set aside, neither positive nor negative in fitting or scoring (positive counts in the hold-out tables include them). " if data.label_selection_summary else "") + "Pooled metrics are computed on the pooled out-of-fold predictions; per-fold values are the mean and standard deviation over folds of the macro metric, which is immune to the base-rate artifact that pulls pooled AUROC of a constant-per-fold predictor below 0.5.", ""]
+             + (f"Lockbox: fitted once on the {int((~in_lockbox).sum())} development perturbations, scored on the {int(in_lockbox.sum())} lockbox perturbations of {arguments.lockbox} (leakage groups by {arguments.group_by}). " if arguments.score_lockbox else
+              f"Grouped split: {arguments.num_folds}-fold cross-validation with leakage groups by {arguments.group_by} ({len(set(data.group_ids))} groups); out-of-fold predictions pooled. "
+              + (f"The {lockbox_summary['num_lockbox_perturbations']} lockbox perturbations of {arguments.lockbox} were removed first. " if lockbox_summary else ""))
+             + "Unobserved pairs count as negatives (positive-unlabelled convention). " + (f"Label selection {data.label_selection_summary['path']}: {data.label_selection_summary['masked_pairs']} of {data.label_selection_summary['positive_pairs']} positive pairs set aside, neither positive nor negative in fitting or scoring (positive counts in the hold-out tables include them). " if data.label_selection_summary else "") + "Pooled metrics are computed on the pooled out-of-fold predictions; per-fold values are the mean and standard deviation over folds of the macro metric, which is immune to the base-rate artifact that pulls pooled AUROC of a constant-per-fold predictor below 0.5.", ""]
     header = ["| model | macro AUPRC (pooled) | macro AUPRC (per fold) | macro AUROC (pooled) | macro AUROC (per fold) | MRR | hits@3 | scored perturbations |", "|---|---|---|---|---|---|---|---|"]
-    lines += ["## Grouped perturbation-wise split", ""] + header + [summary_row(name, entry) for name, entry in results["splits"]["grouped"].items()] + [""]
-    degree_bins = list(next(iter(results["splits"]["grouped"].values()))["macro_auprc_by_degree_bin"])
+    lines += ["## Lockbox" if arguments.score_lockbox else "## Grouped perturbation-wise split", ""] + header + [summary_row(name, entry) for name, entry in results["splits"][primary_split].items()] + [""]
+    degree_bins = list(next(iter(results["splits"][primary_split].values()))["macro_auprc_by_degree_bin"])
     lines += ["Macro AUPRC by perturbation degree tercile (pooled out-of-fold predictions; bins are [low degree, high degree] with the number of perturbations):", "",
               "| model | " + " | ".join(degree_bins) + " |", "|---|" + "---|" * len(degree_bins)]
-    for name, entry in results["splits"]["grouped"].items():
+    for name, entry in results["splits"][primary_split].items():
         lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_degree_bin'][b]:.3f}" for b in degree_bins) + " |")
     lines.append("")
     if results["splits"]["pathway_wise"]:
@@ -418,15 +457,16 @@ def main() -> None:
         lines += holdout_section("Pathway-wise split, Human-GEM subsystems (every gene whose primary subsystem is the held-out one)",
                                  "Subsystems are the reconstruction's own pathway partition; they cover many more annotated genes than the curated modules and are the candidate definition of the pre-registered pathway-wise split.",
                                  results["splits"]["subsystem_wise"], results["splits"]["subsystem_wise_label_permutation"], subsystem_labels, subsystem_masks, data.outcomes)
-    if results["splits"]["grouped_label_permutation"]:
-        lines += ["## Negative control: labels permuted within degree strata (grouped split)", ""] + header + [summary_row(name, entry) for name, entry in results["splits"]["grouped_label_permutation"].items()] + [""]
-    if results["splits"]["grouped_rewired_graph"]:
-        lines += [f"## Negative control: degree-preserving rewiring of the graph ({arguments.rewiring_swaps_per_edge} swaps per edge; grouped split, random walk only)", ""] + header + [summary_row(name, entry) for name, entry in results["splits"]["grouped_rewired_graph"].items()] + [""]
-    lines += ["## Per-symptom AUPRC, grouped split", "", "Point estimate with 95 percent bootstrap interval over perturbations; base rate in parentheses.", "",
-              "| symptom | " + " | ".join(results["splits"]["grouped"]) + " |", "|---|" + "---|" * len(results["splits"]["grouped"])]
+    split_title = "lockbox" if arguments.score_lockbox else "grouped split"
+    if results["splits"][f"{primary_split}_label_permutation"]:
+        lines += [f"## Negative control: labels permuted within degree strata ({split_title})", ""] + header + [summary_row(name, entry) for name, entry in results["splits"][f"{primary_split}_label_permutation"].items()] + [""]
+    if results["splits"][f"{primary_split}_rewired_graph"]:
+        lines += [f"## Negative control: degree-preserving rewiring of the graph ({arguments.rewiring_swaps_per_edge} swaps per edge, {arguments.rewiring_method}; {split_title}, random walk only)", ""] + header + [summary_row(name, entry) for name, entry in results["splits"][f"{primary_split}_rewired_graph"].items()] + [""]
+    lines += [f"## Per-symptom AUPRC, {split_title}", "", "Point estimate with 95 percent bootstrap interval over perturbations; base rate in parentheses.", "",
+              "| symptom | " + " | ".join(results["splits"][primary_split]) + " |", "|---|" + "---|" * len(results["splits"][primary_split])]
     for symptom in data.symptoms:
         cells = []
-        for entry in results["splits"]["grouped"].values():
+        for entry in results["splits"][primary_split].values():
             s = entry["per_symptom"].get(symptom)
             cells.append("n/a" if s is None else f"{s['auprc']['point']:.3f} [{s['auprc']['lower']:.3f}, {s['auprc']['upper']:.3f}] ({s['base_rate']:.3f})")
         lines.append(f"| {symptom} | " + " | ".join(cells) + " |")

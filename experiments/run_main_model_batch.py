@@ -141,19 +141,29 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="*", default=[0])
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="disease_cluster")
     parser.add_argument("--run-root", type=Path, default=Path("runs"))
+    parser.add_argument("--lockbox", type=Path, default=None,
+                        help="lockbox file (experiments/draw_lockbox.py): pilots run on the development set into <configuration>_<group-by>_development")
+    parser.add_argument("--score-lockbox", action="store_true",
+                        help="with --lockbox: one run per seed trained on the development set and scored on the lockbox, into <configuration>_<group-by>_confirmatory")
     parser.add_argument("--extra", nargs=argparse.REMAINDER, default=[], help="further arguments passed through to run_main_model.py")
     arguments = parser.parse_args()
-    run_directory = arguments.run_root / f"{arguments.configuration}_{arguments.group_by}"
+    if arguments.score_lockbox and arguments.lockbox is None:
+        raise SystemExit("--score-lockbox needs --lockbox")
+    suffix = "" if arguments.lockbox is None else ("_confirmatory" if arguments.score_lockbox else "_development")  # fold numbers differ once the lockbox is removed
+    run_directory = arguments.run_root / f"{arguments.configuration}_{arguments.group_by}{suffix}"
+    lockbox_arguments = [] if arguments.lockbox is None else ["--lockbox", str(arguments.lockbox)] + (["--score-lockbox"] if arguments.score_lockbox else [])
     jobs: list[list[str]] = []
     for seed in arguments.seeds:
-        if arguments.holdout_modules or arguments.holdout_subsystems:
+        if arguments.score_lockbox:
+            jobs.append(["--seed", str(seed)])
+        elif arguments.holdout_modules or arguments.holdout_subsystems:
             jobs += [["--holdout-module", module, "--seed", str(seed)] for module in arguments.holdout_modules]
             jobs += [["--holdout-subsystem", subsystem, "--seed", str(seed)] for subsystem in arguments.holdout_subsystems]
         else:
             jobs += [["--fold", str(fold), "--seed", str(seed)] for fold in arguments.folds]
     for job in jobs:
         command = [sys.executable, "experiments/run_main_model.py", "--run-dir", str(run_directory), "--group-by", arguments.group_by, "--resume",
-                   *CONFIGURATIONS[arguments.configuration], *job, *arguments.extra]
+                   *CONFIGURATIONS[arguments.configuration], *lockbox_arguments, *job, *arguments.extra]
         print("running:", " ".join(command), flush=True)
         completed = subprocess.run(command, check=False)
         if completed.returncode != 0:

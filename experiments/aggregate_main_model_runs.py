@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
@@ -168,6 +168,8 @@ def load_pooled_predictions(aggregated: dict, run_directories: list[Path], basel
                 name = prediction_path.stem[len(f"predictions_{baseline_split}_"):]
                 predictions_by_name[name] = np.load(prediction_path)
                 rows_by_name[name] = np.load(rows_path) if rows_path.exists() else np.ones(len(data.perturbation_ids), dtype=bool)
+        else:
+            print(f"warning: {baseline_directory} holds other perturbations ({len(baseline_ids)} against {len(data.perturbation_ids)}; a lockbox removed on one side only?); its baselines are left out of the stratified readings")
     return predictions_by_name, rows_by_name
 
 
@@ -256,12 +258,16 @@ def main() -> None:
     parser.add_argument("--baseline-split", default="grouped", help="key under 'splits' in the baseline results to show")
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="the label selection the runs were trained on (experiments/build_label_selection.py); its set-aside pairs are left out of every metric")
+    parser.add_argument("--lockbox", type=Path, default=None,
+                        help="the lockbox removed before the runs' folds were drawn; pass the baseline results of run_baselines.py --lockbox with it")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--title", default="Phase 3: proposed model and sigmoid-head baseline")
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/phase3_main_model.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/phase3_aggregate.json"))
     arguments = parser.parse_args()
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
+    if arguments.lockbox is not None:
+        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     aggregated = {}
     for run_directory in arguments.run_dirs:

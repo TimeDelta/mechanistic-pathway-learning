@@ -8,6 +8,7 @@ convention and is stated as such in the design (section 5.4).
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass
@@ -91,6 +92,43 @@ class ExperimentData:
 
 
 GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id", "disease_cluster_and_targets": "disease_cluster_id"}
+
+
+PER_PERTURBATION_LISTS = ("perturbation_ids", "perturbation_labels", "perturbation_types", "group_ids", "perturbation_seeds", "perturbation_signs", "perturbation_magnitudes")
+PER_PERTURBATION_ARRAYS = ("outcomes", "weights", "in_metabolic_layer", "frequencies", "evidence_dates", "evidence_date_is_publication", "label_mask")
+
+
+def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "ExperimentData":
+    """A copy of data holding only the perturbations where keep is True (graph fields shared, not copied). Used to take the
+    lockbox out of every pilot run, baseline and score, so nothing fitted or scored before confirmation sees it."""
+    keep = np.asarray(keep, dtype=bool)
+    if keep.shape != (len(data.perturbation_ids),):
+        raise ValueError("keep must have one entry per perturbation")
+    positions = np.flatnonzero(keep)
+    changes = {name: [getattr(data, name)[i] for i in positions] for name in PER_PERTURBATION_LISTS}
+    for name in PER_PERTURBATION_ARRAYS:
+        value = getattr(data, name)
+        changes[name] = None if value is None else value[positions]
+    return dataclasses.replace(data, **changes)
+
+
+def read_lockbox(lockbox_path: Path, data: "ExperimentData") -> np.ndarray:
+    """Boolean per perturbation of data: in the lockbox of lockbox_path (experiments/draw_lockbox.py). Refuses a lockbox drawn
+    on another label selection or another leakage grouping, and one naming perturbations the data does not hold."""
+    lockbox = json.loads(Path(lockbox_path).read_text())
+    selection_sha256 = (data.label_selection_summary or {}).get("sha256")
+    if lockbox["label_selection_sha256"] != selection_sha256:
+        raise ValueError(f"{lockbox_path} was drawn on label selection {lockbox['label_selection_sha256'][:8]}, not on the one loaded ({str(selection_sha256)[:8]})")
+    held_out = set(lockbox["perturbation_ids"])
+    missing = held_out - set(data.perturbation_ids)
+    if missing:
+        raise ValueError(f"{lockbox_path}: {len(missing)} lockbox perturbations are not in the data, e.g. {sorted(missing)[:3]}")
+    in_lockbox = np.array([perturbation_id in held_out for perturbation_id in data.perturbation_ids])
+    groups_inside = {group for group, inside in zip(data.group_ids, in_lockbox) if inside}
+    straddling = [group for group, inside in zip(data.group_ids, in_lockbox) if not inside and group in groups_inside]
+    if straddling:
+        raise ValueError(f"{lockbox_path}: leakage group {straddling[0]} has members on both sides; load the data with group_by {lockbox['group_by']!r}")
+    return in_lockbox
 
 
 def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_types: list[str], group_ids: list[str],

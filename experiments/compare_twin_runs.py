@@ -37,7 +37,7 @@ import pandas as pd
 from scipy import stats
 
 from experiments.run_main_model_batch import CONFIGURATIONS
-from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     degree_strata,
@@ -55,11 +55,12 @@ MINIMUM_POSITIVES_TO_SCORE = 5
 NUM_FOLDS = 5
 LABEL_REPRODUCTION_TOLERANCE = 1e-6
 DEFAULT_CACHE_DIRECTORY = Path("runs/twin_comparisons")
+RUN_DIRECTORY_SUFFIX = "_disease_cluster"  # main() sets it from --group-by and --lockbox, as run_main_model_batch.py names the directories
 
 
 def run_directory(run: str) -> Path | None:
     for root in RUN_ROOTS:
-        directory = root / f"{run}_disease_cluster"
+        directory = root / f"{run}{RUN_DIRECTORY_SUFFIX}"
         if directory.exists():
             return directory
     return None
@@ -263,13 +264,20 @@ def main() -> None:
     parser.add_argument("--pairs", nargs="*", default=None, help="A:B pairs to score instead of every one-argument twin")
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="the label selection both runs were trained on (experiments/build_label_selection.py); its set-aside pairs are left out of every reading")
+    parser.add_argument("--group-by", choices=["disease_cluster", "disease_cluster_and_targets"], default="disease_cluster",
+                        help="the leakage grouping both runs were split by (disease_cluster_and_targets for every full-graph run)")
+    parser.add_argument("--lockbox", type=Path, default=None, help="the lockbox removed before the runs' folds were drawn (their directories end in _development)")
     parser.add_argument("--num-bootstrap", type=int, default=1000)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIRECTORY)
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/twin_comparisons.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/twin_comparisons.json"))
     arguments = parser.parse_args()
 
-    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster", label_selection=arguments.label_selection)
+    global RUN_DIRECTORY_SUFFIX
+    RUN_DIRECTORY_SUFFIX = f"_{arguments.group_by}" + ("_development" if arguments.lockbox is not None else "")
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
+    if arguments.lockbox is not None:
+        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, NUM_FOLDS, 0)
     strata = np.array([fold_by_perturbation[p] for p in data.perturbation_ids]) * 1000 + degree_strata(data.perturbation_degrees)
