@@ -35,6 +35,7 @@ from mechanistic_pathway_learning.graph.reactome_import import (
     import_reactome_layer,
     read_human_gem_participants,
 )
+from mechanistic_pathway_learning.graph.redox_pools import add_redox_pools
 
 # the inorganic ions whose movement across the plasma membrane carries current, with the Human-GEM base id of each
 INORGANIC_IONS = {"Na+": "MAM02519", "K+": "MAM02200", "Ca2+": "MAM01413", "Cl-": "MAM01442", "Mg2+": "MAM02482"}
@@ -123,6 +124,7 @@ def main() -> None:
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.receptor_table), release_reactions_of_transmitter)
         new_nodes, new_edges, new_relations, oxidative_summary = add_oxidative_regulation(
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.oxidant_target_table), pd.read_csv(arguments.oxidant_source_table))
+    new_nodes, new_edges, new_relations, redox_summary = add_redox_pools(new_nodes, new_edges, new_relations)
     for base, compartments in SIGNALLING_METABOLITES.items():
         rows = new_nodes.base_metabolite_id.eq(base) & (new_nodes.compartment.isin(compartments) if compartments else True)
         new_nodes.loc[rows, "is_currency"] = False
@@ -132,7 +134,7 @@ def main() -> None:
     new_edges.to_parquet(arguments.output_dir / "edges.parquet")
     (arguments.output_dir / "relation_types.json").write_text(json.dumps(new_relations, indent=1) + "\n")
     summary.update(base_graph=str(arguments.base_graph_dir), reactome_pathways=json.loads((arguments.reactome_dir / "pathways.json").read_text()),
-                   release_regulation=receptor_summary, oxidative_regulation=oxidative_summary, minimum_brain_tpm=arguments.minimum_brain_tpm,
+                   release_regulation=receptor_summary, oxidative_regulation=oxidative_summary, redox_pools=redox_summary, minimum_brain_tpm=arguments.minimum_brain_tpm,
                    nodes_added_in_total=len(new_nodes) - len(nodes), edges_added_in_total=len(new_edges) - len(edges),
                    nodes_by_type=new_nodes.node_type.value_counts().to_dict(), edges_by_relation=new_edges.relation_type.value_counts().to_dict())
     (arguments.output_dir / "neuronal_variant_summary.json").write_text(json.dumps(summary, indent=1) + "\n")

@@ -121,3 +121,44 @@ def test_curated_tables_in_the_repository_are_well_formed():
     assert set(targets.effect_sign) <= {-1, 1} and targets.pmid.notna().all() and targets.doi.notna().all()
     sources = pd.read_csv(Path("docs/curated_oxidant_sources.csv"))
     assert sources.pmid.notna().all() and sources.doi.notna().all() and sources.compartment.notna().all()
+
+
+def test_redox_pools_from_human_gem_stoichiometry():
+    from mechanistic_pathway_learning.graph.redox_pools import add_redox_pools, pool_node
+
+    glutathione, disulphide, nadph, nadp, peroxide, thioredoxin = "MAM02026", "MAM02027", "MAM02555", "MAM02554", "MAM02041", "MAM02990"
+    rows = [{"node_id": f"{base}c", "node_type": "metabolite", "display_name": base, "compartment": "c", "base_metabolite_id": base,
+             "is_currency": base in {glutathione, nadph, nadp}, "in_metabolic_layer": True, "degree": 0}
+            for base in (glutathione, disulphide, nadph, nadp, peroxide, thioredoxin)]
+    rows += [{"node_id": f"{glutathione}m", "node_type": "metabolite", "display_name": glutathione, "compartment": "m", "base_metabolite_id": glutathione,
+              "is_currency": False, "in_metabolic_layer": True, "degree": 0}]
+    reactions = {"GPX1": "glutathione peroxidase", "GSR": "glutathione reductase", "GST": "glutathione S-transferase", "G6PD": "glucose-6-phosphate dehydrogenase",
+                 "TRANSPORT": "transport of glutathione (cytosol to mitochondrion)", "FASN": "fatty acid synthase"}
+    rows += [{"node_id": reaction, "node_type": "reaction", "display_name": name, "compartment": "c", "is_currency": False, "degree": 0}
+             for reaction, name in reactions.items()]
+    nodes = pd.DataFrame(rows).reindex(columns=NODE_COLUMNS)
+    def edge(source, target, relation):
+        return {"source_id": source, "target_id": target, "relation_type": relation, "sign": 1.0, "evidence_source": "Human-GEM"}
+    edge_rows = [edge(f"{glutathione}c", "GPX1", "substrate_of"), edge(f"{peroxide}c", "GPX1", "substrate_of"), edge("GPX1", f"{disulphide}c", "product_of"),
+                 edge(f"{disulphide}c", "GSR", "substrate_of"), edge(f"{nadph}c", "GSR", "substrate_of"), edge("GSR", f"{glutathione}c", "product_of"),
+                 edge("GSR", f"{nadp}c", "product_of"),
+                 edge(f"{glutathione}c", "GST", "substrate_of"), edge("GST", f"{disulphide}c", "product_of"),
+                 edge(f"{nadp}c", "G6PD", "substrate_of"), edge("G6PD", f"{nadph}c", "product_of"),
+                 edge(f"{glutathione}c", "TRANSPORT", "substrate_of"), edge("TRANSPORT", f"{glutathione}m", "product_of"),
+                 edge(f"{nadph}c", "FASN", "substrate_of"), edge("FASN", f"{nadp}c", "product_of")]
+    edges = pd.DataFrame(edge_rows, columns=EDGE_COLUMNS)
+    new_nodes, new_edges, new_relations, summary = add_redox_pools(nodes, edges, ["substrate_of", "product_of"])
+    glutathione_pool, nadph_pool = pool_node("GSH", "c"), pool_node("NADPH", "c")
+    changes = new_edges[new_edges.relation_type == "changes_redox_pool"].set_index(["source_id", "target_id"]).sign
+    assert changes[("GPX1", glutathione_pool)] == -1.0 and changes[("GST", glutathione_pool)] == -1.0
+    assert changes[("GSR", glutathione_pool)] == 1.0
+    # transport out of the cytosol lowers the cytosolic pool and raises the mitochondrial one
+    assert changes[("TRANSPORT", glutathione_pool)] == -1.0 and changes[("TRANSPORT", pool_node("GSH", "m"))] == 1.0
+    assert changes[("G6PD", nadph_pool)] == 1.0 and changes[("GSR", nadph_pool)] == -1.0
+    assert ("FASN", nadph_pool) not in changes.index  # a competing demand, left out
+    # the pools feed back only to the reactions that handle an oxidant
+    capacity = new_edges[new_edges.relation_type == "redox_capacity"]
+    assert set(zip(capacity.source_id, capacity.target_id)) == {(glutathione_pool, "GPX1"), (nadph_pool, "GSR")}
+    assert (capacity.sign == 1.0).all()
+    assert not new_nodes.set_index("node_id").loc[glutathione_pool, "is_currency"]
+    assert summary["largest_pool_out_degree"] == 1 and "redox_capacity" in new_relations
