@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.64898/2026.04.29.721775](https://doi.org/10.64898/2026.04.29.721775) (bioRxiv preprint, version 1, no PMID) | Q1, Q2 | `mixed` | `same_construct_other_domain` | `moderate` | "Without task-specific fine-tuning, FLASH consistently outperforms or matches nine state-of-the-art unsigned, relational, and signed graph baselines across drug mode-of-action prediction, clinical response modeling, and drug-drug interaction prediction, while substantially improving computational efficiency." | the same model with signs removed or permuted and nothing else changed, on a split that holds out whole drugs or diseases, with the majority-class score beside each accuracy; for Q1 proper, an outcome that is not itself an edge of the graph | the "clinical response" label is the sign of a compound-disease edge of the same graph (indication against contraindication), split by random edges, so this is the association-label design of 39976387; the unsigned baselines lose edge types as well as signs and differ in architecture, and the signed models receive the training labels as input edge signs, so the gain cannot be credited to sign propagation; contraindications are 92.6% of the labels and no majority-class score is given beside the binary accuracy of 0.9893; in the one drug-disjoint setting, on an unsigned outcome, the lead over the best baseline is not significant (p = 0.20 as relayed, three runs); balance is imposed by pruning edges in unbalanced cycles, which our graph could not survive; a preprint with unresolved table references; the body was read through a summarising fetch tool, so every figure beyond the abstract is relayed |
 | [10.1093/bioinformatics/btm170](https://doi.org/10.1093/bioinformatics/btm170) (PMID 17646318) | Q1 | `supports` | `analogous_mechanism` | `weak` | "In cross-validation tests, SPINE obtains very high accuracy in predicting knockout effects (99%)." | for Q1, a readout that an unsigned propagation over the same physical network can also be scored on (whether a knockout changes a gene at all, or a phenotype), since direction gives it nothing to predict; for the 99%, the counts of up and down effects among the held-out pairs and a split that holds out whole knockouts instead of single pairs | a direction task on expression, so Q1 is not reached and the readout is not a phenotype; the signs are fitted to the same knockout compendium they are scored on, with one or five pairs hidden per iteration, so the other pairs of the same knockout stay in the fit; the only baseline is another signed method (Yeang et al. 2004), and by the table as relayed the leave-one-out gap is 101 against 100 correct of 103 held-out pairs; no class balance or majority-direction rate in the part read; the figure is for the edge variant on a mating subnetwork of 58 interactions and 149 knockout pairs; the full text is not in PMC and was read through a publisher-page fetch that stopped in section 3.2 and relays only short quotes, so every figure beyond the abstract needs checking against the PDF |
 | [10.1093/bioinformatics/btaf674](https://doi.org/10.1093/bioinformatics/btaf674) (PMID 41429577) | Q1 | `supports` | `analogous_mechanism` | `weak` | "Evaluation by precision-recall analysis gave an area under the curve (AUPRC) of 0.8, indicating that SIGNAL accurately recapitulates TLM knockout phenotypes." | the telomere evaluation with its positive class and base rate stated, against an all-positive network (which predicts every path positive, the majority-direction baseline) and with the telomere genes' own knockouts excluded from the sign features | a direction task, so an unsigned propagation has no prediction to compare and Q1 is not reached; the AUPRC of 0.8 comes with no positive class or base rate, and with 456 'long' against 37 'short' pairs a constant predictor would score about 0.925 if 'long' were positive; those pair counts also contradict the gene counts (63 short-phenotype genes, 38 long), and the discussion calls the same figure an AUC; the knockout-signature reconstruction (precision-recall area 0.87) excludes the knockout's own features in training but also reports no base rate; the method rests on negatives being rare, the fourth row developed in that regime |
 | [10.1038/s41467-022-30684-y](https://doi.org/10.1038/s41467-022-30684-y) (PMID 35654811) | Q1 | `no_bearing` | `background` | `moderate` | "Here we develop a recurrent neural network framework constrained by prior knowledge of the signaling network with ligand-concentrations as input and transcription factor-activity as output." | the same cross-validation with the network constraint removed (a dense or randomly sparse recurrent network with as many parameters) and with the prior edge signs removed or permuted, r reported per fold | the abstract reports no model without the prior network and no unsigned variant, so whether the topology or its signs contribute is not shown; the readout is transcription factor activity, not a phenotype; whether the cross-validation (r = 0.8) holds out whole ligands is not stated; the knockout result (r = 0.8) is on synthetic data whose generating network is not stated. The full text is in PMC (PMC9163072) and would decide whether a network ablation exists; it was not fetched, since even a positive ablation on transcription factor activity would not reach Q1's phenotype comparison |
@@ -114,6 +115,7 @@ last line of this list.
 
 - Slot 11, 7 October 2026, 18:00 UTC: Ourfali 2007 appraised as PMID 17646318. Slots spent: 11 of 19.
 - Slot 12, 7 October 2026, 18:29 UTC: one Consensus search, 20 records, five queued. Slots spent: 12 of 19.
+- Slot 13, 7 October 2026, 18:38 UTC: Mottaqi 2026 appraised as DOI 10.64898/2026.04.29.721775. Slots spent: 13 of 19.
 
 ### Triage checks, reconstructed in the literature session
 
@@ -222,7 +224,7 @@ text.
 
 To read, in order of expected bearing on Q1:
 
-1. Mottaqi, 2026, bioRxiv preprint, 10.64898/2026.04.29.721775. A signed heterogeneous graph model on a sign-aware
+1. Appraised in slot 13. Mottaqi, 2026, bioRxiv preprint, 10.64898/2026.04.29.721775. A signed heterogeneous graph model on a sign-aware
    knowledge graph. The abstract states that it "consistently outperforms or matches nine state-of-the-art unsigned,
    relational, and signed graph baselines" on tasks that include clinical response, which makes it the only record
    whose abstract states the Q1 comparison on a clinical label. Risks visible in the abstract: "outperforms or
@@ -373,6 +375,58 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 10.64898/2026.04.29.721775, the stated comparison and why it does not transfer
+
+This preprint (bioRxiv version 1, posted 4 May 2026, no journal version on record) is the first appraised source that
+runs unsigned baselines beside a signed model on something it calls a clinical label. The abstract was read from the
+bioRxiv record. The body was read through a fetch tool that summarises the page and covered the first 100,000 of its
+100,163 characters, so the items below are relayed and each needs checking against the PDF before use.
+
+- The clinical response task is "formulated as an edge-sign prediction task in both binary (indication, −1 vs.
+  contraindication, +1)" and a three-class form. The labels are 11,896 indication and 148,061 contraindication edges
+  of the knowledge graph, split "using a stratified split (0.8/0.1/0.1), with stratification performed only by
+  sign".
+- Unsigned baselines (BGRL, DGI, InfoGraph, GraphSAGE): "Homogeneous baselines were trained on an unsigned version
+  of SIGMA-KG with all edge types and polarities discarded." Relational baselines (HGATE, DMGI): "Heterogeneous
+  baselines utilized the full 12-relation multiplex structure." Signed baselines (SGCN, SNEA, SDGNN): "signed
+  baselines and FLASH received the signed network, with edges labeled as +1 or -1."
+- The task graph keeps the training label edges: "the training compound–disease edges and all remaining relation
+  types in SIGMA-KG were retained." Validation and test edges are removed.
+- Binary clinical response: FLASH accuracy 0.9893 ± 0.0003, 1.51% above HGATE (p = 0.0001). Three-class: the signed
+  baseline SGCN is 0.22% above FLASH in accuracy (p = 0.002). Per-baseline values sit in supplementary tables that
+  were not read. Three runs; standard deviations appear for FLASH only in the text that was read.
+- Drug-drug interaction, the one setting with held-out entities ("a drug-disjoint split") and an outcome that is
+  not a sign: on DrugBank FLASH has AUROC 0.7960 ± 0.0157 with p = 0.20 against the best baseline, and on MUDI the
+  signed baseline SDGNN has accuracy 0.6989 against 0.6934 for FLASH (p = 0.445).
+- No run with signs removed, made all positive or permuted was found, and none with the balance component removed.
+- "Structural balance is enforced by pruning low-confidence edges involved in unbalanced signed cycles with sign
+  product < 0." After pruning, "Across closed triads in the atlas, 99.6% were balanced".
+- The abstract's 69.6% is 16 of 23 newly prioritised drug-disease pairs found in approval records afterwards, not a
+  held-out score.
+
+Why the direction is `mixed`. Where the label is itself a sign and the split is over random edges, the signed and
+relational models are ahead of the unsigned ones. Where the outcome is unsigned and whole drugs are held out, the
+lead over the best baseline is not distinguishable from zero. Three runs cannot separate no gain from a small one,
+so that null is weak evidence as well, and the direction says only that the paper's own conditions disagree.
+
+Why none of it reaches Q1. Checks 1 and 2 fail in the way they did for 39976387: the sign is the label, and the
+model propagates over the graph that holds the training labels. A test edge between a drug and a disease sits among
+training edges of that drug and that disease whose signs the signed models see and the unsigned baselines do not.
+Check 3 fails because the unsigned baselines drop edge types along with signs and use other architectures, so three
+things change at once. Check 5: always predicting contraindication scores 0.9256 (148,061 of 159,957, computed
+here), and no such baseline is printed beside the 0.9893.
+
+What it adds for Q2 and for our graph. This is one more appraised source whose signed method lives in the balanced
+regime, after 25113603, 39523622 and 38392416, and the first to produce that regime by deleting the edges that
+violate it. On our metabolic graph the
+violating edges are the derived depletes_substrate reverses, 26.9% of all edges, each in a negative two-cycle with
+its own substrate_of edge. Pruning to balance would remove the stoichiometry the encoder exists to represent. The
+fraction of nodes that receive both signs is not reported.
+
+Odd text in the source, none of it instruction-like: unresolved "Table ??" references, a "[?]" citation, a
+truncated reference and an empty section headed "Signed network balance semantics". The figure captions describe
+paired t-tests and the methods describe unpaired Welch tests.
 
 ### Note on 17646318, the third direction task and a precedent for abstaining
 
