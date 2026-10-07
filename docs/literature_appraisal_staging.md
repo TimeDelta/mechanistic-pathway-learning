@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1073/pnas.1720589115](https://doi.org/10.1073/pnas.1720589115) (PMID 29925605) | Q1 | `supports` | `analogous_mechanism` | `moderate` | "We find that simple dynamically agnostic models are sufficient to recover the strength and sign of the biochemical perturbation patterns observed in 87 biological models for which the underlying kinetics are known." | on the same 87 models, a sign-blind propagation beside the signed one for strength, and for direction the accuracy set against each model's majority-direction rate; for Q1 proper, a phenotype readout with unsigned diffusion run on the same network | the comparison it runs is topology against full kinetics, not signed against unsigned, so Q1 is not reached; the 65-80 percent and the ~80 percent chemotaxis figures come with no majority-direction baseline in the abstract or significance statement, and our own sign check shows why that matters (signed response 0.615 against 0.806 for always guessing the majority direction); the full text is not served through PMC, so the methods, the network sizes and whether the models contain frustrated loops are unread |
 | [10.3390/e26020161](https://doi.org/10.3390/e26020161) (PMID 38392416) | Q2 | `no_bearing` | `background` | `moderate` | "negative cross-correlations have become pyramidally rare in the past three decades" | nothing: the network is US foreign exchange rates, inferred from detrended cross-correlation, with no biology and no phenotype | everything about Q1; it is kept only as a third instance of signed-network method development on a negative-sparse, balance-satisfying network |
 | [10.1093/bib/bbae573](https://doi.org/10.1093/bib/bbae573) (PMID 39523622) | Q1, Q2 | `supports` | `same_construct_other_domain` | `weak` | "combined with balance theory and state theory, molecular features are extracted from the point of social relations through the propagation and aggregation of signed graph attention network" | an ablation isolating the signed graph attention from the topological embedding, the denoising autoencoder and the GBDT classifier, and an unsigned baseline on the same network; the abstract reports neither | everything about attribution, and whether any of it holds on a network that violates balance, which ours does at 26.9% of edges |
 | [10.1093/bib/bbaf062](https://doi.org/10.1093/bib/bbaf062) (PMID 39976387) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "CSGDN uses a signed graph diffusion method to uncover the underlying regulatory associations between genes and phenotypes" | an unsigned diffusion baseline on the same graph and split, and an ablation separating the signed diffusion from the contrastive objective; they report neither | whether the gain comes from the signs or from the contrastive views, and whether anything survives when the signed graph is a mechanistic substrate rather than the label graph itself |
@@ -111,7 +112,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416, 29925605.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -136,18 +137,14 @@ used only the search records, against the four checks recorded at the top of the
 
 Remaining to read, in order of expected bearing on Q1:
 
-1. Santolini, 2018, PNAS. Recovers the sign and strength of perturbation patterns in 87 kinetic models from
-   topology alone, and the direction of knockout effects in bacterial chemotaxis. A mechanistic network, a
-   perturbation readout and a sign; the question for the row is whether a sign-blind model is reported beside
-   the signed one, which would make it the first direct Q1 test.
-2. Nilsson, 2021, Nature Communications. A recurrent network constrained by a prior-knowledge signalling network,
+1. Nilsson, 2021, Nature Communications. A recurrent network constrained by a prior-knowledge signalling network,
    predicting knockout effects; the nearest architecture to the linear-response encoder found so far. Check
    whether the signed prior is ablated and whether the split holds out whole ligands.
-3. Signorini, 2025, Bioinformatics. Infers protein-interaction signs by network propagation over cause-effect
+2. Signorini, 2025, Bioinformatics. Infers protein-interaction signs by network propagation over cause-effect
    data and uses them to predict knockout effects on expression and telomere length. Check 2 decides it: if the
    signs are fitted on the same knockouts they are scored on, the row cannot credit the sign.
-4. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
-   yeast. Same risk as 3, and its readout is expression, not phenotype.
+3. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
+   yeast. Same risk as 2, and its readout is expression, not phenotype.
 
 Set aside from this search on the record, with the reason:
 
@@ -155,8 +152,9 @@ Set aside from this search on the record, with the reason:
   unsigned propagation throughout. Background for the unsigned baseline, no signed component to test. Lee 2008
   is the standard citation that unsigned functional networks already predict loss-of-function phenotypes, which
   is the bar a signed method has to clear.
-- Pan, 2024, Briefings in Bioinformatics (a contrastive signed graph diffusion network): the sign is the
-  gene-phenotype association label being predicted, the fourth paper of that type; fails check 1.
+- Pan, 2024, Briefings in Bioinformatics (a contrastive signed graph diffusion network): already appraised as
+  PMID 39976387. Slot 7 first listed it as a fourth paper of the association-label type; it is the same paper,
+  not a new one.
 - Picart-Armada, 2018, PLoS Computational Biology: unsigned, but its finding that standard cross-validation is
   over-optimistic because of protein complexes, and its complex-aware splits, bear on the disease-cluster split
   rather than on Q1. Note for the split section of the design document, not a Q1 row.
@@ -263,6 +261,20 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 29925605, the first mechanistic-network row
+
+This is the first row whose network is mechanistic rather than an association graph: each of the 87 models has
+known kinetics, so the truth the topology-only prediction is scored against is the model's own response, not a
+label that leaks through the graph. It passes checks 1 and 2 cleanly, and check 3 does not arise because nothing
+is fitted. It still does not reach Q1, for a reason worth keeping: on a direction task an unsigned diffusion has no
+prediction to make, so the comparison Q1 asks for only exists for the strength of a response or for a phenotype
+ranking, and the abstract reports neither against a sign-blind model. Its headline accuracies also need the
+majority-direction rate beside them before they can be credited. Our sign check on the HPO laboratory labels
+(docs/linear_response_sign_check.md) has the majority direction at 0.806, above the untrained signed response at
+0.615, so an accuracy near 80 percent is uninformative until the base rate is known. The paper is the best support so
+far for the premise behind the linear-response encoder, that topology without kinetics carries the sign of a
+perturbation's effect, and no support yet for the claim that this sign improves a phenotype prediction.
 
 ### Note on 38392416, and a problem with the queue
 
