@@ -1,0 +1,139 @@
+# Research summary: aims, results and open questions
+
+Working notes on the project's aims and results. Every number below names the generated document it comes from and
+the date it was read; when that document is regenerated, update the number here or mark it stale. Numbers are
+per-fold macro AUPRC under the disease-cluster grouped split unless a row says otherwise.
+
+## 1. The question in one paragraph
+
+Inborn errors of metabolism and psychoactive drugs both perturb known molecular pathways and both produce psychiatric
+symptoms. The project asks whether a model that routes a perturbation through a mechanistic graph (Human-GEM
+metabolism joined to receptor signaling and transcriptional regulation) and reads it through a small set of learned
+pathway modules with a noisy-OR output predicts which symptoms a held-out gene or drug produces better than models
+that use network proximity or node degree alone, and whether the learned modules match known mechanisms. The noisy-OR
+form encodes equifinality: any one sufficient module can produce a symptom. Design: docs/experiment_design.md;
+pre-registration skeleton: docs/preregistration.md.
+
+## 2. Aims
+
+### Aim 1. A leakage-controlled benchmark for predicting psychiatric symptoms from gene and drug perturbations
+
+Status: mostly done. The full-data rewiring control has to be repeated at the mixing strength the slice showed is
+needed (findings 2 and 8).
+
+- Labels: monogenic gene-symptom pairs from HPO with provenance-based grades and a reliability model; drug-symptom
+  pairs from SIDER 4.1 and OnSIDES labels for drugs with a single mechanism target and an ATC nervous-system code.
+  Unobserved pairs are unlabelled, not negative.
+- Splits: disease-cluster grouping (genes of one disease leave training together), Human-GEM subsystem hold-out,
+  time split by evidence date.
+- Controls run with every split: labels permuted within degree strata, degree-preserving rewiring, popularity and
+  degree-scaled popularity. On the slice the rewiring control is a null distribution of 20 draws at 50 swaps per edge.
+- Not yet measured: how many held-out genes share a Human-GEM subsystem or a protein complex with a training gene from
+  another disease cluster. The disease-cluster grouping blocks leakage inside a disease but not across diseases that
+  share a complex, the case that inflates cross-validated scores in network propagation benchmarks (Picart-Armada
+  et al. 2018, PLoS Computational Biology; found by the literature search of 7 October, not yet appraised). The
+  subsystem hold-out measures the opposite case, a pathway absent from training (finding 3).
+- Contribution if Aim 2 fails: a measured account of how much apparent signal in this task is leakage and node degree.
+
+### Aim 2. Test whether the pathway-module model beats the best baseline
+
+Status: slice done (negative); full-data test not run. The full-data runs need more compute than the 4-core cloud
+container; cluster access is not confirmed.
+
+- Hypothesis: the proposed model (B6) beats popularity and the random walk with restart under the disease-cluster
+  split.
+- Pre-registered failure criterion (docs/preregistration.md): if B6 does not beat both, the architecture is
+  abandoned before the ablations run.
+- Primary endpoint: macro AUPRC difference of at least 0.05 with a 95 percent paired-bootstrap interval excluding
+  zero.
+- Slice result: no trained configuration beats the random walk, and the criterion is met (finding 5).
+- Module diagnosis: done (finding 6). The modules were unused because training stopped while the gates were still
+  shrinking. With their own learning rate they carry links, but no module passes the sufficiency test yet.
+- Open question: the graph carries signal the random walk reads (finding 8), so the question is why a signed,
+  relation-typed propagation extracts no more of it than unsigned diffusion. Finding 11 is a candidate cause.
+
+### Aim 3 (conditional on Aim 2)
+
+- If Aim 2 succeeds: validation on the pharmacological time split (SIDER 2015 pairs train, the 100 later OnSIDES
+  candidates test; docs/onsides_label_slice.md) and interpretation of the modules against curated pathways.
+- If Aim 2 fails: test whether flux-based perturbation features (design section 5.2, route 2) carry signal the graph
+  lacks, first as the flux-feature logistic regression baseline (B4), then a revised architecture.
+
+## 3. Results so far
+
+| # | Finding | Numbers | Source (date read) |
+|---|---|---|---|
+| 1 | Grouping by gene leaks labels through genes that share a disease, much more on the slice than on the full data | slice random walk: 0.347 by gene, 0.293 by disease cluster, 0.284 by disease cluster on permuted labels; full data: 0.390 by gene, 0.374 by disease cluster (pooled 0.346 and 0.347) | docs/experiment_design.md section 12; docs/phase2_baselines_disease_cluster.md; docs/phase2_baselines_full_gene.md; docs/phase2_baselines_full_disease_cluster.md (6 October) |
+| 2 | The full-data rewiring control was too weak to say whether the random walk reads topology or only degree | random walk per fold 0.374 on the real graph and 0.348 on a graph rewired at 2 swaps per edge (pooled 0.347 on both); degree-scaled popularity 0.339; 0.275 on permuted labels. On the slice 2 swaps per edge left the graph under-mixed (finding 8), so the earlier reading of this row, that the signal is degree and not topology, is withdrawn until the control is rerun at 50 swaps per edge | docs/phase2_baselines_full_disease_cluster.md, section "Negative control: degree-preserving rewiring of the graph (2 swaps per edge)"; docs/graph_content_null_results.md (7 October) |
+| 3 | Inside a held-out pathway the baselines rank at chance | full-data subsystem hold-out, stratified AUROC: random walk 0.503 (0.560 on permuted labels), degree-scaled popularity 0.557; slice 0.506 | docs/phase2_baselines_full_disease_cluster.md; design section 12 (6 October) |
+| 4 | No baseline predicts later monogenic findings | time split at 2015-12-31, 565 new positives: random walk macro AUPRC 0.083 against 0.079 permuted; publication-dated new positives only (129): random walk AUROC 0.432 | docs/phase2_baselines_full_disease_cluster.md (6 October) |
+| 5 | On the slice no trained configuration beats the random walk; the best beat popularity | 18 trained configurations score 0.241 to 0.293; B3 typed nodes 0.293 ± 0.031, B6 mechanistic with a separate gate learning rate 0.292 ± 0.024, random walk 0.293 ± 0.014, popularity 0.231. Paired bootstrap of that B6 configuration, pooled: minus random walk -0.020 [-0.043, +0.006], minus popularity +0.035 [+0.022, +0.064]; within degree strata, minus random walk +0.007 [-0.014, +0.032]. The failure criterion is met on the slice | docs/phase3_main_model.md, generated 7 October 12:44 (7 October). The laboratory-loss and manganese runs finished later and appear only as paired differences in finding 9 |
+| 6 | The modules were unused because training stopped while the gates were still shrinking; with their own learning rate they carry links, but none passes the sufficiency test | shared learning rate: in all 30 five-fold runs of six configurations the median gate had moved 92 to 100 percent of the distance Adam allows by the best epoch, expected support 5,000 to 13,500 nodes per module, no link above 0.5. Separate gate learning rate: expected support 187 to 334 nodes (B6 mechanistic) and 61 to 173 (B6 linear response); a link above 0.5 in 13 of 40 and 40 of 40 module-folds. Sufficiency test (ablating the dominant module): the own-ablation interval excludes zero in 0 of 62 symptom-module rows and 2 of 44, one in each direction | docs/b6_module_diagnosis.md; docs/experiment_design.md section 5.5; docs/b6_mechanistic_gate_time_scales_disease_cluster_modules.md; docs/b6_linear_response_gate_time_scales_cofactors_disease_cluster_modules.md (7 October) |
+| 7 | The flux route reaches a minority of perturbations | a knockout blocks at least one reaction for 239 of 451 slice genes (440 of 861 positive pairs) and for 225 of 1,282 labelled full-data genes and 15 of 142 drugs (523 of 3,272 positive pairs); every boundary reaction of Human-GEM is open for uptake | measured 6 October 2026 from Human-GEM gene-reaction rules; not yet in a generated document |
+| 8 | On the slice the random walk reads the graph's wiring, not only its degree sequence | real graph 0.293 against 0.268 ± 0.010 over 20 rewirings at 50 swaps per edge; none of the 20 as good, p = 0.048, which is the smallest value 20 draws allow; the real score is 2.4 null standard deviations above the null mean. Limits: the margin over the best rewiring is 0.006, below the real graph's own fold spread of ±0.014, and rewiring keeps degree per relation but not the metabolite-reaction bipartite structure | docs/rewiring_null_distribution.md; docs/graph_content_null_results.md (7 October) |
+| 9 | Adding content to the graph has not moved the score, and one addition lowers it | paired five-fold differences against each run's twin: manganese cofactor layer -0.002 [-0.005, +0.002]; signed logarithm +0.001 and -0.001; auxiliary laboratory loss -0.002; protein descriptors -0.030 | docs/graph_content_null_results.md (7 October) |
+| 10 | Untrained, the linear response predicts the direction of measured metabolite changes worse than always guessing "increased" | 1,067 signed gene-metabolite pairs from HPO laboratory abnormalities; sign agreement 0.615 at best (8 steps, summed over compartment copies) against 0.806 for the majority direction; AUROC 0.574 | docs/linear_response_sign_check.md (7 October) |
+| 11 | Candidate cause of the null, not yet tested: the encoder's per-node averaging cancels production against consumption | 7,811 of 21,337 destinations (36.6 percent) receive both signs; at equal gains the aggregate input sums to zero at 7,437 of 8,460 metabolites (88 percent) and at no reaction. It predicts that the spectral normalisation arm and the cross-relation mixture move the score; neither has been run on symptoms | docs/membrane_potential_reach.md; docs/graph_content_null_results.md (7 October) |
+
+Data layer:
+
+- Graph: 33,964 nodes and 255,367 typed edges (Human-GEM 2.0.1 with compartments, OmniPath, CollecTRI regulons
+  restricted to brain-expressed transcription factors, GTEx v10 brain expression on gene nodes).
+- Labels: 2,425 grade A gene pairs, 876 grade B drug pairs over 142 drugs, 609 grade C non-causal associations;
+  the full-data baselines score 1,417 perturbations (1,275 genes, 142 drugs) in 901 disease clusters.
+- Literature priors: 214,375 PubTator3 and CTD reports over 134,747 papers, grade E, never labels.
+- Release: data/releases/v0.4 with a sha256 manifest.
+
+Superseded numbers to avoid:
+
+- The first full build of 3 October (1,585 perturbations, random walk 0.326, rewired-graph margin 0.011) predates the
+  OnSIDES statements and the association types; rows 1 and 2 replace it.
+- B6 mechanistic 0.272 with a paired difference of -0.029 [-0.051, -0.010] against the random walk was the best
+  configuration on 6 October; row 5 replaces it as the headline, though that configuration's numbers still stand.
+- "65 of 23,709 destinations (0.3 percent) see both signs" was computed from the stored edge table without the
+  encoder's derived depletes_substrate relation; the correct figure is in row 11.
+- 0.269 as the slice random walk's score on the real graph was a misread of the permuted-label table; the real graph
+  scores 0.293.
+- "Rewiring leaves the slice score unchanged" came from the 2-swaps-per-edge control and is withdrawn (row 8).
+
+## 4. Figures
+
+| Figure | Content | Status |
+|---|---|---|
+| F1 | Data and model schematic: evidence sources, graph layers, perturbation encoder, modules, noisy-OR output | not made |
+| F2 | Leakage cascade: random walk under gene, disease-cluster and permuted-label conditions (finding 1) | numbers ready |
+| F3 | Wiring against degree: real graph against the 20-rewiring null (finding 8); the full-data panel waits for the rerun of finding 2 | slice ready |
+| F4 | Main comparison with paired-bootstrap intervals, slice then full data (finding 5 and Aim 2) | slice ready |
+| F5 | Per-symptom AUPRC against base rate | slice ready |
+| F6 | Module diagnostics: gate travel against its bound, support size, link matrix, sufficiency test (finding 6) | slice ready |
+| F7 | Time-split results (finding 4 and Aim 3) | monogenic ready |
+| F8 | Sign agreement of the untrained response against the majority direction (finding 10) | ready |
+
+## 5. Likely objections and current answers
+
+| Question | Current answer or where it lives |
+|---|---|
+| What if the mechanistic model does not win? | Aim 1 stands on its own; the failure criterion was fixed in advance; Aim 3 has a branch for it |
+| How do you know the evaluation does not leak? | disease-cluster grouping, drugs grouped by dominant target, permuted-label and rewired-graph controls (design 6.1, 6.3); sharing of subsystems and complexes across disease clusters is not yet measured (Aim 1) |
+| HPO annotations are incomplete; are missing pairs negatives? | no: unobserved pairs are unlabelled and sampled at reduced weight (design 5.4) |
+| Why noisy-OR? | it encodes equifinality without interaction terms (design 5.3) |
+| Why not flux balance analysis? | the brain has no defensible single objective; sampling is the planned route, with the coverage limits of finding 7 |
+| Why these symptoms and not diagnoses? | assumption A7 and the symptom crosswalk (docs/symptom_crosswalk.csv) |
+| Why does degree explain so much? | hub structure in the graph and in the labels (design assumption A9); on the slice the wiring adds signal beyond degree (finding 8), and the full-data control needs rerunning (finding 2) |
+| Why were the modules unused, and are they used now? | the gates were still shrinking when early stopping ended training; a separate gate learning rate fixes that, and the modules now carry links but none passes the sufficiency test (finding 6) |
+| The graph carries signal, so why does the mechanistic encoder not beat diffusion? | open; finding 11 is a candidate cause, tested by the spectral normalisation and cross-relation mixture arms. The literature search has not yet found a published case of signed propagation on a mechanistic network beating unsigned diffusion for a phenotype (docs/literature_appraisal_staging.md, question Q1) |
+| Does the graph give the right direction of change? | untrained, no better than the majority direction (finding 10) |
+
+## 6. Decisions and provenance
+
+| Date | Decision | Reason |
+|---|---|---|
+| 2026-10-03 | Disease-cluster grouping is the default split (design v0.4) | gene-wise grouping leaked through shared diseases (finding 1) |
+| 2026-10-06 | PubTator3 pinned to the 6 October bulk file | NCBI no longer serves the 17 August file |
+| 2026-10-06 | Flux route deferred until a B4 test shows signal (proposed, not decided) | coverage and medium problems of finding 7 |
+| 2026-10-07 | Gates get their own learning rate (--gate-learning-rate) | with the shared rate, supports were still shrinking at early stopping (finding 6) |
+| 2026-10-07 | Rewiring control at 50 swaps per edge with a null of 20 draws on the slice | 2 swaps per edge left the graph under-mixed (finding 8) |
+| 2026-10-07 | The 0.3 percent sign-mixing figure retracted | computed without the derived depletes_substrate relation (finding 11) |
+
+AI assistance: code, data processing, reviews and drafts in this repository were produced with Claude Code; commits
+carry a Co-Authored-By line.
