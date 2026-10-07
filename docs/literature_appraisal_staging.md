@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1038/s41467-022-30684-y](https://doi.org/10.1038/s41467-022-30684-y) (PMID 35654811) | Q1 | `no_bearing` | `background` | `moderate` | "Here we develop a recurrent neural network framework constrained by prior knowledge of the signaling network with ligand-concentrations as input and transcription factor-activity as output." | the same cross-validation with the network constraint removed (a dense or randomly sparse recurrent network with as many parameters) and with the prior edge signs removed or permuted, r reported per fold | the abstract reports no model without the prior network and no unsigned variant, so whether the topology or its signs contribute is not shown; the readout is transcription factor activity, not a phenotype; whether the cross-validation (r = 0.8) holds out whole ligands is not stated; the knockout result (r = 0.8) is on synthetic data whose generating network is not stated. The full text is in PMC (PMC9163072) and would decide whether a network ablation exists; it was not fetched, since even a positive ablation on transcription factor activity would not reach Q1's phenotype comparison |
 | [10.1073/pnas.1720589115](https://doi.org/10.1073/pnas.1720589115) (PMID 29925605) | Q1 | `supports` | `analogous_mechanism` | `moderate` | "We find that simple dynamically agnostic models are sufficient to recover the strength and sign of the biochemical perturbation patterns observed in 87 biological models for which the underlying kinetics are known." | on the same 87 models, a sign-blind propagation beside the signed one for strength, and for direction the accuracy set against each model's majority-direction rate; for Q1 proper, a phenotype readout with unsigned diffusion run on the same network | the comparison it runs is topology against full kinetics, not signed against unsigned, so Q1 is not reached; the 65-80 percent and the ~80 percent chemotaxis figures come with no majority-direction baseline in the abstract or significance statement, and our own sign check shows why that matters (signed response 0.615 against 0.806 for always guessing the majority direction); the full text is not served through PMC, so the methods, the network sizes and whether the models contain frustrated loops are unread |
 | [10.3390/e26020161](https://doi.org/10.3390/e26020161) (PMID 38392416) | Q2 | `no_bearing` | `background` | `moderate` | "negative cross-correlations have become pyramidally rare in the past three decades" | nothing: the network is US foreign exchange rates, inferred from detrended cross-correlation, with no biology and no phenotype | everything about Q1; it is kept only as a third instance of signed-network method development on a negative-sparse, balance-satisfying network |
 | [10.1093/bib/bbae573](https://doi.org/10.1093/bib/bbae573) (PMID 39523622) | Q1, Q2 | `supports` | `same_construct_other_domain` | `weak` | "combined with balance theory and state theory, molecular features are extracted from the point of social relations through the propagation and aggregation of signed graph attention network" | an ablation isolating the signed graph attention from the topological embedding, the denoising autoencoder and the GBDT classifier, and an unsigned baseline on the same network; the abstract reports neither | everything about attribution, and whether any of it holds on a network that violates balance, which ours does at 26.9% of edges |
@@ -112,7 +113,7 @@ anything, which is recorded as open work rather than a result.
 ## Queue for Q1
 
 Nineteen PubMed records match `("signed network" OR "signed graph" OR "signed networks") AND
-(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416, 29925605.
+(propagation OR diffusion OR "random walk")` in title or abstract. Appraised: 25113603, 39148051, 33906083, 39976387, 39523622, 38392416, 29925605, 35654811.
 Set aside as out of scope on the abstract, with the reason:
 
 - 28297881, 31661504 — epidemic and information spread on social signed networks; no
@@ -137,14 +138,11 @@ used only the search records, against the four checks recorded at the top of the
 
 Remaining to read, in order of expected bearing on Q1:
 
-1. Nilsson, 2021, Nature Communications. A recurrent network constrained by a prior-knowledge signalling network,
-   predicting knockout effects; the nearest architecture to the linear-response encoder found so far. Check
-   whether the signed prior is ablated and whether the split holds out whole ligands.
-2. Signorini, 2025, Bioinformatics. Infers protein-interaction signs by network propagation over cause-effect
+1. Signorini, 2025, Bioinformatics. Infers protein-interaction signs by network propagation over cause-effect
    data and uses them to predict knockout effects on expression and telomere length. Check 2 decides it: if the
    signs are fitted on the same knockouts they are scored on, the row cannot credit the sign.
-3. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
-   yeast. Same risk as 2, and its readout is expression, not phenotype.
+2. Ourfali, 2007, Bioinformatics. Assigns activation or repression to explain knockout expression effects in
+   yeast. Same risk as 1, and its readout is expression, not phenotype.
 
 Set aside from this search on the record, with the reason:
 
