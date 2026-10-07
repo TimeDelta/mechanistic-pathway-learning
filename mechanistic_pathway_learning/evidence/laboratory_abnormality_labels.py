@@ -21,7 +21,14 @@ terms (hypokalemia, hyperkalemia) name potassium(1+); conversely several HPO ter
 cation (calcium atom in hypercalciuria, iron atom and iron cation, sodium, zinc, copper and magnesium atoms) where
 Human-GEM has the ion, and HPO's 'phosphate' is the clinical inorganic phosphate, Human-GEM's Pi. Serum iron counts
 both oxidation states, so iron maps to Fe2+ and Fe3+; Human-GEM has no Cu+, so copper maps to Cu2+. Human-GEM has no
-manganese metabolite, so the manganese terms stay unmapped.
+manganese metabolite, so the manganese terms stay unmapped. The same table maps compounds that HPO names in a generic,
+neutral or racemic form the ontology bridge cannot reach (glucose, lactic acid, cholesterol, adrenaline, galactose,
+argininosuccinate, DOPAC and others below, each to the Human-GEM metabolite of that name), and a few class names to
+the members a clinical test measures: ketone bodies (acetoacetate, 3-hydroxybutyrate, acetone), catecholamines
+(adrenaline, noradrenaline, dopamine), LDL-, HDL- and VLDL-cholesterol to Human-GEM's lipoprotein particles, very
+long-chain fatty acids to hexacosanoate (C26:0, the diagnostic one) and homocystine to homocystine and homocysteine
+(total homocysteine). Classes without one clinical meaning (amino acids, organic acids, bile acids, porphyrins,
+acylcarnitines, glycosaminoglycans) and peptide hormones, which Human-GEM does not contain, stay unmapped.
 A term that still reaches more than MAXIMUM_METABOLITES_PER_TERM metabolites names a class (prostaglandins reach 32,
 fatty acids 11) and is left out, as are generic pseudo-metabolites such as '[protein]'.
 A label is a (gene, metabolite, direction, fluid) record; an unannotated pair is unlabelled, not normal.
@@ -52,6 +59,35 @@ MANUAL_HUMAN_GEM_MAPPINGS: dict[str, frozenset[str]] = {
     "CHEBI:28694": frozenset({"MAM01624"}),  # copper atom -> Cu2+
     "CHEBI:23378": frozenset({"MAM01624"}),  # copper cation -> Cu2+
     "CHEBI:25107": frozenset({"MAM02482"}),  # magnesium atom -> Mg2+
+    # the same compound in a generic, neutral or racemic form
+    "CHEBI:17234": frozenset({"MAM01965"}),  # glucose -> glucose (Human-GEM: D-glucopyranose)
+    "CHEBI:28358": frozenset({"MAM02403"}),  # rac-lactic acid -> L-lactate (the clinical lactate)
+    "CHEBI:16113": frozenset({"MAM01450"}),  # cholesterol -> cholesterol
+    "CHEBI:33568": frozenset({"MAM01290"}),  # adrenaline -> adrenaline ((R)-adrenaline)
+    "CHEBI:28260": frozenset({"MAM01910"}),  # galactose -> galactose
+    "CHEBI:17754": frozenset({"MAM01983"}),  # glycerol -> glycerol
+    "CHEBI:20106": frozenset({"MAM03136"}),  # vanillylmandelic acid -> vanillylmandelate
+    "CHEBI:18240": frozenset({"MAM03037"}),  # 4-hydroxy-L-proline -> trans-4-hydroxy-L-proline
+    "CHEBI:24741": frozenset({"MAM03037"}),  # hydroxyproline -> trans-4-hydroxy-L-proline
+    "CHEBI:28115": frozenset({"MAM03322"}),  # methylcobalamin -> methylcobalamin
+    "CHEBI:61409": frozenset({"MAM00729"}),  # dihydroxyphenylacetic acid -> 3,4-dihydroxyphenylacetate (DOPAC)
+    "CHEBI:17012": frozenset({"MAM02543"}),  # N-acetylneuraminic acid -> N-acetylneuraminate
+    "CHEBI:89843": frozenset({"MAM03765"}),  # methylsuccinic acid -> methyl-succinate
+    "CHEBI:184023": frozenset({"MAM01366"}),  # argininosuccinic acid -> argininosuccinate
+    "CHEBI:46819": frozenset({"MAM03120"}),  # urate salt -> urate
+    "CHEBI:26361": frozenset({"MAM02803"}),  # protoporphyrins -> protoporphyrin (IX)
+    "CHEBI:12777": frozenset({"MAM02834", "MAM20001"}),  # vitamin A -> retinol (both Human-GEM entries)
+    "CHEBI:33234": frozenset({"MAM01327"}),  # vitamin E -> alpha-tocopherol (the measured form)
+    "CHEBI:23641": frozenset({"MAM01673"}),  # deoxyuridine phosphate, the entity of HP:0034277 'elevated circulating deoxyuridine' -> deoxyuridine
+    "CHEBI:32797": frozenset({"MAM00653"}),  # (S)-2-hydroxyglutaric acid -> 2-hydroxyglutarate (the L2HGDH substrate; the R form is MAM20012)
+    # a class name to the members a clinical test measures
+    "CHEBI:17087": frozenset({"MAM01253", "MAM00157", "MAM01256"}),  # ketone -> ketone bodies: acetoacetate, (R)-3-hydroxybutanoate, acetone
+    "CHEBI:33567": frozenset({"MAM01290", "MAM02617", "MAM01736"}),  # catecholamine -> adrenaline, noradrenaline, dopamine
+    "CHEBI:47774": frozenset({"MAM03710"}),  # LDL cholesterol -> low density lipoprotein
+    "CHEBI:47775": frozenset({"MAM03647"}),  # HDL cholesterol -> high density lipoprotein
+    "CHEBI:47773": frozenset({"MAM04074"}),  # VLDL cholesterol -> very low density lipoprotein
+    "CHEBI:27283": frozenset({"MAM01432"}),  # very long-chain fatty acid -> hexacosanoate (cerotic acid, C26:0)
+    "CHEBI:17485": frozenset({"MAM03394", "MAM02133"}),  # homocystine -> L-homocystine and homocysteine (total homocysteine)
 }
 CHEBI_EQUIVALENCE_RELATIONS = {"RO:0018033", "RO:0018034", "RO:0018036"}  # is conjugate base of, is conjugate acid of, is tautomer of
 HP_CLASS_PATTERN = re.compile(r'<owl:Class rdf:about="http://purl.obolibrary.org/obo/(HP_\d+)">')

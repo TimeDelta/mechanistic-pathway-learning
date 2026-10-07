@@ -101,7 +101,7 @@ def main() -> None:
         f"({', '.join(f'{DIRECTION_NAMES[direction]} {count}' for direction, count in sorted(direction_counts.items(), reverse=True))}). "
         f"Terms mapped to a Human-GEM metabolite: {route_counts['equivalent']} through an equivalent form (conjugate acid or base, tautomer), "
         f"{route_counts['specific_form']} through a specific form (an is_a child named after the compound, such as L-phenylalanine), "
-        f"{route_counts['manual']} through a manual mapping (elements and ions named differently in HPO and Human-GEM: potassium, calcium, phosphate, iron, sodium, zinc, copper, magnesium; manganese has no Human-GEM metabolite), "
+        f"{route_counts['manual']} through a manual mapping (elements and ions named differently in HPO and Human-GEM; compounds HPO names in a generic, neutral or racemic form such as glucose and lactic acid; and class names mapped to the members a clinical test measures, such as ketone bodies and catecholamines: MANUAL_HUMAN_GEM_MAPPINGS), "
         f"{route_counts['class_term']} left out as class terms (more than three metabolites), {route_counts['unmapped']} unmapped. "
         "Generic pseudo-metabolites ('[protein]') are excluded; an unannotated gene-metabolite pair is unlabelled, not normal.",
         "",
