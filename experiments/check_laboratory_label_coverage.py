@@ -60,6 +60,8 @@ def main() -> None:
     parser.add_argument("--full-graph", type=Path, default=Path("data/processed/graph_full"))
     parser.add_argument("--full-evidence", type=Path, default=Path("data/processed/evidence_full/evidence_records.parquet"))
     parser.add_argument("--markdown-output", type=Path, default=None)
+    parser.add_argument("--labels-output", type=Path, default=Path("data/processed/laboratory_labels.parquet"),
+                        help="the label table of every annotated gene (gene_symbol, hpo_id, base_metabolite_id, direction, fluid, route), for --laboratory-labels of experiments/run_main_model.py")
     arguments = parser.parse_args()
 
     definitions = parse_hpo_chemical_definitions(arguments.hpo_owl.read_text())
@@ -72,6 +74,10 @@ def main() -> None:
         mapping_by_term[definition.hpo_id] = (definition, metabolites, route)
 
     annotations = pd.read_csv(arguments.hpo_annotations, sep="\t").drop_duplicates(["gene_symbol", "hpo_id"])
+    if arguments.labels_output:
+        rows = [(gene, term, metabolite, mapping_by_term[term][0].direction, mapping_by_term[term][0].fluid, mapping_by_term[term][2])
+                for gene, term in zip(annotations.gene_symbol, annotations.hpo_id) if term in mapping_by_term for metabolite in sorted(mapping_by_term[term][1])]
+        pd.DataFrame(rows, columns=["gene_symbol", "hpo_id", "base_metabolite_id", "direction", "fluid", "route"]).to_parquet(arguments.labels_output)
     annotations = annotations[annotations.hpo_id.isin(mapping_by_term)]
     sections = []
     for label, graph_directory, evidence_path in (("slice", arguments.slice_graph, arguments.slice_evidence), ("full data", arguments.full_graph, arguments.full_evidence)):

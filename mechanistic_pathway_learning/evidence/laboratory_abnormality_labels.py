@@ -168,3 +168,23 @@ def map_definition_to_metabolites(definition: ChemicalDefinition, names, neighbo
     if len(mapped) > maximum_metabolites:
         return set(), "class_term"
     return mapped, route
+
+
+def build_label_table(hpo_owl_text: str, gene_to_phenotype: pd.DataFrame, chebi_relations, metabolites_table: pd.DataFrame,
+                      excluded_metabolites: frozenset[str] = frozenset()) -> pd.DataFrame:
+    """One row per (gene, HPO term, Human-GEM base metabolite): gene_symbol, hpo_id, base_metabolite_id, direction
+    (+1, -1 or 0) fluid and route; terms that do not map, or that name a class, give no rows."""
+    names, neighbours, children = chebi_relations
+    metabolites_by_chebi = human_gem_metabolites_by_chebi(metabolites_table)
+    mapping = {}
+    for definition in parse_hpo_chemical_definitions(hpo_owl_text):
+        metabolites, route = map_definition_to_metabolites(definition, names, neighbours, children, metabolites_by_chebi, excluded_metabolites)
+        if metabolites:
+            mapping[definition.hpo_id] = (definition, metabolites, route)
+    annotations = gene_to_phenotype.drop_duplicates(["gene_symbol", "hpo_id"])
+    rows = []
+    for gene_symbol, hpo_id in zip(annotations.gene_symbol, annotations.hpo_id):
+        if hpo_id in mapping:
+            definition, metabolites, route = mapping[hpo_id]
+            rows += [(gene_symbol, hpo_id, metabolite, definition.direction, definition.fluid, route) for metabolite in sorted(metabolites)]
+    return pd.DataFrame(rows, columns=["gene_symbol", "hpo_id", "base_metabolite_id", "direction", "fluid", "route"])

@@ -56,6 +56,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
+from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
@@ -81,6 +82,34 @@ def pad_perturbations(data, indices: np.ndarray) -> tuple[torch.Tensor, torch.Te
         sign_and_magnitude[row, : len(seeds), 0] = torch.as_tensor(data.perturbation_signs[i], dtype=torch.float32)
         sign_and_magnitude[row, : len(seeds), 1] = torch.as_tensor(data.perturbation_magnitudes[i], dtype=torch.float32)
     return node_index, sign_and_magnitude
+
+
+def evaluate_laboratory_labels(encoder, readout, label_index, data, indices: np.ndarray, adjacencies, arguments, device) -> dict:
+    """Sign agreement and AUROC of the readout's predicted metabolite changes against the measured directions of the
+    given (held-out) perturbations."""
+    from sklearn.metrics import roc_auc_score
+
+    encoder.eval()
+    scores, directions = [], []
+    with torch.no_grad():
+        for start in range(0, len(indices), arguments.batch_size):
+            batch = indices[start : start + arguments.batch_size]
+            if not label_index.count(batch):
+                continue
+            node_index, sign_and_magnitude = pad_perturbations(data, batch)
+            field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
+            positions, nodes, slots, batch_directions = label_index.batch(batch, device)
+            scores.append(readout.label_scores(field, positions, nodes, slots, len(batch_directions)).cpu().numpy())
+            directions.append(batch_directions.cpu().numpy())
+    encoder.train()
+    if not scores:
+        return {"labels": 0}
+    scores, directions = np.concatenate(scores), np.concatenate(directions)
+    reached = scores != 0
+    return {"labels": int(len(scores)), "reached": int(reached.sum()),
+            "sign_agreement": float(np.mean(np.sign(scores[reached]) == directions[reached])) if reached.any() else None,
+            "majority_direction_rate": float(np.mean(directions == 1)),
+            "auroc": float(roc_auc_score(directions == 1, scores)) if len(set(directions.tolist())) == 2 else None}
 
 
 def perturbation_covariate(data) -> np.ndarray:
@@ -168,18 +197,18 @@ def git_provenance() -> dict:
     return {"commit": commit, "tracked_changes": [line[3:] for line in status.splitlines() if line.strip()]}
 
 
-def optimizer_parameter_groups(encoder, head, arguments) -> list[dict]:
+def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) -> list[dict]:
     """One group at the main learning rate, plus one group for each noisy-OR time scale (links, leaks, module biases,
     gates) whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the
-    time scale on which that parameter can change."""
+    time scale on which that parameter can change. extra_parameters (the laboratory readout) join the main group."""
     rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate,
              "gates": getattr(arguments, "gate_learning_rate", 0.0)}
     if not hasattr(head, "time_scale_parameter_groups") or not any(rates.values()):
-        return [{"params": list(encoder.parameters()) + list(head.parameters())}]
+        return [{"params": list(encoder.parameters()) + list(head.parameters()) + list(extra_parameters)}]
     separate_groups = [{"params": parameters, "lr": rates[name], "weight_decay": 0.0}
                        for name, parameters in head.time_scale_parameter_groups().items() if rates[name]]
     separated_ids = {id(parameter) for group in separate_groups for parameter in group["params"]}
-    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids]
+    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids] + list(extra_parameters)
     return [{"params": other_parameters}, *separate_groups]
 
 
@@ -279,6 +308,10 @@ def main() -> None:
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
     parser.add_argument("--encoder", choices=["message_passing", "linear_response", "none", "local_descriptors"], default="message_passing",
                         help="route 1 encoder: L layers of message passing, the time-invariant signed linear-response state space (linear_response_encoder.py), none (a zero field: with --degree-offset, the degree-only control) or local_descriptors (the perturbed node's own features and nothing from the graph: the descriptors-only control)")
+    parser.add_argument("--laboratory-label-weight", type=float, default=0.0,
+                        help="weight of the auxiliary loss on measured metabolite directions of the training genes (models/laboratory_readout.py); 0 leaves it out")
+    parser.add_argument("--laboratory-labels", type=Path, default=Path("data/processed/laboratory_labels.parquet"),
+                        help="label table of experiments/check_laboratory_label_coverage.py --labels-output")
     parser.add_argument("--node-descriptors", type=Path, default=None,
                         help="parquet of fixed node descriptors indexed by node_id (experiments/build_node_descriptors.py), appended to the structural node features")
     parser.add_argument("--degree-offset", action="store_true",
@@ -348,7 +381,13 @@ def main() -> None:
     if arguments.encoder == "message_passing":
         adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
             torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
-    optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
+    laboratory_index, laboratory_readout = None, None
+    if arguments.laboratory_label_weight > 0:
+        laboratory_index = LaboratoryLabelIndex(pd.read_parquet(arguments.laboratory_labels), data.perturbation_ids, data.node_base_metabolite_id)
+        laboratory_readout = LaboratoryReadout(arguments.node_state_dim).to(device)
+        print(f"laboratory labels: {laboratory_index.count(train_indices)} on training perturbations, {laboratory_index.count(test_indices)} held out")
+    optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments, list(laboratory_readout.parameters()) if laboratory_readout is not None else ()),
+                                  lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
     split_directory = arguments.run_dir / split_name
     if arguments.resume and (split_directory / "DONE").exists():
         print(f"{split_name}: DONE marker present; skipping (delete the marker to retrain)")
@@ -360,6 +399,8 @@ def main() -> None:
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         encoder.load_state_dict(checkpoint["encoder"])
         head.load_state_dict(checkpoint["head"])
+        if laboratory_readout is not None and "laboratory_readout" in checkpoint:
+            laboratory_readout.load_state_dict(checkpoint["laboratory_readout"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         state = checkpoint["state"]
         print(f"resumed at epoch {state['epoch']}")
@@ -371,7 +412,8 @@ def main() -> None:
     state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance})  # one entry per process, so a resumed run lists every commit it ran under
 
     def save_checkpoint() -> None:
-        torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state}, checkpoint_path)
+        torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state,
+                    **({"laboratory_readout": laboratory_readout.state_dict()} if laboratory_readout is not None else {})}, checkpoint_path)
 
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
     weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
@@ -387,7 +429,7 @@ def main() -> None:
     stopped_early = False
     for epoch in range(state["epoch"], arguments.max_epochs):
         order = generator.permutation(train_indices)
-        epoch_loss, epoch_bce, epoch_penalty = 0.0, 0.0, 0.0
+        epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory = 0.0, 0.0, 0.0, 0.0
         for start in range(0, len(order), arguments.batch_size):
             batch = order[start : start + arguments.batch_size]
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
@@ -399,6 +441,11 @@ def main() -> None:
                 bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
             penalty = arguments.description_length_coefficient * head.description_length_penalty(node_cost=node_cost)
             loss = bce + penalty
+            if laboratory_readout is not None and laboratory_index.count(batch):
+                positions, nodes, slots, directions = laboratory_index.batch(batch, device)
+                laboratory_loss = laboratory_sign_loss(laboratory_readout.label_scores(field, positions, nodes, slots, len(directions)), directions)
+                loss = loss + arguments.laboratory_label_weight * laboratory_loss
+                epoch_laboratory += laboratory_loss.item() * len(batch)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -412,6 +459,8 @@ def main() -> None:
                     print("checkpoint written on signal; exiting for requeue")
                     return
         entry = {"epoch": epoch, "train_loss": epoch_loss / max(1, len(order)), "train_bce": epoch_bce / max(1, len(order)), "train_penalty": epoch_penalty / max(1, len(order)), "elapsed_seconds": time.time() - started}
+        if laboratory_readout is not None:
+            entry["train_laboratory_loss"] = epoch_laboratory / max(1, len(order))
         if len(validation_indices):
             validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
             entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices])
@@ -420,6 +469,8 @@ def main() -> None:
             if improved:
                 state.update(best_validation_auprc=entry["validation_macro_auprc"], best_validation_loss=entry["validation_loss"], best_epoch=epoch, epochs_without_improvement=0,
                              best_encoder=copy.deepcopy(encoder.state_dict()), best_head=copy.deepcopy(head.state_dict()))
+                if laboratory_readout is not None:
+                    state["best_laboratory_readout"] = copy.deepcopy(laboratory_readout.state_dict())
             else:
                 state["epochs_without_improvement"] += 1
         state["history"].append(entry)
@@ -436,9 +487,15 @@ def main() -> None:
     if state["best_encoder"] is not None:
         encoder.load_state_dict(state["best_encoder"])
         head.load_state_dict(state["best_head"])
+        if laboratory_readout is not None and state.get("best_laboratory_readout") is not None:
+            laboratory_readout.load_state_dict(state["best_laboratory_readout"])
 
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
     test_outcomes = data.outcomes[test_indices]
+    laboratory_results = None
+    if laboratory_readout is not None:
+        laboratory_results = evaluate_laboratory_labels(encoder, laboratory_readout, laboratory_index, data, test_indices, adjacencies, arguments, device)
+        print(f"held-out laboratory labels: {laboratory_results}")
     per_symptom = {}
     time_split_results = None
     if time_split is not None:
@@ -495,6 +552,7 @@ def main() -> None:
         "time_split": time_split_results,
         "code_provenance": state["code_provenance"],
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
+        "laboratory_labels": laboratory_results,
     }
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]
