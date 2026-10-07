@@ -4,17 +4,267 @@ Accuracy is the per-fold macro AUPRC of the out-of-fold predictions; the paired 
 
 ## Accuracy
 
-- the neuronal variant against the metabolic graph: not yet runnable (b3_linear_response_cofactors_laboratory_neuronal has 0 folds, b3_linear_response_cofactors_laboratory has 5).
-- the curated receptor and oxidant layers: not yet runnable (b3_linear_response_cofactors_laboratory_neuronal has 0 folds, b3_linear_response_cofactors_laboratory_neuronal_no_curation has 0).
-- the noisy-OR head on the variant against the metabolic graph: not yet runnable (b6_linear_response_cofactors_neuronal has 0 folds, b6_linear_response_gate_time_scales_cofactors has 5).
+- the neuronal variant against the metabolic graph: b3_linear_response_cofactors_laboratory_neuronal 0.276 ± 0.051 over 5 folds, b3_linear_response_cofactors_laboratory 0.264 ± 0.024 over 5.
+  Paired over folds: +0.012 [-0.012, +0.036]; the interval includes zero.
+- the curated receptor and oxidant layers: b3_linear_response_cofactors_laboratory_neuronal 0.276 ± 0.051 over 5 folds, b3_linear_response_cofactors_laboratory_neuronal_no_curation 0.263 ± 0.039 over 4.
+- the noisy-OR head on the variant against the metabolic graph: b6_linear_response_cofactors_neuronal 0.277 ± 0.084 over 2 folds, b6_linear_response_gate_time_scales_cofactors 0.288 ± 0.044 over 5.
 
 ## What the variant's own genes predict
 
 One row per gene, symptom and held-out fold: the predicted probability, its rank among that fold's held-out perturbations (1 is the highest), the symptom's base rate over the evidence table, and whether the pair is a positive. A high probability on a common symptom is not evidence; the rank is.
 
-### b3_linear_response_cofactors_laboratory_neuronal: no out-of-fold predictions yet
+### b3_linear_response_cofactors_laboratory_neuronal (8 of the variant's genes held out)
 
-### b3_linear_response_cofactors_laboratory_neuronal: no out-of-fold predictions yet
+| gene | role | fold | symptom | probability | rank in fold | perturbations in fold | base rate | positive |
+|---|---|---|---|---|---|---|---|---|
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | cognitive_impairment | 0.775 | 20 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | irritability_or_aggression | 0.730 | 26 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | anxiety | 0.657 | 16 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | depressed_mood | 0.622 | 28 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | fatigue | 0.566 | 36 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychosis | 0.411 | 74 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychomotor_agitation | 0.294 | 72 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | somnolence_or_hypersomnia | 0.242 | 28 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | insomnia | 0.210 | 68 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | elevated_mood_or_mania | 0.023 | 28 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | cognitive_impairment | 0.790 | 8 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | irritability_or_aggression | 0.743 | 15 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | anxiety | 0.667 | 3 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | depressed_mood | 0.634 | 12 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | fatigue | 0.571 | 13 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychosis | 0.405 | 89 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychomotor_agitation | 0.282 | 85 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | somnolence_or_hypersomnia | 0.225 | 59 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | insomnia | 0.195 | 82 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | elevated_mood_or_mania | 0.017 | 63 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | cognitive_impairment | 0.787 | 11 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | irritability_or_aggression | 0.766 | 4 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | depressed_mood | 0.661 | 4 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | anxiety | 0.621 | 79 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | fatigue | 0.588 | 3 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychosis | 0.446 | 8 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychomotor_agitation | 0.291 | 78 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | insomnia | 0.170 | 89 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | somnolence_or_hypersomnia | 0.104 | 83 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | elevated_mood_or_mania | 0.001 | 84 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | cognitive_impairment | 0.769 | 37 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | irritability_or_aggression | 0.725 | 59 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | anxiety | 0.654 | 27 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | depressed_mood | 0.615 | 67 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | fatigue | 0.565 | 85 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychosis | 0.411 | 68 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychomotor_agitation | 0.297 | 59 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | somnolence_or_hypersomnia | 0.250 | 6 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | insomnia | 0.217 | 36 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | elevated_mood_or_mania | 0.027 | 5 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | cognitive_impairment | 0.781 | 13 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | irritability_or_aggression | 0.736 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | anxiety | 0.660 | 14 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | depressed_mood | 0.627 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | fatigue | 0.569 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychosis | 0.409 | 85 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychomotor_agitation | 0.289 | 80 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | somnolence_or_hypersomnia | 0.230 | 51 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | insomnia | 0.203 | 79 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | elevated_mood_or_mania | 0.019 | 58 | 91 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | cognitive_impairment | 0.832 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | irritability_or_aggression | 0.821 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | depressed_mood | 0.598 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | fatigue | 0.588 | 8 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | anxiety | 0.573 | 44 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychosis | 0.347 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychomotor_agitation | 0.227 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | somnolence_or_hypersomnia | 0.202 | 84 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | insomnia | 0.109 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | elevated_mood_or_mania | 0.003 | 83 | 90 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | cognitive_impairment | 0.829 | 2 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | irritability_or_aggression | 0.791 | 3 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | depressed_mood | 0.678 | 3 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | anxiety | 0.674 | 1 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | fatigue | 0.595 | 2 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychosis | 0.405 | 91 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychomotor_agitation | 0.252 | 90 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | insomnia | 0.147 | 90 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | somnolence_or_hypersomnia | 0.125 | 82 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | elevated_mood_or_mania | 0.002 | 82 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | cognitive_impairment | 0.789 | 9 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | irritability_or_aggression | 0.757 | 5 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | depressed_mood | 0.651 | 5 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | anxiety | 0.643 | 63 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | fatigue | 0.584 | 4 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychosis | 0.428 | 19 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychomotor_agitation | 0.284 | 82 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | insomnia | 0.179 | 88 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | somnolence_or_hypersomnia | 0.146 | 81 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | elevated_mood_or_mania | 0.004 | 81 | 91 | nan | 0 |
 
-### b6_linear_response_cofactors_neuronal: no out-of-fold predictions yet
+### b3_linear_response_cofactors_laboratory_neuronal (8 of the variant's genes held out)
+
+| gene | role | fold | symptom | probability | rank in fold | perturbations in fold | base rate | positive |
+|---|---|---|---|---|---|---|---|---|
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | cognitive_impairment | 0.775 | 20 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | irritability_or_aggression | 0.730 | 26 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | anxiety | 0.657 | 16 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | depressed_mood | 0.622 | 28 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | fatigue | 0.566 | 36 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychosis | 0.411 | 74 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychomotor_agitation | 0.294 | 72 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | somnolence_or_hypersomnia | 0.242 | 28 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | insomnia | 0.210 | 68 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | elevated_mood_or_mania | 0.023 | 28 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | cognitive_impairment | 0.790 | 8 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | irritability_or_aggression | 0.743 | 15 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | anxiety | 0.667 | 3 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | depressed_mood | 0.634 | 12 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | fatigue | 0.571 | 13 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychosis | 0.405 | 89 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychomotor_agitation | 0.282 | 85 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | somnolence_or_hypersomnia | 0.225 | 59 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | insomnia | 0.195 | 82 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | elevated_mood_or_mania | 0.017 | 63 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | cognitive_impairment | 0.787 | 11 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | irritability_or_aggression | 0.766 | 4 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | depressed_mood | 0.661 | 4 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | anxiety | 0.621 | 79 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | fatigue | 0.588 | 3 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychosis | 0.446 | 8 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychomotor_agitation | 0.291 | 78 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | insomnia | 0.170 | 89 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | somnolence_or_hypersomnia | 0.104 | 83 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | elevated_mood_or_mania | 0.001 | 84 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | cognitive_impairment | 0.769 | 37 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | irritability_or_aggression | 0.725 | 59 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | anxiety | 0.654 | 27 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | depressed_mood | 0.615 | 67 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | fatigue | 0.565 | 85 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychosis | 0.411 | 68 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychomotor_agitation | 0.297 | 59 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | somnolence_or_hypersomnia | 0.250 | 6 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | insomnia | 0.217 | 36 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | elevated_mood_or_mania | 0.027 | 5 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | cognitive_impairment | 0.781 | 13 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | irritability_or_aggression | 0.736 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | anxiety | 0.660 | 14 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | depressed_mood | 0.627 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | fatigue | 0.569 | 17 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychosis | 0.409 | 85 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychomotor_agitation | 0.289 | 80 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | somnolence_or_hypersomnia | 0.230 | 51 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | insomnia | 0.203 | 79 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | elevated_mood_or_mania | 0.019 | 58 | 91 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | cognitive_impairment | 0.832 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | irritability_or_aggression | 0.821 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | depressed_mood | 0.598 | 3 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | fatigue | 0.588 | 8 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | anxiety | 0.573 | 44 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychosis | 0.347 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychomotor_agitation | 0.227 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | somnolence_or_hypersomnia | 0.202 | 84 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | insomnia | 0.109 | 88 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | elevated_mood_or_mania | 0.003 | 83 | 90 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | cognitive_impairment | 0.829 | 2 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | irritability_or_aggression | 0.791 | 3 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | depressed_mood | 0.678 | 3 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | anxiety | 0.674 | 1 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | fatigue | 0.595 | 2 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychosis | 0.405 | 91 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychomotor_agitation | 0.252 | 90 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | insomnia | 0.147 | 90 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | somnolence_or_hypersomnia | 0.125 | 82 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | elevated_mood_or_mania | 0.002 | 82 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | cognitive_impairment | 0.789 | 9 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | irritability_or_aggression | 0.757 | 5 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | depressed_mood | 0.651 | 5 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | anxiety | 0.643 | 63 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | fatigue | 0.584 | 4 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychosis | 0.428 | 19 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychomotor_agitation | 0.284 | 82 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | insomnia | 0.179 | 88 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | somnolence_or_hypersomnia | 0.146 | 81 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | elevated_mood_or_mania | 0.004 | 81 | 91 | nan | 0 |
+
+### b6_linear_response_cofactors_neuronal (8 of the variant's genes held out)
+
+| gene | role | fold | symptom | probability | rank in fold | perturbations in fold | base rate | positive |
+|---|---|---|---|---|---|---|---|---|
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | cognitive_impairment | 0.637 | 58 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | irritability_or_aggression | 0.596 | 54 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | fatigue | 0.447 | 52 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | depressed_mood | 0.360 | 60 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | anxiety | 0.343 | 56 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychosis | 0.234 | 60 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | psychomotor_agitation | 0.144 | 58 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | insomnia | 0.095 | 52 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | somnolence_or_hypersomnia | 0.088 | 55 | 91 | nan | 0 |
+| ATP1A3 | sodium-potassium ATPase (hyperpolarising current, Human-GEM) | 0 | elevated_mood_or_mania | 0.007 | 50 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | cognitive_impairment | 0.637 | 58 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | irritability_or_aggression | 0.596 | 54 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | fatigue | 0.447 | 52 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | depressed_mood | 0.360 | 60 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | anxiety | 0.343 | 56 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychosis | 0.234 | 60 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | psychomotor_agitation | 0.144 | 58 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | insomnia | 0.095 | 52 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | somnolence_or_hypersomnia | 0.088 | 55 | 91 | nan | 0 |
+| HCN1 | hyperpolarisation-activated channel (curated split, the opposite gating sign) | 0 | elevated_mood_or_mania | 0.007 | 50 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | cognitive_impairment | 0.637 | 85 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | irritability_or_aggression | 0.596 | 85 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | fatigue | 0.447 | 85 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | depressed_mood | 0.360 | 86 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | anxiety | 0.343 | 85 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychosis | 0.234 | 87 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | psychomotor_agitation | 0.144 | 83 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | insomnia | 0.095 | 83 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | somnolence_or_hypersomnia | 0.088 | 85 | 91 | nan | 0 |
+| MAOA | monoamine oxidase, a hydrogen peroxide source | 0 | elevated_mood_or_mania | 0.007 | 85 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | cognitive_impairment | 0.637 | 58 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | irritability_or_aggression | 0.596 | 54 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | fatigue | 0.447 | 52 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | depressed_mood | 0.360 | 60 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | anxiety | 0.343 | 56 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychosis | 0.234 | 60 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | psychomotor_agitation | 0.144 | 58 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | insomnia | 0.095 | 52 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | somnolence_or_hypersomnia | 0.088 | 55 | 91 | nan | 0 |
+| SCN1A | voltage-gated sodium channel (curated split, depolarisation-activated) | 0 | elevated_mood_or_mania | 0.007 | 50 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | cognitive_impairment | 0.637 | 14 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | irritability_or_aggression | 0.596 | 19 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | fatigue | 0.447 | 14 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | depressed_mood | 0.360 | 12 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | anxiety | 0.343 | 10 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychosis | 0.234 | 9 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | psychomotor_agitation | 0.144 | 16 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | insomnia | 0.095 | 9 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | somnolence_or_hypersomnia | 0.088 | 8 | 91 | nan | 0 |
+| SLC12A5 | KCC2, which sets the chloride pool and so the GABA-A response | 0 | elevated_mood_or_mania | 0.007 | 10 | 91 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | cognitive_impairment | 0.583 | 26 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | irritability_or_aggression | 0.545 | 25 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | anxiety | 0.411 | 29 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | depressed_mood | 0.393 | 29 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | fatigue | 0.375 | 26 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychosis | 0.268 | 28 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | psychomotor_agitation | 0.167 | 24 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | somnolence_or_hypersomnia | 0.150 | 28 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | insomnia | 0.088 | 23 | 90 | nan | 0 |
+| SLC18A2 | VMAT2, now only at the vesicle | 1 | elevated_mood_or_mania | 0.000 | 58 | 90 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | cognitive_impairment | 0.637 | 58 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | irritability_or_aggression | 0.596 | 54 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | fatigue | 0.447 | 52 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | depressed_mood | 0.360 | 60 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | anxiety | 0.343 | 56 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychosis | 0.234 | 60 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | psychomotor_agitation | 0.144 | 58 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | insomnia | 0.095 | 74 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | somnolence_or_hypersomnia | 0.088 | 55 | 91 | nan | 0 |
+| SLC32A1 | VGAT, vesicular GABA and glycine loading | 0 | elevated_mood_or_mania | 0.007 | 50 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | cognitive_impairment | 0.637 | 14 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | irritability_or_aggression | 0.596 | 12 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | fatigue | 0.447 | 13 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | depressed_mood | 0.360 | 19 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | anxiety | 0.343 | 25 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychosis | 0.234 | 19 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | psychomotor_agitation | 0.144 | 12 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | insomnia | 0.095 | 20 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | somnolence_or_hypersomnia | 0.088 | 22 | 91 | nan | 0 |
+| SLC6A3 | dopamine transporter, uptake and the curated reverse transport | 0 | elevated_mood_or_mania | 0.007 | 14 | 91 | nan | 0 |
 
