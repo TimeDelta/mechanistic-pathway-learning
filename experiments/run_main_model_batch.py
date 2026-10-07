@@ -15,8 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-FULL_GRAPH_ARGUMENTS = ["--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full",
-                        "--label-selection", "data/processed/label_selection/better_v1_full.parquet"]
+FULL_GRAPH_ARGUMENTS = ["--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full_v2",
+                        "--label-selection", "data/processed/label_selection/better_v1_full_v2.parquet"]
 FULL_GRAPH_NODE_PROPERTIES = "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"
 
 CONFIGURATIONS: dict[str, list[str]] = {
@@ -139,7 +139,7 @@ def main() -> None:
     parser.add_argument("--holdout-modules", nargs="*", default=[])
     parser.add_argument("--holdout-subsystems", nargs="*", default=[])
     parser.add_argument("--seeds", type=int, nargs="*", default=[0])
-    parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="disease_cluster")
+    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="disease_cluster")
     parser.add_argument("--run-root", type=Path, default=Path("runs"))
     parser.add_argument("--extra", nargs=argparse.REMAINDER, default=[], help="further arguments passed through to run_main_model.py")
     arguments = parser.parse_args()

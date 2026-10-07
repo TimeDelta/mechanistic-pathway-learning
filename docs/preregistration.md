@@ -79,6 +79,57 @@ data/processed/label_selection/better_v1_full.parquet, selection version better_
   positive by its frequency (mean weight 0.64 over the 796 gene pairs below 0.30, 1.0 at 0.30 or above and 1.0 with no
   frequency), and every pair counted fully in scoring; the selection removes the set-aside pairs from both.
 
+Symptom list expanded on 7 October 2026 at the user's request, before any full-graph model was scored (docs/symptom_crosswalk.csv,
+audited in docs/hpo_term_audit.md; data/processed/evidence_full_v2; the better_v1 rule above applied to it:
+data/processed/label_selection/better_v1_full_v2.parquet, SHA-256 c691a9aa…). This replaces evidence_full and better_v1_full
+(ffb06fb4…) for every full-graph run; the slice keeps its own evidence table.
+
+- Frame: a symptom is added when it is an item or domain of a standard instrument (PHQ-9, GAD-7, the Neuropsychiatric
+  Inventory, HAM-D item 14, Y-BOCS) and has an HPO term, MedDRA preferred terms or both. Diagnosis-level HPO terms stay
+  excluded (assumption A7).
+- New symptoms: apathy, suicidality, self_injury, compulsive_behavior, disinhibition_or_impulsivity, hyperactivity,
+  emotional_lability, increased_appetite, abnormal_dreams, decreased_libido and catatonia. Each excluded descendant is named in
+  the crosswalk with its reason. Two were found by looking at which genes a term supplies: Eye poking (all its annotated genes
+  are Leber congenital amaurosis genes; it is the oculo-digital sign of blind children) and Inappropriate laughter (mostly the
+  Angelman syndrome sign: UBE3A, SLC9A6, MECP2, CDKL5).
+- Existing symptoms gained the MedDRA preferred terms drug labels use for the same construct, several of which the HPO side
+  already held: Akathisia (psychomotor agitation; HPO Akathisia sits under Restlessness), Delirium, Disorientation and the
+  amnesias (cognitive impairment; HPO Delirium sits under Confusion), Paranoia and the hallucination subtypes (psychosis, with
+  HPO Paranoia added), Hostility and Anger, the insomnia subtypes, Sedation, Dysphoria and Elevated mood. Tension was added to
+  anxiety on the reading that MedDRA files it with the anxiety symptoms; that placement was not checked against the MedDRA
+  hierarchy, which the project does not hold.
+- Not added: decreased appetite (on drug labels it follows nausea and other gastrointestinal effects); autism and attention
+  deficit hyperactivity disorder (diagnosis-level); intellectual disability and speech delay (developmental, not a symptom
+  state); tics (a motor disorder); lethargy and drowsiness (in HPO, signs of reduced consciousness); sleep apnoea.
+- Counts: 4,439 positive pairs, 2,211 kept (1,793 gene pairs over 925 genes; 418 drug pairs over 61 drugs), against 1,735
+  before. Kept pairs by symptom: cognitive impairment 373, fatigue 331, irritability or aggression 273, anxiety 254,
+  depressed mood 189, psychomotor agitation 89, psychosis 85, somnolence or hypersomnia 84, hyperactivity 83, self-injury 75,
+  emotional lability 66, disinhibition or impulsivity 62, insomnia 57, apathy 54, compulsive behaviour 46, increased appetite 37,
+  abnormal dreams 17, suicidality 13, elevated mood or mania 11, decreased libido 11, psychomotor retardation 1, catatonia 0.
+- Scored symptoms: every symptom with at least five kept positive pairs in the whole data (so psychomotor retardation and
+  catatonia are not scored, and anhedonia has no pair). The macro average takes the symptoms with at least five positives in
+  the test set, as before; micro AUPRC (below) takes every scored symptom.
+- The pipeline rebuilt from the previous crosswalk reproduces evidence_full and better_v1_full exactly (selection SHA-256
+  ffb06fb4… both times), so the changes come from the crosswalk alone.
+- What the expansion changes: most of the added kept pairs are gene pairs, and four new symptoms (self-injury, hyperactivity,
+  compulsive behaviour, disinhibition) come mostly from neurodevelopmental syndromes with no or few drug positives. Drug kept
+  pairs rose from 340 to 418.
+
+Micro AUPRC, added on 7 October 2026 at the user's request (ranking_and_calibration_metrics.micro_auprc): average precision over
+every labelled perturbation-symptom pair ranked in one list. It keeps the symptoms the macro average leaves out in a test set
+with fewer than five positives. It weighs frequent symptoms more and credits ranking symptoms by base rate, so it is compared
+against the same baselines (popularity among them). Every scoring script reports it beside the macro average, in the same
+three readings (per fold, pooled, within degree strata).
+
+Leakage grouping, decided 7 October 2026 (experiments/check_drug_target_leakage.py, docs/drug_target_leakage.md): under the
+disease-cluster grouping a drug is grouped by its target set, so it can sit in another fold than the loss of function of its
+own target gene. On the expanded labels, 69 of the 73 drugs that target a labelled gene had such a gene in another fold, and 66
+of the 418 kept drug positives were also kept positives of such a gene. Where a labelled target gene is positive for a symptom
+the drug is positive in 67 of 242 pairs (0.28), against 0.17 over all labelled drug pairs. Every full-graph run therefore uses
+the grouping disease_cluster_and_targets, which holds a drug out with every labelled gene it targets and every drug sharing a
+target node. That closes the overlap (0 drugs, 0 shared positives) and keeps the fold sizes at 307 to 308 perturbations; the
+largest group grows from 140 to 232 perturbations.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; number of flux samples per gene; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

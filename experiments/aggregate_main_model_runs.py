@@ -33,7 +33,9 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     hits_at_k,
     macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
+    micro_auprc,
     paired_bootstrap_macro_difference,
+    paired_bootstrap_micro_difference,
     per_symptom_auprc,
     per_symptom_auroc,
     rank_normalise_within_groups,
@@ -89,6 +91,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
         split_mask = rows_of(data.label_mask, rows)
         macro_auprc, macro_auroc = macro_scores(predictions, data.outcomes[rows], split_mask)
         per_split.append({"split": results["split"], "num_test": len(rows), "macro_auprc": macro_auprc, "macro_auroc": macro_auroc,
+                          "micro_auprc": micro_auprc(predictions, data.outcomes[rows], split_mask),
                           "mean_reciprocal_rank": mean_reciprocal_rank(predictions, data.outcomes[rows], split_mask),
                           "hits_at_3": hits_at_k(predictions, data.outcomes[rows], 3, split_mask),
                           "epochs_completed": results.get("epochs_completed"), "best_epoch": results.get("best_epoch")})
@@ -117,6 +120,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
                                 "auprc": auprc.__dict__, "auroc": auroc.__dict__}
     fold_auprcs = [entry["macro_auprc"] for entry in per_split if not np.isnan(entry["macro_auprc"])]
     fold_aurocs = [entry["macro_auroc"] for entry in per_split if not np.isnan(entry["macro_auroc"])]
+    fold_micro_auprcs = [entry["micro_auprc"] for entry in per_split if not np.isnan(entry["micro_auprc"])]
     first_results = json.loads((split_directories[0] / "results.json").read_text())
     return {
         "run_directory": str(run_directory), "num_splits": len(split_directories), "num_scored_perturbations": int(scored.sum()),
@@ -127,6 +131,8 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "per_fold_macro_auprc_mean": float(np.mean(fold_auprcs)) if fold_auprcs else float("nan"), "per_fold_macro_auprc_sd": float(np.std(fold_auprcs)) if fold_auprcs else float("nan"),
         "per_fold_macro_auroc_mean": float(np.mean(fold_aurocs)) if fold_aurocs else float("nan"), "per_fold_macro_auroc_sd": float(np.std(fold_aurocs)) if fold_aurocs else float("nan"),
+        "micro_auprc": bootstrap_interval(micro_auprc, predictions, outcomes, num_bootstrap=num_bootstrap, mask=mask).__dict__,
+        "per_fold_micro_auprc_mean": float(np.mean(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"), "per_fold_micro_auprc_sd": float(np.std(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"),
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes, mask), "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
         "expected_calibration_error": expected_calibration_error(predictions, outcomes, mask=mask),
         "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees[scored], mask=mask),
@@ -185,6 +191,7 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
         normalised_by_name[name] = (normalised, rows)
         scores[name] = {"macro_auprc_within_degree_strata": float(np.mean([per_symptom_auprc(normalised, outcomes, s, mask) for s in scorable])),
                         "macro_auroc_stratified_by_degree": float(np.nanmean([stratified_auroc(predictions[rows], outcomes, strata[rows], s, mask) for s in scorable])),
+                        "micro_auprc_within_degree_strata": micro_auprc(normalised, outcomes, mask),
                         "num_strata": int(len(np.unique(degree_strata(data.perturbation_degrees))))}
     comparisons = []
     for run_name in aggregated:
@@ -202,7 +209,10 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
             other_pick = np.isin(other_positions, np.flatnonzero(shared))
             difference = paired_bootstrap_macro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], per_symptom_auprc, num_bootstrap,
                                                            mask=rows_of(data.label_mask, shared))
-            comparisons.append({"a": run_name, "b": other, "rows": int(shared.sum()), "macro_auprc_within_degree_strata": difference})
+            micro_difference = paired_bootstrap_micro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], num_bootstrap,
+                                                                 mask=rows_of(data.label_mask, shared))
+            comparisons.append({"a": run_name, "b": other, "rows": int(shared.sum()), "macro_auprc_within_degree_strata": difference,
+                                "micro_auprc_within_degree_strata": micro_difference})
     return scores, comparisons
 
 
@@ -222,12 +232,16 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
                                                       mask=rows_of(data.label_mask, rows))
             auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap,
                                                       mask=rows_of(data.label_mask, rows))
-            comparisons.append({"a": first, "b": second, "rows": int(rows.sum()), "macro_auprc": auprc, "macro_auroc": auroc})
+            micro = paired_bootstrap_micro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], num_bootstrap,
+                                                      mask=rows_of(data.label_mask, rows))
+            comparisons.append({"a": first, "b": second, "rows": int(rows.sum()), "macro_auprc": auprc, "macro_auroc": auroc, "micro_auprc": micro})
     return comparisons
 
 
 def summary_row(name: str, entry: dict) -> str:
-    return (f"| {name} | {entry['macro_auprc']:.3f} | {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f} | {entry['macro_auroc']:.3f} | "
+    micro = (entry.get("micro_auprc") or {}).get("point", float("nan"))  # baseline results written before micro AUPRC have none
+    return (f"| {name} | {entry['macro_auprc']:.3f} | {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f} | {micro:.3f} | "
+            f"{entry.get('per_fold_micro_auprc_mean', float('nan')):.3f} ± {entry.get('per_fold_micro_auprc_sd', float('nan')):.3f} | {entry['macro_auroc']:.3f} | "
             f"{entry['per_fold_macro_auroc_mean']:.3f} ± {entry['per_fold_macro_auroc_sd']:.3f} | {entry['mean_reciprocal_rank']:.3f} | {entry['hits_at_3']:.3f} | "
             f"{entry.get('expected_calibration_error', float('nan')):.3f} | {entry['num_scored_perturbations']} |")
 
@@ -237,7 +251,7 @@ def main() -> None:
     parser.add_argument("--run-dirs", type=Path, nargs="+", required=True)
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
-    parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="disease_cluster")
+    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="disease_cluster")
     parser.add_argument("--baseline-results", type=Path, default=None, help="results.json of run_baselines.py for the same split, to put B0 and B1 in the same table")
     parser.add_argument("--baseline-split", default="grouped", help="key under 'splits' in the baseline results to show")
     parser.add_argument("--label-selection", type=Path, default=None,
@@ -257,6 +271,7 @@ def main() -> None:
             continue
         aggregated[run_directory.name] = entry
         print(f"{run_directory.name:40s} splits {entry['num_splits']}  macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
+              f"micro AUPRC {entry['micro_auprc']['point']:.3f} (per fold {entry['per_fold_micro_auprc_mean']:.3f})  "
               f"macro AUROC {entry['macro_auroc']:.3f}  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}  ECE {entry['expected_calibration_error']:.3f}")
     baseline_entries = {}
     baseline_directory = None
@@ -278,8 +293,9 @@ def main() -> None:
 
     lines = [f"# {arguments.title} (generated by experiments/aggregate_main_model_runs.py)", "",
              f"{len(data.perturbation_ids)} perturbations, {len(data.symptoms)} symptoms, leakage groups by {arguments.group_by}. Out-of-split predictions pooled; per-fold values are mean ± standard deviation over splits. "
-             "Baseline rows come from experiments/run_baselines.py on the same split. ECE: expected calibration error over all perturbation-symptom pairs.", "",
-             "| model | macro AUPRC (pooled) | macro AUPRC (per fold) | macro AUROC (pooled) | macro AUROC (per fold) | MRR | hits@3 | ECE | scored perturbations |", "|---|---|---|---|---|---|---|---|---|"]
+             "Baseline rows come from experiments/run_baselines.py on the same split. ECE: expected calibration error over all perturbation-symptom pairs. "
+             "Micro AUPRC ranks every labelled perturbation-symptom pair in one list, so symptoms below the five-positive cutoff of the macro average count too (n/a for baseline results written before it existed).", "",
+             "| model | macro AUPRC (pooled) | macro AUPRC (per fold) | micro AUPRC (pooled) | micro AUPRC (per fold) | macro AUROC (pooled) | macro AUROC (per fold) | MRR | hits@3 | ECE | scored perturbations |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in baseline_entries.items():
         lines.append(summary_row(name, {**entry, "expected_calibration_error": float("nan")}))
     for name, entry in aggregated.items():
@@ -292,21 +308,24 @@ def main() -> None:
             lines.append(f"| {name} | " + " | ".join(f"{bins[b]:.3f}" if b in bins else "n/a" for b in degree_bins) + " |")
     if comparisons:
         lines += ["", "## Paired bootstrap comparisons (design section 7)", "", "Difference in pooled macro AUPRC and macro AUROC between two models on the rows both scored; 95 percent percentile interval of the paired bootstrap over perturbations. The pre-registered primary endpoint asks for a difference of at least 0.05 with an interval excluding zero.", "",
-                  "| A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | macro AUROC A - B [95% CI] |", "|---|---|---|---|---|---|"]
+                  "| A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | micro AUPRC A - B [95% CI] | macro AUROC A - B [95% CI] |", "|---|---|---|---|---|---|---|"]
         for comparison in comparisons:
-            a, r = comparison["macro_auprc"], comparison["macro_auroc"]
-            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {a['difference']:+.3f} [{a['lower']:+.3f}, {a['upper']:+.3f}] | {a['fraction_resamples_favoring_a']:.2f} | {r['difference']:+.3f} [{r['lower']:+.3f}, {r['upper']:+.3f}] |")
+            a, m, r = comparison["macro_auprc"], comparison["micro_auprc"], comparison["macro_auroc"]
+            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {a['difference']:+.3f} [{a['lower']:+.3f}, {a['upper']:+.3f}] | {a['fraction_resamples_favoring_a']:.2f} | "
+                         f"{m['difference']:+.3f} [{m['lower']:+.3f}, {m['upper']:+.3f}] | {r['difference']:+.3f} [{r['lower']:+.3f}, {r['upper']:+.3f}] |")
     if strata_scores:
         lines += ["", "## Within degree strata", "",
                   f"Rankings scored inside groups of one degree stratum and one test fold ({next(iter(strata_scores.values()))['num_strata']} degree strata from quantile edges, equal degrees always together), so ordering perturbations by degree earns nothing and the fold effect of pooled out-of-fold scores cannot enter: "
                   "macro AUPRC after each score is replaced by its rank inside its group, and macro AUROC from positive-negative pairs inside a group only. Degree-scaled popularity can still order perturbations of different degree inside a wide stratum.", "",
-                  "| model | macro AUPRC within degree strata | macro AUROC stratified by degree |", "|---|---|---|"]
+                  "| model | macro AUPRC within degree strata | micro AUPRC within degree strata | macro AUROC stratified by degree |", "|---|---|---|---|"]
         for name, score in strata_scores.items():
-            lines.append(f"| {name} | {score['macro_auprc_within_degree_strata']:.3f} | {score['macro_auroc_stratified_by_degree']:.3f} |")
-        lines += ["", "Paired bootstrap of the within-strata macro AUPRC, each run against each baseline (95 percent interval):", "", "| A | B | rows | difference [95% CI] | resamples favoring A |", "|---|---|---|---|---|"]
+            lines.append(f"| {name} | {score['macro_auprc_within_degree_strata']:.3f} | {score['micro_auprc_within_degree_strata']:.3f} | {score['macro_auroc_stratified_by_degree']:.3f} |")
+        lines += ["", "Paired bootstrap of the within-strata macro and micro AUPRC, each run against each baseline (95 percent interval):", "",
+                  "| A | B | rows | macro difference [95% CI] | resamples favoring A | micro difference [95% CI] |", "|---|---|---|---|---|---|"]
         for comparison in strata_comparisons:
-            d = comparison["macro_auprc_within_degree_strata"]
-            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {d['difference']:+.3f} [{d['lower']:+.3f}, {d['upper']:+.3f}] | {d['fraction_resamples_favoring_a']:.2f} |")
+            d, m = comparison["macro_auprc_within_degree_strata"], comparison["micro_auprc_within_degree_strata"]
+            lines.append(f"| {comparison['a']} | {comparison['b']} | {comparison['rows']} | {d['difference']:+.3f} [{d['lower']:+.3f}, {d['upper']:+.3f}] | {d['fraction_resamples_favoring_a']:.2f} | "
+                         f"{m['difference']:+.3f} [{m['lower']:+.3f}, {m['upper']:+.3f}] |")
     lines += ["", "## Configurations", "", "Commits are those the splits ran under (recorded from 6 October 2026; 'not recorded' marks earlier runs, which evaluated noisy-OR gates with the Louizos test-time estimator rather than the expected training gate).", "",
               "| run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs | commits |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, entry in aggregated.items():

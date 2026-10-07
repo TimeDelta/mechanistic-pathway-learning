@@ -65,6 +65,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     hits_at_k,
     macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
+    micro_auprc,
     per_symptom_auprc,
     per_symptom_auroc,
     scorable_symptom,
@@ -136,6 +137,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
         macro_auprc, macro_auroc = macro_scores(predictions[test], outcomes[test], test_label_mask) if test.sum() >= min_fold_size_for_macro else (float("nan"), float("nan"))
         per_fold.append({"fold": fold_index, "label": split_labels[fold_index] if split_labels else str(fold_index), "num_test": int(test.sum()), "num_positive_pairs": int(training_outcomes[test].sum()),
                          "macro_auprc": macro_auprc, "macro_auroc": macro_auroc,
+                         "micro_auprc": micro_auprc(predictions[test], outcomes[test], test_label_mask) if test.sum() >= min_fold_size_for_macro else float("nan"),
                          "mean_reciprocal_rank": mean_reciprocal_rank(predictions[test], outcomes[test], test_label_mask), "hits_at_3": hits_at_k(predictions[test], outcomes[test], 3, test_label_mask)})
     return predictions, scored, per_fold, fold_of_row
 
@@ -162,8 +164,13 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
             per_symptom[symptom]["auroc_stratified"] = stratified_auroc(predictions, outcomes, fold_of_scored_row, symptom_index, mask)
     fold_auprcs = [entry["macro_auprc"] for entry in per_fold if not np.isnan(entry["macro_auprc"])]
     fold_aurocs = [entry["macro_auroc"] for entry in per_fold if not np.isnan(entry["macro_auroc"])]
+    fold_micro_auprcs = [entry["micro_auprc"] for entry in per_fold if not np.isnan(entry.get("micro_auprc", float("nan")))]
     return {
         "num_scored_perturbations": int(rows.sum()),
+        "micro_auprc": bootstrap_interval(micro_auprc, predictions, outcomes, num_bootstrap=num_bootstrap, mask=mask).__dict__,
+        "micro_auprc_rank_normalised": micro_auprc(normalised, outcomes, mask) if normalised is not None else float("nan"),
+        "per_fold_micro_auprc_mean": float(np.mean(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"),
+        "per_fold_micro_auprc_sd": float(np.std(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"),
         "per_symptom": per_symptom,
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
@@ -292,7 +299,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--restart-probability", type=float, default=0.3)
-    parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
+    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of fitting and scoring")

@@ -155,6 +155,9 @@ Superseded numbers to avoid:
 | 2026-10-07 | Gates get their own learning rate (--gate-learning-rate) | with the shared rate, supports were still shrinking at early stopping (finding 6) |
 | 2026-10-07 | Rewiring control at 50 swaps per edge with a null of 20 draws on the slice | 2 swaps per edge left the graph under-mixed (finding 8) |
 | 2026-10-07 | The 0.3 percent sign-mixing figure retracted | computed without the derived depletes_substrate relation (finding 11) |
+| 2026-10-07 | Symptom list expanded from 12 to 23 crosswalk rows (11 new symptoms, MedDRA synonyms for the existing ones); 2,211 kept positive pairs against 1,735 | user's request before the symptom list is fixed; docs/preregistration.md |
+| 2026-10-07 | Micro AUPRC reported beside macro AUPRC in every reading, and required for confirmation together with it | user's decision: symptoms below five positives in a test set still count |
+| 2026-10-07 | Full-graph runs group each drug with the genes it targets (disease_cluster_and_targets) | a drug and its target gene's loss of function sat in different folds for 69 of 73 drugs (docs/drug_target_leakage.md) |
 
 AI assistance: code, data processing, reviews and drafts in this repository were produced with Claude Code; commits
 carry a Co-Authored-By line.

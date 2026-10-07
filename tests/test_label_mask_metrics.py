@@ -97,3 +97,48 @@ def test_label_selection_masks_positive_pairs_in_the_loader(tmp_path):
     assert data.label_mask.sum() == data.label_mask.size - 1
     assert data.label_selection_summary["masked_pairs"] == 1
     assert load_experiment_data(graph, evidence).label_mask is None
+
+
+def test_micro_auprc_pools_every_labelled_pair_and_skips_masked_ones():
+    from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import micro_auprc
+    outcomes = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]])
+    predictions = np.array([[0.9, 0.1], [0.2, 0.8], [0.3, 0.05]])
+    assert micro_auprc(predictions, outcomes) == 1.0
+    worse = predictions.copy()
+    worse[2, 0] = 0.95  # a negative ranked first
+    assert micro_auprc(worse, outcomes) < 1.0
+    mask = np.ones_like(outcomes, dtype=bool)
+    mask[2, 0] = False  # the same pair masked out is neither a positive nor a negative
+    assert micro_auprc(worse, outcomes, mask) == 1.0
+    assert np.isnan(micro_auprc(predictions, np.zeros_like(outcomes)))
+
+
+def test_micro_auprc_counts_a_symptom_below_the_macro_cutoff():
+    from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import micro_auprc, paired_bootstrap_macro_difference, paired_bootstrap_micro_difference
+    generator = np.random.default_rng(0)
+    outcomes = np.zeros((60, 2))
+    outcomes[:20, 0] = 1.0
+    outcomes[0, 1] = 1.0  # one positive: left out of the macro average, inside the micro average
+    good = generator.random(outcomes.shape) * 0.5 + outcomes * 0.5
+    rare_missed = good.copy()
+    rare_missed[0, 1] = 0.0
+    macro = paired_bootstrap_macro_difference(good, rare_missed, outcomes, num_bootstrap=50)
+    micro = paired_bootstrap_micro_difference(good, rare_missed, outcomes, num_bootstrap=50)
+    assert macro["difference"] == 0.0
+    assert micro["difference"] > 0.0
+    assert micro_auprc(good, outcomes) > micro_auprc(rare_missed, outcomes)
+
+
+def test_drugs_join_the_groups_of_the_genes_they_target_and_of_drugs_sharing_a_target():
+    from mechanistic_pathway_learning.evaluation.experiment_data import merge_drugs_with_their_targets
+    node_ids = ["GENE:A", "GENE:B", "GENE:C", "GENE:D"]
+    perturbation_ids = ["A", "B", "C", "drug1", "drug2", "drug3"]
+    perturbation_types = ["gene", "gene", "gene", "drug", "drug", "drug"]
+    group_ids = ["cluster:A", "cluster:B", "cluster:C", "T1", "T2", "T3"]
+    seeds = [np.array([0]), np.array([1]), np.array([2]), np.array([0]), np.array([3]), np.array([3, 1])]
+    merged = merge_drugs_with_their_targets(perturbation_ids, perturbation_types, group_ids, seeds, node_ids)
+    group = dict(zip(perturbation_ids, merged))
+    assert group["drug1"] == group["A"] == "cluster:A"  # drug1 targets gene A
+    assert group["drug2"] == group["drug3"] == group["B"]  # drug2 and drug3 share node D; drug3 also targets gene B
+    assert group["C"] == "cluster:C"  # untouched
+    assert len(set(merged)) == 3

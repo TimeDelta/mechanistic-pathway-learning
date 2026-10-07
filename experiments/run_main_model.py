@@ -314,7 +314,7 @@ def main() -> None:
     parser.add_argument("--permute-labels", action="store_true", help="negative control: permute outcome rows within degree strata before training and testing")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
-    parser.add_argument("--group-by", choices=["gene", "disease_cluster"], default="gene")
+    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")

@@ -90,7 +90,52 @@ class ExperimentData:
         return np.array([self.node_degree[seeds].sum() if len(seeds) else 0.0 for seeds in self.perturbation_seeds])
 
 
-GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id"}
+GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id", "disease_cluster_and_targets": "disease_cluster_id"}
+
+
+def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_types: list[str], group_ids: list[str],
+                                   perturbation_seeds: list, node_ids: list[str]) -> list[str]:
+    """Leakage groups in which a drug is held out together with every labelled gene it targets and every drug that shares
+    a target node with it (group_by "disease_cluster_and_targets").
+
+    Under the disease-cluster grouping a drug's group is its target set, so a drug and the loss of function of its target
+    gene can sit in different folds: on evidence_full with better_v1, 71 of the 72 drugs that target a labelled gene had a
+    target gene in another fold, and 59 of the 340 kept drug positives were also positives of such a gene (docs/drug_target_leakage.md).
+    A model then learns "perturbing this node causes this symptom" from the gene and is credited for it on the drug.
+    Groups are the connected components of: perturbation - its group (disease cluster), drug - each gene perturbation
+    whose node it targets, drug - each target node. Each component is named by the smallest disease cluster of a gene in it, or the smallest
+    group id when it holds drugs only."""
+    parent: dict[str, str] = {}
+
+    def find(item: str) -> str:
+        parent.setdefault(item, item)
+        while parent[item] != item:
+            parent[item] = parent[parent[item]]
+            item = parent[item]
+        return item
+
+    def union(first: str, second: str) -> None:
+        parent[find(first)] = find(second)
+
+    gene_perturbation_of_node = {node_ids[seeds[0]]: perturbation_id for perturbation_id, kind, seeds in zip(perturbation_ids, perturbation_types, perturbation_seeds)
+                                 if kind == "gene" and len(seeds)}
+    for perturbation_id, group_id in zip(perturbation_ids, group_ids):
+        union("perturbation:" + perturbation_id, "group:" + group_id)
+    for perturbation_id, kind, seeds in zip(perturbation_ids, perturbation_types, perturbation_seeds):
+        if kind != "drug":
+            continue
+        for seed in seeds:
+            union("perturbation:" + perturbation_id, "node:" + node_ids[seed])
+            target_gene = gene_perturbation_of_node.get(node_ids[seed])
+            if target_gene is not None:
+                union("perturbation:" + perturbation_id, "perturbation:" + target_gene)
+    name_of_root: dict[str, tuple[bool, str]] = {}
+    for group_id, kind in zip(group_ids, perturbation_types):
+        root = find("group:" + group_id)
+        candidate = (kind != "gene", group_id)  # a gene's disease cluster names the component when it has one
+        if root not in name_of_root or candidate < name_of_root[root]:
+            name_of_root[root] = candidate
+    return [name_of_root[find("perturbation:" + perturbation_id)][1] for perturbation_id in perturbation_ids]
 
 
 DEFAULT_LABEL_GRADES: tuple[str, ...] = ("A", "B")  # grades that count as positive labels; grade C (human association) and lower are soft evidence, not labels
@@ -100,7 +145,8 @@ SOFT_PRIOR_ONLY_GRADES: tuple[str, ...] = ("D", "E")  # literature grades: soft 
 def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES,
                          label_selection: Path | None = None) -> ExperimentData:
     """group_by selects the leakage group for the grouped split: "gene" (the gene itself; drugs by dominant
-    target) or "disease_cluster" (genes sharing a disease entry in HPO are held out together). label_grades restricts
+    target), "disease_cluster" (genes sharing a disease entry in HPO are held out together) or "disease_cluster_and_targets"
+    (disease clusters with each drug joined to the genes it targets and to the drugs sharing a target: merge_drugs_with_their_targets). label_grades restricts
     the rows that become positive labels (default A and B; None keeps every grade, which the version 0.3 ablation
     table of grade C weight-0 positives relies on).
 
@@ -182,6 +228,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         label_selection_summary = {"path": str(label_selection), "sha256": hashlib.sha256(Path(label_selection).read_bytes()).hexdigest(),
                                    "positive_pairs": int(outcomes.sum()), "masked_pairs": masked,
                                    "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum())}
+    group_ids = [groups[p] for p in perturbation_ids]
+    if group_by == "disease_cluster_and_targets":
+        group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [seeds[p] for p in perturbation_ids], node_ids)
     return ExperimentData(
         node_ids=node_ids,
         node_index=node_index,
@@ -197,7 +246,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         perturbation_ids=perturbation_ids,
         perturbation_labels=[labels[p] for p in perturbation_ids],
         perturbation_types=[types[p] for p in perturbation_ids],
-        group_ids=[groups[p] for p in perturbation_ids],
+        group_ids=group_ids,
         perturbation_seeds=[seeds[p] for p in perturbation_ids],
         perturbation_signs=[signs[p] for p in perturbation_ids],
         perturbation_magnitudes=[magnitudes[p] for p in perturbation_ids],

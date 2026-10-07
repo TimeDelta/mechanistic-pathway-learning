@@ -144,40 +144,72 @@ def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, per
     return result
 
 
-def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, statistic=per_symptom_auprc, num_bootstrap: int = 1000,
-                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5, mask: np.ndarray | None = None) -> dict[str, float]:
-    """Paired bootstrap over perturbations of macro(statistic of A) - macro(statistic of B) on the same rows (design section 7).
+def micro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:
+    """Average precision over every labelled (perturbation, symptom) pair ranked together in one list.
 
-    Both prediction matrices are resampled with the same row indices, so the interval is for the paired
-    difference; symptoms with fewer than minimum_positives positives or no negatives in a resample are skipped.
+    Every symptom enters, however few positives it has, so the symptoms the macro average leaves out (fewer than five
+    positives in a test set) still count. Pairs of frequent symptoms weigh more, and a predictor earns credit for ranking
+    symptoms by their base rates, which is why it is read beside the macro average and against the same baselines
+    (popularity among them) rather than alone. NaN when the labelled pairs hold no positive or no negative."""
+    labelled = np.ones(outcomes.shape, dtype=bool) if mask is None else np.asarray(mask, dtype=bool)
+    labels = outcomes[labelled]
+    if labels.size == 0 or labels.sum() == 0 or labels.sum() == labels.size:
+        return float("nan")
+    return float(average_precision_score(labels, predictions[labelled]))
+
+
+def paired_bootstrap_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, aggregate, num_bootstrap: int = 1000,
+                                random_seed: int = 0, confidence: float = 0.95, mask: np.ndarray | None = None) -> dict[str, float]:
+    """Paired bootstrap over perturbations of aggregate(A) - aggregate(B) on the same rows (design section 7), for any
+    aggregate(predictions, outcomes, mask) such as the macro average of paired_bootstrap_macro_difference or micro_auprc.
+
+    Both prediction matrices are resampled with the same row indices, so the interval is for the paired difference;
+    resamples where the difference is undefined are skipped.
     """
     generator = np.random.default_rng(random_seed)
-
-    def macro(predictions: np.ndarray, resampled_outcomes: np.ndarray, resampled_mask: np.ndarray | None) -> float:
-        values = []
-        for symptom_index in range(resampled_outcomes.shape[1]):
-            if not scorable_symptom(resampled_outcomes, symptom_index, minimum_positives, resampled_mask):
-                continue
-            if resampled_mask is None:
-                values.append(statistic(predictions, resampled_outcomes, symptom_index))
-            else:
-                values.append(statistic(predictions, resampled_outcomes, symptom_index, resampled_mask))
-        return float(np.mean(values)) if values else float("nan")
-
-    point = macro(predictions_a, outcomes, mask) - macro(predictions_b, outcomes, mask)
+    point = aggregate(predictions_a, outcomes, mask) - aggregate(predictions_b, outcomes, mask)
     differences = []
     for _ in range(num_bootstrap):
         rows = generator.integers(0, outcomes.shape[0], size=outcomes.shape[0])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             resampled_mask = None if mask is None else mask[rows]
-            difference = macro(predictions_a[rows], outcomes[rows], resampled_mask) - macro(predictions_b[rows], outcomes[rows], resampled_mask)
+            difference = aggregate(predictions_a[rows], outcomes[rows], resampled_mask) - aggregate(predictions_b[rows], outcomes[rows], resampled_mask)
         if not np.isnan(difference):
             differences.append(difference)
     lower_quantile = (1.0 - confidence) / 2.0
     return {"difference": float(point), "lower": float(np.quantile(differences, lower_quantile)) if differences else float("nan"),
             "upper": float(np.quantile(differences, 1.0 - lower_quantile)) if differences else float("nan"),
             "fraction_resamples_favoring_a": float(np.mean(np.array(differences) > 0)) if differences else float("nan"), "num_resamples": len(differences)}
+
+
+def macro_statistic(statistic=per_symptom_auprc, minimum_positives: int = 5):
+    """aggregate(predictions, outcomes, mask): the mean of statistic over the symptoms with at least minimum_positives
+    positives and one negative among the labelled rows; NaN when none qualifies."""
+    def macro(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None) -> float:
+        values = []
+        for symptom_index in range(outcomes.shape[1]):
+            if not scorable_symptom(outcomes, symptom_index, minimum_positives, mask):
+                continue
+            if mask is None:
+                values.append(statistic(predictions, outcomes, symptom_index))
+            else:
+                values.append(statistic(predictions, outcomes, symptom_index, mask))
+        return float(np.mean(values)) if values else float("nan")
+    return macro
+
+
+def paired_bootstrap_macro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, statistic=per_symptom_auprc, num_bootstrap: int = 1000,
+                                      random_seed: int = 0, confidence: float = 0.95, minimum_positives: int = 5, mask: np.ndarray | None = None) -> dict[str, float]:
+    """Paired bootstrap over perturbations of macro(statistic of A) - macro(statistic of B) on the same rows (design section 7);
+    symptoms with fewer than minimum_positives positives or no negatives in a resample are skipped."""
+    return paired_bootstrap_difference(predictions_a, predictions_b, outcomes, macro_statistic(statistic, minimum_positives), num_bootstrap, random_seed, confidence, mask)
+
+
+def paired_bootstrap_micro_difference(predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, num_bootstrap: int = 1000,
+                                      random_seed: int = 0, confidence: float = 0.95, mask: np.ndarray | None = None) -> dict[str, float]:
+    """Paired bootstrap over perturbations of micro_auprc(A) - micro_auprc(B) on the same rows."""
+    return paired_bootstrap_difference(predictions_a, predictions_b, outcomes, micro_auprc, num_bootstrap, random_seed, confidence, mask)
 
 
 def degree_strata(perturbation_degrees: np.ndarray, num_strata: int = 5) -> np.ndarray:

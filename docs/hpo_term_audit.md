@@ -87,13 +87,14 @@ Roots: none. Excluded: none. Descendant terms: 0; with Human-GEM annotations: 0.
 
 ## psychosis
 
-Roots: HP:0000709 Psychosis, HP:0000738 Hallucinations, HP:0000746 Delusion. Excluded: HP:4000063 Sleep related hallucination. Descendant terms: 37; with Human-GEM annotations: 7. Human-GEM genes: 67 before exclusion, 67 after. Annotation rows kept: 107, of which 85 carry a frequency (mean 0.33).
+Roots: HP:0000709 Psychosis, HP:0000738 Hallucinations, HP:0000746 Delusion, HP:0011999 Paranoia. Excluded: HP:4000063 Sleep related hallucination. Descendant terms: 38; with Human-GEM annotations: 8. Human-GEM genes: 69 before exclusion, 69 after. Annotation rows kept: 115, of which 92 carry a frequency (mean 0.32).
 
 | term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
 |---|---|---|---|---|---|---|---|
-| HP:0000709 | Psychosis | root | 42 | 32 | 18 | 32 | Occasional (5-29%) 14; Frequent (30-79%) 14; not reported 12; fraction n/m 6; Very rare (1-4%) 4 |
-| HP:0000738 | Hallucinations | root | 28 | 14 | 9 | 26 | Occasional (5-29%) 15; not reported 7; Frequent (30-79%) 6; Very frequent (80-99%) 3; Very rare (1-4%) 3; fraction n/m 1 |
-| HP:0000746 | Delusion | root | 8 | 1 | 3 | 11 | Occasional (5-29%) 7; Frequent (30-79%) 4; not reported 3 |
+| HP:0000709 | Psychosis | root | 42 | 30 | 18 | 32 | Occasional (5-29%) 14; Frequent (30-79%) 14; not reported 12; fraction n/m 6; Very rare (1-4%) 4 |
+| HP:0000738 | Hallucinations | root | 28 | 13 | 9 | 26 | Occasional (5-29%) 15; not reported 7; Frequent (30-79%) 6; Very frequent (80-99%) 3; Very rare (1-4%) 3; fraction n/m 1 |
+| HP:0000746 | Delusion | root | 8 | 0 | 3 | 11 | Occasional (5-29%) 7; Frequent (30-79%) 4; not reported 3 |
+| HP:0011999 | Paranoia | root | 8 | 2 | 2 | 6 | Occasional (5-29%) 3; Very rare (1-4%) 3; not reported 1; fraction n/m 1 |
 | HP:0002367 | Visual hallucination | descendant | 5 | 3 | 2 | 4 | Occasional (5-29%) 3; fraction n/m 2; Frequent (30-79%) 1 |
 | HP:0002519 | Hypnagogic hallucination | excluded | 2 | 0 | 1 | 1 | Frequent (30-79%) 1; fraction n/m 1 |
 | HP:0008765 | Auditory hallucination | descendant | 2 | 0 | 0 | 2 | Occasional (5-29%) 2 |
@@ -132,4 +133,114 @@ Roots: HP:0100754 Mania. Excluded: none. Descendant terms: 1; with Human-GEM ann
 | term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
 |---|---|---|---|---|---|---|---|
 | HP:0100754 | Mania | root | 1 | 1 | 0 | 1 | Occasional (5-29%) 1 |
+
+## apathy
+
+Roots: HP:0000741 Apathy, HP:0012671 Abulia. Excluded: none. Descendant terms: 2; with Human-GEM annotations: 1. Human-GEM genes: 17 before exclusion, 17 after. Annotation rows kept: 20, of which 17 carry a frequency (mean 0.38).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0000741 | Apathy | root | 17 | 17 | 6 | 14 | Frequent (30-79%) 7; Occasional (5-29%) 7; not reported 3; fraction n/m 2; Very rare (1-4%) 1 |
+
+## suicidality
+
+Roots: HP:0031589 Suicidal ideation, HP:5200330 Suicide behaviors. Excluded: none. Descendant terms: 2; with Human-GEM annotations: 2. Human-GEM genes: 6 before exclusion, 6 after. Annotation rows kept: 6, of which 6 carry a frequency (mean 0.17).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0031589 | Suicidal ideation | root | 5 | 5 | 0 | 5 | Occasional (5-29%) 5 |
+| HP:5200330 | Suicide behaviors | root | 1 | 1 | 0 | 1 | Occasional (5-29%) 1 |
+
+## self_injury
+
+Roots: HP:0100716 Self-injurious behavior. Excluded: HP:5200330 Suicide behaviors, HP:0008767 Self-mutilation of tongue and lips due to involuntary movements, HP:0001483 Eye poking. Descendant terms: 13; with Human-GEM annotations: 8. Human-GEM genes: 62 before exclusion, 53 after. Annotation rows kept: 70, of which 57 carry a frequency (mean 0.39).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0100716 | Self-injurious behavior | root | 35 | 26 | 19 | 22 | fraction n/m 17; Occasional (5-29%) 17; Frequent (30-79%) 5; not reported 2 |
+| HP:0000742 | Self-mutilation | descendant | 18 | 10 | 14 | 4 | not reported 10; fraction n/m 5; Occasional (5-29%) 2; Frequent (30-79%) 1 |
+| HP:0001483 | Eye poking | excluded | 8 | 8 | 3 | 8 | Frequent (30-79%) 8; fraction n/m 2; not reported 1 |
+| HP:0012168 | Head-banging | descendant | 3 | 3 | 2 | 1 | fraction n/m 2; Very rare (1-4%) 1 |
+| HP:0012166 | Skin-picking | descendant | 3 | 2 | 1 | 4 | Frequent (30-79%) 2; Occasional (5-29%) 2; not reported 1 |
+| HP:0012169 | Self-biting | descendant | 2 | 2 | 2 | 0 | fraction n/m 2 |
+| HP:0012167 | Hair-pulling | descendant | 1 | 1 | 0 | 1 | Occasional (5-29%) 1 |
+| HP:5200330 | Suicide behaviors | excluded | 1 | 1 | 0 | 1 | Occasional (5-29%) 1 |
+
+## compulsive_behavior
+
+Roots: HP:0000722 Compulsive behaviors. Excluded: HP:0100033 Tics, HP:0012170 Nail-biting. Descendant terms: 14; with Human-GEM annotations: 6. Human-GEM genes: 37 before exclusion, 36 after. Annotation rows kept: 45, of which 41 carry a frequency (mean 0.42).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0000722 | Compulsive behaviors | root | 23 | 19 | 13 | 13 | fraction n/m 10; Frequent (30-79%) 7; Occasional (5-29%) 4; not reported 3; Very frequent (80-99%) 2 |
+| HP:0008770 | Obsessive-compulsive trait | descendant | 14 | 12 | 3 | 15 | Very rare (1-4%) 6; Frequent (30-79%) 5; Occasional (5-29%) 4; fraction n/m 3 |
+| HP:0100034 | Motor tics | excluded | 3 | 0 | 3 | 0 | fraction n/m 2; not reported 1 |
+| HP:0100035 | Phonic tics | excluded | 2 | 0 | 2 | 0 | not reported 1; fraction n/m 1 |
+| HP:0100033 | Tics | excluded | 2 | 1 | 2 | 0 | fraction n/m 2 |
+| HP:0030212 | Collectionism | descendant | 1 | 0 | 1 | 0 | not reported 1 |
+
+## disinhibition_or_impulsivity
+
+Roots: HP:0000734 Disinhibition. Excluded: HP:0000718 Aggressive behavior, HP:0000752 Hyperactivity, HP:0000748 Inappropriate laughter. Descendant terms: 17; with Human-GEM annotations: 11. Human-GEM genes: 167 before exclusion, 36 after. Annotation rows kept: 45, of which 39 carry a frequency (mean 0.31).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0000718 | Aggressive behavior | excluded | 83 | 28 | 63 | 35 | fraction n/m 37; not reported 24; Occasional (5-29%) 24; Frequent (30-79%) 12; Very rare (1-4%) 1 |
+| HP:0007018 | Attention deficit hyperactivity disorder | excluded | 76 | 36 | 39 | 53 | fraction n/m 32; Occasional (5-29%) 26; Frequent (30-79%) 22; not reported 5; Very frequent (80-99%) 4; Very rare (1-4%) 3 |
+| HP:0000752 | Hyperactivity | excluded | 64 | 17 | 47 | 34 | not reported 24; fraction n/m 23; Occasional (5-29%) 22; Frequent (30-79%) 11; Very rare (1-4%) 1 |
+| HP:0100710 | Impulsivity | descendant | 32 | 3 | 11 | 30 | Occasional (5-29%) 24; not reported 6; fraction n/m 5; Frequent (30-79%) 4; Very rare (1-4%) 2 |
+| HP:0000748 | Inappropriate laughter | excluded | 7 | 2 | 4 | 5 | Frequent (30-79%) 4; fraction n/m 3; not reported 1; Occasional (5-29%) 1 |
+| HP:0010865 | Age-inappropriate oppositional behavior | excluded | 2 | 0 | 2 | 0 | fraction n/m 2 |
+| HP:0000749 | Paroxysmal bursts of laughter | excluded | 2 | 0 | 1 | 1 | Occasional (5-29%) 1; not reported 1 |
+| HP:0100025 | Overfriendliness | descendant | 2 | 0 | 1 | 1 | fraction n/m 1; Very frequent (80-99%) 1 |
+| HP:0008760 | Violent behavior | excluded | 2 | 1 | 1 | 1 | not reported 1; Frequent (30-79%) 1 |
+| HP:0000719 | Inappropriate behavior | descendant | 1 | 1 | 0 | 1 | Frequent (30-79%) 1 |
+| HP:0000734 | Disinhibition | root | 1 | 0 | 0 | 1 | Frequent (30-79%) 1 |
+
+## hyperactivity
+
+Roots: HP:0000752 Hyperactivity. Excluded: HP:0007018 Attention deficit hyperactivity disorder. Descendant terms: 2; with Human-GEM annotations: 2. Human-GEM genes: 125 before exclusion, 64 after. Annotation rows kept: 81, of which 57 carry a frequency (mean 0.41).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0007018 | Attention deficit hyperactivity disorder | excluded | 76 | 61 | 39 | 53 | fraction n/m 32; Occasional (5-29%) 26; Frequent (30-79%) 22; not reported 5; Very frequent (80-99%) 4; Very rare (1-4%) 3 |
+| HP:0000752 | Hyperactivity | root | 64 | 49 | 47 | 34 | not reported 24; fraction n/m 23; Occasional (5-29%) 22; Frequent (30-79%) 11; Very rare (1-4%) 1 |
+
+## emotional_lability
+
+Roots: HP:0000712 Emotional lability. Excluded: none. Descendant terms: 1; with Human-GEM annotations: 1. Human-GEM genes: 40 before exclusion, 40 after. Annotation rows kept: 54, of which 43 carry a frequency (mean 0.38).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0000712 | Emotional lability | root | 40 | 40 | 17 | 37 | Frequent (30-79%) 17; Occasional (5-29%) 16; not reported 11; fraction n/m 6; Very rare (1-4%) 2; Very frequent (80-99%) 2 |
+
+## increased_appetite
+
+Roots: HP:0002591 Polyphagia, HP:0100739 Bulimia. Excluded: none. Descendant terms: 2; with Human-GEM annotations: 2. Human-GEM genes: 20 before exclusion, 20 after. Annotation rows kept: 25, of which 21 carry a frequency (mean 0.49).
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+| HP:0002591 | Polyphagia | root | 19 | 18 | 9 | 12 | Occasional (5-29%) 6; fraction n/m 5; Frequent (30-79%) 4; not reported 4; Very frequent (80-99%) 2 |
+| HP:0100739 | Bulimia | root | 2 | 1 | 1 | 3 | Occasional (5-29%) 2; Frequent (30-79%) 1; fraction n/m 1 |
+
+## abnormal_dreams
+
+Roots: none. Excluded: none. Descendant terms: 0; with Human-GEM annotations: 0. Human-GEM genes: 0 before exclusion, 0 after. Annotation rows kept: 0; none carries a frequency.
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+
+## decreased_libido
+
+Roots: HP:0046504 Decreased libido. Excluded: none. Descendant terms: 3; with Human-GEM annotations: 0. Human-GEM genes: 0 before exclusion, 0 after. Annotation rows kept: 0; none carries a frequency.
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
+
+## catatonia
+
+Roots: none. Excluded: none. Descendant terms: 0; with Human-GEM annotations: 0. Human-GEM genes: 0 before exclusion, 0 after. Annotation rows kept: 0; none carries a frequency.
+
+| term | name | status | genes | genes only via this term | OMIM rows | ORPHA rows | frequency qualifiers (rows) |
+|---|---|---|---|---|---|---|---|
 

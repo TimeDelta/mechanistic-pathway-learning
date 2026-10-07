@@ -41,7 +41,9 @@ from mechanistic_pathway_learning.evaluation.experiment_data import load_experim
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     degree_strata,
+    micro_auprc,
     paired_bootstrap_macro_difference,
+    paired_bootstrap_micro_difference,
     per_symptom_auprc,
     per_symptom_auroc,
     rank_normalise_within_groups,
@@ -182,6 +184,18 @@ def compare(run: str, reference: str, data, strata: np.ndarray, num_bootstrap: i
     entry["within_degree_strata_macro_auprc"] = paired_bootstrap_macro_difference(
         rank_normalise_within_groups(run_matrix[shared_rows], strata[shared_rows]),
         rank_normalise_within_groups(reference_matrix[shared_rows], strata[shared_rows]), outcomes, per_symptom_auprc, num_bootstrap, mask=shared_mask)
+    position_of = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
+    per_fold_micro_differences = []
+    for fold in shared_folds:
+        rows = np.array([position_of[p] for p in run_by_fold[fold]["test_perturbation_ids"] if p in position_of])
+        fold_mask = rows_of(data.label_mask, rows)
+        per_fold_micro_differences.append(micro_auprc(run_matrix[rows], data.outcomes[rows], fold_mask) - micro_auprc(reference_matrix[rows], data.outcomes[rows], fold_mask))
+    micro_mean, micro_lower, micro_upper = fold_t_interval(np.array(per_fold_micro_differences))
+    entry["per_fold_micro_difference"] = {"difference": micro_mean, "lower": micro_lower, "upper": micro_upper}
+    entry["pooled_micro_auprc"] = paired_bootstrap_micro_difference(run_matrix[shared_rows], reference_matrix[shared_rows], outcomes, num_bootstrap, mask=shared_mask)
+    entry["within_degree_strata_micro_auprc"] = paired_bootstrap_micro_difference(
+        rank_normalise_within_groups(run_matrix[shared_rows], strata[shared_rows]),
+        rank_normalise_within_groups(reference_matrix[shared_rows], strata[shared_rows]), outcomes, num_bootstrap, mask=shared_mask)
     return entry
 
 
@@ -231,7 +245,7 @@ def cached_compare(run: str, reference: str, data, strata: np.ndarray, num_boots
         stamp["label_selection_sha256"] = label_selection_sha256
     if cache.exists():
         stored = json.loads(cache.read_text())
-        if stored.get("stamp") == stamp:
+        if stored.get("stamp") == stamp and ("set_aside" in stored["entry"] or "pooled_micro_auprc" in stored["entry"]):  # entries written before micro AUPRC are recomputed
             return stored["entry"]
     entry = compare(run, reference, data, strata, num_bootstrap, require_all_folds, label_selection_sha256)
     cache.write_text(json.dumps({"stamp": stamp, "entry": entry}, indent=1))
@@ -288,6 +302,13 @@ def main() -> None:
         lines.append(f"| {entry['a']} | {entry['b']} | `{entry['change']}` | {entry['per_fold_a']:.3f} ± {entry['per_fold_a_sd']:.3f} | "
                      f"{entry['per_fold_b']:.3f} ± {entry['per_fold_b_sd']:.3f} | {format_interval(entry['per_fold_difference'])} | "
                      f"{format_interval(entry['pooled_macro_auprc'])} | {format_interval(entry['within_degree_strata_macro_auprc'])} |")
+    lines += ["", "## Micro AUPRC", "",
+              "The same three readings in micro AUPRC, which ranks every labelled perturbation-symptom pair in one list, so symptoms below "
+              "the five-positive cutoff of the macro average count too and pairs of frequent symptoms weigh more.", "",
+              "| A (carries the change) | B | per fold, t | pooled, bootstrap | within degree strata |", "|---|---|---|---|---|"]
+    for entry in sorted(scored, key=lambda entry: entry["pooled_macro_auprc"]["difference"]):
+        lines.append(f"| {entry['a']} | {entry['b']} | {format_interval(entry['per_fold_micro_difference'])} | {format_interval(entry['pooled_micro_auprc'])} | "
+                     f"{format_interval(entry['within_degree_strata_micro_auprc'])} |")
     lines += ["", "## Set aside", ""]
     for entry in entries:
         if "set_aside" in entry:
