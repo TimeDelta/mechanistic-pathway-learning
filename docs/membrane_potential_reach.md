@@ -56,6 +56,66 @@ signal, and it is worth having, but it does not change what limits the layer.
 3. The full graph stays worth building for its shorter paths, and it is built (data/processed/graph_full_neuronal,
    36,865 nodes), but it is no longer the first thing to try.
 
+## Every slice perturbation is a loss of function, so the mirror constraint is untested (7 October 2026)
+
+All 451 perturbations in the monogenic slice carry perturbation sign -1.0; the evidence table holds 861
+records, every one of perturbation_type `gene`, relation `induces`, evidence_class `monogenic`, grade
+`A`. The model never sees a perturbation of the other direction.
+
+The design's requirement that a gain of function mirror a loss of function (section 5.2) is therefore
+untestable rather than satisfied: with the input sign constant, nothing in the data distinguishes an
+odd encoder from one that is not. The constraint earns its place when a direction of the other sign
+enters, which is the drug arm, where an agonist and an antagonist are opposite-signed perturbations of
+the same node.
+
+The objection to a plain maximum has to be restated on grounds that survive this. It was first stated
+as a mirror violation, which a constant input sign makes moot. The reason it still fails is that it
+clips the falling half of the field: the messages at a node carry both signs whatever the input sign
+is, so a maximum over negative messages returns the least negative, which at the first step is the
+zero of an untouched neighbour. That is about message signs rather than input signs.
+
+## What can break an exact cancellation, and what cannot (7 October 2026)
+
+An exact cancellation cannot be resolved from the message values: every statistic in the mixture is
+odd, and a permutation-invariant odd function must vanish on a multiset symmetric under negation,
+since negating it returns the same multiset. Breaking the tie therefore needs information from outside
+the multiset. Four candidates were measured.
+
+**Message sign, preferring the negative on the grounds that negatives are rare.** The premise holds
+globally and fails where the rule would fire. Negative relation-messages are 21.9% of all messages,
+but at a mixed-sign destination there are exactly 7,811 negative against 7,811 positive on the
+metabolic graph, precisely one each. The global rarity comes from the single-sign destinations, which
+are reactions receiving substrate_of and catalyzed_by. There is no rarity to exploit at the decision
+point, and with the input sign constant the rule reduces to a fixed preference for whichever relation
+carries the negative message, which the learned per-relation gain already parameterises.
+
+**Relation index, which is what argmax does today.** It is odd, because it ignores the message signs,
+but the index is the relation's position in the stack, an arbitrary convention. It resolves every tie
+and means nothing.
+
+**The stoichiometric counts, which is to say the sum rather than the mean.** This is the one that
+works, and it is not a tie-break bolted on but a consequence of not dividing by in-degree. Five
+producing reactions against one consuming reaction is a different node from one against five, and
+in-degree normalisation erases exactly that difference: the five contribute their average, so the
+count divides out and the row sum is mean(+1, -1) = 0 whatever the stoichiometry. Measured on the
+7,811 both-produced-and-consumed metabolites of the metabolic graph, the producing and consuming
+counts differ at 3,722 of them (47.7%), and 3,806 of 8,123 (46.9%) on the neuronal graph. So the sum
+resolves about half the cancellations for free, and it is the spectral normalisation arm rather than
+new machinery.
+
+**The stoichiometric coefficients, for the half the counts leave tied.** Largely a dead end, and the
+builder is discarding them: build_physiology_graph.py reads each coefficient only for its sign, as
+`is_substrate = coefficient < 0`, and writes every edge with sign 1.0. Reading the raw Human-GEM
+model, 6,172 metabolites are both produced and consumed, 3,271 of them with equal reaction counts, and
+the production and consumption coefficient totals differ at only 92 of those (2.8%); just 14.5% of the
+6,172 touch any non-unit coefficient. Carrying the coefficients is a correctness improvement worth
+making on its own terms and it is not the tie-breaker.
+
+That leaves roughly half the cancellations with nothing to break them, and for those zero is the right
+answer rather than a failure. A metabolite made by one reaction and consumed by one reaction at equal
+stoichiometry genuinely has no net response to a change that moves both equally. The encoder returning
+zero there is correct; the defect was returning zero at the other half as well.
+
 ## Sign cancellation: the first measurement was wrong, and a third of destinations annihilate (7 October 2026)
 
 **Retracted.** An earlier version of this section reported that 65 of 23,709 nodes (0.3%) received messages of
