@@ -64,6 +64,7 @@ signed mechanistic encoder adds nothing on top.
 
 | PMID / DOI | question | direction | bearing | weight | quoted sentence | to settle | leaves open |
 |---|---|---|---|---|---|---|---|
+| [10.1093/bioinformatics/btag413](https://doi.org/10.1093/bioinformatics/btag413) (PMID 42635203) | Q1 | `supports` | `same_construct_other_domain` | `weak` | "RGCN achieves the strongest performance across all metrics—accuracy 0.9521, macro recall 0.7196, and macro F1 0.6940." | the same comparison over several seeds and on a drug-disjoint split, with an untyped network given as many parameters as the typed one, and with the training interaction edges left out of message passing so that the typed propagation runs over the biological relations alone; for Q1 proper, a diffusion baseline and a phenotype outcome | transductive by the authors' own statement, with a random 80/10/10 split of edges and no unseen drugs; 997,766 of the 1,679,387 edges that messages pass over are training edges of the predicted relation, so this is propagation over the label graph; one run with no seeds, folds or spread, so the 0.068 gap in macro F1 between the typed and the untyped network on the same graph (0.6940 against 0.6259) has no noise estimate; the other typed model, HGT, is below the untyped network on macro F1 (0.6185) though above it on accuracy; the typed network has a weight matrix per relation and so more parameters, with no size-matched untyped control; no diffusion baseline, no signs and no majority-class figure for a label set with a 19,004 to 1 imbalance; the outcome is an interaction class, not a phenotype |
 | [10.1038/s41591-024-03233-x](https://doi.org/10.1038/s41591-024-03233-x) (PMID 39322717) | Q1 | `supports` | `same_construct_other_domain` | `strong` | "However, TxGNN outperformed all methods across all nine disease areas for both tasks, demonstrating its broad generalizability and accuracy in zero-shot drug repurposing." | the per-baseline AUPRC under the disease-area split with its spread (diffusion state distance, network proximity and the plain relational network beside TxGNN), a run with all relation types merged into one, and a diffusion baseline given a trained readout on the same labels, so that typing is separated from supervision; for Q1 proper, a graph that does not contain the label relation | the graph has 29 undirected edge types and no signs, so only the relation-typed half of Q1 is touched; indication and contraindication are edge types of the same graph and the training diseases' label edges stay in it; the untyped baselines are unsupervised statistics, so typing is confounded with supervision, pretraining and the disease-similarity module; per-baseline numbers are in figures the served text omits, and the text names a language model as the best baseline for held-out indications in seven of nine areas and the plain relational network for contraindications in eight of nine, so the diffusion baselines were not the bar to clear; gains over the next best method run from 0.5% to 59.3% across areas; the abstract's 49.2% and 35.1% were not found in the body as served; the negative sampling that sets the AUPRC base rate is in a supplementary note that was not read |
 | [10.1186/1471-2105-15-238](https://doi.org/10.1186/1471-2105-15-238) (PMID 25015298) | Q1, Q2 | `mixed` | `analogous_mechanism` | `moderate` | "As in the previous example, performance results showed a more robust behavior of network-based features as compared to gene selection, for the majority of the learning algorithms used." | the same classifiers on backbone values computed three ways (the signed Laplacian as published, all edges made positive, signs permuted with the topology kept), scored across cohorts with intervals sized for test cohorts of about 24 patients; and a plain diffusion of the gene fold-changes over the same backbone as the unsigned baseline | no run removes or permutes the signs for prediction, so Q1 is not reached: the baselines are gene-level signatures and gene sets, not an unsigned propagation; the K statistic permutes backbone edges together with their signs and tests the perturbation score, not the classifier; for infliximab response the backbone signature is not the best performer (mean G-performance across cohorts 0.83, against 0.85 for a classifier on the genes downstream of one node and 0.80 for nearest shrunken centroids on all genes), with 47 pre-treatment patients over both cohorts; for smoking status all five backbone classifiers score 0.83 to 0.91 across data sets while gene-level ones range from 0.00 to 0.88; edge direction is discarded by the signed Laplacian; the inference runs backward from expression to upstream activity in a patient, not forward from a perturbation to a phenotype; standard errors are in a supplementary table that was not read; the fraction of nodes receiving both signs is not reported |
 | [10.1038/s41467-019-10887-6](https://doi.org/10.1038/s41467-019-10887-6) (PMID 31289271) | Q1 | `supports` | `same_construct_other_domain` | `moderate` | "We found that the orientation-based scores outperform the ones obtained when using an unoriented network (Fig.), with a mean rank for a true drug target of 6045 (out of 15,501 network genes) compared to a mean rank of 8837 obtained by a completely unoriented network" | the same diffusion on three networks (unoriented, curated directions only, curated plus inferred directions), scored by a top-k or area measure with the chance level beside it and the spread over drugs, and a fourth network whose edges also carry signs; for Q1 proper, a phenotype outcome | the attribute is edge direction, with no signs anywhere, and the outcomes are drug-target and driver-gene ranking, not a phenotype; a random ranking of 15,501 genes has an expected mean rank of 7,751, so the unoriented baseline (8,837) is below chance and the oriented network (6,045) puts the true target at the 39th percentile on average; "completely unoriented" appears to strip the 33,756 curated directed interactions as well, so the gain may come from known directions and not the inferred ones; the driver-gene result prints numbers for the oriented network only, with the comparison in a figure; the p-value exponents are missing from the PMC text as served; checks 3 and 6 hold as described, since the drug-target test orients from cancer data alone and the driver test leaves out the scored disease |
@@ -123,6 +124,7 @@ last line of this list.
 - Slot 15, 7 October 2026, 19:08 UTC: Martin 2014 appraised as PMID 25015298. Slots spent: 15 of 19.
 - Slot 16, 7 October 2026, 19:19 UTC: one Consensus search on the relation-typed half of Q1, 20 records. Slots spent: 16 of 19.
 - Slot 17, 7 October 2026, 19:27 UTC: Huang 2024 (TxGNN) appraised as PMID 39322717. Slots spent: 17 of 19.
+- Slot 18, 7 October 2026, 19:36 UTC: Venkatesh 2026 appraised as PMID 42635203. Slots spent: 18 of 19.
 
 ### Triage checks: the original four and three additions
 
@@ -323,7 +325,7 @@ a diffusion or proximity baseline, so the comparison the query asked for is not 
 
 Queued from this search, with the reason:
 
-1. Venkatesh, 2026, Bioinformatics, 10.1093/bioinformatics/btag413. Benchmarks an MLP, GCN, HGT and RGCN on one
+1. Appraised in slot 18 as PMID 42635203. Venkatesh, 2026, Bioinformatics, 10.1093/bioinformatics/btag413. Benchmarks an MLP, GCN, HGT and RGCN on one
    heterogeneous graph and reports "RGCN achieves the strongest overall performance (Macro F1: 0.694, Recall:
    0.720), with relation-specific weight matrices proving the critical factor". The same graph with and without
    relation types is the isolation check 5 asks for, applied to types. The outcome is the class of a drug-drug
@@ -487,6 +489,53 @@ That reframes the project's negative result. The question is not only whether si
 unsigned diffusion, but whether it can when the signed graph is maximally frustrated, where the
 switching trick that makes balanced signed propagation tractable does not exist. Nothing in the queue
 so far addresses that case, which makes it the open question rather than a settled negative.
+
+### Note on 42635203, relation typing isolated on a graph that is mostly labels
+
+The full text was read from PMC (PMC13501307), all sections. Table 1 prints its counts in Indian digit grouping;
+the six edge counts sum to the stated total of 1,679,387, checked here.
+
+What it isolates. Six architectures are trained on one task, and the paper states "all models use the same input
+features, training split, negative sampling technique, and edge MLP decoder." Two of them differ only in relation
+typing. The heterogeneous GCN "operates on the full graph ... but treats all edge types identically during message
+passing", and the RGCN "assigns a distinct weight matrix to each relation type". This is check 5 applied to
+relation types, the comparison missing from 39322717. Macro F1 by architecture, from Table 2:
+
+| model | graph | macro F1 | accuracy |
+|---|---|---|---|
+| MLP | none | 0.4216 | 0.7851 |
+| GCN | drug-drug interaction edges only | 0.5915 | 0.8135 |
+| GCN, untyped | full graph | 0.6259 | 0.8965 |
+| HGT, typed attention | full graph | 0.6185 | 0.9181 |
+| RGCN, typed weights | full graph | 0.6940 | 0.9521 |
+
+Read as steps, the interaction edges alone add 0.170 over no graph, the biological context added without types adds
+0.034, and typing adds 0.068 on top.
+
+Why the weight is `weak` and the gain cannot be carried over.
+
+- One run. No seeds, folds or standard deviations are reported anywhere, so none of the gaps has a noise estimate.
+- The graph is mostly labels. Training edges of the predicted relation are 997,766 of the 1,679,387 edges, 59.4%,
+  and only "validation and test edges were strictly excluded from message-passing connectivity". The biological
+  substrate is the other 681,621 edges.
+- Transductive, in the authors' words: "This study focuses on the transductive DDI prediction setting", and "An
+  inductive evaluation involving entirely unseen drugs was not performed".
+- The two typed models disagree on the primary metric. HGT is below the untyped GCN on macro F1 and above it on
+  accuracy.
+- A weight matrix per relation is also more parameters, and no size-matched untyped network is run.
+
+An inference made here, not stated in the paper. On a graph where most edges are the label relation, the first
+thing relation typing buys is the ability to treat label edges differently from biological ones. The untyped
+network must push both through one transformation. The 0.068 may therefore measure the separation of labels from
+substrate more than any distinction among biological relations. Our graph holds no label edges, so that source of
+gain does not exist for us.
+
+Against the checks. Check 1: no signs; the substrate relations are curated database relations. Check 2 fails. Check
+3 fails. Check 4 does not arise. Check 5 holds for typing, with the parameter caveat. Check 6 does not arise. Check
+7 fails for accuracy: no majority-class figure is given for a label set whose imbalance is 19,004 to 1, though the
+paper says "accuracy alone is a misleading metric in this setting" and ranks on macro F1.
+
+No instruction-like text was found in the article.
 
 ### Note on 39322717, typed message passing ahead of diffusion on held-out diseases
 
