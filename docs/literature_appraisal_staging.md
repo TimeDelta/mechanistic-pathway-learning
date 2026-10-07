@@ -55,7 +55,8 @@ signed mechanistic encoder adds nothing on top.
 - **Q1.** Has signed or relation-typed propagation on a biological network been shown to
   beat unsigned diffusion for predicting a phenotype or a clinical label?
 - **Q2.** Where edge signs are reported to help, what fraction of nodes receive messages of
-  both signs? (Our graph: 65 of 23,709 nodes, 0.3%.)
+  both signs? (Our graph: 7,811 of 21,337 destinations, 36.6%, and all of them annihilate under the
+  encoder's cross-relation mean.)
 - **Q3.** Is noisy-OR pooling over pathway modules reported against a linear or sum-pooled
   alternative anywhere, with a held-out comparison?
 
@@ -91,17 +92,16 @@ it differs from unsigned propagation by a node-wise sign that a linear readout a
 our graph is close to balanced, the null result in `docs/graph_content_null_results.md` has
 a stated cause rather than an open puzzle.
 
-**Where this does not yet apply.** The measurement on record, 65 of 23,709 nodes receiving
-messages of both signs, is not a balance measurement. Balance is a condition on the sign
-product around each cycle; a node can receive both signs with every cycle still balanced,
-and a graph with no mixed-sign destination can still be frustrated. Sign homogeneity at
-destinations is therefore suggestive and not the test. The test is the frustration index, or
-its cheap sufficient check: attempt a two-colouring of the nodes in which every positive edge
-joins same-coloured nodes and every negative edge joins differently-coloured nodes, by
-breadth-first search per weakly connected component, and count the edges that fail.
-
-**Measurement to run:** that two-colouring on `data/processed/graph` and on
-`data/processed/graph_neuronal`, reporting the fraction of frustrated edges per relation.
+**Where this does not apply.** Balance is a condition on the sign product around each cycle,
+so a sign-homogeneity count at destinations is not a balance measurement either way. The test
+is the frustration index, or its cheap exact check for balance: two-colour the nodes so that
+every positive edge joins same-coloured nodes and every negative edge joins differently
+coloured ones, by breadth-first search per component, and count the edges that fail.
+`experiments/measure_signed_graph_balance.py` does this. Run on the stored edge table of
+`data/processed/graph` it returns zero frustrated edges, but that result is vacuous: the
+stored table has no negative edges at all, since the negative signs are derived inside the
+encoder. The script therefore has to be run on the derived relation stack before it says
+anything, which is recorded as open work rather than a result.
 
 ## Queue for Q1
 

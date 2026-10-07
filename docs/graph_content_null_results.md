@@ -46,11 +46,23 @@ excluding zero. So the open question is not whether the graph holds signal, nor 
 is why a signed, relation-typed, stoichiometric propagation with a noisy-OR head extracts no more of that signal than
 unsigned diffusion does.
 
-One candidate explanation ties this to a measurement in docs/membrane_potential_reach.md: at 99.7% of destinations
-every incoming message carries the same sign (65 of 23,709 nodes see both signs across every relation feeding them).
-A signed propagation on a graph with almost no sign mixing is close to an unsigned one, so the edge signs can
-discriminate very little, and the extra machinery is acting where it has almost nothing to act on. That is a
-hypothesis the numbers suggest rather than a demonstrated cause.
+One candidate explanation stood here and has been withdrawn, because the measurement under it was wrong. It read
+that at 99.7% of destinations every incoming message carries the same sign, so a signed propagation on this graph is
+close to an unsigned one. That count omitted the encoder's derived depletes_substrate relation, which supplies nearly
+every negative sign in the model. On the relation stack the encoder builds, 7,811 of 21,337 destinations (36.6%) on
+this graph and 8,712 of 24,121 (36.1%) on graph_neuronal receive both signs.
+
+The corrected measurement points the other way, and harder. At equal gains the cross-relation mean annihilates those
+destinations outright: the cancellation ratio |net| / mean |sign| is below 0.01 at every one of them, because a
+metabolite that is both produced and consumed receives product_of with mean +1 and depletes_substrate with mean -1.
+Learned gains do not undo it. relation_gain() keeps signed relations positive and shares every gain across all
+nodes, so one global ratio of the product_of gain to the depletes_substrate gain fixes the net direction at every
+both-produced-and-consumed metabolite at once. The candidate cause of the null is therefore not that the signs carry
+too little structure, but that the encoder's node-wise averaging destroys the structure they carry at a third of its
+destinations. docs/membrane_potential_reach.md records the measurement and the two fixes it implies. This is still a
+hypothesis about the null rather than a demonstrated cause: it predicts that the spectral normalisation arm, which
+keeps no per-node divisor, and an aggregator that survives sign mixing should both move the score, and neither has
+been run against symptoms yet.
 
 ## Which earlier interventions were and were not null
 

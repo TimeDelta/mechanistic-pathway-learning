@@ -56,26 +56,51 @@ signal, and it is worth having, but it does not change what limits the layer.
 3. The full graph stays worth building for its shorter paths, and it is built (data/processed/graph_full_neuronal,
    36,865 nodes), but it is no longer the first thing to try.
 
-## What the decay is not: there is almost no sign cancellation to fix (7 October 2026)
+## Sign cancellation: the first measurement was wrong, and a third of destinations annihilate (7 October 2026)
 
-Two candidate fixes for the decay assumed that incoming messages of opposite sign were cancelling at each node, so
-that a richer aggregator (max, min, standard deviation, or a skewness term to give the standard deviation a sign)
-would recover what the mean washes out. Measured on graph_neuronal, that premise is wrong:
+**Retracted.** An earlier version of this section reported that 65 of 23,709 nodes (0.3%) received messages of
+both signs and concluded that there was almost nothing for a richer aggregator to resolve. That count omitted the
+encoder's derived depletes_substrate relation, which is where nearly every negative sign in the model comes from:
+signed_stacked_adjacency appends the reverse of every substrate_of edge with sign -1, and the count was taken from
+edges.parquet, where the only stored negatives are the 59 inhibits edges and the handful of mixed curated relations.
+Recomputed on the relation stack the encoder actually builds:
 
-| | |
-|---|---|
-| messages per (relation, destination) pair | median 2, mean 3.2; at least three at only 31.8% |
-| relations feeding a destination | median 1; at least two at 37.9%, at least three at 0.4% |
-| destinations seeing both signs within one relation | 18 of 32,793 pairs (0.1%) |
-| destinations seeing both signs across every relation feeding them | 65 of 23,709 nodes (0.3%) |
+| | graph | graph_neuronal |
+|---|---|---|
+| destinations receiving any message | 21,337 | 24,121 |
+| destinations receiving both signs | 7,811 (36.6%) | 8,712 (36.1%) |
+| destinations seeing both signs within one relation | 0 | 18 of 32,793 pairs (0.1%) |
 
-At 99.7% of destinations every incoming message has the same sign, so there is nothing for an asymmetry statistic to
-resolve: the standard deviation has no sign ambiguity to fix, the minimum and the maximum are nearly the same
-statistic, and a third moment is unavailable at the 68% of destinations that see fewer than three messages. A
-per-relation mixture over several aggregators is therefore a small effect on this graph, worth at most the factor of
-about two between a mean and a maximum over two values, rather than the architectural change it would be on a dense
-graph. It is deprioritised below the node-skip fix, which addresses reach rather than attenuation and is unaffected
-by any of this.
+The within-relation figure of 18 reproduces, so only the across-relation count was wrong. Every relation carries a
+single sign; no edge differs in sign from its relation. The sign is therefore a property of the relation rather than
+of the edge, and all the mixing happens across relations.
+
+The cancellation is not partial but bimodal. Taking all gains equal, so that the net message at a destination is the
+mean over relations of the mean sign within each relation, the ratio |net| / mean |sign| is 1 at every destination
+that receives one sign and below 0.01 at every destination that receives both: 7,811 of 21,337 on the metabolic graph
+and 8,389 of 24,121 on the neuronal graph. The reason is arithmetic. A metabolite that is both produced and consumed
+receives product_of with mean +1 and depletes_substrate with mean -1, and the cross-relation mean of those is zero.
+
+Learned gains do not remove this, they only move it. relation_gain() maps signed relations through a sigmoid, so
+their gains are positive, and they are shared across every node. The net direction at a both-produced-and-consumed
+metabolite is set by one global ratio, the product_of gain against the depletes_substrate gain, so the model cannot
+raise one metabolite and lower another from the same pair of relations. A difference field whose sign at a third of
+its destinations is fixed by one scalar carries little that a readout can use, which is a candidate cause of both the
+attenuation recorded above and the null result in docs/graph_content_null_results.md.
+
+Two consequences follow, and they reverse earlier rankings.
+
+1. A mixture over several aggregators per node or relation type, deprioritised on the retracted measurement, is
+   reinstated. It is the stated fix for exactly this: a maximum, a minimum or a signed asymmetry term survives where
+   the mean annihilates, and a third moment is available at the destinations that matter, since a destination
+   receiving both signs receives at least two messages by construction.
+2. Averaging within a relation before combining relations is the questionable step, not the choice of statistic.
+   Mass balance at a metabolite is a signed sum of production and consumption, not a mean of two means, so dividing
+   by in-degree per relation discards the stoichiometric weighting that decides the direction. The spectral
+   normalisation arm, which applies one global constant and no per-node divisor, preserves that weighting; it was
+   ranked last on field magnitude at VM_c (0.70x the in-degree arm) and that ranking measured magnitude, not sign
+   preservation, so it does not settle this. The arm needs a run scored on symptoms before either normalisation is
+   preferred.
 
 The decay is plain attenuation, and a median divisor of two does not produce 1e-10 at four edges, so the paths that
 reach the membrane potential run through the hub destinations of the same distribution whose maximum is 2048.
