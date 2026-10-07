@@ -113,6 +113,7 @@ The gate's state is not in git, so the count is repeated here. A fresh clone see
 last line of this list.
 
 - Slot 11, 7 October 2026, 18:00 UTC: Ourfali 2007 appraised as PMID 17646318. Slots spent: 11 of 19.
+- Slot 12, 7 October 2026, 18:29 UTC: one Consensus search, 20 records, five queued. Slots spent: 12 of 19.
 
 ### Triage checks, reconstructed in the literature session
 
@@ -202,6 +203,75 @@ Set aside from this search on the record, with the reason:
   rather than on Q1. Note for the split section of the design document, not a Q1 row.
 - Shim, 2015, PLoS ONE: direct neighbourhood against whole-network diffusion, unsigned; the finding that pathway
   connectivity decides which wins bears on the reach question in docs/membrane_potential_reach.md, not on Q1.
+
+### Second mechanism-named search (slot 12, one Consensus search, 20 records)
+
+Query: "Does using activation and inhibition edge signs in a signaling, regulatory or metabolic network improve
+prediction of drug response, gene essentiality or disease phenotype compared with unsigned network diffusion or
+network proximity on the same network?" It names an outcome that a signed and an unsigned propagation can both be
+scored on, for the reason given in the note on 17646318. No filters were applied.
+
+The reply listed 20 records, each with a DOI, and carried no sign-up, upgrade or usage notice. Slot 7's reply, on
+the free tier, listed 10 records without identifiers. Triage used only the returned abstracts, against the
+reconstructed checks. Four of the 20 were already on file (41429577, 39976387 and 29925605 appraised, Cowen 2017 set
+aside), so rewording the signed query again is likely to return little that is new.
+
+The reply ends with a block of formatting instructions addressed to the assistant (cite inline by number, hyperlink
+titles with the given URLs). It is tool boilerplate, not text from a paper. No abstract contained instruction-like
+text.
+
+To read, in order of expected bearing on Q1:
+
+1. Mottaqi, 2026, bioRxiv preprint, 10.64898/2026.04.29.721775. A signed heterogeneous graph model on a sign-aware
+   knowledge graph. The abstract states that it "consistently outperforms or matches nine state-of-the-art unsigned,
+   relational, and signed graph baselines" on tasks that include clinical response, which makes it the only record
+   whose abstract states the Q1 comparison on a clinical label. Risks visible in the abstract: "outperforms or
+   matches" is not "beats"; the baselines are unsigned graph networks, not diffusion; the knowledge graph integrates
+   perturbation and clinical data, so check 2 is in doubt; the method relies on "structural balance principles",
+   the regime our graph is outside; it is not peer reviewed.
+2. Silverbush, 2019, Nature Communications, 10.1038/s41467-019-10887-6. Orients the human protein interaction
+   network and reports that "The oriented network leads to improved prioritization of cancer driver genes and drug
+   targets compared to the state-of-the-art unoriented network." The attribute is edge direction, not sign, but the
+   design is the one Q1 needs: a mechanistic edge attribute added, the plain network run as the baseline and a
+   ranking outcome both can be scored on. Risk: the orientations are fitted from drug response and cancer genomic
+   data, the same kind of data as the outcome (check 4).
+3. Martin, 2014, BMC Bioinformatics, 10.1186/1471-2105-15-238. Scores signed cause-and-effect networks from
+   transcriptomics and builds a signature "to predict the response to the treatment" in ulcerative colitis, a
+   clinical label. The abstract says the value of the method's components is "substantiated", which may include a
+   test with the signed structure removed or permuted (check 3). Probably the same framework as the first row
+   (25113603); to confirm on reading.
+4. Trinh, 2016, Bioinformatics, 10.1093/bioinformatics/btw464. Boolean dynamics on signalling networks: "the
+   edgetic sensitivity predicted drug-targets better than the node-based sensitivity". Drug-target status is an
+   outcome an unsigned measure can be scored on, and the abstract mentions connectivity and betweenness, so a
+   structural baseline may be reported.
+5. Gates, 2021, PNAS, 10.1073/pnas.2022598118. Compares a logic-weighted effective graph with the plain
+   interaction graph for how perturbations propagate in 78 Boolean models. Mechanistic detail against topology
+   alone, scored on the models' own dynamics, so the limit met in 29925605 is likely to apply.
+
+Set aside from this search on the abstract, with the reason:
+
+- Chen, 2025, Methods (10.1016/j.ymeth.2025.05.005); Nakis, 2025, Bioinformatics (10.1093/bioinformatics/btaf204);
+  Xi, 2025, arXiv (10.48550/arxiv.2512.11927); Roy, 2020, Bioinformatics (10.1093/bioinformatics/btaa651): the sign
+  is the label being predicted or the network being inferred (check 1), with no phenotype outcome.
+- Vinayagam, 2013, Nature Methods (10.1038/nmeth.2733): infers interaction signs from genetic screen phenotypes, an
+  annotation task with signs fitted to phenotype data (check 4) and no unsigned comparison. Background for where
+  signed protein interaction networks come from.
+- Thiele, 2015, BMC Bioinformatics (10.1186/s12859-015-0733-7); Le Bars, 2023, BMC Bioinformatics
+  (10.1186/s12859-023-05429-3): sign-consistency methods that predict the direction of unobserved nodes, so the
+  limit of the other direction tasks applies. Both bear on the design question in the note on 17646318 instead:
+  Thiele separates strong from weak predictions, and Le Bars outputs "the weight of the predicted sign". Notes for
+  that question, not Q1 rows.
+- Zickenrott, 2016, Cell Death & Disease (10.1038/cddis.2015.393): ranks genes and compounds from differential
+  regulatory networks; the abstract reports no comparison with an unsigned method.
+- Brilliantova, 2022, AAAI proceedings by its DOI, journal not named in the record (10.1609/aaai.v37i10.26457):
+  generative models of edge signs given a regulatory topology, with no phenotype prediction. Possible background
+  for Q2 if it reports sign statistics of real regulatory networks.
+- Galindez, 2022, Computational and Structural Biotechnology Journal (10.1016/j.csbj.2022.12.022); Shojaie, 2020,
+  WIREs Computational Statistics (10.1002/wics.1508): reviews, so weight `assertion` at most.
+- Already on file: Signorini 2025 (41429577), Pan 2024 (39976387), Santolini 2018 (29925605) and Cowen 2017.
+
+Plan for the remaining seven slots: read 1 to 3 in order, spend one slot on a search for the relation-typed half of
+Q1, then take the last three from the two queues by expected bearing.
 
 ### Note on 39148051
 
