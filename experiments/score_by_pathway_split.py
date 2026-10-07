@@ -47,6 +47,31 @@ def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray) -> tuple[float, i
     return (float(np.mean(values)) if values else float("nan")), len(values)
 
 
+def pathway_split_strata(data, num_folds: int, seed: int) -> dict[str, np.ndarray]:
+    """Row indices of each stratum in the module docstring, keyed by the stratum's heading."""
+    fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_folds, seed)
+    primary_subsystem = primary_subsystem_by_gene_node(data.node_subsystem, data.edge_source, data.edge_target,
+                                                       data.edge_relation, data.relation_types.index("catalyzed_by"))
+
+    def pathway_of(row: int) -> str | None:
+        seeds = data.perturbation_seeds[row]
+        subsystem = primary_subsystem.get(int(seeds[0])) if len(seeds) == 1 else None
+        return subsystem if subsystem and subsystem not in CATCH_ALL_SUBSYSTEMS else None
+
+    pathway_by_row = [pathway_of(row) for row in range(len(data.perturbation_ids))]
+    folds_by_pathway: dict[str, set[int]] = {}
+    for row, pathway in enumerate(pathway_by_row):
+        if pathway:
+            folds_by_pathway.setdefault(pathway, set()).add(fold_by_perturbation[data.perturbation_ids[row]])
+    is_split = np.array([bool(pathway) and len(folds_by_pathway[pathway] - {fold_by_perturbation[data.perturbation_ids[row]]}) > 0
+                         for row, pathway in enumerate(pathway_by_row)])
+    has_pathway = np.array([pathway is not None for pathway in pathway_by_row])
+    return {"split pathway": np.where(is_split)[0],
+            "unsplit: pathway absent from training": np.where(has_pathway & ~is_split)[0],
+            "unsplit: no pathway subsystem (transporters, catch-all and non-metabolic genes)": np.where(~has_pathway)[0],
+            "unsplit, both kinds together": np.where(~is_split)[0]}
+
+
 def pooled_run_predictions(run_directory: Path, position_of: dict[str, int], shape: tuple[int, int]) -> np.ndarray | None:
     pooled = np.full(shape, np.nan)
     fold_directories = [path for path in sorted(run_directory.glob("fold*_seed0")) if (path / "DONE").exists()]
@@ -74,27 +99,7 @@ def main() -> None:
 
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster")
     position_of = {perturbation: index for index, perturbation in enumerate(data.perturbation_ids)}
-    fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
-    primary_subsystem = primary_subsystem_by_gene_node(data.node_subsystem, data.edge_source, data.edge_target,
-                                                       data.edge_relation, data.relation_types.index("catalyzed_by"))
-
-    def pathway_of(row: int) -> str | None:
-        seeds = data.perturbation_seeds[row]
-        subsystem = primary_subsystem.get(int(seeds[0])) if len(seeds) == 1 else None
-        return subsystem if subsystem and subsystem not in CATCH_ALL_SUBSYSTEMS else None
-
-    pathway_by_row = [pathway_of(row) for row in range(len(data.perturbation_ids))]
-    folds_by_pathway: dict[str, set[int]] = {}
-    for row, pathway in enumerate(pathway_by_row):
-        if pathway:
-            folds_by_pathway.setdefault(pathway, set()).add(fold_by_perturbation[data.perturbation_ids[row]])
-    is_split = np.array([bool(pathway) and len(folds_by_pathway[pathway] - {fold_by_perturbation[data.perturbation_ids[row]]}) > 0
-                         for row, pathway in enumerate(pathway_by_row)])
-    has_pathway = np.array([pathway is not None for pathway in pathway_by_row])
-    strata = {"split pathway": np.where(is_split)[0],
-              "unsplit: pathway absent from training": np.where(has_pathway & ~is_split)[0],
-              "unsplit: no pathway subsystem (transporters, catch-all and non-metabolic genes)": np.where(~has_pathway)[0],
-              "unsplit, both kinds together": np.where(~is_split)[0]}
+    strata = pathway_split_strata(data, arguments.num_folds, arguments.seed)
 
     baseline_ids = json.loads((arguments.baseline_dir / "perturbation_ids.json").read_text())
     if baseline_ids != list(data.perturbation_ids):
