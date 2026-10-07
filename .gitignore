@@ -17,3 +17,6 @@ slurm-*.out
 !data/releases/
 !data/releases/**
 !data/releases/**/*.parquet
+
+# personal permission grants, not team-wide
+.claude/settings.local.json

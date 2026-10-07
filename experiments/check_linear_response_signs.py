@@ -28,16 +28,18 @@ from sklearn.metrics import roc_auc_score
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
 from mechanistic_pathway_learning.evidence.laboratory_abnormality_labels import build_label_table, generic_metabolite_ids, read_chebi_relations
-from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
+from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 
 STEP_COUNTS = (8, 32, 128)
 
 
-def build_encoder(data, cofactor_relations: bool, steps: int) -> LinearResponseEncoder:
+def build_encoder(data, carrier_rule: str | None, steps: int) -> LinearResponseEncoder:
+    """carrier_rule None gives the plain encoder, with carrier edges left as ordinary substrates and products."""
     torch.manual_seed(0)
     cofactor_edges = torch.as_tensor(cofactor_edge_mask(data.edge_source, data.edge_target, data.edge_relation, data.relation_types,
-                                                         data.node_base_metabolite_id, data.node_display_name, data.is_currency)) if cofactor_relations else None
+                                                         data.node_base_metabolite_id, data.node_display_name, data.is_currency,
+                                                         carrier_rule=carrier_rule)) if carrier_rule is not None else None
     return LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                  torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
                                  32, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges, num_propagation_steps=steps)
@@ -117,10 +119,10 @@ def main() -> None:
     labels = labels[labels.gene_symbol.isin(slice_genes) & labels.base_metabolite_id.isin(set(nodes.base_metabolite_id.dropna()))].reset_index(drop=True)
     signs = sorted({sign for row in data.perturbation_signs for sign in np.atleast_1d(row)})
     sections = []
-    for cofactor_relations in (False, True):
+    for carrier_rule in (None, *CARRIER_RULES):
         for steps in STEP_COUNTS:
-            scored = responses_at_labels(build_encoder(data, cofactor_relations, steps), data, labels)
-            label = f"{'carrier relations' if cofactor_relations else 'plain'}, {steps} steps"
+            scored = responses_at_labels(build_encoder(data, carrier_rule, steps), data, labels)
+            label = f"{'plain' if carrier_rule is None else f'carrier relations ({carrier_rule})'}, {steps} steps"
             sections.append((f"{label}, pool", agreement_summary(scored, "total_response")))
             sections.append((f"{label}, extracellular", agreement_summary(scored, "extracellular_response")))
             print(label, sections[-2][1]["sign agreement, pairs"], sections[-1][1]["sign agreement, pairs"], flush=True)

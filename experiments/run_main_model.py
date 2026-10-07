@@ -57,7 +57,7 @@ from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseli
 from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
-from mechanistic_pathway_learning.graph.cofactor_edges import cofactor_edge_mask
+from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
@@ -160,8 +160,9 @@ def build_models(data, arguments, device):
         cofactor_edges = None
         if arguments.cofactor_relations:
             cofactor_edges = torch.as_tensor(cofactor_edge_mask(data.edge_source, data.edge_target, data.edge_relation, data.relation_types,
-                                                                data.node_base_metabolite_id, data.node_display_name, data.is_currency))
-            print(f"carrier edges given their own relations: {int(cofactor_edges.sum())}")
+                                                                data.node_base_metabolite_id, data.node_display_name, data.is_currency,
+                                                                carrier_rule=arguments.carrier_rule))
+            print(f"carrier edges given their own relations: {int(cofactor_edges.sum())} (rule {arguments.carrier_rule})")
         encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(node_feature_matrix(data, arguments)),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
@@ -320,6 +321,9 @@ def main() -> None:
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
     parser.add_argument("--cofactor-relations", action="store_true",
                         help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains")
+    parser.add_argument("--carrier-rule", choices=CARRIER_RULES, default="all",
+                        help="which clause of the carrier rule applies (cofactor_edges.py): all is the curated list and the recurring-pair "
+                             "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")
     parser.add_argument("--response-scale", choices=["linear", "signed_log"], default="linear",
                         help="linear-response encoder: read the response as it is, or through sign(h) log(1 + |h| / s) with a learned scale, so changes many edges away stay readable")
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
