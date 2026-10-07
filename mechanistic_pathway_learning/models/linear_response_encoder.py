@@ -128,17 +128,22 @@ MIXTURE_WEIGHTINGS = ("softmax", "sparsemax")
 # decays the response steeply with path length; "spectral" divides every entry by one global constant, the
 # spectral radius of the unsigned aggregate, which contracts just as surely without the per-node divisor.
 # The per-node divisor is what discards the stoichiometric counts that decide direction at a metabolite: five
-# producing reactions against one consuming reaction become one mean against another, and 88% of metabolites
+# producing reactions against one consuming reaction become one mean against another, and 92% of metabolites
 # end up with an aggregate row sum of zero (docs/membrane_potential_reach.md). The spectral arm keeps those
 # counts. Against it, that constant is 36.3 on the neuronal graph while the in-degree divisor is below it at
 # 98.8 percent of destinations, so it divides harder nearly everywhere and the field reaching the membrane
 # potential fell to 0.7 of its in-degree value; magnitude is not the same question as direction, so the arm is
-# open rather than refuted.
+# open rather than refuted. That also makes the spectral arm two changes at once, counts kept and the field shrunk
+# nearly everywhere, so a loss on symptoms could not say which one cost it. "total_in_degree" separates them: it
+# divides each entry by the destination's in-degree summed over every relation, so the unsigned row sums are one
+# as under "in_degree" (the same contraction, no global shrink) while the counts survive: five producing reactions
+# against one consuming reaction give (5 - 1) / 6 rather than 0, and the sign at a metabolite is set by its own
+# stoichiometry rather than by the one gain ratio every metabolite shares.
 # A third arm, "in_degree_power", raised the in-degree to an exponent before dividing and then rescaled the
 # whole matrix once. It is removed as a measured negative result: the global rescale cancels the softening
 # wherever in-degrees are uniform, and on the real graph the median field at VM_c fell to 2.9e-15 at an
 # exponent of 0.5 and 1.0e-18 at 0.25, against 3.2e-10 for plain in-degree.
-NORMALISATIONS = ("in_degree", "spectral")
+NORMALISATIONS = ("in_degree", "spectral", "total_in_degree")
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
 
@@ -404,6 +409,9 @@ class LinearResponseEncoder(nn.Module):
         if normalisation == "spectral":  # one global scale and no per-node divisor; see NORMALISATIONS
             radius = LinearResponseEncoder.spectral_radius_of_unsigned_aggregate(num_graph_nodes, source, target)
             values = sign / max(radius, 1.0)
+        elif normalisation == "total_in_degree":  # one per-node divisor over all relations together; see NORMALISATIONS
+            total_in_degree = torch.zeros(num_graph_nodes).index_add(0, target, torch.ones(len(target)))
+            values = sign / total_in_degree[target]
         else:
             in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, torch.ones(len(row)))
             relations_feeding_node = (in_degree.view(len(relation_names), num_graph_nodes) > 0).sum(dim=0).clamp_min(1)

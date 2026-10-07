@@ -209,14 +209,17 @@ single sign; no edge differs in sign from its relation. The sign is therefore a 
 of the edge, and all the mixing happens across relations.
 
 The cancellation is exact, and it is a statement about the operator rather than about the field. Read the row sums
-of sum_r gain_r S_r at equal gains, which is the node's response to a change shared by all of its inputs: 7,437 of
-the 21,337 nodes with any input have a row sum of zero to within 1e-9, and every one of them is a metabolite, 7,437
-of 8,460 (88%). No reaction has one. The reason is arithmetic. A metabolite that is both produced and consumed
+of sum_r gain_r S_r at equal gains, which is the node's response to a change shared by all of its inputs: 7,811 of
+the 21,337 nodes with any input have a row sum of zero, and every one of them is a metabolite, 7,811 of 8,460 (92.3%),
+which is every metabolite receiving both signs. No reaction has one. (Corrected 7 October 2026: this read 7,437 (88%).
+An absolute tolerance of 1e-9 on float32 sums sits below their rounding error, so the count depends on rounding (a
+recount at that tolerance gave 6,069); at a relative tolerance of 1e-6, and computed in double precision, all 7,811
+are zero, which is what the arithmetic below says they must be.) The reason is arithmetic. A metabolite that is both produced and consumed
 receives product_of with mean +1 and depletes_substrate with mean -1, and their mean is zero.
 
 What that does and does not say. It does not say the field is zero at those metabolites: in the dynamics the
 producing and the consuming reactions carry different upstream states, so what arrives is their difference, not
-zero. A test written on the stronger reading failed and was rewritten. What it does say is that 88% of metabolites
+zero. A test written on the stronger reading failed and was rewritten. What it does say is that 92% of metabolites
 are blind to the part of their input that production and consumption share, and pass on only the difference between
 them. Under attenuation that is where precision goes: the two inputs are small and similar, and their difference is
 smaller still.
@@ -281,7 +284,7 @@ reach the membrane potential run through the hub destinations of the same distri
 
 ## The normalisation arms
 
-`NORMALISATIONS` in models/linear_response_encoder.py selects among three:
+`NORMALISATIONS` in models/linear_response_encoder.py selects among three (a fourth, `in_degree_power`, is removed):
 
 - `in_degree`, the default: divide each entry by the destination's in-degree under its relation times the number of
   relations feeding it, so every row of sum_r |S_r| sums to at most one.
@@ -289,6 +292,27 @@ reach the membrane potential run through the hub destinations of the same distri
   measured negative result. That radius is 36.3 on graph_neuronal while the in-degree divisor is below it at 98.8% of
   destinations, so it divides harder than what it replaces nearly everywhere; the median field arriving at the
   membrane potential fell to 0.7 of its in-degree value, 0.6 at distance four and lower still beyond.
+- `total_in_degree` (added 7 October 2026): one divisor per destination, its in-degree summed over every relation, so
+  each row of sum_r |S_r| sums to exactly one, as under `in_degree`, while the producing and consuming counts survive:
+  five producing reactions against one consuming reaction give (5 - 1) / 6 rather than 0. It exists because the
+  spectral arm is two changes at once, the counts kept and the field shrunk nearly everywhere, and a loss on symptoms
+  could not say which one cost it. Measured on the metabolic slice graph as the b3 cofactor runs build it (carrier
+  relations, currency sources dropped, equal gains), over the 7,720 metabolites receiving both signs, with a signed
+  row sum counted as zero below 1e-6 of the unsigned one:
+
+  | normalisation | signed row sum zero | median unsigned row sum, fed metabolites |
+  |---|---|---|
+  | in_degree | 7,691 (99.6%) | 1.000 |
+  | total_in_degree | 4,057 (52.6%) | 1.000 |
+  | spectral | 4,057 (52.6%) | 0.115 |
+
+  So `total_in_degree` has the spectral arm's sign structure at the in-degree arm's magnitude, and the 4,057 that
+  still cancel are the equal-count destinations, where zero is the right answer. Equal gains is the same caveat as
+  before: learned gains reweight relations, but every metabolite shares them.
+  The slice configuration is `b3_linear_response_cofactors_total_in_degree`, one argument away from
+  `b3_linear_response_cofactors`, as the spectral run is. The first spectral fold scored 0.192 macro AUPRC against
+  0.231 for that twin on the same fold; one fold is not a result, and if the five folds agree the total-in-degree run
+  is what says whether the counts or the shrink was the cost.
 - `in_degree_power` (removed 7 October 2026): divided by in-degree raised to an exponent, then rescaled the whole matrix once so the
   row sums return below one. Note what this does and does not do. Where in-degrees are uniform the rescale exactly
   undoes the softening and the exponent changes nothing, which a test asserts. It acts only where in-degrees differ,

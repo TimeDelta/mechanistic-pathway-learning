@@ -37,6 +37,9 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # task 25: one global spectral scale and no per-node divisor, so stoichiometric counts survive; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_spectral": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                               "--normalisation", "spectral"],
+    # the counts the spectral arm keeps, without its global shrink: one divisor per node over every relation; the only change from b3_linear_response_cofactors
+    "b3_linear_response_cofactors_total_in_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                     "--cofactor-relations", "--normalisation", "total_in_degree"],
     # task 24: a sparsemax-weighted mixture of odd statistics across relations in place of their mean; the only change from b3_linear_response_cofactors
     "b3_linear_response_cofactors_mixture": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                              "--cross-relation-aggregator", "softmax_mixture", "--mixture-weighting", "sparsemax"],

@@ -142,11 +142,36 @@ def test_every_normalisation_reaches_a_fixed_point(normalisation):
     assert torch.allclose(at_32, at_128, atol=1e-6), normalisation
 
 
-def test_the_in_degree_arm_keeps_every_row_sum_below_one():
+@pytest.mark.parametrize("normalisation", ["in_degree", "total_in_degree"])
+def test_the_per_node_arms_keep_every_row_sum_below_one(normalisation):
     """Sufficient for the contraction, though not necessary: the spectral arm legitimately exceeds it and is
     asserted on its fixed point instead."""
-    largest_row_sum = float(_chain_encoder("in_degree").stacked_adjacency.to_dense().abs().sum(dim=1).max())
+    encoder = _chain_encoder(normalisation)
+    unsigned_aggregate = encoder.stacked_adjacency.to_dense().abs().view(len(encoder.relation_names), encoder.num_graph_nodes, -1).sum(dim=0)
+    largest_row_sum = float(unsigned_aggregate.sum(dim=1).max())
     assert largest_row_sum <= 1.0 + 1e-6, largest_row_sum
+
+
+def _metabolite_row_sum(normalisation: str, num_producing: int, num_consuming: int) -> float:
+    """Signed row sum, over every relation, at metabolite 0, made by num_producing reactions and used by num_consuming."""
+    producing = list(range(1, num_producing + 1))
+    consuming = list(range(num_producing + 1, num_producing + num_consuming + 1))
+    edges = [(reaction, 0, "product_of") for reaction in producing] + [(0, reaction, "substrate_of") for reaction in consuming]
+    num_nodes = 1 + num_producing + num_consuming
+    stacked, relation_names = LinearResponseEncoder.signed_stacked_adjacency(
+        num_nodes, RELATION_TYPES, torch.tensor([edge[0] for edge in edges]), torch.tensor([edge[1] for edge in edges]),
+        torch.tensor([RELATION_TYPES.index(edge[2]) for edge in edges]), torch.ones(len(edges)), normalisation=normalisation)
+    return float(stacked.to_dense().view(len(relation_names), num_nodes, num_nodes).sum(dim=0)[0].sum())
+
+
+def test_in_degree_erases_the_stoichiometric_counts_and_total_in_degree_keeps_them():
+    """Five producing reactions against one consuming reaction: averaging inside each relation leaves
+    mean(+1) / 2 + mean(-1) / 2 = 0 whatever the counts, while one divisor over all relations leaves (5 - 1) / 6."""
+    assert _metabolite_row_sum("in_degree", 5, 1) == pytest.approx(0.0, abs=1e-6)
+    assert _metabolite_row_sum("in_degree", 1, 5) == pytest.approx(0.0, abs=1e-6)
+    assert _metabolite_row_sum("total_in_degree", 5, 1) == pytest.approx(4 / 6)
+    assert _metabolite_row_sum("total_in_degree", 1, 5) == pytest.approx(-4 / 6)
+    assert _metabolite_row_sum("total_in_degree", 2, 2) == pytest.approx(0.0, abs=1e-6)  # equal counts still cancel, which is correct
 
 
 def test_an_unknown_normalisation_is_refused():
