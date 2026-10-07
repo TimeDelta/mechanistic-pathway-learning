@@ -82,7 +82,28 @@ CURATED_REACTIONS = [
                     "reverse transport through the transporter (PMID 11487614)"),
     CuratedReaction("MAR_SEROTONIN_EFFLUX", "reverse transport of serotonin (cytosol to extracellular)", ("MAM02897c",), ("MAM02897e",), ("SLC6A4",),
                     "reverse transport through the transporter (PMID 11487614)"),
+    # Human-GEM's MAR01527 "Sodium Transport (Uniport)" lumps every sodium-conducting channel into one reaction: the
+    # voltage-gated Nav channels, the hyperpolarisation-activated HCN channels, the NALCN leak channel, the epithelial
+    # ENaC subunits and the lysosomal two-pore channels. Their voltage dependence is opposite or absent, so one reaction
+    # can carry only one gating sign, and the lumped reaction gave the HCN channels Nav's. Split by family: the Nav
+    # channels carry the sodium current that generates the action potential (Catterall et al. 2020, PMID 33199904) and
+    # open on depolarisation; the HCN channels carry I_h, open on hyperpolarisation and set the resting potential and
+    # rhythmic firing (Biel et al. 2009, PMID 19584315), so their entry of sodium is depolarising while their gating is
+    # not; NALCN and the atypical SCN7A are a leak; the ENaC subunits are epithelial and not voltage-gated. HCN conducts
+    # potassium as well as sodium, which this reaction leaves out. TPCN1 and TPCN2 are lysosomal and keep Reactome's
+    # lysosomal calcium reaction instead of a plasma-membrane sodium one
+    CuratedReaction("MAR_NAV_SODIUM", "sodium entry through voltage-gated sodium channels", ("MAM02519e",), ("MAM02519c",),
+                    ("SCN1A", "SCN2A", "SCN3A", "SCN4A", "SCN5A", "SCN8A", "SCN9A", "SCN10A", "SCN11A"), "voltage-gated sodium channel (PMID 33199904)"),
+    CuratedReaction("MAR_HCN_SODIUM", "sodium entry through hyperpolarisation-activated HCN channels", ("MAM02519e",), ("MAM02519c",),
+                    ("HCN1", "HCN2", "HCN3", "HCN4"), "hyperpolarisation-activated cation channel (PMID 19584315)"),
+    CuratedReaction("MAR_SODIUM_LEAK", "sodium leak into the cytosol", ("MAM02519e",), ("MAM02519c",), ("NALCN", "SCN7A"),
+                    "sodium leak channel, not voltage-gated (PMID 33199904)"),
+    CuratedReaction("MAR_ENAC_SODIUM", "sodium entry through epithelial sodium channels", ("MAM02519e",), ("MAM02519c",),
+                    ("SCNN1A", "SCNN1B", "SCNN1D", "SCNN1G"), "epithelial sodium channel, not voltage-gated (PMID 33199904)"),
 ]
+# Human-GEM reactions the curated set replaces, deleted with every edge they carry
+REPLACED_HUMAN_GEM_REACTIONS = {"MAR01527": "Sodium Transport (Uniport) lumps the Nav, HCN, NALCN, ENaC and TPCN families, whose voltage dependence differs; "
+                                            "split into MAR_NAV_SODIUM, MAR_HCN_SODIUM, MAR_SODIUM_LEAK and MAR_ENAC_SODIUM"}
 
 
 def main() -> None:
@@ -125,7 +146,7 @@ def main() -> None:
     new_nodes, new_edges, new_relations, summary = import_reactome_layer(
         sbml_texts, nodes, edges, relation_types, gene_of_uniprot, map_chebi_to_human_gem, INORGANIC_IONS, ion_charges,
         read_human_gem_participants(human_gem_sbml, set(INORGANIC_IONS.values())), brain_expressed_genes, set(TRANSMITTER_BASES),
-        VESICULAR_TRANSPORTER_GENES, CURATED_REACTIONS)
+        VESICULAR_TRANSPORTER_GENES, CURATED_REACTIONS, REPLACED_HUMAN_GEM_REACTIONS)
 
     release_reactions_of_transmitter: dict[str, list[str]] = {}
     for reaction, released in summary["release_reactions"].items():

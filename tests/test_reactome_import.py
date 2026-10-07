@@ -339,3 +339,29 @@ def test_curated_vesicle_chain_and_reverse_transport_in_the_built_variant():
                 complexes = set(edges[edges.source_id.isin(loading) & (edges.relation_type == "product_of")].target_id)
                 assert any(node.startswith("RCTE_") for node in complexes), f"{base} reaches release through no loaded vesicle"
     assert ((edges.source_id == "GENE:SLC6A3") & (edges.target_id == "MAR_DOPAMINE_EFFLUX")).any()
+
+
+def test_a_lumped_human_gem_reaction_is_replaced_by_the_curated_families():
+    """Human-GEM's MAR01527 lumps the Nav, HCN, NALCN, ENaC and TPCN families into one sodium reaction, so it can carry
+    only one gating sign. The curated split gives each family its own, and the lumped reaction gets no edges at all."""
+    curated = [CuratedReaction("MAR_NAV_SODIUM", "sodium entry through voltage-gated sodium channels", (f"{SODIUM}e",), (f"{SODIUM}c",), ("SCN1A",), "test"),
+               CuratedReaction("MAR_HCN_SODIUM", "sodium entry through HCN channels", (f"{SODIUM}e",), (f"{SODIUM}c",), ("HCN1",), "test")]
+    nodes, edges, relation_types = base_graph()
+    nodes = pd.concat([nodes, pd.DataFrame([{"node_id": "MAR01527", "node_type": "reaction", "display_name": "Sodium Transport (Uniport)", "compartment": "c;e",
+                                             "is_transport": True, "reversible": True, "subsystem": "Transport reactions", "is_currency": False, "degree": 0}],
+                                           columns=NODE_COLUMNS)], ignore_index=True)
+    edges = pd.concat([edges, pd.DataFrame([{"source_id": f"{SODIUM}e", "target_id": "MAR01527", "relation_type": "substrate_of", "sign": 1.0, "evidence_source": "Human-GEM"},
+                                            {"source_id": "MAR01527", "target_id": f"{SODIUM}c", "relation_type": "product_of", "sign": 1.0, "evidence_source": "Human-GEM"},
+                                            {"source_id": "GENE:ATP1A3", "target_id": "MAR01527", "relation_type": "catalyzed_by", "sign": 1.0, "evidence_source": "Human-GEM"}],
+                                           columns=EDGE_COLUMNS)], ignore_index=True)
+    node_table, edge_table, _, summary = run_import(nodes=nodes, edges=edges, curated_reactions=curated,
+                                                    replaced_human_gem_reactions={"MAR01527": "lumps families whose gating differs"})
+    assert "MAR01527" not in set(node_table.node_id)
+    assert not ((edge_table.source_id == "MAR01527") | (edge_table.target_id == "MAR01527")).any()
+    assert "MAR01527" in summary["human_gem_reactions_replaced_by_curated_ones"]
+    gating = edge_table[edge_table.relation_type == "voltage_gates"].set_index("target_id").sign
+    assert gating["MAR_NAV_SODIUM"] == 1.0 and gating["MAR_HCN_SODIUM"] == -1.0
+    # both carry sodium inward, so both depolarise, however they are gated
+    depolarising = edge_table[edge_table.relation_type == "changes_membrane_potential"].set_index("source_id").sign
+    assert depolarising["MAR_NAV_SODIUM"] == 1.0 and depolarising["MAR_HCN_SODIUM"] == 1.0
+    assert summary["voltage_gating_edges"].get("curated") == 2

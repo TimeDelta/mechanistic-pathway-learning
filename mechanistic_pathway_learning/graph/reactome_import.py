@@ -235,7 +235,8 @@ def neuronal_pool_id(base: str, letter: str) -> str:
 def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[str], gene_of_uniprot: dict[str, str],
                           map_chebi_to_human_gem, ion_bases: dict[str, str], ion_charges: dict[str, int], human_gem_participants: dict[str, list],
                           brain_expressed_genes: set[str], transmitter_bases: set[str], vesicular_transporter_genes: set[str] = frozenset(),
-                          curated_reactions: list[CuratedReaction] = ()) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
+                          curated_reactions: list[CuratedReaction] = (),
+                          replaced_human_gem_reactions: dict[str, str] = ()) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
     """The graph with the Reactome entities and reactions, the curated reactions, the neuronal ion pools, the membrane
     potential node and their edges.
 
@@ -243,7 +244,9 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     'Mg2+': Human-GEM base id}; ion_charges: {base id: charge}. human_gem_participants: read_human_gem_participants for
     the ion bases. brain_expressed_genes: gene symbols whose Human-GEM reactions may drive the neuron. transmitter_bases:
     base ids of the transmitters whose release is Ca2+-triggered. vesicular_transporter_genes: genes whose Human-GEM
-    cytosol-to-extracellular shortcuts lose their catalysis."""
+    cytosol-to-extracellular shortcuts lose their catalysis. replaced_human_gem_reactions: {reaction id: why}, the
+    Human-GEM reactions the curated set replaces, deleted with every edge they carry (a reaction that lumps channel
+    families whose voltage dependence differs)."""
     species: dict[str, ReactomeSpecies] = {}
     reactions: dict[str, ReactomeReaction] = {}
     for text in sbml_texts:
@@ -255,7 +258,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     new_nodes: dict[str, dict] = {}
     new_edges: list[dict] = []
     removed_edges: set[tuple[str, str, str]] = set()
-    deleted_nodes: set[str] = set()
+    deleted_nodes: set[str] = {reaction for reaction in dict(replaced_human_gem_reactions) if reaction in set(nodes.node_id)}
     node_of_species: dict[str, str] = {}
     base_of_node: dict[str, str] = dict(zip(nodes.node_id, nodes.base_metabolite_id))
     letter_of_node: dict[str, str] = dict(zip(nodes.node_id, nodes.compartment.astype(str)))
@@ -272,8 +275,12 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
             letter_of_node[node_id] = values.get("compartment")
             name_of_node[node_id] = values.get("display_name")
 
-    def add_edge(source: str, target: str, relation: str, sign: float, evidence: str) -> None:
+    def add_edge(source: str, target: str, relation: str, sign: float, evidence: str) -> bool:
+        """True when the edge was added; a reaction the curated set replaces gets no edges of its own."""
+        if source in deleted_nodes or target in deleted_nodes:
+            return False
         new_edges.append({"source_id": source, "target_id": target, "relation_type": relation, "sign": sign, "evidence_source": evidence})
+        return True
 
     add_node(MEMBRANE_POTENTIAL_NODE, node_type="membrane_potential", display_name="neuronal membrane potential", compartment="c", is_currency=False)
     for (base, letter), driving_force_sign in pools.items():
@@ -378,18 +385,17 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     for reaction_node, (participants, catalyst_genes, _, _, source) in reaction_records.items():
         moved = ions_moved_inward(participants, ion_set)
         inward_charge = sum(ion_charges.get(base, 0) * amount for base, amount in moved.items())
-        if inward_charge:
-            add_edge(reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", 1.0 if inward_charge > 0 else -1.0, f"net charge across the plasma membrane ({source})")
+        if inward_charge and add_edge(reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", 1.0 if inward_charge > 0 else -1.0,
+                                      f"net charge across the plasma membrane ({source})"):
             membrane_edges[source] += 1
         if source == "Human-GEM":
             for base, amount in moved.items():
                 for letter, direction in (("c", 1.0), ("e", -1.0)):
-                    if (base, letter) in pools:
-                        add_edge(reaction_node, neuronal_pool_id(base, letter), "changes_ion_pool", direction * (1.0 if amount > 0 else -1.0), "ion moved across the plasma membrane (Human-GEM)")
+                    if (base, letter) in pools and add_edge(reaction_node, neuronal_pool_id(base, letter), "changes_ion_pool",
+                                                            direction * (1.0 if amount > 0 else -1.0), "ion moved across the plasma membrane (Human-GEM)"):
                         pool_edges += 1
         gating = voltage_gating_sign(catalyst_genes) if moves_ions_across_a_membrane(participants, ion_set | {base for base in ion_charges}) else 0.0
-        if gating:
-            add_edge(MEMBRANE_POTENTIAL_NODE, reaction_node, "voltage_gates", gating, "voltage-gated pore")
+        if gating and add_edge(MEMBRANE_POTENTIAL_NODE, reaction_node, "voltage_gates", gating, "voltage-gated pore"):
             gating_edges[source] += 1
 
     calcium_pool = neuronal_pool_id(ion_bases["Ca2+"], "c") if "Ca2+" in ion_bases else None
@@ -428,6 +434,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
                "edges_added": len(edge_table) - len(edges) + int((~kept).sum()), "edges_removed": int((~kept).sum()),
                "membrane_potential_edges": dict(membrane_edges), "ion_pool_edges_from_human_gem": pool_edges, "voltage_gating_edges": dict(gating_edges),
                "release_reactions": release_reactions, "vesicular_shortcut_reactions_deleted": shortcuts_deleted,
+               "human_gem_reactions_replaced_by_curated_ones": {reaction: why for reaction, why in dict(replaced_human_gem_reactions).items() if reaction in deleted_nodes},
                "vesicular_shortcut_catalysis_removed": shortcut_catalysis_removed,
                "small_molecules_without_human_gem_metabolite": sorted(unmapped_small_molecules)}
     return node_table, edge_table, new_relations, summary
