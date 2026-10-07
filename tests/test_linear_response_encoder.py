@@ -1,4 +1,5 @@
 """Tests for the linear-response encoder: stoichiometric signs, linearity, reach per step and convergence."""
+import pytest
 import torch
 
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
@@ -105,3 +106,79 @@ def test_signed_log_scale_keeps_sign_and_odd_symmetry_and_lifts_small_changes() 
     nonzero = raw.abs() > 0
     smallest, largest = raw.abs()[nonzero].min(), raw.abs()[nonzero].max()
     assert scaled.abs()[nonzero].min() / scaled.abs()[nonzero].max() > smallest / largest  # the scale compresses the range
+
+
+def _chain_encoder(normalisation, exponent=1.0, steps=64):
+    """A chain 0 -> 1 -> 2 -> 3 -> 4 whose every link destination also has three distractor sources."""
+    chain = [(0, 1), (1, 2), (2, 3), (3, 4)]
+    edge_list, distractor = list(chain), 5
+    for _, target in chain:
+        for _ in range(3):
+            edge_list.append((distractor, target))
+            distractor += 1
+    source = torch.tensor([edge[0] for edge in edge_list])
+    target = torch.tensor([edge[1] for edge in edge_list])
+    torch.manual_seed(0)
+    return LinearResponseEncoder(
+        distractor, ["activates"], source, target,
+        torch.zeros(len(edge_list), dtype=torch.long), torch.ones(len(edge_list)),
+        node_features=torch.eye(distractor), node_state_dim=2, num_propagation_steps=steps,
+        propagation_channels=1, normalisation=normalisation, normalisation_exponent=exponent,
+    )
+
+
+def test_the_in_degree_power_exponent_of_one_reproduces_in_degree_normalisation():
+    plain = _chain_encoder("in_degree").stacked_adjacency.to_dense()
+    power = _chain_encoder("in_degree_power", exponent=1.0).stacked_adjacency.to_dense()
+    assert torch.allclose(plain, power)
+
+
+@pytest.mark.parametrize("normalisation,exponent", [("in_degree", 1.0), ("in_degree_power", 0.5),
+                                                    ("in_degree_power", 0.25), ("spectral", 1.0)])
+def test_every_normalisation_reaches_a_fixed_point(normalisation, exponent):
+    """What the encoder needs is a fixed point, which needs the spectral radius below one. A row sum of sum_r |S_r|
+    below one is sufficient for that but not necessary, and the spectral arm bounds the radius directly while leaving
+    rows above one, so the property to assert for every arm is that the field stops moving as the steps grow."""
+    with torch.no_grad():
+        at_32 = _chain_encoder(normalisation, exponent=exponent, steps=32)(torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]]))
+        at_128 = _chain_encoder(normalisation, exponent=exponent, steps=128)(torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]]))
+    assert torch.isfinite(at_32).all() and torch.isfinite(at_128).all()
+    assert torch.allclose(at_32, at_128, atol=1e-6), (normalisation, exponent)
+
+
+@pytest.mark.parametrize("normalisation,exponent", [("in_degree", 1.0), ("in_degree_power", 0.5), ("in_degree_power", 0.25)])
+def test_the_in_degree_arms_keep_every_row_sum_below_one(normalisation, exponent):
+    """Softening the divisor raises the row sums above one, which is why that arm rescales once globally."""
+    largest_row_sum = float(_chain_encoder(normalisation, exponent=exponent).stacked_adjacency.to_dense().abs().sum(dim=1).max())
+    assert largest_row_sum <= 1.0 + 1e-6, (normalisation, exponent, largest_row_sum)
+
+
+def test_the_exponent_redistributes_division_rather_than_reducing_it():
+    """On a graph whose destinations all share one in-degree the global rescale exactly undoes the softening, so the
+    exponent changes nothing; it only acts where in-degrees differ, moving division off the hub and onto the sparse
+    nodes. Stating it as a test because the first version of this test assumed the exponent reduced division overall
+    and failed on the uniform case."""
+    uniform = {exponent: _chain_encoder("in_degree_power", exponent=exponent).stacked_adjacency.to_dense()
+               for exponent in (1.0, 0.25)}
+    assert torch.allclose(uniform[1.0], uniform[0.25]), "a uniform in-degree leaves nothing for the exponent to move"
+
+    # 0 -> 1 -> 2, where node 1 is a hub with a hundred other sources and node 2 has only one other
+    edge_list = [(0, 1), (1, 2)] + [(source, 1) for source in range(3, 103)] + [(103, 2)]
+    source = torch.tensor([edge[0] for edge in edge_list])
+    target = torch.tensor([edge[1] for edge in edge_list])
+
+    def share_of_the_hub_edge(exponent):
+        torch.manual_seed(0)
+        encoder = LinearResponseEncoder(104, ["activates"], source, target, torch.zeros(len(edge_list), dtype=torch.long),
+                                        torch.ones(len(edge_list)), node_features=torch.eye(104), node_state_dim=2,
+                                        num_propagation_steps=32, propagation_channels=1,
+                                        normalisation="in_degree_power", normalisation_exponent=exponent)
+        dense = encoder.stacked_adjacency.to_dense()
+        return float(dense[1, 0].abs() / dense[2, 1].abs())  # the hub's incoming weight against the sparse node's
+
+    assert share_of_the_hub_edge(0.25) > share_of_the_hub_edge(1.0)
+
+
+def test_an_unknown_normalisation_is_refused():
+    with pytest.raises(ValueError, match="normalisation must be one of"):
+        _chain_encoder("row_stochastic")
