@@ -103,15 +103,19 @@ MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_stan
 # how the signed adjacency is scaled so the iteration contracts: "in_degree" divides each entry by the
 # destination's in-degree under its relation times the number of relations feeding it, which averages and so
 # decays the response steeply with path length; "spectral" divides every entry by one global constant, the
-# spectral radius of the unsigned aggregate, which contracts just as surely without the per-node divisor
-# "in_degree_power" raises the in-degree to normalisation_exponent before dividing, then rescales the whole matrix
-# once so the iteration still contracts. It exists because the decay is driven by the few hub destinations on a path
-# (the in-degree divisor has median 2 but maximum 2048), so softening the divisor where it is large is what a long path
-# needs; the exponent 1.0 reproduces "in_degree" exactly. "spectral" replaces the per-node divisor with one global
-# constant and is kept as a measured negative result: that constant is 36.3 on the neuronal graph against an in-degree
-# divisor below it at 98.8 percent of destinations, so it divides harder than what it replaces nearly everywhere and
-# the field arriving at the membrane potential fell to 0.7 of its in-degree value (docs/membrane_potential_reach.md).
-NORMALISATIONS = ("in_degree", "in_degree_power", "spectral")
+# spectral radius of the unsigned aggregate, which contracts just as surely without the per-node divisor.
+# The per-node divisor is what discards the stoichiometric counts that decide direction at a metabolite: five
+# producing reactions against one consuming reaction become one mean against another, and 88% of metabolites
+# end up with an aggregate row sum of zero (docs/membrane_potential_reach.md). The spectral arm keeps those
+# counts. Against it, that constant is 36.3 on the neuronal graph while the in-degree divisor is below it at
+# 98.8 percent of destinations, so it divides harder nearly everywhere and the field reaching the membrane
+# potential fell to 0.7 of its in-degree value; magnitude is not the same question as direction, so the arm is
+# open rather than refuted.
+# A third arm, "in_degree_power", raised the in-degree to an exponent before dividing and then rescaled the
+# whole matrix once. It is removed as a measured negative result: the global rescale cancels the softening
+# wherever in-degrees are uniform, and on the real graph the median field at VM_c fell to 2.9e-15 at an
+# exponent of 0.5 and 1.0e-18 at 0.25, against 3.2e-10 for plain in-degree.
+NORMALISATIONS = ("in_degree", "spectral")
 CARRIER_INITIAL_GAIN_LOGIT_OFFSET = -3.0
 INITIAL_LOG_RESPONSE_SCALE = -9.2  # log(1e-4)
 
@@ -208,7 +212,6 @@ class LinearResponseEncoder(nn.Module):
         damping: float = 0.5,
         contraction: float = 0.9,
         normalisation: str = "in_degree",
-        normalisation_exponent: float = 0.5,
         cross_relation_aggregator: str = "mean",
         node_type_index: Tensor | None = None,
     ) -> None:
@@ -226,7 +229,7 @@ class LinearResponseEncoder(nn.Module):
         self.cross_relation_aggregator = cross_relation_aggregator
         uses_mixture = cross_relation_aggregator == "softmax_mixture"
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
-                                                                          non_propagating_nodes, cofactor_edges, normalisation, normalisation_exponent,
+                                                                          non_propagating_nodes, cofactor_edges, normalisation,
                                                                           divide_by_relations_feeding=not uses_mixture)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
@@ -286,7 +289,6 @@ class LinearResponseEncoder(nn.Module):
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
                                  cofactor_edges: Tensor | None = None, normalisation: str = "in_degree",
-                                 normalisation_exponent: float = 1.0,
                                  divide_by_relations_feeding: bool = True) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
         depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
@@ -324,15 +326,8 @@ class LinearResponseEncoder(nn.Module):
         else:
             in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, torch.ones(len(row)))
             relations_feeding_node = (in_degree.view(len(relation_names), num_graph_nodes) > 0).sum(dim=0).clamp_min(1)
-            exponent = 1.0 if normalisation == "in_degree" else float(normalisation_exponent)
             cross_relation_divisor = relations_feeding_node[target] if divide_by_relations_feeding else 1.0
-            values = sign / (in_degree[row] ** exponent * cross_relation_divisor)
-            if exponent != 1.0:
-                # row sums of sum_r |S_r| are in_degree^(1 - exponent) / relations_feeding and so can exceed one, which
-                # would break the contraction; one global rescale by the largest of them restores it, and unlike the
-                # "spectral" constant it divides an already softened matrix, so it stays near one
-                largest_row_sum = float(torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, values.abs()).max())
-                values = values / max(largest_row_sum, 1.0)
+            values = sign / (in_degree[row] * cross_relation_divisor)
         stacked = torch.sparse_coo_tensor(torch.stack([row, source]), values, (len(relation_names) * num_graph_nodes, num_graph_nodes)).coalesce()
         return stacked, relation_names
 

@@ -130,7 +130,7 @@ reach the membrane potential run through the hub destinations of the same distri
   measured negative result. That radius is 36.3 on graph_neuronal while the in-degree divisor is below it at 98.8% of
   destinations, so it divides harder than what it replaces nearly everywhere; the median field arriving at the
   membrane potential fell to 0.7 of its in-degree value, 0.6 at distance four and lower still beyond.
-- `in_degree_power`: divide by in-degree raised to `normalisation_exponent`, then rescale the whole matrix once so the
+- `in_degree_power` (removed 7 October 2026): divided by in-degree raised to an exponent, then rescaled the whole matrix once so the
   row sums return below one. Note what this does and does not do. Where in-degrees are uniform the rescale exactly
   undoes the softening and the exponent changes nothing, which a test asserts. It acts only where in-degrees differ,
   moving division off the hub destinations and onto the sparse ones. Since the paths to the membrane potential are the
