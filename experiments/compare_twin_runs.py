@@ -325,7 +325,10 @@ def main() -> None:
     for entry in sorted(scored, key=lambda entry: entry["pooled_macro_auprc"]["difference"]):
         lines.append(f"| {entry['a']} | {entry['b']} | {format_interval(entry['per_fold_micro_difference'])} | {format_interval(entry['pooled_micro_auprc'])} | "
                      f"{format_interval(entry['within_degree_strata_micro_auprc'])} |")
-    lines += ["", "## Set aside", ""]
+    lines += ["", "## Set aside", "",
+              f"Run directories are read from {' and '.join(f'`{root}`' for root in RUN_ROOTS)}. A run that finished elsewhere reads as 0 folds "
+              "here: the module-fix and gene-protein-split arms live under `runs/module_fix` and are compared in docs/module_health_results.md "
+              "and docs/gene_protein_split_results.md, each with its own `--run-root`.", ""]
     for entry in entries:
         if "set_aside" in entry:
             lines.append(f"- {entry['a']} against {entry['b']} (`{entry['change']}`): {entry['set_aside']}.")

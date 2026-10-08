@@ -96,6 +96,8 @@ The same three readings in micro AUPRC, which ranks every labelled perturbation-
 
 ## Set aside
 
+Run directories are read from `runs/encoder` and `runs`. A run that finished elsewhere reads as 0 folds here: the module-fix and gene-protein-split arms live under `runs/module_fix` and are compared in docs/module_health_results.md and docs/gene_protein_split_results.md, each with its own `--run-root`.
+
 - b3_linear_response_degree against b3_degree_only (`--encoder linear_response`): folds finished: b3_linear_response_degree 0, b3_degree_only 5.
 - b3_linear_response_degree against b3_linear_response (`--degree-offset`): folds finished: b3_linear_response_degree 0, b3_linear_response 5.
 - b3_linear_response_cofactors_permuted_signs against b3_linear_response_cofactors (`--edge-signs permuted`): folds finished: b3_linear_response_cofactors_permuted_signs 0, b3_linear_response_cofactors 5.
@@ -114,15 +116,17 @@ The same three readings in micro AUPRC, which ranks every labelled perturbation-
 - b6_k16 against b6_k1 (`--num-modules 16`): folds finished: b6_k16 0, b6_k1 0.
 - b6_typed_nodes against b6_leak_init (`--node-features typed`): folds finished: b6_typed_nodes 0, b6_leak_init 0.
 - b6_linear_response against b6_off_by_default (`--encoder linear_response`): folds finished: b6_linear_response 5, b6_off_by_default 0.
+- b6_linear_response_gate_time_scales_cofactors_descriptors_resolved against b6_linear_response_gate_time_scales_cofactors (`--node-descriptors data/processed/node_descriptors/slice_descriptors_brain_expression_resolved.parquet`): folds finished: b6_linear_response_gate_time_scales_cofactors_descriptors_resolved 0, b6_linear_response_gate_time_scales_cofactors 5.
+- b6_linear_response_gate_time_scales_cofactors_fast_leak against b6_linear_response_gate_time_scales_cofactors (`--leak-learning-rate 0.002`): folds finished: b6_linear_response_gate_time_scales_cofactors_fast_leak 0, b6_linear_response_gate_time_scales_cofactors 5.
 - b6_linear_response_gate_time_scales_cofactors_log against b6_linear_response_gate_time_scales_cofactors (`--response-scale signed_log`): folds finished: b6_linear_response_gate_time_scales_cofactors_log 0, b6_linear_response_gate_time_scales_cofactors 5.
 - b6_linear_response_gate_time_scales_cofactors_weighted_start against b6_linear_response_gate_time_scales_cofactors (`--start-at-weighted-optimum`): folds finished: b6_linear_response_gate_time_scales_cofactors_weighted_start 0, b6_linear_response_gate_time_scales_cofactors 5.
 - b6_linear_response_gate_time_scales_cofactors_log against b6_linear_response_time_scales_cofactors_log (`--gate-learning-rate 0.05`): folds finished: b6_linear_response_gate_time_scales_cofactors_log 0, b6_linear_response_time_scales_cofactors_log 5.
-- b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors against b6_linear_response_gate_time_scales_cofactors_weighted_start (`--node-descriptors data/processed/node_descriptors/slice_descriptors_brain_expression.parquet`): folds finished: b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors 0, b6_linear_response_gate_time_scales_cofactors_weighted_start 0.
 - b6_linear_response_time_scales_cofactors_degree against b6_linear_response_time_scales_cofactors (`--degree-offset`): folds finished: b6_linear_response_time_scales_cofactors_degree 0, b6_linear_response_time_scales_cofactors 5.
 - b6_mechanistic_degree against b6_mechanistic (`--degree-offset`): folds finished: b6_mechanistic_degree 0, b6_mechanistic 5.
 - b6_mechanistic against b6_off_by_default (`--node-features typed`): folds finished: b6_mechanistic 5, b6_off_by_default 0.
 - b6_mechanistic_degree against b6_mechanistic_expected_gate (`--degree-offset`): folds finished: b6_mechanistic_degree 0, b6_mechanistic_expected_gate 0.
 - b6_mechanistic_expected_gate against b6_off_by_default (`--node-features typed`): folds finished: b6_mechanistic_expected_gate 0, b6_off_by_default 0.
+- b6_mechanistic_gate_time_scales_fast_leak against b6_mechanistic_gate_time_scales (`--leak-learning-rate 0.002`): folds finished: b6_mechanistic_gate_time_scales_fast_leak 0, b6_mechanistic_gate_time_scales 5.
 - b6_mechanistic_gate_time_scales_weighted_start against b6_mechanistic_gate_time_scales (`--start-at-weighted-optimum`): folds finished: b6_mechanistic_gate_time_scales_weighted_start 0, b6_mechanistic_gate_time_scales 5.
 - b6_mechanistic_gate_time_scales against b6_mechanistic_time_scales (`--gate-learning-rate 0.05`): folds finished: b6_mechanistic_gate_time_scales 5, b6_mechanistic_time_scales 3.
 - confirmatory_linear_response_noisy_or against confirmatory_linear_response_noisy_or_without_descriptors (`--node-descriptors data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet`): folds finished: confirmatory_linear_response_noisy_or 0, confirmatory_linear_response_noisy_or_without_descriptors 0.
