@@ -65,37 +65,44 @@ def test_log_space_loss_matches_the_clamped_loss_inside_the_clamp_and_keeps_the_
     assert log_space_gradient[3] > 0.15 and log_space_gradient[4] < -0.15  # about (sigmoid(z) - target) / 5
 
 
-def test_equal_drug_loss_shares_gives_every_drug_the_same_row_total_and_leaves_genes_alone() -> None:
+def test_equal_drug_loss_shares_equalises_positive_and_negative_counts_apart_and_leaves_genes_alone() -> None:
     import numpy as np
 
     from mechanistic_pathway_learning.models.soft_constraint_losses import equal_drug_loss_shares
 
-    pair_weights = np.array([
-        [1.0, 1.0, 1.0, 1.0],  # drug, total 4
-        [0.5, 0.0, 0.0, 0.5],  # drug, total 1
-        [2.0, 0.0, 1.0, 0.0],  # gene, total 3
-        [0.0, 0.0, 0.0, 0.0],  # drug with every pair masked
-        [3.0, 3.0, 0.0, 0.0],  # drug outside the fitted set, total 6
-    ], dtype=np.float32)
+    is_positive = np.array([
+        [True, True, True, False],    # drug: 3 positives, 1 negative
+        [True, False, False, False],  # drug: 1 positive, 3 negatives
+        [True, False, True, False],   # gene
+        [False, False, False, False],  # drug: no positive, 4 negatives
+        [True, True, False, False],   # drug outside the fitted set
+    ])
+    pair_weights = np.where(is_positive, 1.0, 0.2).astype(np.float32)
+    pair_weights[0, 0] = 0.5  # weaker evidence on one positive
     is_drug = np.array([True, True, False, True, True])
     fit_indices = np.array([0, 1, 2, 3])
-    rescaled = equal_drug_loss_shares(pair_weights, is_drug, fit_indices)
+    rescaled = equal_drug_loss_shares(pair_weights, is_positive, is_drug, fit_indices)
 
-    common_total = (4.0 + 1.0) / 2
+    mean_positive_count = (3 + 1) / 2  # drugs 0 and 1; drug 3 has none
+    mean_negative_count = (1 + 3 + 4) / 3
     assert rescaled.dtype == pair_weights.dtype
-    assert np.allclose(rescaled.sum(axis=1)[[0, 1, 4]], common_total)
+    assert np.allclose(rescaled[0, :3], pair_weights[0, :3] * mean_positive_count / 3)
+    assert np.allclose(rescaled[1, 0], mean_positive_count / 1)
+    assert np.allclose(rescaled[4, :2], mean_positive_count / 2)
+    assert np.allclose(np.where(~is_positive, rescaled, 0).sum(axis=1)[[0, 1, 3]], 0.2 * mean_negative_count)
     assert np.allclose(rescaled[2], pair_weights[2])
-    assert np.allclose(rescaled[3], 0.0)
-    assert np.isclose(rescaled[[0, 1]].sum(), pair_weights[[0, 1]].sum())
-    # the pattern inside a row is kept: only its scale changes
-    assert np.allclose(rescaled[1] / rescaled[1].sum(), pair_weights[1] / pair_weights[1].sum())
+    # evidence still counts across drugs: drug 0's positives sum to less than mean_positive_count because one is weak
+    assert rescaled[0, :3].sum() < rescaled[1, 0]
 
 
-def test_equal_drug_loss_shares_without_fitted_drugs_returns_the_weights_unchanged() -> None:
+def test_equal_drug_loss_shares_keeps_masked_pairs_at_zero_and_without_fitted_drugs_changes_nothing() -> None:
     import numpy as np
 
     from mechanistic_pathway_learning.models.soft_constraint_losses import equal_drug_loss_shares
 
-    pair_weights = np.array([[1.0, 2.0], [3.0, 0.0]])
-    rescaled = equal_drug_loss_shares(pair_weights, np.array([False, True]), np.array([0]))
-    assert np.array_equal(rescaled, pair_weights)
+    is_positive = np.array([[True, False], [True, False]])
+    pair_weights = np.array([[1.0, 0.0], [1.0, 0.2]])
+    rescaled = equal_drug_loss_shares(pair_weights, is_positive, np.array([True, True]), np.array([0, 1]))
+    assert rescaled[0, 1] == 0.0
+    unchanged = equal_drug_loss_shares(pair_weights, is_positive, np.array([False, True]), np.array([0]))
+    assert np.array_equal(unchanged, pair_weights)

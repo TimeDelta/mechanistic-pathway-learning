@@ -28,23 +28,33 @@ from torch import Tensor
 PROBABILITY_EPSILON = 1e-6
 
 
-def equal_drug_loss_shares(pair_weights: np.ndarray, is_drug: np.ndarray, fit_indices: np.ndarray) -> np.ndarray:
-    """Loss weights [perturbations, symptoms] with every drug's row rescaled to one common total: the mean row total
-    of the drugs among fit_indices. Gene rows are unchanged, and so is the summed weight of the fitted drugs.
+def equal_drug_loss_shares(pair_weights: np.ndarray, is_positive: np.ndarray, is_drug: np.ndarray, fit_indices: np.ndarray) -> np.ndarray:
+    """Loss weights [perturbations, symptoms] in which every drug holds the same number of positive pairs and the same
+    number of negative pairs: each drug's positives are scaled by (mean count of weighted positives over the drugs among
+    fit_indices that have one) / (its own count), and its negatives likewise. Gene rows are unchanged, and so is the
+    summed weight of the fitted drugs' positives and of their negatives, up to the spread of the evidence weights.
 
-    The loss divides by the batch's summed weight, so a perturbation's share of the gradient follows its row total. A
-    drug with many weighted positives (often one with many targets) would otherwise pull harder than a drug with one;
-    with equal shares each drug counts the same. A drug row with no weight (every pair masked) stays at zero.
+    The loss divides by the batch's summed weight, so a perturbation's share of the gradient follows its weight. A drug
+    with many labelled pairs (a well-studied drug) would otherwise pull harder than a drug with few. Positives and
+    negatives are scaled apart so a drug with no kept positive cannot take a large share through its negatives alone.
+    Counts, not weight sums, are equalised, so a drug whose positives rest on weak evidence still weighs less than one
+    whose positives rest on strong evidence. A drug with no weighted pair of a kind keeps zero weight of that kind.
     """
-    row_totals = pair_weights.sum(axis=1)
-    weighted_drug = np.asarray(is_drug, dtype=bool) & (row_totals > 0)
-    fitted_drugs = np.asarray(fit_indices, dtype=int)[weighted_drug[np.asarray(fit_indices, dtype=int)]]
-    if not len(fitted_drugs):
-        return pair_weights
-    common_total = row_totals[fitted_drugs].mean()
-    scale = np.ones(len(pair_weights), dtype=np.float64)
-    scale[weighted_drug] = common_total / row_totals[weighted_drug]
-    return (pair_weights * scale[:, None]).astype(pair_weights.dtype)
+    is_positive = np.asarray(is_positive, dtype=bool)
+    is_drug = np.asarray(is_drug, dtype=bool)
+    fit_indices = np.asarray(fit_indices, dtype=int)
+    rescaled = pair_weights.astype(np.float64)
+    for of_this_kind in (is_positive, ~is_positive):
+        weighted = of_this_kind & (pair_weights > 0)
+        counts = weighted.sum(axis=1)
+        drugs_with_some = is_drug & (counts > 0)
+        fitted = fit_indices[drugs_with_some[fit_indices]]
+        if not len(fitted):
+            continue
+        scale = np.ones(len(pair_weights), dtype=np.float64)
+        scale[drugs_with_some] = counts[fitted].mean() / counts[drugs_with_some]
+        rescaled = np.where(of_this_kind, rescaled * scale[:, None], rescaled)
+    return rescaled.astype(pair_weights.dtype)
 
 
 def evidence_weighted_binary_cross_entropy(

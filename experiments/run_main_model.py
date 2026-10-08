@@ -249,7 +249,7 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 # arguments a resumed process may change without changing what the checkpoint was trained for
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
-ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares"}
+ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input"}
 
 
 def array_sha256(values) -> str:
@@ -439,14 +439,26 @@ def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_
 def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
     """The loss's weight per (perturbation, symptom): a positive at its evidence weight (at 1 when the frequency is the
     target), a negative at --negative-weight, a pair set aside by the selection at zero; under --equal-drug-shares each
-    drug's row is rescaled to the mean drug row total over fit_indices (equal_drug_loss_shares)."""
+    drug's positives and negatives are rescaled to the mean drug counts over fit_indices (equal_drug_loss_shares)."""
     positive = data.outcomes > 0
     weights = np.where(positive, 1.0 if frequency_targets else np.maximum(data.weights, 1e-3), arguments.negative_weight)
     if label_mask is not None:
         weights = weights * label_mask
     if getattr(arguments, "equal_drug_shares", False):
-        weights = equal_drug_loss_shares(weights, np.array([kind == "drug" for kind in data.perturbation_types]), fit_indices)
+        weights = equal_drug_loss_shares(weights, positive, np.array([kind == "drug" for kind in data.perturbation_types]), fit_indices)
     return weights
+
+
+def drug_input_normalised(perturbation_types: list[str], perturbation_magnitudes: list[np.ndarray]) -> list[np.ndarray]:
+    """Seed magnitudes with every drug's rescaled to sum to 1 in absolute value; genes are unchanged. A drug's magnitude is
+    otherwise 1 per target (map_drug_targets_to_graph_nodes.py), so a drug with k targets pushes k times the field of a
+    drug with one, and a model could learn the count of targets instead of what the targets do."""
+    normalised = []
+    for kind, magnitudes in zip(perturbation_types, perturbation_magnitudes):
+        magnitudes = np.asarray(magnitudes, dtype=float)
+        total = np.abs(magnitudes).sum()
+        normalised.append(magnitudes / total if kind == "drug" and total > 0 else magnitudes)
+    return normalised
 
 
 def weighted_constant_optimum(data, fit_indices: np.ndarray, label_mask, arguments) -> np.ndarray:
@@ -763,7 +775,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
     parser.add_argument("--negative-weight", type=float, default=0.2)
     parser.add_argument("--equal-drug-shares", action="store_true",
-                        help="rescale each drug's loss weights to one common row total (the mean over the training drugs), so every drug has the same share of the gradient; gene rows unchanged")
+                        help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
+    parser.add_argument("--normalise-drug-input", action="store_true",
+                        help="rescale each drug's seed magnitudes to sum to 1, so a drug with more targets does not push more field; genes unchanged")
     parser.add_argument("--description-length-coefficient", type=float, default=1e-6)
     parser.add_argument("--checkpoint-every-minutes", type=float, default=20.0)
     parser.add_argument("--time-budget-seconds", type=float, default=0.0, help="stop training after this many seconds (0 = no limit)")
@@ -812,6 +826,8 @@ def main() -> None:
         if data.label_mask is not None:
             data.label_mask = data.label_mask[source_row]
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
+    if arguments.normalise_drug_input:
+        data.perturbation_magnitudes = drug_input_normalised(data.perturbation_types, data.perturbation_magnitudes)
     if arguments.encoder == "linear_response":  # its input is sign x magnitude, so a perturbation whose seeds all have sign 0 gives a zero field
         zero_input = [perturbation_id for perturbation_id, signs, magnitudes in zip(data.perturbation_ids, data.perturbation_signs, data.perturbation_magnitudes)
                       if not np.any(np.asarray(signs, dtype=float) * np.asarray(magnitudes, dtype=float))]
