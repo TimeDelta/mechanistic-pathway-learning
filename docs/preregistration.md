@@ -467,7 +467,7 @@ day). Each is a defect against text already in this specification, not a change 
   logits; for the noisy-OR head the log(1 - P) it already forms); it is off by default, which reproduces every earlier
   run bit for bit (checked on a toy graph for both heads). Whether the confirmatory configurations take it, which would
   need new development pilots of the configurations that change, is the user's decision.
-- Open, for the user's decision: the rewiring of H2 swaps every stored edge within its relation on its own. binds is
+- Decided by the user on 8 October 2026 (amendment below, symmetric rewiring adopted): the rewiring of H2 swaps every stored edge within its relation on its own. binds is
   undirected and stored in both directions (30,682 of its 31,118 edges have their reverse in graph_full_neuronal), and
   after 50 swaps per edge 1,664 do: the null graph keeps every in- and out-degree per relation but not the symmetry,
   so the real-minus-rewired difference also measures the loss of reciprocity. --keep-reciprocated-relations-symmetric
@@ -477,7 +477,7 @@ day). Each is a defect against text already in this specification, not a change 
   per-relation degree, no duplicate or self-loop, and leaves 0.45 percent of edges unchanged (32 seconds). It is off by
   default, which reproduces every rewired run so far. Not covered by it: a reversible reaction's substrate_of and
   product_of edges between the same metabolite and reaction (15,867 pairs) are two relations and still move apart.
-- Open, for the user's decision: a rewired run keeps node features computed from the real gene-reaction associations
+- Decided by the user on 8 October 2026 (amendment below, recomputed from the rewired wiring): a rewired run keeps node features computed from the real gene-reaction associations
   (the reaction_brain descriptor block and the reactions' cell-class weights come from the Human-GEM gene rules), so a
   model trained on the rewired graph still sees which genes catalyse each reaction through its features. This makes
   the rewiring difference of H2 smaller than the wiring's whole contribution: it can cost H2 power, not make it
@@ -531,7 +531,7 @@ day). Each is a defect against text already in this specification, not a change 
     columns, while the confirmatory micro AUPRC ranks the 20 scored symptoms.
   - Grade C pairs (human association) are not labels in this specification. They count as negatives in scoring and as
     weak negatives in training (159 such pairs among development perturbations). The positive pairs that the selection
-    sets aside are masked instead. Masking grade C pairs in the same way would need an amendment.
+    sets aside are masked instead. Masking grade C pairs in the same way would need an amendment; the user decided it on 8 October 2026 (amendment below, better_v2).
   - A drug pair's label frequency, which the selection compares with 1 percent, is the largest over the pair's preferred
     terms of the mean treatment-arm frequency midpoint of that term's SIDER reports
     (assemble_evidence_table.pharmacological_label_frequency). Post-marketing and rare reports (midpoint 0.0005) lower
@@ -554,14 +554,14 @@ day). Each is a defect against text already in this specification, not a change 
   - redraw the lockbox. This is not recommended, because development perturbations that pilots and the descriptor
     decisions have used would enter it.
   A future draw should leave excluded groups out of the target.
-- Open, for the user's decision: the early-stopping validation set is the same in every seed. assign_grouped_folds sorts
+- Decided by the user on 8 October 2026 (amendment below, rotated and stratified): the early-stopping validation set is the same in every seed. assign_grouped_folds sorts
   groups largest first and breaks ties toward fold 0, and validation is fold 0, so the seed only reorders groups of
   equal size. For seeds 0 to 4 it is cluster:ARNT2 (58 perturbations) plus 84 single perturbations, with no drug kept
   positive. ARNT2 holds 10.5 percent of the development kept positives, among them 19 of 51 apathy and 15 of 50
   disinhibition positives. After the refit the scored model trains on ARNT2, but every seed's number of epochs is
   chosen on this one set, so the seed variance leaves out the variance from the choice of validation set. Rotating the
   validation fold with the seed (fold = seed mod 7) leaves seed 0, and so the development pilots, unchanged.
-- Open, for the user's decision: the scorer's paired bootstrap resamples lockbox perturbations one by one. Perturbations
+- Decided by the user on 8 October 2026 (amendment below, the group bootstrap decides): the scorer's paired bootstrap resamples lockbox perturbations one by one. Perturbations
   of one leakage group share disease annotations or targets, so their scores co-vary, and a bootstrap of single
   perturbations understates the variance. A check on development rows only drew 10 pseudo-lockboxes by the lockbox rule
   from the 1,222 development perturbations (257 to 299 perturbations each), fitted the baselines on the rest, and
@@ -608,6 +608,58 @@ day). Each is a defect against text already in this specification, not a change 
   The first is cheap and leaves the models untouched; it changes the decision rule, so it is the user's decision.
   run_baselines.py --with-type-popularity fits the two predictors (off by default, so no run so far and none registered
   changes); the scorer uses them only when its --baselines names them.
+
+Amendment, 8 October 2026, before any lockbox run (the user's decisions late the same day on the open items above). It
+defines a second confirmatory family (confirmatory_v2_* in experiments/run_main_model_batch.py). The running development
+pilots of the first family stay as they are and are reported as checks that each configuration trains.
+- Grade C pairs are masked. experiments/build_label_selection.py --mask-grades C writes better_v2_full_v2: its positive
+  rows equal better_v1's, and each pair whose only evidence is grade C (a human association) gets a row with keep False
+  and masks_a_negative True, which load_experiment_data reads as neither positive nor negative. It masks 172 such pairs
+  of the loaded data, 159 of them among the development perturbations of lockbox_v1; before, they were negatives in
+  scoring and weak negatives in training.
+- The early-stopping validation set rotates with the seed. run_main_model.py --validation-draw rotated_stratified
+  splits the training pool once into round(1 / 0.15) = 7 grouped folds with a fixed partition seed, separately for
+  groups holding a drug and the rest (the second stratum's folds offset by one, so the largest group of each stratum
+  does not share a fold), and validates on fold seed mod 7, so seeds 0 to 4 stop on five disjoint validation sets. Groups
+  larger than a quarter of the expected validation set stay in training (half before). On the lockbox_v1 development
+  set as a lockbox run's pool, this gives validation sets of 125 to 128 perturbations whose largest group has 9 to 16
+  members, holding 7.1 to 8.8 percent of the development kept positives (123 to 153) and 8 to 11 symptoms with five
+  or more; the fold-0 draw gave 142 perturbations with cluster:ARNT2 (58) in every seed and 14.5 to 16.1 percent of the
+  positives. The cost: the three largest groups (232, 58 and 50 perturbations, which hold a large share of the positives)
+  never validate, so each validation set carries about half the positives of the fold-0 draw and its loss is noisier.
+  The epoch count still comes from the validation loss, and the refit trains on every development perturbation.
+- The confirmatory p-values and intervals come from a paired bootstrap over the lockbox's leakage groups
+  (score_confirmatory.py --bootstrap-unit group: whole groups drawn with replacement). The bootstrap over single
+  perturbations is reported beside it as a sensitivity reading. Field and Welsh (2007) give the reason quoted in the
+  open item above.
+- H2's rewiring keeps the relations stored in both directions symmetric (--keep-reciprocated-relations-symmetric), and
+  a rewired run recomputes its reactions' expression from its wiring (--recompute-reaction-expression-on-rewired-graph,
+  mechanistic_pathway_learning/graph/rewired_expression_features.py). The user asked why the rewired runs should keep
+  descriptors derived from the real graph; they should not. Each reaction's gene rule is rewritten onto its rewired
+  catalysts (a kept catalyst maps to itself, the others pair in node order; and/or structure kept), and the
+  reaction_brain descriptor block and the reactions' cell-class weights are recomputed from the rewritten rules with
+  the functions that built them, from the expression tables of experiments/write_expression_tables.py. With the real
+  rules those tables reproduce the stored reaction rows exactly (largest difference 0). Intrinsic node properties
+  (protein embeddings, metabolite and reaction chemistry, a gene's own expression) stay, since the rewiring moves edges,
+  not nodes. They still carry some of the wiring (a protein's embedding predicts some of its partners), which can only
+  make the rewired model better and the rewiring difference smaller, so it can cost H2 power but not confirm it
+  wrongly. The scorer refuses a rewired run without either flag. runs/full/confirmatory_lockbox.sh passes both.
+- Two tested models instead of four: one head per encoder, chosen on the development set before any lockbox run by
+  experiments/choose_heads.py, written before any run it reads existed. For each encoder, the noisy-OR and the sigmoid
+  configuration run on the five grouped development folds with seed 0, and so do the development baselines. Per fold,
+  the four H1 readings are computed as the scorer computes them on the lockbox, each against the best baseline of that
+  reading (the highest five-fold mean, chosen without reference to any model). A head's margin is the smallest of: the
+  mean macro difference minus 0.041, the mean micro difference minus 0.028 and the two mean within-strata differences.
+  The head with the larger margin is tested; margins within 0.001 choose noisy-OR. The other two configurations and
+  the four without descriptors stay development readings. With two models tested at one-sided 0.025 each, the chance
+  that at least one passes by luck is at most 2 x 0.025 = 0.05 whatever the dependence between the two tests (0.049 if
+  they were independent), against at most 0.10 (0.096) with four. The choice reads development folds only, so it does
+  not bias the lockbox test of the model it picks.
+- Still open: the lockbox's drug share (the user asked for the precision estimate first; a draft that returns lockbox
+  drug groups to development until the lockbox holds 20 percent of the drugs and moves unread development gene groups
+  in is kept outside the repository and registers nothing), --bce-in-log-space, the per-type popularity baselines and
+  the secondary contrasts. The second family's development runs wait for the lockbox decision, because the lockbox
+  decides which perturbations are development.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
