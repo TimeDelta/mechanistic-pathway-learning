@@ -1,5 +1,8 @@
 # Evaluation protocol (design sections 6 and 7), as implemented in experiments/run_baselines.py,
-# experiments/run_main_model.py and experiments/aggregate_main_model_runs.py
+# experiments/run_main_model.py and experiments/aggregate_main_model_runs.py. No code reads this file.
+# The confirmatory test is specified in docs/preregistration.md ("Confirmatory specification, 8 October 2026" and its
+# amendments), which supersedes primary_endpoint, multiple_comparisons and the negative-control list below; the
+# confirmatory entry at the end summarises it.
 splits:
   grouped_perturbation_wise:
     num_folds: 5
@@ -20,7 +23,7 @@ reporting:
   stratify_by: [node_degree_tercile, evidence_grade]
   bootstrap: {num_resamples: 1000, confidence: 0.95}
   paired_bootstrap_between_models: true     # design section 7 primary endpoint test
-negative_controls: [label_permutation_within_degree_strata, degree_preserving_rewiring, grade_shuffle, peripheral_event_control]
+negative_controls: [label_permutation_within_degree_strata, degree_preserving_rewiring]   # grade_shuffle and peripheral_event_control (design 6.3) were not implemented and are not run (preregistration, amendment of 8 October 2026)
 orthogonal_validation:
   gwas_gene_set: {top_n_genes: 50, exclude_training_genes: true, random_set_matches: 1000}
   metabolomics_rank_enrichment: true
@@ -39,3 +42,13 @@ primary_endpoint:
   seeds_by_folds: [5, 5]
 multiple_comparisons: benjamini_hochberg
 failure_criterion: "B6 must beat popularity and network proximity under the disease-cluster grouped split before ablations run"
+confirmatory:                               # docs/preregistration.md; the scorer is experiments/score_confirmatory.py
+  split: lockbox                            # configs/lockbox_v1.json, 317 perturbations drawn as whole disease_cluster_and_targets groups; 1,222 in development
+  models: [confirmatory_message_passing_noisy_or, confirmatory_message_passing_sigmoid, confirmatory_linear_response_noisy_or, confirmatory_linear_response_sigmoid]
+  seeds: [0, 1, 2, 3, 4]
+  comparator: best baseline per reading of [popularity, degree_popularity, random_walk_with_restart, knowledge_graph_embedding_transe]
+  h1_readings: [macro_auprc, micro_auprc, macro_auprc_within_degree_strata, micro_auprc_within_degree_strata]
+  h2_adds: [macro_rewiring, micro_rewiring]  # the model on the real graph minus the same model retrained on a rewired graph (50 swaps per edge)
+  test: each model on its own, one-sided 0.025, H1 then H2 (fixed sequence); paired bootstrap over lockbox perturbations, 4,000 resamples
+  floors: {macro: 0.041, micro: 0.028}
+  controls: [labels permuted within degree quintiles (secondary reading), graph rewired within each relation (H2)]

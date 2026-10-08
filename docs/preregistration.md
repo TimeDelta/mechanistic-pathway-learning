@@ -158,8 +158,10 @@ confirmation.
   than all cells. The noisy-OR head starts its leaks at the training base rate, its module biases at -3 and its gate noise at
   0.5, with link, leak and gate learning rates 0.02, 0.0002 and 0.05; the sigmoid head uses the trainer defaults. Asymmetry:
   the message-passing encoder sees cell-class expression only as node descriptors, not as channels.
-- Training. Each confirmatory run trains on the 1,222 development perturbations, of which a grouped 15 percent is the
-  validation set for early stopping (validation loss, patience 8, at most 60 epochs), and scores the lockbox once
+- Training. Each confirmatory run trains on the 1,222 development perturbations, of which one grouped seventh is the
+  validation set for early stopping (fold 0 of round(1 / 0.15) = 7 grouped folds; validation loss, patience 8, at most 60
+  epochs; as amended on 8 October, drawn from the groups no larger than half of it, 142 perturbations, and followed by a
+  refit on all 1,222 for the chosen number of epochs, which is the model scored), and scores the lockbox once
   (--lockbox configs/lockbox_v1.json --score-lockbox). Seeds 0 to 4. Per seed and model, two control runs: labels permuted
   within degree quintiles and within the lockbox and the development set apart (rows move whole with their weights and
   label mask; --permute-labels), and the graph rewired within each relation with 50 attempted swaps per edge, no self-loops
@@ -475,6 +477,91 @@ day). Each is a defect against text already in this specification, not a change 
   (docs/rewiring_null_distribution.md, 0 of 20 rewirings as good as the real graph, p = 0.048) used the old null and is
   rerun with the new one (docs/rewiring_null_distribution_walk_graph.md). No confirmatory reading uses the walk's
   rewiring.
+- The grade-shuffle and peripheral-event controls the skeleton lists under negative controls (design section 6.3)
+  were never implemented and are not run; the confirmatory test has the two controls of its specification (permuted
+  labels, a secondary reading, and the rewired graph of H2). The peripheral-event control needs adverse events without
+  a plausible central mechanism, which the symptom set (central symptoms only) does not hold; a grade shuffle under the
+  better_v1 selection would permute the weights of the kept positives only. configs/evaluation.yaml says so, and now
+  states that the preregistration supersedes its endpoint and correction entries.
+- Disclosed and left as they are. Changing any of them would change the evidence table or the graph, which confirmatory
+  jobs read. Each can move the absolute scores of models and baselines alike. None of the counts below reads a lockbox
+  outcome: lockbox-side counts use membership, seeds and disease identifiers only.
+  - Disease entries annotated to 20 or more genes do not link those genes into one disease cluster
+    (assemble_evidence_table.py; design open question 11). Seven entries are excluded this way (ORPHA:442835 with 49
+    genes, ORPHA:154 with 45, and others). Such an entry gives every listed gene the same phenotype annotations, so two
+    genes in different leakage groups can share labels through it. 29 of the 253 lockbox genes share such an entry with
+    a development gene. In the five development folds, 107 test-fold gene kept positives are supported only by such
+    entries, and the same entry gives a training gene the same kept positive. The direction of the effect on the
+    model-minus-baseline difference is not known.
+  - A drug action of type modulator, substrate or other has sign 0 (perturbation/map_drug_targets_to_graph_nodes.py).
+    The linear-response encoder's input is sign times magnitude, so for that encoder gabapentin (CID100003446),
+    pregabalin (CID100125889) and brivaracetam (RXCUI:1739745) give a field of exactly zero, the same as no
+    perturbation. All three are development drugs: gabapentin has 17 positive pairs (12 kept), pregabalin 16 (none kept)
+    and brivaracetam 3 (none kept). No lockbox perturbation has an all-zero input. The message-passing encoder still
+    sees them, because its injection layer has a bias. The trainer now prints a warning that lists such perturbations.
+  - evidence_full_v2 placed drug seeds on graph_full, not on graph_full_neuronal, which the models read. Every seed is a
+    node of both. Thirty drugs, all in development, are seeded on fewer target genes than graph_full_neuronal holds, with
+    their magnitudes renormalised over the targets present. For example, 21 GABA-A modulators miss GABRG3, the NMDA
+    blockers miss GRIN3B, the gabapentinoids miss CACNA2D2 and CACNG4, and amifampridine misses several potassium
+    channels. Nine genes that exist only in graph_full_neuronal (AFG3L2, CLCA4, CLCNKB, COX18, FOXRED1, KCNC2, KCNH5,
+    NDUFAF4 and UQCC2) have annotations to crosswalk symptoms but are not perturbations. No gene perturbation sits on a
+    node that exists only in graph_full_neuronal, so the leakage grouping is unaffected.
+  - Every gene perturbation has sign -1 (loss of function), but grade A accepts Orphanet associations marked gain of
+    function. In development, 10 of 1,144 gene perturbations (19 of 1,515 kept gene pairs) have only gain-of-function
+    causal associations, so the signed encoder reads the wrong sign for them.
+  - The symptom columns come from all perturbations. Catatonia is a column only because one lockbox perturbation has a
+    set-aside catatonia pair; development holds no catatonia row. Catatonia is not scored (no kept positive). The
+    development micro AUPRC of run_main_model.py, run_baselines.py, the aggregation and the twin comparisons ranks all 22
+    columns, while the confirmatory micro AUPRC ranks the 20 scored symptoms.
+  - Grade C pairs (human association) are not labels in this specification. They count as negatives in scoring and as
+    weak negatives in training (159 such pairs among development perturbations). The positive pairs that the selection
+    sets aside are masked instead. Masking grade C pairs in the same way would need an amendment.
+  - A drug pair's label frequency, which the selection compares with 1 percent, is the largest over the pair's preferred
+    terms of the mean treatment-arm frequency midpoint of that term's SIDER reports
+    (assemble_evidence_table.pharmacological_label_frequency). Post-marketing and rare reports (midpoint 0.0005) lower
+    the mean, so 6 development drug pairs are set aside although one of their reports is at least 1 percent. The
+    selection entry above does not define the frequency; this is the definition the selection file was built with.
+- Open, for the user's decision: the lockbox draw over-samples drugs (experiments/draw_lockbox.py draw_groups). Each
+  stratum's target is 20 percent of the sizes of all its groups, including cluster:ABCA3 (232 perturbations), which stays
+  in development for its size. In the stratum of groups holding a drug with a kept positive, the drawable groups summed
+  to less than that target, so all of them went into the lockbox. The lockbox therefore holds 64 of the 142 drugs (45
+  percent) and 27 of the 61 drugs with a kept positive (44 percent), not 20 percent. All 34 development drugs with a
+  kept positive (215 kept positives) are in cluster:ABCA3. Consequences:
+  - The development folds put ABCA3 whole into one test fold, so no development reading trains on drug positives and
+    then tests on drug positives.
+  - In lockbox runs ABCA3 is in training, and the validation set holds no drug kept positive.
+  - The lockbox's drug predictions extrapolate from the drug labels of one leakage group.
+  The draw does not leak labels. The options are:
+  - keep the lockbox and state this as a limitation;
+  - return a seeded subset of the lockbox's drug-stratum groups to development, which only removes lockbox members, so
+    the precision estimate is recomputed;
+  - redraw the lockbox. This is not recommended, because development perturbations that pilots and the descriptor
+    decisions have used would enter it.
+  A future draw should leave excluded groups out of the target.
+- Open, for the user's decision: the early-stopping validation set is the same in every seed. assign_grouped_folds sorts
+  groups largest first and breaks ties toward fold 0, and validation is fold 0, so the seed only reorders groups of
+  equal size. For seeds 0 to 4 it is cluster:ARNT2 (58 perturbations) plus 84 single perturbations, with no drug kept
+  positive. ARNT2 holds 10.5 percent of the development kept positives, among them 19 of 51 apathy and 15 of 50
+  disinhibition positives. After the refit the scored model trains on ARNT2, but every seed's number of epochs is
+  chosen on this one set, so the seed variance leaves out the variance from the choice of validation set. Rotating the
+  validation fold with the seed (fold = seed mod 7) leaves seed 0, and so the development pilots, unchanged.
+- Open, for the user's decision: the scorer's paired bootstrap resamples lockbox perturbations one by one. Perturbations
+  of one leakage group share disease annotations or targets, so their scores co-vary, and a bootstrap of single
+  perturbations understates the variance. A check on development rows only drew 10 pseudo-lockboxes by the lockbox rule
+  from the 1,222 development perturbations (257 to 299 perturbations each), fitted the baselines on the rest, and
+  bootstrapped the three baseline-minus-baseline differences under the scorer's macro and micro statistics (1,000
+  resamples). Median 95 percent half-widths:
+  - resampling perturbations: 0.030 (macro) and 0.028 (micro);
+  - resampling whole groups: 0.037 and 0.047 (median ratios 1.23 and 1.76).
+  Seven of the ten pseudo-lockboxes hold a group of 50 to 58 perturbations. The lockbox's largest group has 13, and 210
+  of its 237 groups are single perturbations. On the three pseudo-lockboxes whose largest group has at most 16
+  perturbations, the half-widths are 0.024 and 0.025 resampling perturbations, against 0.027 and 0.038 resampling groups
+  (ratios 1.18 and 1.31).
+  The floors (0.041 and 0.028) were estimated with symptoms chosen again in each fold and micro AUPRC over all columns.
+  Under the scorer's statistics, resampling single perturbations gives half-widths at or below both floors. Resampling
+  groups gives a micro half-width above the micro floor (0.047, or 0.038 on the three lockbox-like pseudo-lockboxes),
+  and the scorer's p-values are smaller than a group bootstrap would give. The alternative is a bootstrap over the lockbox's 237 leakage groups, either for the confirmatory p-values or as a
+  sensitivity reading beside them.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

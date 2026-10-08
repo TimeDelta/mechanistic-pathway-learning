@@ -637,6 +637,12 @@ def main() -> None:
         if data.label_mask is not None:
             data.label_mask = data.label_mask[source_row]
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
+    if arguments.encoder == "linear_response":  # its input is sign x magnitude, so a perturbation whose seeds all have sign 0 gives a zero field
+        zero_input = [perturbation_id for perturbation_id, signs, magnitudes in zip(data.perturbation_ids, data.perturbation_signs, data.perturbation_magnitudes)
+                      if not np.any(np.asarray(signs, dtype=float) * np.asarray(magnitudes, dtype=float))]
+        if zero_input:
+            print(f"warning: {len(zero_input)} perturbations have no seed with a nonzero sign and magnitude; the linear-response encoder gives them "
+                  f"the prediction of no perturbation: {zero_input}")
     rewiring_summary = None
     if arguments.rewire_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])

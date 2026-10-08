@@ -43,15 +43,19 @@ needed (findings 2 and 8).
 
 ### Aim 2. Test whether the pathway-module model beats the best baseline
 
-Status: slice pilot done (negative); full-graph test being prepared (7 October). The full-data runs need more compute than the 4-core cloud
-container; cluster access is not confirmed.
+Status: slice pilot done (negative); the confirmatory test is specified (docs/preregistration.md, "Confirmatory
+specification, 8 October 2026" and its amendments) and its development pilots run on the full graph in this 4-core
+container; the lockbox runs wait for the user's go-ahead.
 
-- Hypothesis: the proposed model (B6) beats popularity and the random walk with restart under the disease-cluster
-  split.
-- Pre-registered failure criterion (docs/preregistration.md): if B6 does not beat both, the architecture is
+- Hypothesis H1, for each of four models on its own (message passing and linear response, each with the noisy-OR and
+  the sigmoid head): the model beats the best baseline per reading on the lockbox in macro and micro AUPRC and in both
+  within-degree-strata readings. H2, tested only if H1 holds: it also loses macro and micro AUPRC when retrained on a
+  rewired graph.
+- Test: one-sided 0.025 per model, paired bootstrap over lockbox perturbations, macro and micro differences of at
+  least 0.041 and 0.028 (the projected 95 percent half-widths). The 0.05 floor and Holm's procedure of the first
+  version are withdrawn (rows of 8 October below).
+- Pre-registered failure criterion (docs/preregistration.md): if no model beats the baselines, the architecture is
   abandoned before the ablations run.
-- Primary endpoint: macro AUPRC difference of at least 0.05 with a 95 percent paired-bootstrap interval excluding
-  zero.
 - Slice result: no trained configuration beats the random walk (finding 5). The slice is a pilot and does not
   trigger the criterion; the criterion applies to the full-graph test (amendment of 7 October in
   docs/preregistration.md).
@@ -159,8 +163,8 @@ Superseded numbers to avoid:
 | 2026-10-07 | Micro AUPRC reported beside macro AUPRC in every reading, and required for confirmation together with it | user's decision: symptoms below five positives in a test set still count |
 | 2026-10-07 | Full-graph runs group each drug with the genes it targets (disease_cluster_and_targets) | a drug and its target gene's loss of function sat in different folds for 69 of 73 drugs (docs/drug_target_leakage.md) |
 | 2026-10-08 | Flux sampling dropped from the confirmation; the confirmatory family is message passing and linear response, each with the noisy-OR and sigmoid heads | user's rule if flux sampling is not viable: 14 percent of kept pairs reachable by a Human-GEM knockout, about 0.9 core-hours per knockout, no brain medium |
-| 2026-10-08 | Lockbox of 317 perturbations (20 percent of leakage groups, configs/lockbox_v1.json) scored once after every pilot | one untouched test; a 20 percent hold-out gives 95 percent half-widths near 0.041 macro and 0.028 micro AUPRC |
-| 2026-10-08 | Confirmation needs macro, micro, within-degree-strata and permutation readings above zero (intersection-union) and macro and micro differences of 0.05; Holm over eight hypotheses; the rewiring reading is the second hypothesis | user: degree control, rewiring control, both metrics required; docs/preregistration.md |
+| 2026-10-08 | Lockbox of 317 perturbations (whole leakage groups drawn until each stratum reaches 20 percent of its perturbations, configs/lockbox_v1.json) scored once after every pilot | one untouched test; a 20 percent hold-out gives 95 percent half-widths near 0.041 macro and 0.028 micro AUPRC |
+| 2026-10-08 | Superseded the same day by the two rows on the permutation readings and on testing each model on its own: confirmation needs macro, micro, within-degree-strata and permutation readings above zero (intersection-union) and macro and micro differences of 0.05; Holm over eight hypotheses; the rewiring reading is the second hypothesis | user: degree control, rewiring control, both metrics required; docs/preregistration.md |
 | 2026-10-08 | Both encoders multiply only the stacked adjacency rows that hold an edge | 8.6 and 2.7 times faster training steps on the full graph, identical output |
 | 2026-10-08 | The permutation readings leave H1 and are reported as secondary readings | user's decision; the difference in differences subtracts a second noisy difference (about 1.4 times the standard error if the two are nearly uncorrelated) |
 | 2026-10-08 | The node descriptors stay in both encoders; the drop branch of the descriptor rule is withdrawn, and a pre-stated rule picks how they enter (plain, seed_masked or zero_init_slow) from graph reliance and AUPRC on the slice | user: "I really don't want to drop them"; with the brain-expression descriptors the linear-response encoder loses 0.001 macro AUPRC on a test-time rewired graph against 0.026 without them (docs/preregistration.md, amendment on how the node descriptors enter) |
@@ -170,6 +174,7 @@ Superseded numbers to avoid:
 | 2026-10-08 | Pared graphs are tested only if the development pilots do not beat the development baselines | user's decision; after the lockbox a pared graph is exploratory |
 | 2026-10-08 | The confirmatory configurations keep leakage groups larger than half the expected validation set in training (--keep-large-groups-in-training); the stopping metric stays the validation loss | defect: one development group of 232 perturbations (27 percent of the positives, 63 drugs) would have been every lockbox run's whole validation set and never trained on; with the flag 1,080 training and 142 validation perturbations, 14.5 to 16.1 percent of the positives in validation; development fold 0 (the pilots) is unchanged. Validation macro AUPRC was not adopted: the stopped-at-epoch-0 pilot scores 0.142 / 0.233 at its last state against 0.131 / 0.257, the paired interval between two states is [-0.052, +0.047], and validation scores 12 symptoms against the test's 18 |
 | 2026-10-08 | The confirmatory runs are refitted after early stopping on the training and validation perturbations together for best epoch + 1 epochs (--refit-on-validation), and only refitted runs are scored | user's objection: the baselines fit on all 1,222 development perturbations and the models on 1,080, which biases the comparison against the models and makes a null result partly a cost of the held-out data; now both fit on the same rows (Goodfellow, Bengio and Courville 2016, section 7.8, algorithm 7.2); same epochs, not same steps |
+| 2026-10-08 | Code review of the study (user's request): defects fixed without changing the test; six questions left to the user; input limitations disclosed | fixed: TransE unseeded; popularity counted set-aside pairs as negatives; read_lockbox did not check grouping and evidence; pathway hold-outs trained on group partners of held-out genes and counted set-aside positives (6 of 21 subsystems qualify on kept positives); resumed runs differed from uninterrupted ones (generators not saved, mid-epoch checkpoints retrained batches); the scorer accepted NaN predictions; per-symptom AUPRC without a positive scored 0; the random walk's rewired graph was denser than the real one. Open: loss in log space (3.7 percent of message-passing sigmoid test probabilities below the 1e-6 clamp), symmetric rewiring of binds for H2, reaction descriptors derived from the real wiring in rewired runs, a group bootstrap over lockbox leakage groups (on development pseudo-lockboxes its half-widths are 1.2 times the scorer's macro and 1.3 to 1.8 times its micro), the lockbox's drug share (45 percent of drugs, not 20, because the draw's target counted cluster:ABCA3), a validation set that is the same in every seed. Disclosed: the Orphanet entries of 20 or more genes that link no cluster, three development drugs with a zero linear-response input, drug seeds placed on graph_full, gain-of-function genes encoded as loss of function, grade C pairs scored as negatives (docs/preregistration.md, amendment of 8 October from the code review) |
 
 AI assistance: code, data processing, reviews and drafts in this repository were produced with Claude Code; commits
 carry a Co-Authored-By line.

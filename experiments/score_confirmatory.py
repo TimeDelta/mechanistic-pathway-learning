@@ -3,7 +3,9 @@
 Inputs, all trained on the development set and scored on configs/lockbox_v1.json:
 - the four confirmatory models (run_main_model_batch.py --lockbox ... --score-lockbox), each with five seeds and, per
   seed, a run on the real labels (lockbox_seed<k>), one on labels permuted within degree strata (lockbox_seed<k>_permuted)
-  and one on a degree-preserving rewiring of the graph (lockbox_seed<k>_rewired);
+  and one on a degree-preserving rewiring of the graph (lockbox_seed<k>_rewired); a run counts only if it was refitted
+  after early stopping with the large leakage groups in training (amendments of 8 October 2026) and its predictions are
+  finite, one row per lockbox perturbation and one column per symptom;
 - the baselines of run_baselines.py --lockbox ... --score-lockbox --seed <k> for the same seeds (the seed sets the label
   permutation, which the trainer and the baselines draw identically, and the TransE initialisation).
 
@@ -26,8 +28,9 @@ labelling), one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). Two hypo
 The two permutation readings are secondary (the user's decision of 8 October 2026): reported with their intervals and
 p-values, outside both hypotheses.
 Each model is tested on its own at one-sided --alpha (the user's decision of 8 October 2026: every model is a
-candidate with the full level): H1 first and, only if H1 is confirmed, H2 at the same level. A model with any missing
-run is not confirmed. No correction is made across the models, so the chance that at least one of four models is
+candidate with the full level): H1 first and, only if H1 is confirmed, H2 at the same level. With a missing or refused
+run the scorer stops before writing anything, so the run can be resumed; with --allow-incomplete it scores and that
+model is not confirmed. No correction is made across the models, so the chance that at least one of four models is
 confirmed by luck is above --alpha (at most 1 - (1 - alpha)^4, about 0.096 at 0.025, if the four were independent; less,
 since they share the data and the baselines); the output states this beside the results.
 

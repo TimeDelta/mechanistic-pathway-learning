@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import warnings
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -272,9 +273,15 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
                 continue
             label_mask[position, column] = False
             masked += 1
+        selected_pairs = set(zip(selection.perturbation_id, selection.symptom))
+        positive_rows, positive_columns = np.nonzero(outcomes)
+        without_a_row = sum((perturbation_ids[r], symptoms[c]) not in selected_pairs for r, c in zip(positive_rows.tolist(), positive_columns.tolist()))
+        if without_a_row:  # kept, as before, but the selection did not judge them
+            warnings.warn(f"{without_a_row} positive pairs have no row in {label_selection} and are kept unjudged")
         label_selection_summary = {"path": str(label_selection), "sha256": hashlib.sha256(Path(label_selection).read_bytes()).hexdigest(),
                                    "positive_pairs": int(outcomes.sum()), "masked_pairs": masked,
-                                   "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum())}
+                                   "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum()),
+                                   "positive_pairs_without_a_selection_row": int(without_a_row)}
     group_ids = [groups[p] for p in perturbation_ids]
     if group_by == "disease_cluster_and_targets":
         group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [seeds[p] for p in perturbation_ids], node_ids)
