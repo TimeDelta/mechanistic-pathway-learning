@@ -174,7 +174,29 @@ class RelationalMessagePassingEncoder(nn.Module):
             stacked = torch.sparse_coo_tensor(torch.zeros((2, 0), dtype=torch.long, device=device), torch.zeros(0, device=device), (0, self.num_graph_nodes))
         present_index = torch.tensor(present_relations, dtype=torch.long, device=device)
         self._stacked_adjacency_cache = (cache_key, stacked, present_index)
+        self._compressed_adjacency_cache = None
         return stacked, present_index
+
+    def compressed_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor, list[tuple[int, int, int]]]:
+        """The stacked rows that hold an edge, as their own sparse matrix [K, N], with the target node of each row and,
+        per present relation, (relation index, first row, end row): rows stay in stack order, so a relation's rows are
+        contiguous. On graph_full_neuronal K is 54,982 of the 700,435 stacked rows, so the product and the per-relation
+        transform touch about a thirteenth of the memory."""
+        stacked, present_index = self.stacked_relation_adjacency(relation_adjacencies)
+        cached = getattr(self, "_compressed_adjacency_cache", None)
+        if cached is not None:
+            return cached
+        indices = stacked.indices()
+        nonempty_rows, compressed_row = torch.unique(indices[0], return_inverse=True)
+        compressed = torch.sparse_coo_tensor(torch.stack([compressed_row, indices[1]]), stacked.values(), (len(nonempty_rows), self.num_graph_nodes)).coalesce()
+        stack_position = torch.div(nonempty_rows, self.num_graph_nodes, rounding_mode="floor")
+        segments = []
+        for position, relation_index in enumerate(present_index.tolist()):
+            rows_of_relation = torch.nonzero(stack_position == position).flatten()
+            if len(rows_of_relation):
+                segments.append((relation_index, int(rows_of_relation[0]), int(rows_of_relation[-1]) + 1))
+        self._compressed_adjacency_cache = (compressed, nonempty_rows % self.num_graph_nodes, segments)
+        return self._compressed_adjacency_cache
 
     def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None]) -> Tensor:
         """L rounds of typed mean aggregation; returns the field as [batch_size, num_graph_nodes, node_state_dim].
@@ -182,23 +204,23 @@ class RelationalMessagePassingEncoder(nn.Module):
         Per layer the new state is relu(X W_self + sum_r A_r X W_r + b). The states are kept node-major,
         [num_graph_nodes, batch_size, node_state_dim], so the sparse product reads them as a
         [num_graph_nodes, batch_size * node_state_dim] view without the permute-and-copy that a batch-major
-        layout needs; all relations are aggregated by one sparse product with the stacked adjacency and
-        transformed by one batched matrix product, using A_r (X W_r) = (A_r X) W_r. On the metabolic slice
-        this halves the memory traffic of the batch-major, per-relation loop it replaces (profiling in
-        docs/experiment_design.md section 8); the output is identical up to floating point rounding.
+        layout needs; all relations are aggregated by one sparse product with the stacked adjacency, using
+        A_r (X W_r) = (A_r X) W_r. On the metabolic slice this halved the memory traffic of the batch-major,
+        per-relation loop it replaced (profiling in docs/experiment_design.md section 8). Since 8 October 2026 the
+        product keeps only the stacked rows that hold an edge (compressed_relation_adjacency), each relation's rows are
+        transformed by its W_r, and the rows are added into their target nodes; on graph_full_neuronal that is 54,982
+        of 700,435 rows. The output is identical to the full stacked product up to floating point rounding.
         """
         batch_size = node_state_field.shape[0]
-        stacked_adjacency, present_relations = self.stacked_relation_adjacency(relation_adjacencies)
-        num_present = int(present_relations.numel())
+        compressed_adjacency, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
         node_major_state = node_state_field.permute(1, 0, 2).contiguous()  # [N, B, D]
         for layer_index in range(self.num_message_passing_layers):
             self_messages = node_major_state @ self.self_weight[layer_index]
-            if num_present:
+            if segments:
                 flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
-                aggregated = torch.sparse.mm(stacked_adjacency.to(flattened.device), flattened)  # [R_present * N, B * D]
-                aggregated = aggregated.view(num_present, self.num_graph_nodes * batch_size, self.node_state_dim)
-                relation_messages = torch.bmm(aggregated, self.relation_weight[layer_index, present_relations]).sum(dim=0)
-                relation_messages = relation_messages.view(self.num_graph_nodes, batch_size, self.node_state_dim)
+                aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
+                transformed = torch.cat([aggregated[start:end] @ self.relation_weight[layer_index, relation_index] for relation_index, start, end in segments], dim=0)
+                relation_messages = torch.zeros_like(self_messages).index_add(0, row_target.to(flattened.device), transformed)
                 pre_activation = self_messages + relation_messages + self.layer_bias[layer_index]
             else:
                 pre_activation = self_messages + self.layer_bias[layer_index]

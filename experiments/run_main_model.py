@@ -60,6 +60,7 @@ from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseli
 from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
+from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CROSS_RELATION_AGGREGATORS,
@@ -149,6 +150,27 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
     return np.concatenate([structural, descriptors.loc[data.node_ids].to_numpy(dtype=np.float32)], axis=1)
 
 
+def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
+    """Per-node class weights [N, K] of --cell-class-weights (experiments/build_cell_class_weights.py), and, with
+    --extracellular-coupling, the extracellular metabolites as one pool shared by every class but the all-cells one
+    (that class stays the propagation without cell classes)."""
+    if not getattr(arguments, "cell_class_weights", None):
+        if getattr(arguments, "extracellular_coupling", False):
+            raise ValueError("--extracellular-coupling needs --cell-class-weights")
+        return None, None, None
+    table = pd.read_parquet(arguments.cell_class_weights)
+    missing = set(data.node_ids) - set(table.index)
+    if missing:
+        raise ValueError(f"{len(missing)} graph nodes have no row in {arguments.cell_class_weights}")
+    weights = torch.as_tensor(table.loc[data.node_ids].to_numpy(dtype=np.float32))
+    if not getattr(arguments, "extracellular_coupling", False):
+        return weights, None, None
+    compartments = data.node_compartment if data.node_compartment is not None else np.full(len(data.node_ids), "")
+    pool_nodes = torch.as_tensor((data.node_types == "metabolite") & (np.asarray(compartments, dtype=object) == EXTRACELLULAR_COMPARTMENT))
+    shared_classes = torch.as_tensor([column != ALL_CELLS_CLASS for column in table.columns])
+    return weights, pool_nodes, shared_classes
+
+
 def file_sha256(path) -> str | None:
     if not path:
         return None
@@ -167,6 +189,10 @@ def build_models(data, arguments, device):
     elif arguments.encoder == "linear_response":
         if arguments.field != "difference":
             raise ValueError("the linear-response encoder is linear in its input, so its field is a difference field; use --field difference")
+        cell_class_weights, pool_nodes, shared_pool_classes = cell_class_inputs(data, arguments)
+        if cell_class_weights is not None:
+            print(f"cell-class channels: {cell_class_weights.shape[1]} classes x {arguments.channels_per_cell_class} channels"
+                  + (f", {int(pool_nodes.sum())} extracellular metabolites pooled across {int(shared_pool_classes.sum())} classes" if pool_nodes is not None else ""))
         cofactor_edges = None
         if arguments.cofactor_relations:
             cofactor_edges = torch.as_tensor(cofactor_edge_mask(data.edge_source, data.edge_target, data.edge_relation, data.relation_types,
@@ -182,12 +208,16 @@ def build_models(data, arguments, device):
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
-                                        edge_signs=arguments.edge_signs, relation_gains=arguments.relation_gains).to(device)
+                                        edge_signs=arguments.edge_signs, relation_gains=arguments.relation_gains,
+                                        cell_class_weights=cell_class_weights, channels_per_cell_class=arguments.channels_per_cell_class,
+                                        extracellular_pool_nodes=pool_nodes, shared_pool_classes=shared_pool_classes).to(device)
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
               + {"all_positive": ", every edge sign +1", "permuted": ", edge signs permuted among edges"}.get(arguments.edge_signs, "")
               + (", one gain shared by every relation" if arguments.relation_gains == "shared" else ""))
+    elif getattr(arguments, "cell_class_weights", None):
+        raise ValueError("--cell-class-weights is defined for the linear-response encoder only (other encoders read cell-class expression through --node-descriptors)")
     else:
         if arguments.node_descriptors and arguments.node_features != "typed":
             raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
@@ -306,6 +336,41 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
     return train_pool, validation, all_indices[test_mask], split_name
 
 
+def time_training_steps(data, encoder, head, optimizer, train_indices, validation_indices, adjacencies, label_mask, arguments, device) -> None:
+    """Seconds per training step (forward, backward, optimizer step) and per prediction batch; nothing is scored."""
+    outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
+    weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
+    if label_mask is not None:
+        weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)
+    order = np.random.default_rng(arguments.seed).permutation(train_indices)
+    step_seconds = []
+    for step in range(arguments.timing_batches):
+        batch = order[(step * arguments.batch_size) % len(order):][: arguments.batch_size]
+        started = time.time()
+        node_index, sign_and_magnitude = pad_perturbations(data, batch)
+        field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
+        output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
+        loss = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        step_seconds.append(time.time() - started)
+    started = time.time()
+    with torch.no_grad():
+        encoder.eval()
+        head.eval()
+        node_index, sign_and_magnitude = pad_perturbations(data, order[: arguments.batch_size])
+        head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field), perturbation_covariate=covariate_of(data, order[: arguments.batch_size], arguments, device))
+    prediction_seconds = time.time() - started
+    steady = float(np.median(step_seconds[1:] if len(step_seconds) > 1 else step_seconds))
+    steps_per_epoch = int(np.ceil(len(train_indices) / arguments.batch_size))
+    prediction_batches = int(np.ceil(len(validation_indices) / arguments.batch_size))
+    print(json.dumps({"timing_batches": arguments.timing_batches, "first_step_seconds": round(step_seconds[0], 2), "median_step_seconds": round(steady, 2),
+                      "prediction_batch_seconds": round(prediction_seconds, 2), "train_perturbations": int(len(train_indices)), "steps_per_epoch": steps_per_epoch,
+                      "epoch_minutes_estimate": round((steady * steps_per_epoch + prediction_seconds * prediction_batches) / 60.0, 1),
+                      "torch_threads": torch.get_num_threads()}))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
@@ -348,6 +413,11 @@ def main() -> None:
                         help="label table of experiments/check_laboratory_label_coverage.py --labels-output")
     parser.add_argument("--node-descriptors", type=Path, default=None,
                         help="parquet of fixed node descriptors indexed by node_id (experiments/build_node_descriptors.py), appended to the structural node features")
+    parser.add_argument("--cell-class-weights", type=Path, default=None,
+                        help="linear-response encoder: parquet of per-node cell-class weights (experiments/build_cell_class_weights.py); the response then propagates once per class")
+    parser.add_argument("--channels-per-cell-class", type=int, default=1, help="linear-response encoder with --cell-class-weights: channels (time scales) per class")
+    parser.add_argument("--extracellular-coupling", action="store_true",
+                        help="linear-response encoder with --cell-class-weights: extracellular metabolites are one pool shared by every class but all_cells")
     parser.add_argument("--degree-offset", action="store_true",
                         help="give the head the standardised log degree of each perturbation: a degree-dependent leak (noisy-OR) or logit offset (sigmoid), so the field only has to explain what degree does not")
     parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
@@ -397,6 +467,8 @@ def main() -> None:
     parser.add_argument("--checkpoint-every-minutes", type=float, default=20.0)
     parser.add_argument("--time-budget-seconds", type=float, default=0.0, help="stop training after this many seconds (0 = no limit)")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--timing-batches", type=int, default=0,
+                        help="run this many training steps on the training perturbations, print seconds per step and per epoch, and exit: no split directory, validation or test score")
     parser.add_argument("--metabolic-layer-only", action="store_true")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     arguments = parser.parse_args()
@@ -477,6 +549,9 @@ def main() -> None:
         print(f"laboratory labels: {laboratory_index.count(train_indices)} on training perturbations, {laboratory_index.count(test_indices)} held out")
     optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments, list(laboratory_readout.parameters()) if laboratory_readout is not None else ()),
                                   lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
+    if arguments.timing_batches > 0:
+        time_training_steps(data, encoder, head, optimizer, train_indices, validation_indices, adjacencies, label_mask, arguments, device)
+        return
     split_directory = arguments.run_dir / split_name
     split_signature = {"test_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in test_indices).encode()).hexdigest(),
                        "train_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in train_indices).encode()).hexdigest(),
@@ -657,6 +732,7 @@ def main() -> None:
         "time_split": time_split_results,
         "code_provenance": state["code_provenance"],
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
+        "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
         "laboratory_labels": laboratory_results,
         "lockbox": lockbox_summary, "rewiring": rewiring_summary,

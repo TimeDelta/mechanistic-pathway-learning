@@ -18,6 +18,11 @@ from pathlib import Path
 FULL_GRAPH_ARGUMENTS = ["--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full_v2",
                         "--label-selection", "data/processed/label_selection/better_v1_full_v2.parquet"]
 FULL_GRAPH_NODE_PROPERTIES = "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"
+FULL_GRAPH_CELL_CLASS_WEIGHTS = "data/processed/cell_class_weights/full_neuronal_cell_class_weights.parquet"
+NOISY_OR_SETTINGS = ["--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
+                     "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"]
+MESSAGE_PASSING_ENCODER = ["--node-features", "typed"]
+LINEAR_RESPONSE_ENCODER = ["--encoder", "linear_response", "--cofactor-relations", "--cell-class-weights", FULL_GRAPH_CELL_CLASS_WEIGHTS, "--extracellular-coupling"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
@@ -117,6 +122,19 @@ CONFIGURATIONS: dict[str, list[str]] = {
                                            "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
     "full_b3_typed_nodes_properties": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
                                        *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+    # the confirmatory family (docs/preregistration.md, specification of 8 October 2026): two encoders by two heads, every one
+    # on graph_full_neuronal with the node descriptors (protein, metabolite and reaction properties, brain region and
+    # cell-class expression) and the better_v1 selection of the expanded labels; the linear-response encoder also
+    # propagates once per cell class (the HPA classes, the dopaminergic class and all cells) with the extracellular
+    # metabolites shared between classes. Run with --group-by disease_cluster_and_targets --lockbox configs/lockbox_v1.json.
+    "confirmatory_message_passing_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS],
+    "confirmatory_message_passing_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+    "confirmatory_linear_response_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS],
+    "confirmatory_linear_response_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],

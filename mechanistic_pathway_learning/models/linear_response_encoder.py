@@ -350,6 +350,15 @@ class LinearResponseEncoder(nn.Module):
                                                                           divide_by_relations_feeding=not uses_mixture, edge_signs=edge_signs)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
+        # the stacked rows that hold an edge, as their own matrix [K, N] with the relation and target of each row: with the
+        # mean across relations the response sums the rows' messages times their relation's gain into their targets, so
+        # the product needs only these K rows (54,982 of 700,435 on graph_full_neuronal) instead of all R * N
+        coalesced = stacked_adjacency.coalesce()
+        nonempty_rows, compressed_row = torch.unique(coalesced.indices()[0], return_inverse=True)
+        self.register_buffer("compressed_adjacency", torch.sparse_coo_tensor(torch.stack([compressed_row, coalesced.indices()[1]]), coalesced.values(),
+                                                                             (len(nonempty_rows), num_graph_nodes)).coalesce(), persistent=False)
+        self.register_buffer("row_relation_index", torch.div(nonempty_rows, num_graph_nodes, rounding_mode="floor"), persistent=False)
+        self.register_buffer("row_target_index", nonempty_rows % num_graph_nodes, persistent=False)
         self.register_buffer("node_features", node_features.to(torch.float32), persistent=False)
         self.register_buffer("relation_is_unsigned", torch.tensor([name in UNSIGNED_RELATIONS and edge_signs == "graph" for name in relation_names]),
                              persistent=False)
@@ -514,11 +523,15 @@ class LinearResponseEncoder(nn.Module):
         if node_weight is not None:
             node_major_input = node_major_input * node_weight  # a class that does not express the perturbed node does not feel it there
         state = node_major_input  # h(0) = u, so after k steps the response reaches k edges from the perturbed nodes
+        row_gain = gain[self.row_relation_index][:, None, :] if self.cross_relation_mixture is None else None  # [K, 1, C]
         for _ in range(self.num_propagation_steps if num_steps is None else num_steps):
-            aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
-            per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
-            relation_messages = (per_relation.sum(dim=0) if self.cross_relation_mixture is None
-                                 else self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index))
+            if row_gain is not None:  # the sum over relations of gain times the relation's messages, over the rows that hold an edge
+                row_messages = torch.sparse.mm(self.compressed_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
+                relation_messages = torch.zeros_like(state).index_add(0, self.row_target_index, row_messages.view(-1, batch_size, self.propagation_channels) * row_gain)
+            else:
+                aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
+                per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
+                relation_messages = self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index)
             if node_weight is not None:  # every mixture statistic is positively homogeneous, so scaling after it equals scaling the messages
                 relation_messages = relation_messages * node_weight
             state = (1.0 - self.damping) * state + self.damping * (relation_messages + node_major_input)

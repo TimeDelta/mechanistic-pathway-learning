@@ -592,3 +592,43 @@ def test_cell_class_weights_outside_the_unit_interval_and_a_pool_without_classes
         build_cell_class_encoder(torch.full((6, 2), 1.5))
     with pytest.raises(ValueError):
         build_cell_class_encoder(torch.ones(6, 2), shared_pool_classes=torch.tensor([True, False]), extracellular_pool_nodes=torch.zeros(6, dtype=torch.bool))
+
+
+def test_edge_wise_propagation_equals_the_stacked_product_with_gradients():
+    """The mean-across-relations path sums over edges (edge_*_index buffers); it must equal the stacked sparse product,
+    with and without cell-class channels and the extracellular pool, in value and in the gradients of gains and inputs."""
+    torch.manual_seed(3)
+    num_nodes, relations = 40, ["activates", "inhibits", "substrate_of", "product_of", "binds"]
+    source, target = torch.randint(0, num_nodes, (300,)), torch.randint(0, num_nodes, (300,))
+    relation = torch.randint(0, len(relations), (300,))
+    sign = torch.where(relation == 1, -1.0, 1.0)
+    for cell_classes in (None, torch.rand(num_nodes, 3)):
+        pool = None if cell_classes is None else torch.rand(num_nodes) < 0.2
+        encoder = LinearResponseEncoder(num_nodes, relations, source, target, relation, sign, torch.randn(num_nodes, 4), 8,
+                                        cell_class_weights=cell_classes, extracellular_pool_nodes=pool, channels_per_cell_class=2)
+        node_index, sign_and_magnitude = torch.randint(0, num_nodes, (4, 2)), torch.randn(4, 2, 2)
+
+        def stacked_product_response():
+            sustained = encoder.sustained_input(node_index, sign_and_magnitude)
+            gain = encoder.relation_gain()
+            node_weight = None if encoder.channel_node_weight is None else encoder.channel_node_weight[:, None, :]
+            node_major_input = sustained.permute(1, 0, 2).contiguous() * (1.0 if node_weight is None else node_weight)
+            state = node_major_input
+            for _ in range(encoder.num_propagation_steps):
+                aggregated = torch.sparse.mm(encoder.stacked_adjacency, state.reshape(num_nodes, -1))
+                messages = (aggregated.view(gain.shape[0], num_nodes, 4, encoder.propagation_channels) * gain[:, None, None, :]).sum(dim=0)
+                messages = messages if node_weight is None else messages * node_weight
+                state = (1.0 - encoder.damping) * state + encoder.damping * (messages + node_major_input)
+                if encoder.extracellular_pool_nodes is not None:
+                    state = encoder.share_extracellular_pool(state)
+            return state.permute(1, 0, 2)
+
+        parameters = [parameter for parameter in encoder.parameters() if parameter.requires_grad]
+        edge_wise = encoder.response(node_index, sign_and_magnitude)
+        edge_wise_gradients = torch.autograd.grad((edge_wise ** 2).sum(), parameters, allow_unused=True)
+        reference = stacked_product_response()
+        reference_gradients = torch.autograd.grad((reference ** 2).sum(), parameters, allow_unused=True)
+        assert torch.allclose(edge_wise, reference, atol=1e-6, rtol=1e-5)
+        for edge_wise_gradient, reference_gradient in zip(edge_wise_gradients, reference_gradients):
+            if reference_gradient is not None:
+                assert torch.allclose(edge_wise_gradient, reference_gradient, atol=1e-5, rtol=1e-4)

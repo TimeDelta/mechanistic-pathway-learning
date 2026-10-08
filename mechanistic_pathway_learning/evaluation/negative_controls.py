@@ -62,9 +62,8 @@ def degree_preserving_rewiring(edge_index: np.ndarray, edge_relation_type: np.nd
 def fast_degree_preserving_rewiring(edge_index: np.ndarray, edge_relation_type: np.ndarray, num_swaps_per_edge: int = 10, random_seed: int = 0,
                                     draws_per_batch: int = 1_000_000) -> np.ndarray:
     """Degree-preserving rewiring within each relation at O(1) per swap, for the full graph. Two edges of one relation
-    exchange targets unless that makes a self-loop or repeats an edge already present, the Maslov and Sneppen rule
-    (Science 2002, doi:10.1126/science.1065103: "we do not allow ... multiple edges"); degree_preserving_rewiring
-    allows the repeat. Edge pairs are drawn as integer positions in batches; num_swaps_per_edge counts attempts,
+    exchange targets unless that makes a self-loop or repeats an edge already present, as in the randomisation of
+    Maslov and Sneppen (Science 2002, doi:10.1126/science.1065103); degree_preserving_rewiring allows the repeat. Edge pairs are drawn as integer positions in batches; num_swaps_per_edge counts attempts,
     rejected ones and a drawn pair of one edge with itself included. The random stream differs from
     degree_preserving_rewiring's, so one seed gives different graphs."""
     generator = np.random.default_rng(random_seed)
