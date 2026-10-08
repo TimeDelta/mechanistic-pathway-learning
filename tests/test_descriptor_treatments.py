@@ -135,6 +135,38 @@ def test_descriptor_map_gets_its_own_learning_rate() -> None:
     assert len(plain_groups) == 1
 
 
+
+def test_descriptor_map_and_noisy_or_time_scales_get_one_group_each() -> None:
+    """The confirmatory noisy-OR configurations set link, leak and gate rates; under zero_init_slow every parameter must
+    sit in exactly one optimizer group, the descriptor map at its own rate."""
+    from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
+    encoder = linear_response_encoder("zero_init_slow")
+    head = NoisyOrPathwayModuleHead(NUM_NODES, 4, 3, 2)
+    arguments = Namespace(link_learning_rate=0.02, leak_learning_rate=2e-4, module_bias_learning_rate=0.0, gate_learning_rate=0.05, descriptor_learning_rate=2e-4)
+    groups = optimizer_parameter_groups(encoder, head, arguments)
+    grouped_ids = [id(parameter) for group in groups for parameter in group["params"]]
+    every_parameter = list(encoder.parameters()) + list(head.parameters())
+    assert sorted(grouped_ids) == sorted(id(parameter) for parameter in every_parameter)
+    (descriptor_weight,) = encoder.descriptor_parameters()
+    (descriptor_group,) = [group for group in groups if any(parameter is descriptor_weight for parameter in group["params"])]
+    assert descriptor_group["lr"] == 2e-4 and len(descriptor_group["params"]) == 1
+    assert {group.get("lr") for group in groups} >= {0.02, 2e-4, 0.05}
+
+
+def test_seed_masked_message_passing_feeds_a_noisy_or_head_and_trains() -> None:
+    """The slice arms ran the sigmoid head only; the confirmatory noisy-OR configurations would put the seed-masked
+    field of a batch of perturbations into the noisy-OR head."""
+    from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
+    encoder, adjacencies = message_passing_encoder("seed_masked")
+    head = NoisyOrPathwayModuleHead(NUM_NODES, 8, 3, 2, initial_readout_bias=-3.0)
+    node_index = torch.tensor([[SEED_NODE, -1], [3, -1]])
+    sign_and_magnitude = torch.tensor([[[-1.0, 1.0], [0.0, 0.0]], [[-1.0, 1.0], [0.0, 0.0]]])
+    field = encoder.perturbation_difference_field(node_index, sign_and_magnitude, adjacencies)
+    output = head(field)
+    assert output.symptom_probability.shape == (2, 2) and torch.isfinite(output.symptom_probability).all()
+    output.symptom_probability.sum().backward()
+    assert encoder.feature_projection.weight.grad is not None and torch.isfinite(encoder.feature_projection.weight.grad).all()
+
 def test_descriptor_blocks_cover_every_column_once() -> None:
     columns = ["metabolite_logp", "reaction_ec_class_1", "reaction_has_ec", "reaction_brain_region_pons", "protein_rrr_1", "gene_brain_has_expression"]
     assert descriptor_blocks(columns) == {"metabolite": ["metabolite_logp"], "reaction_ec": ["reaction_ec_class_1", "reaction_has_ec"],
