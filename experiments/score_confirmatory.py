@@ -1,0 +1,312 @@
+"""Score the lockbox once: the confirmatory test of docs/preregistration.md (specification of 8 October 2026).
+
+Inputs, all trained on the development set and scored on configs/lockbox_v1.json:
+- the four confirmatory models (run_main_model_batch.py --lockbox ... --score-lockbox), each with five seeds and, per
+  seed, a run on the real labels (lockbox_seed<k>), one on labels permuted within degree strata (lockbox_seed<k>_permuted)
+  and one on a degree-preserving rewiring of the graph (lockbox_seed<k>_rewired);
+- the baselines of run_baselines.py --lockbox ... --score-lockbox --seed <k> for the same seeds (the seed sets the label
+  permutation, which the trainer and the baselines draw identically, and the TransE initialisation).
+
+Readings, each the seed mean of a model's score minus the score of the best baseline on the same lockbox rows:
+- macro AUPRC over the symptoms with five or more kept positives in the lockbox (fixed in the lockbox file);
+- micro AUPRC over every scored symptom (five or more kept positives in the whole data);
+- both again after ranking every score inside degree strata (degree_strata over all perturbations), which gives no
+  credit for ordering perturbations by degree;
+- the permuted-label difference in differences: (model minus baseline on the real labels) minus (model minus the same
+  baseline, both trained and scored on the permuted labels);
+- the rewiring difference: the model on the real graph minus the same model on its rewired graph (real labels).
+The best baseline is chosen per reading by its seed-mean score on the lockbox, without reference to any model.
+
+Inference: a paired bootstrap over lockbox perturbations (the same resampled rows for every model, seed, baseline and
+labelling), one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). Two hypotheses per model:
+- H1 (prediction): the macro, micro, both within-strata and both permutation readings exceed zero, and the macro and
+  micro differences are at least --minimum-difference. Intersection-union test: p(H1) is the largest of the six p-values.
+- H2 (graph content): H1 and both rewiring readings exceed zero; p(H2) = max(p(H1), the two rewiring p-values).
+Holm's step-down procedure runs over the eight hypotheses at one-sided --alpha. A model with any missing run is not
+confirmatory: its hypotheses keep p = 1, so the family size does not change.
+
+The lockbox is scored once. A SCORED marker records when; a second scoring needs --rescore and is listed in the output.
+
+Usage:
+  python experiments/score_confirmatory.py
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+
+from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox
+from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation
+from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import degree_strata, rank_normalise_within_groups
+
+CONFIRMATORY_MODELS = ("confirmatory_message_passing_noisy_or", "confirmatory_message_passing_sigmoid",
+                       "confirmatory_linear_response_noisy_or", "confirmatory_linear_response_sigmoid")
+BASELINES = ("popularity", "degree_popularity", "random_walk_with_restart", "knowledge_graph_embedding_transe")
+VARIANT_SUFFIXES = {"real": "", "permuted": "_permuted", "rewired": "_rewired"}
+MINIMUM_POSITIVES_TO_SCORE = 5
+H1_READINGS = ("macro", "micro", "macro_within_degree_strata", "micro_within_degree_strata", "macro_permutation", "micro_permutation")
+H2_EXTRA_READINGS = ("macro_rewiring", "micro_rewiring")
+
+
+def average_precision(scores: np.ndarray, labels: np.ndarray) -> float:
+    """sklearn.metrics.average_precision_score for one ranking (thresholds at the distinct scores), without its overhead."""
+    if labels.size == 0:
+        return float("nan")
+    order = np.argsort(-scores, kind="mergesort")
+    sorted_scores, sorted_labels = scores[order], labels[order]
+    threshold_positions = np.r_[np.flatnonzero(np.diff(sorted_scores)), sorted_labels.size - 1]
+    true_positives = np.cumsum(sorted_labels)[threshold_positions]
+    if true_positives[-1] == 0 or true_positives[-1] == sorted_labels.size:
+        return float("nan")
+    precision = true_positives / (threshold_positions + 1)
+    recall = true_positives / true_positives[-1]
+    return float(np.sum(np.diff(np.r_[0.0, recall]) * precision))
+
+
+def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray, columns: list[int]) -> float:
+    """Mean over columns of the AUPRC over labelled rows; a column with no positive or no negative in the rows is skipped."""
+    values = []
+    for column in columns:
+        labelled = mask[:, column]
+        value = average_precision(predictions[labelled, column], outcomes[labelled, column])
+        if not np.isnan(value):
+            values.append(value)
+    return float(np.mean(values)) if values else float("nan")
+
+
+def micro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray, columns: list[int]) -> float:
+    labelled = mask[:, columns]
+    return average_precision(predictions[:, columns][labelled], outcomes[:, columns][labelled])
+
+
+def holm_rejections(p_values: dict[str, float], alpha: float) -> dict[str, bool]:
+    """Holm step-down: sorted ascending, the i-th smallest (from 0) is rejected while p <= alpha / (m - i)."""
+    rejected = {name: False for name in p_values}
+    for position, (name, p_value) in enumerate(sorted(p_values.items(), key=lambda item: item[1])):
+        if p_value > alpha / (len(p_values) - position):
+            break
+        rejected[name] = True
+    return rejected
+
+
+def one_sided_p(resampled_differences: np.ndarray) -> float:
+    finite = resampled_differences[np.isfinite(resampled_differences)]
+    return float((1 + np.sum(finite <= 0)) / (finite.size + 1)) if finite.size else 1.0
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str) -> tuple[np.ndarray | None, str]:
+    """Lockbox predictions of one finished run, or None with the reason it cannot be used."""
+    if not (split_directory / "DONE").exists() or not (split_directory / "results.json").exists():
+        return None, "not finished"
+    results = json.loads((split_directory / "results.json").read_text())
+    if results.get("test_perturbation_ids") != lockbox_ids:
+        return None, "scored other perturbations than the lockbox"
+    if (results.get("lockbox") or {}).get("sha256") != lockbox_sha256:
+        return None, "trained against another lockbox file"
+    if results.get("label_selection_sha256") != selection_sha256:
+        return None, "trained on another label selection"
+    if bool(results.get("labels_permuted")) != (variant == "permuted") or (results.get("rewiring") is not None) != (variant == "rewired"):
+        return None, "its controls do not match the variant"
+    return np.load(split_directory / "test_predictions.npy"), "ok"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph_full_neuronal"))
+    parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence_full_v2"))
+    parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v1_full_v2.parquet"))
+    parser.add_argument("--group-by", default="disease_cluster_and_targets")
+    parser.add_argument("--lockbox", type=Path, default=Path("configs/lockbox_v1.json"))
+    parser.add_argument("--run-root", type=Path, default=Path("runs/full"), help="holds <model>_<group-by>_confirmatory for every model")
+    parser.add_argument("--models", nargs="*", default=list(CONFIRMATORY_MODELS))
+    parser.add_argument("--baseline-root", type=Path, default=Path("runs/full/lockbox_baselines"), help="holds seed<k> from run_baselines.py --score-lockbox --seed <k>")
+    parser.add_argument("--baselines", nargs="*", default=list(BASELINES))
+    parser.add_argument("--seeds", type=int, nargs="*", default=[0, 1, 2, 3, 4])
+    parser.add_argument("--num-bootstrap", type=int, default=4000)
+    parser.add_argument("--bootstrap-seed", type=int, default=20261008)
+    parser.add_argument("--alpha", type=float, default=0.025, help="one-sided family-wise level (a two-sided 95 percent interval excluding zero)")
+    parser.add_argument("--minimum-difference", type=float, default=0.05, help="smallest macro and micro AUPRC difference that counts")
+    parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
+    parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
+    parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
+    arguments = parser.parse_args()
+
+    marker = arguments.output_dir / "SCORED"
+    previous_scorings = json.loads(marker.read_text()) if marker.exists() else []
+    if previous_scorings and not arguments.rescore:
+        raise SystemExit(f"the lockbox was scored already ({previous_scorings}); pass --rescore to score it again, which the output will list")
+
+    label_selection = None if str(arguments.label_selection) in ("", "none") else arguments.label_selection  # none: the slice, for tests of this script
+    data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=label_selection)
+    in_lockbox = read_lockbox(arguments.lockbox, data)
+    lockbox = json.loads(arguments.lockbox.read_text())
+    lockbox_sha256, selection_sha256 = file_sha256(arguments.lockbox), (file_sha256(label_selection) if label_selection else None)
+    rows = np.flatnonzero(in_lockbox)
+    lockbox_ids = [data.perturbation_ids[i] for i in rows]
+    label_mask = data.label_mask if data.label_mask is not None else np.ones_like(data.outcomes, dtype=bool)
+    kept = data.outcomes * label_mask
+    scored_columns = [column for column in range(len(data.symptoms)) if kept[:, column].sum() >= MINIMUM_POSITIVES_TO_SCORE]
+    macro_columns = [data.symptoms.index(symptom) for symptom in lockbox["symptoms_in_the_macro_average"]]
+    recomputed = [column for column in range(len(data.symptoms)) if kept[rows, column].sum() >= MINIMUM_POSITIVES_TO_SCORE]
+    if sorted(macro_columns) != recomputed:
+        raise SystemExit("the lockbox file's macro symptoms differ from the counts in the data")
+    strata = degree_strata(data.perturbation_degrees)[rows]
+    outcomes, mask = data.outcomes[rows], label_mask[rows]
+
+    labellings = {"real": {seed: (outcomes, mask) for seed in arguments.seeds}, "permuted": {}}
+    for seed in arguments.seeds:
+        source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=seed, partition=in_lockbox)
+        baseline_source = arguments.baseline_root / f"seed{seed}" / "permutation_source_rows.npy"
+        if not baseline_source.exists() or not np.array_equal(np.load(baseline_source), source_row):
+            raise SystemExit(f"{baseline_source} is missing or holds another permutation than seed {seed} draws")
+        labellings["permuted"][seed] = (data.outcomes[source_row][rows], label_mask[source_row][rows])
+
+    baseline_predictions: dict[str, dict[str, dict[int, np.ndarray]]] = {"real": {}, "permuted": {}}
+    for name in arguments.baselines:
+        for labelling, infix in (("real", "lockbox"), ("permuted", "lockbox_label_permutation")):
+            baseline_predictions[labelling][name] = {}
+            for seed in arguments.seeds:
+                directory = arguments.baseline_root / f"seed{seed}"
+                if json.loads((directory / "perturbation_ids.json").read_text()) != data.perturbation_ids:
+                    raise SystemExit(f"{directory} holds other perturbations")
+                baseline_predictions[labelling][name][seed] = np.load(directory / f"predictions_{infix}_{name}.npy")[rows]
+
+    model_predictions: dict[str, dict[str, dict[int, np.ndarray]]] = {}
+    missing_runs: dict[str, list[str]] = {}
+    for model in arguments.models:
+        model_directory = arguments.run_root / f"{model}_{arguments.group_by}_confirmatory"
+        model_predictions[model] = {variant: {} for variant in VARIANT_SUFFIXES}
+        missing_runs[model] = []
+        for variant, suffix in VARIANT_SUFFIXES.items():
+            for seed in arguments.seeds:
+                split_directory = model_directory / f"lockbox_seed{seed}{suffix}"
+                predictions, reason = read_model_run(split_directory, lockbox_ids, lockbox_sha256, selection_sha256, variant)
+                if predictions is None:
+                    missing_runs[model].append(f"{split_directory}: {reason}")
+                else:
+                    model_predictions[model][variant][seed] = predictions
+    complete_models = [model for model in arguments.models if not missing_runs[model]]
+
+    def reading_scores(index: np.ndarray) -> dict:
+        """Every score on the resampled rows index: baselines and models, per seed, labelling and reading."""
+        strata_of_rows = strata[index]
+
+        def scores(predictions: np.ndarray, labelling: str, seed: int) -> dict[str, float]:
+            labels, labelled = labellings[labelling][seed]
+            labels, labelled, chosen = labels[index], labelled[index], predictions[index]
+            ranked = rank_normalise_within_groups(chosen, strata_of_rows)
+            return {"macro": macro_auprc(chosen, labels, labelled, macro_columns), "micro": micro_auprc(chosen, labels, labelled, scored_columns),
+                    "macro_within_degree_strata": macro_auprc(ranked, labels, labelled, macro_columns),
+                    "micro_within_degree_strata": micro_auprc(ranked, labels, labelled, scored_columns)}
+
+        result = {"baselines": {labelling: {name: {seed: scores(p, labelling, seed) for seed, p in by_seed.items()} for name, by_seed in by_name.items()}
+                                for labelling, by_name in baseline_predictions.items()},
+                  "models": {}}
+        for model in complete_models:
+            result["models"][model] = {variant: {seed: scores(p, "permuted" if variant == "permuted" else "real", seed) for seed, p in by_seed.items()}
+                                       for variant, by_seed in model_predictions[model].items()}
+        return result
+
+    def seed_mean(per_seed: dict[int, dict[str, float]], reading: str) -> float:
+        return float(np.mean([per_seed[seed][reading] for seed in arguments.seeds]))
+
+    observed = reading_scores(np.arange(len(rows)))
+    base_readings = ("macro", "micro", "macro_within_degree_strata", "micro_within_degree_strata")
+    best_baseline = {reading: max(arguments.baselines, key=lambda name: seed_mean(observed["baselines"]["real"][name], reading)) for reading in base_readings}
+
+    def differences(scored: dict, model: str) -> dict[str, float]:
+        per_variant = scored["models"][model]
+        real_baselines, permuted_baselines = scored["baselines"]["real"], scored["baselines"]["permuted"]
+        values = {}
+        for reading in base_readings:
+            values[reading] = float(np.mean([per_variant["real"][seed][reading] - real_baselines[best_baseline[reading]][seed][reading] for seed in arguments.seeds]))
+        for reading in ("macro", "micro"):
+            permuted_advantage = np.mean([per_variant["permuted"][seed][reading] - permuted_baselines[best_baseline[reading]][seed][reading] for seed in arguments.seeds])
+            values[f"{reading}_permutation"] = float(values[reading] - permuted_advantage)
+            values[f"{reading}_rewiring"] = float(np.mean([per_variant["real"][seed][reading] - per_variant["rewired"][seed][reading] for seed in arguments.seeds]))
+        return values
+
+    point = {model: differences(observed, model) for model in complete_models}
+    generator = np.random.default_rng(arguments.bootstrap_seed)
+    resampled = {model: {reading: [] for reading in H1_READINGS + H2_EXTRA_READINGS} for model in complete_models}
+    for _ in range(arguments.num_bootstrap if complete_models else 0):
+        scored = reading_scores(generator.integers(0, len(rows), len(rows)))
+        for model in complete_models:
+            for reading, value in differences(scored, model).items():
+                resampled[model][reading].append(value)
+
+    p_values, entries = {}, {}
+    for model in arguments.models:
+        entry = {"complete": model in complete_models, "missing_runs": missing_runs[model]}
+        if model in complete_models:
+            readings = {}
+            for reading in H1_READINGS + H2_EXTRA_READINGS:
+                values = np.array(resampled[model][reading], dtype=float)
+                finite = values[np.isfinite(values)]
+                readings[reading] = {"difference": point[model][reading], "p_one_sided": one_sided_p(values),
+                                     "lower_95": float(np.quantile(finite, 0.025)) if finite.size else float("nan"),
+                                     "upper_95": float(np.quantile(finite, 0.975)) if finite.size else float("nan"), "num_resamples_defined": int(finite.size)}
+            entry["readings"] = readings
+            entry["meets_minimum_difference"] = all(readings[reading]["difference"] >= arguments.minimum_difference for reading in ("macro", "micro"))
+            entry["p_h1"] = max(readings[reading]["p_one_sided"] for reading in H1_READINGS)
+            entry["p_h2"] = max([entry["p_h1"]] + [readings[reading]["p_one_sided"] for reading in H2_EXTRA_READINGS])
+            entry["model_scores"] = {variant: {reading: seed_mean(observed["models"][model][variant], reading) for reading in base_readings} for variant in VARIANT_SUFFIXES}
+            entry["seed_scores_real"] = {str(seed): observed["models"][model]["real"][seed] for seed in arguments.seeds}
+        p_values[f"{model}:H1"] = entry.get("p_h1", 1.0)
+        p_values[f"{model}:H2"] = entry.get("p_h2", 1.0)
+        entries[model] = entry
+    rejected = holm_rejections(p_values, arguments.alpha)
+    for model, entry in entries.items():
+        for hypothesis in ("H1", "H2"):
+            entry[f"{hypothesis}_rejected_by_holm"] = rejected[f"{model}:{hypothesis}"]
+            entry[f"{hypothesis}_confirmed"] = bool(rejected[f"{model}:{hypothesis}"] and entry["complete"] and entry.get("meets_minimum_difference", False))
+
+    scoring = {"scored_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               "commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()}
+    output = {
+        "scorings": previous_scorings + [scoring], "lockbox": str(arguments.lockbox), "lockbox_sha256": lockbox_sha256, "label_selection_sha256": selection_sha256,
+        "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
+        "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "alpha_one_sided": arguments.alpha, "minimum_difference": arguments.minimum_difference,
+        "best_baseline": best_baseline,
+        "baseline_scores": {labelling: {name: {reading: seed_mean(by_seed, reading) for reading in base_readings} for name, by_seed in by_name.items()}
+                            for labelling, by_name in observed["baselines"].items()},
+        "models": entries,
+    }
+    arguments.output_dir.mkdir(parents=True, exist_ok=True)
+    (arguments.output_dir / "lockbox_scores.json").write_text(json.dumps(output, indent=1) + "\n")
+    marker.write_text(json.dumps(previous_scorings + [scoring]) + "\n")
+
+    lines = ["# Confirmatory test on the lockbox (generated by experiments/score_confirmatory.py)", "",
+             f"Lockbox {arguments.lockbox} ({len(rows)} perturbations, SHA-256 {lockbox_sha256[:12]}); label selection {str(selection_sha256)[:12]}; seeds {arguments.seeds}; "
+             f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox perturbations; Holm over {len(p_values)} hypotheses at one-sided {arguments.alpha}; "
+             f"minimum macro and micro difference {arguments.minimum_difference}. Scorings: {len(previous_scorings) + 1}.", "",
+             "Best baseline per reading (seed-mean lockbox score, chosen before any model was read): "
+             + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
+             "| model | complete | macro | micro | macro within strata | micro within strata | macro permutation | micro permutation | macro rewiring | micro rewiring | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for model, entry in entries.items():
+        if not entry["complete"]:
+            lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 8 + " 1 | no | 1 | no |")
+            continue
+        cells = [f"{entry['readings'][reading]['difference']:+.3f} [{entry['readings'][reading]['lower_95']:+.3f}, {entry['readings'][reading]['upper_95']:+.3f}]"
+                 for reading in H1_READINGS + H2_EXTRA_READINGS]
+        lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
+    lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. Permutation: the advantage on the real labels "
+              "minus the advantage when model and baseline are trained and scored on labels permuted within degree strata. Rewiring: the model on the real graph "
+              "minus the same model on its rewired graph."]
+    arguments.markdown_output.write_text("\n".join(lines) + "\n")
+    print("\n".join(lines))
+
+
+if __name__ == "__main__":
+    main()

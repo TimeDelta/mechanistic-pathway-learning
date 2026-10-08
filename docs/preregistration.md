@@ -130,7 +130,87 @@ the grouping disease_cluster_and_targets, which holds a drug out with every labe
 target node. That closes the overlap (0 drugs, 0 shared positives) and keeps the fold sizes at 307 to 308 perturbations; the
 largest group grows from 140 to 232 perturbations.
 
+Confirmatory specification, 8 October 2026 (experiments/score_confirmatory.py implements it). It replaces the primary
+endpoint and failure criterion at the top of this file; the reasons are given with each item. Full-graph training before
+it: two message-passing pilots interrupted after one epoch, on 3 October (noisy-OR head, the full graph and evidence of
+that date, its command not logged) and 6 October (sigmoid head, graph_full with evidence_full), which printed validation
+macro AUPRC 0.366 and 0.310 on perturbations some of which are now in the lockbox, and timing runs of five training
+steps on a development fold (experiments/run_main_model.py --timing-batches), which score nothing. No full-graph model
+has scored a test set. Decisions taken with the user on 7 and 8 October: both heads, both encoders, the rewiring
+control, macro and micro AUPRC both required, a degree control, a lockbox, five seeds, and no flux sampling in the
+confirmation.
+
+- Split. The grouped split by disease_cluster_and_targets with a lockbox (configs/lockbox_v1.json, SHA-256 ebd851a8…,
+  drawn by experiments/draw_lockbox.py with seed 20261007): 317 of 1,539 perturbations (253 genes, 64 drugs, 27 of them with
+  a kept positive), 481 kept positive pairs, 18 symptoms with five or more kept positives inside it. The draw takes whole
+  leakage groups, per stratum (groups holding a drug with a kept positive, and the rest), in a seeded order, until each
+  stratum's lockbox reaches 20 percent of its perturbations; the one group above 5 percent of all perturbations
+  (cluster:ABCA3, 232 perturbations) stays in development. The pathway-wise subsystem split of the skeleton becomes a
+  secondary reading on the development set: Human-GEM subsystems hold metabolic genes only, so it cannot test drugs or the
+  signalling layers.
+- Models (experiments/run_main_model_batch.py): confirmatory_message_passing_noisy_or, confirmatory_message_passing_sigmoid,
+  confirmatory_linear_response_noisy_or and confirmatory_linear_response_sigmoid. Every one reads graph_full_neuronal
+  (nodes 48ebf531…, edges 78cf6c07…), evidence_full_v2 (228a4afe…), the better_v1 selection of it (c691a9aa…) and the node
+  descriptors (14033cb3…: protein, metabolite and reaction properties, brain region and cell-class expression). The
+  message-passing encoder reads typed node features with the descriptors. The linear-response encoder adds the cofactor
+  relations and propagates once per cell class (cell_class_weights 234224d8…: the ten HPA single-nucleus classes, the
+  dopaminergic class and an all-cells class), with the 1,684 extracellular metabolites one pool shared by the classes other
+  than all cells. The noisy-OR head starts its leaks at the training base rate, its module biases at -3 and its gate noise at
+  0.5, with link, leak and gate learning rates 0.02, 0.0002 and 0.05; the sigmoid head uses the trainer defaults. Asymmetry:
+  the message-passing encoder sees cell-class expression only as node descriptors, not as channels.
+- Training. Each confirmatory run trains on the 1,222 development perturbations, of which a grouped 15 percent is the
+  validation set for early stopping (validation loss, patience 8, at most 60 epochs), and scores the lockbox once
+  (--lockbox configs/lockbox_v1.json --score-lockbox). Seeds 0 to 4. Per seed and model, two control runs: labels permuted
+  within degree quintiles and within the lockbox and the development set apart (rows move whole with their weights and
+  label mask; --permute-labels), and the graph rewired within each relation with 50 attempted swaps per edge, no self-loops
+  and no repeated edges (--rewire-swaps-per-edge 50; 32 seconds; 0.5 percent of edges stay in place). A model missing any of
+  its fifteen runs is not confirmatory.
+- Baselines. popularity, degree_popularity, random_walk_with_restart and knowledge_graph_embedding_transe, fitted on the
+  development set and scored on the lockbox for each seed (run_baselines.py --lockbox ... --score-lockbox --seed k
+  --with-kg-embedding --rewiring-method integer_draws), which also scores them on that seed's permuted labels. The best
+  baseline of a reading is the one with the highest seed-mean lockbox score, chosen without reference to any model. The
+  relational GNN with sigmoid head, a comparator in the skeleton, is now one of the four tested models; popularity and
+  degree_popularity are added because they score highest on the full graph (docs/phase2_baselines_full_v2.md).
+- Readings (seed mean of model minus best baseline on the lockbox rows): macro AUPRC over the 18 lockbox symptoms; micro
+  AUPRC over every symptom with five or more kept positives in the whole data (20); both after ranking every score inside
+  degree strata; the permutation difference in differences (the advantage on the real labels minus the advantage when model
+  and baseline are trained and scored on permuted labels); the rewiring difference (the model minus the same model on its
+  rewired graph).
+- Hypotheses and decision. H1 (prediction) for a model: macro, micro, both within-strata and both permutation readings
+  above zero, and the macro and micro differences at least 0.05. H2 (graph content): H1 and both rewiring readings above
+  zero. Each reading's one-sided p-value comes from a paired bootstrap over lockbox perturbations (4,000 resamples, the same
+  rows for every model, seed and baseline); a hypothesis's p-value is the largest of its readings' (an intersection-union
+  test, Berger 1982). Holm's procedure (Holm 1979) runs over the eight hypotheses at one-sided 0.025. A model is confirmed
+  for H1 or H2 when Holm rejects that hypothesis and its macro and micro differences reach 0.05.
+- Failure criterion, replacing the one at the top: if no model is confirmed for H1, the architecture has not been shown
+  to predict better than the baselines. The ablations still run (amendment of 7 October).
+- Secondary readings, outside the Holm family and reported with paired intervals: noisy-OR minus sigmoid within each
+  encoder, linear response minus message passing within each head, per-symptom AUPRC, the subsystem split and every
+  ablation on the development set.
+- Order of work. Pilots of any configuration run on the development set only (--lockbox without --score-lockbox; runs land
+  in <configuration>_<grouping>_development). If a pilot shows a confirmatory configuration failing to train (a defect, not
+  a low score), the configuration may be amended here, dated, before its first lockbox run. The lockbox is scored once by
+  experiments/score_confirmatory.py, which writes a SCORED marker; a second scoring is listed in its output.
+- Precision. On the full graph a 20 percent grouped hold-out (one of five folds, 308 perturbations, 382 to 548 kept
+  positive pairs, 13 to 20 symptoms with five positives) gave paired-bootstrap 95 percent half-widths for differences
+  between two baselines of 0.019 to 0.063 in macro AUPRC (median 0.041) and 0.018 to 0.041 in micro (median 0.028)
+  (experiments/estimate_holdout_precision.py). At Holm's smallest level, 0.025 / 8, the half-width grows by about 1.4
+  (2.73 / 1.96 standard errors), so a macro difference near 0.06 and a micro difference near 0.04 are the smallest the
+  lockbox can confirm. Two caveats: a model and a baseline may co-vary less than two baselines do, which widens the
+  interval, and the seeds are averaged, not resampled, so seed variance is not in it.
+- Compute. On this 4-core machine, at 3 threads and batch 16, a training step on a development fold takes 1.8 s
+  (linear response, sigmoid), 2.1 s (linear response, noisy-OR), 2.5 s (message passing, sigmoid) and 2.7 s (message
+  passing, noisy-OR), after both encoders were changed on 8 October to multiply only the 54,982 stacked adjacency rows that
+  hold an edge instead of all 700,435 (identical output, tested; before the change 15.8, 16.9, 6.9 and 7.0 s). With the
+  slice's epochs to early stopping (about 15 for the sigmoid head, about 35 for noisy-OR), the 60 confirmatory runs take
+  about 70 hours. Run order: one development pilot per configuration (fold 0, seed 0) to check that it trains; the
+  development baselines; the 60 lockbox runs, two at a time with 2 threads each; then the lockbox baselines for seeds 0 to 4
+  (their lockbox scores are not read before the models finish) and score_confirmatory.py.
+- Flux route. Not in the confirmation: measured on Human-GEM, one LP takes 0.12 seconds with every boundary open, a flux
+  variability or sampling warm-up per knockout about 0.9 core-hours; the perturbations a Human-GEM knockout can represent
+  hold 14 percent of the kept pairs (235 genes, 15 drugs); no brain medium is defined; and a drug is not a knockout. It stays exploratory.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
-go/no-go; B5 language model and prompt; number of flux samples per gene; power statement for the
+go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
 subsystem versus curated pathway split; the deterioration-term exclusion).

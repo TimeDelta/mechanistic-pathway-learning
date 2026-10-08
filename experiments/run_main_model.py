@@ -767,7 +767,10 @@ def main() -> None:
         np.save(split_directory / "test_module_activations.npy", np.concatenate(test_field_activations, axis=0) if test_field_activations else np.zeros((0, support.shape[0])))
         print("module support sizes:", results["module_support_sizes"])
     (split_directory / "results.json").write_text(json.dumps(results, indent=1))
-    print(f"{split_name}: macro AUPRC {results['macro_auprc']:.3f} macro AUROC {results['macro_auroc']:.3f} MRR {results['mean_reciprocal_rank']:.3f} hits@3 {results['hits_at_3']:.3f} ECE {results['expected_calibration_error']:.3f}")
+    if arguments.score_lockbox:  # the lockbox is read once, by experiments/score_confirmatory.py; logs read by check-ins must not show it
+        print(f"{split_name}: lockbox predictions written to {split_directory} (scores not printed)")
+    else:
+        print(f"{split_name}: macro AUPRC {results['macro_auprc']:.3f} macro AUROC {results['macro_auroc']:.3f} MRR {results['mean_reciprocal_rank']:.3f} hits@3 {results['hits_at_3']:.3f} ECE {results['expected_calibration_error']:.3f}")
     (split_directory / "DONE").write_text("done\n")
 
 

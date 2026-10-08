@@ -113,3 +113,32 @@ def test_fast_rewiring_adds_no_duplicate_edge():
     before = duplicate_edge_count(edges, relation)
     assert duplicate_edge_count(fast_degree_preserving_rewiring(edges, relation, num_swaps_per_edge=20, random_seed=1), relation) <= before
 
+
+
+def test_scorer_average_precision_equals_sklearn_with_ties():
+    from sklearn.metrics import average_precision_score
+
+    from score_confirmatory import average_precision, macro_auprc, micro_auprc
+
+    generator = np.random.default_rng(8)
+    for _ in range(20):
+        scores = np.round(generator.random(200), 1)  # many ties
+        labels = (generator.random(200) < 0.2).astype(float)
+        assert np.isclose(average_precision(scores, labels), average_precision_score(labels, scores))
+    assert np.isnan(average_precision(np.array([0.1, 0.2]), np.array([0.0, 0.0])))
+    predictions, outcomes = generator.random((50, 3)), (generator.random((50, 3)) < 0.3).astype(float)
+    mask = np.ones_like(outcomes, dtype=bool)
+    mask[0, 0] = False
+    expected_macro = np.mean([average_precision_score(outcomes[mask[:, c], c], predictions[mask[:, c], c]) for c in (0, 2)])
+    assert np.isclose(macro_auprc(predictions, outcomes, mask, [0, 2]), expected_macro)
+    assert np.isclose(micro_auprc(predictions, outcomes, mask, [0, 2]), average_precision_score(outcomes[:, [0, 2]][mask[:, [0, 2]]], predictions[:, [0, 2]][mask[:, [0, 2]]]))
+
+
+def test_holm_steps_down_and_stops_at_the_first_failure():
+    from score_confirmatory import holm_rejections, one_sided_p
+
+    rejected = holm_rejections({"a": 0.001, "b": 0.02, "c": 0.004, "d": 0.5}, alpha=0.025)
+    assert rejected == {"a": True, "c": True, "b": False, "d": False}  # 0.001 <= 0.025/4, 0.004 <= 0.025/3, 0.02 > 0.025/2
+    assert holm_rejections({"a": 0.01, "b": 0.0004}, alpha=0.001) == {"a": False, "b": True}
+    assert holm_rejections({"a": 0.0004, "b": 0.0004}, alpha=0.001) == {"a": True, "b": True}
+    assert one_sided_p(np.array([0.1, 0.2, -0.1, np.nan])) == (1 + 1) / (3 + 1)

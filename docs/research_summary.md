@@ -158,6 +158,10 @@ Superseded numbers to avoid:
 | 2026-10-07 | Symptom list expanded from 12 to 23 crosswalk rows (11 new symptoms, MedDRA synonyms for the existing ones); 2,211 kept positive pairs against 1,735 | user's request before the symptom list is fixed; docs/preregistration.md |
 | 2026-10-07 | Micro AUPRC reported beside macro AUPRC in every reading, and required for confirmation together with it | user's decision: symptoms below five positives in a test set still count |
 | 2026-10-07 | Full-graph runs group each drug with the genes it targets (disease_cluster_and_targets) | a drug and its target gene's loss of function sat in different folds for 69 of 73 drugs (docs/drug_target_leakage.md) |
+| 2026-10-08 | Flux sampling dropped from the confirmation; the confirmatory family is message passing and linear response, each with the noisy-OR and sigmoid heads | user's rule if flux sampling is not viable: 14 percent of kept pairs reachable by a Human-GEM knockout, about 0.9 core-hours per knockout, no brain medium |
+| 2026-10-08 | Lockbox of 317 perturbations (20 percent of leakage groups, configs/lockbox_v1.json) scored once after every pilot | one untouched test; a 20 percent hold-out gives 95 percent half-widths near 0.041 macro and 0.028 micro AUPRC |
+| 2026-10-08 | Confirmation needs macro, micro, within-degree-strata and permutation readings above zero (intersection-union) and macro and micro differences of 0.05; Holm over eight hypotheses; the rewiring reading is the second hypothesis | user: degree control, rewiring control, both metrics required; docs/preregistration.md |
+| 2026-10-08 | Both encoders multiply only the stacked adjacency rows that hold an edge | 8.6 and 2.7 times faster training steps on the full graph, identical output |
 
 AI assistance: code, data processing, reviews and drafts in this repository were produced with Claude Code; commits
 carry a Co-Authored-By line.
