@@ -584,8 +584,9 @@ def main() -> None:
     if arguments.score_lockbox and arguments.lockbox is None:
         raise ValueError("--score-lockbox needs --lockbox")
     if arguments.lockbox is not None:
-        if arguments.holdout_module or arguments.holdout_subsystem or arguments.time_split_cutoff is not None:
-            raise ValueError("--lockbox is defined for the grouped split only")
+        if arguments.time_split_cutoff is not None or (arguments.score_lockbox and (arguments.holdout_module or arguments.holdout_subsystem)):
+            raise ValueError("--score-lockbox is defined for the grouped split only, and --lockbox not with the time split; "
+                             "a module or subsystem hold-out runs on the development perturbations (--lockbox without --score-lockbox)")
         in_lockbox = read_lockbox(arguments.lockbox, data)
         lockbox_summary = {"path": str(arguments.lockbox), "sha256": file_sha256(arguments.lockbox), "num_lockbox_perturbations": int(in_lockbox.sum()),
                            "role": "scored" if arguments.score_lockbox else "removed before the split"}
@@ -793,6 +794,8 @@ def main() -> None:
         early_stopped_test_mask = None if label_mask is None else label_mask[test_indices]
         early_stopped_scores = {"macro_auprc": macro_auprc(early_stopped_predictions, data.outcomes[test_indices], early_stopped_test_mask),
                                 "micro_auprc": micro_auprc(early_stopped_predictions, data.outcomes[test_indices], early_stopped_test_mask)}
+        if state["best_epoch"] < 0:
+            raise ValueError("no validation epoch improved (the validation loss was never finite), so the refit has no number of epochs to train for")
         refit_indices = np.sort(np.concatenate([train_indices, validation_indices]))
         refit_checkpoint_path = split_directory / "refit_checkpoint.pt"
         torch.manual_seed(arguments.seed)

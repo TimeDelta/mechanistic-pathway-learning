@@ -349,7 +349,7 @@ fold prevalence could be shown not to interfere).
   --keep-large-groups-in-training (experiments/run_main_model.py, early_stopping_validation): a group larger than half
   the expected validation set (0.15 x pool / 2, 92 perturbations in a lockbox run) stays in training and the seven folds
   are drawn over the other groups. In a lockbox run this gives 1,080 training and 142 validation perturbations, the
-  largest validation group 58 and 15 to 16 percent of the positives in validation (seeds 0 to 4), against 990, 232, 232
+  largest validation group 58 and 14.5 to 16.1 percent of the positives in validation (seeds 0 to 4), against 990, 232, 232
   and 27 percent. On development fold 0 the split is identical (no group in that pool exceeds 73), so the four pilots
   stand for the amended configurations. Other runs keep the earlier split; on the slice the largest group (27
   perturbations) is about half of each validation set but holds 14 percent of the positives.
@@ -371,6 +371,39 @@ fold prevalence could be shown not to interfere).
   move it. But prevalence decides which symptoms the validation set can score at all (five positives): 12 on fold 0
   against 18 on its test set, 10 in common, and 11 or 12 in a lockbox run under the amended split. An AUPRC rule would
   stop on a symptom set that leaves out about a third of what the test scores; the loss counts every labelled pair.
+
+Amendment, 8 October 2026, before any lockbox run (the user's objection the same day: the baselines fit on every
+development perturbation while the models leave out their early-stopping validation set, so a null result would be
+less meaningful): refit after early stopping.
+- The eight configurations of the confirmatory family add --refit-on-validation (experiments/run_main_model.py). The
+  early-stopping run on the validation set (142 perturbations in a lockbox run) only chooses the number of epochs; a
+  fresh model built from the run's seed is then trained on the training and validation perturbations together (all
+  1,222 development perturbations in a lockbox run, 977 in a development pilot) for best epoch + 1 epochs, and its test
+  predictions are the ones scored. The baselines fit on the same perturbations, so models and baselines now fit on the
+  same rows; before, the models fitted on 1,080 of 1,222 (12 percent fewer), which biased a comparison against them and
+  would have made a null result partly a cost of the held-out data. This is the second-pass strategy of Goodfellow,
+  Bengio and Courville (Deep Learning, 2016, section 7.8, algorithm 7.2). The refit keeps the number of epochs, not the
+  number of optimizer steps (each refit epoch has about 13 percent more steps), a choice that book leaves open; the
+  overfitting early stopping guards against comes from repeated passes over the same perturbations.
+- Permuted-label and rewired-graph runs are refitted the same way, on their own labels and graph. The early-stopped
+  model's test predictions are kept (test_predictions_early_stopped.npy) and are not scored. experiments/score_confirmatory.py
+  accepts a lockbox run only if it carries the refit and --keep-large-groups-in-training.
+- The four development pilots are refitted from their stored early-stopping checkpoints (runs/full/refit_pilots.sh;
+  a run that finished without the refit gets only the refit on resume) and reported against the development baselines
+  on fold 0 beside their early-stopped scores. The ablation pilots carry the flag from the start.
+- Checks on the slice (linear-response encoder, sigmoid head, fold 0, three epochs): a refit interrupted mid-epoch and
+  resumed gives the same test predictions as one run straight through (largest difference 0), and so does a refit
+  added on resume to a run that had finished without one.
+- Cost: best epoch + 1 more epochs per run.
+
+Amendment, 8 October 2026, before any lockbox run: fixes from a code review of the study (the user's request the same
+day). Each is a defect against text already in this specification, not a change of the test.
+- The TransE baseline is now seeded by --seed (experiments/run_baselines.py); before, every seed fitted the same TransE,
+  although experiments/score_confirmatory.py describes the seed as setting its initialisation. Seed 0 is unchanged, so
+  the development baselines stand.
+- The models' subsystem and module hold-outs run on the development perturbations (--lockbox without --score-lockbox);
+  the trainer refused that combination, so the secondary subsystem reading of the models could not run without the
+  lockbox perturbations.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

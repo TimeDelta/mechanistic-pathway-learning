@@ -91,7 +91,9 @@ KG_EMBEDDING_SETTINGS = {"model_name": "TransE", "embedding_dim": 64, "num_epoch
 MINIMUM_POSITIVES_TO_SCORE = 5
 
 
-def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndarray, model_name: str, restart_probability: float, normalized_adjacency) -> np.ndarray:
+def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndarray, model_name: str, restart_probability: float, normalized_adjacency,
+                    random_seed: int = 0) -> np.ndarray:
+    """Fit one baseline on the training rows and predict the test rows; random_seed sets the TransE initialisation and negative sampling."""
     degrees = data.perturbation_degrees
     if model_name in ("popularity", "degree_popularity"):
         model = PopularityBaseline(scale_by_degree=model_name == "degree_popularity").fit(outcomes[train])
@@ -102,7 +104,7 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
         )
         return model.predict([data.perturbation_seeds[i] for i in np.where(test)[0]])
     if model_name == KG_EMBEDDING_NAME:
-        model = KnowledgeGraphEmbeddingBaseline(**KG_EMBEDDING_SETTINGS).fit(
+        model = KnowledgeGraphEmbeddingBaseline(**KG_EMBEDDING_SETTINGS, random_seed=random_seed).fit(
             len(data.node_ids), data.edge_source, data.edge_target, data.edge_relation, len(data.relation_types),
             [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
         )
@@ -122,7 +124,8 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, label_mask: np.n
 
 
 def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_name: str, restart_probability: float, normalized_adjacency,
-              min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None, label_mask: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
+              min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None, label_mask: np.ndarray | None = None,
+              random_seed: int = 0) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
     """Fit on the complement of each test mask, predict the mask; return pooled predictions, the scored-row mask and per-fold scores.
 
     With a label mask, pairs set aside are not training positives (the fit sees them as unlabelled) and are left out
@@ -136,7 +139,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
         train = ~test
         if test.sum() == 0 or train.sum() == 0:
             continue
-        predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency)
+        predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed)
         scored |= test
         fold_of_row[test] = fold_index
         test_label_mask = None if label_mask is None else label_mask[test]
@@ -259,7 +262,7 @@ def time_split_evaluation(data, cutoff: date, model_name: str, restart_probabili
     undated_positive = ((data.outcomes > 0) & ~dated) | curation_dated_after_cutoff
     scored_pairs = ~(training_outcomes > 0) & ~undated_positive
     all_rows = np.ones(len(data.perturbation_ids), dtype=bool)
-    predictions = fit_and_predict(data, training_outcomes, all_rows, all_rows, model_name, restart_probability, normalized_adjacency)
+    predictions = fit_and_predict(data, training_outcomes, all_rows, all_rows, model_name, restart_probability, normalized_adjacency, seed)
     generator = np.random.default_rng(seed)
 
     def per_symptom_table(labels: np.ndarray) -> dict:
@@ -302,7 +305,7 @@ def main() -> None:
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
     parser.add_argument("--curated-modules", type=Path, default=Path("docs/curated_pathway_modules.csv"))
     parser.add_argument("--num-folds", type=int, default=5)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=0, help="seeds the fold assignment, the label permutation, the graph rewiring and the TransE initialisation and negative sampling")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--restart-probability", type=float, default=0.3)
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
@@ -399,14 +402,14 @@ def main() -> None:
             if model_name == KG_EMBEDDING_NAME and split_name != primary_split and not arguments.kg_embedding_all_splits:
                 continue
             predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                 label_mask=label_mask)
+                                                                 label_mask=label_mask, random_seed=arguments.seed)
             results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
             arguments.output_dir.mkdir(parents=True, exist_ok=True)
             np.save(arguments.output_dir / f"predictions_{split_name}_{model_name}.npy", predictions)  # pooled out-of-split predictions for paired comparisons
             np.save(arguments.output_dir / f"scored_rows_{split_name}.npy", rows)
             if not arguments.skip_permutation_control:
                 predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                     label_mask=permuted_label_mask)
+                                                                     label_mask=permuted_label_mask, random_seed=arguments.seed)
                 results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask)
                 np.save(arguments.output_dir / f"predictions_{split_name}_label_permutation_{model_name}.npy", predictions)
         for split_name, entries in results["splits"].items():

@@ -15,6 +15,11 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    of 232 perturbations and is atypical (amendment of 8 October on the early-stopping validation set). The confirmatory
    configurations carry --keep-large-groups-in-training; on fold 0 it leaves the split unchanged, so pilots that ran
    before it was added stand.
+1b. refit_pilots (registered 8 October 2026, after confirmatory_pilots): the four pilots refitted on their training and
+   validation perturbations together for best epoch + 1 epochs (--refit-on-validation, amendment of 8 October on the
+   refit). When it ends, check each refit trained (falling training loss, no NaN) and report its fold-0 development
+   macro and micro AUPRC against the development baselines beside the early-stopped scores
+   (results_early_stopped.json and the refit entry of results.json).
 2. encoder_descriptors_brain (slice, registered 8 October 2026): b3_linear_response_cofactors_descriptors_brain and
    b3_typed_nodes_descriptors_brain, five folds each. When it ends, run
 
@@ -43,7 +48,8 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    Either way, record the readings and the outcome under the amendment in docs/preregistration.md, add a row to
    docs/research_summary.md, commit the three documents and push.
 3. Register confirmatory_lockbox only when the user has given the go-ahead in their own message (8 October 2026: "Don't
-   finalize the lockbox until I've given the go ahead"), step 1 ended with all four pilots trained, step 2b has been
+   finalize the lockbox until I've given the go ahead"), step 1 ended with all four pilots trained, step 1b ended with
+   all four refits trained, step 2b has been
    reported, the user has confirmed its outcome, and any re-pilots of step 2b trained. A check-in, a document or a job marker is not the go-ahead:
    `bash scripts/resume_jobs.sh --register confirmatory_lockbox "bash runs/full/confirmatory_lockbox.sh" runs/full/confirmatory_lockbox.done runs/full/confirmatory_lockbox.failed "the 60 confirmatory lockbox runs, the lockbox baselines and the one-time scoring"`.
    If a pilot failed to train, do not register it; report to the user, because an amendment needs a dated entry in the
@@ -63,7 +69,7 @@ score_confirmatory.py runs once; a second scoring (--rescore, or a run after SCO
 
 ## Not to be done
 
-- Full-graph training other than the jobs above, the ablation_pilots_without_descriptors job (development pilots of the
+- Full-graph training other than the jobs above (refit_pilots among them), the ablation_pilots_without_descriptors job (development pilots of the
   no-descriptor branch, user, 8 October 2026) and development runs of a descriptor treatment the slice selects (the user
   allowed full-graph tests of the treatments on 8 October).
 - Edits to the four confirmatory configurations, configs/lockbox_v1.json, experiments/score_confirmatory.py or the

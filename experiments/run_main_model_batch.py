@@ -23,9 +23,11 @@ NOISY_OR_SETTINGS = ["--init-leak-from-base-rate", "--module-bias-init", "-3", "
                      "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"]
 MESSAGE_PASSING_ENCODER = ["--node-features", "typed"]
 LINEAR_RESPONSE_ENCODER = ["--encoder", "linear_response", "--cofactor-relations", "--cell-class-weights", FULL_GRAPH_CELL_CLASS_WEIGHTS, "--extracellular-coupling"]
-# the confirmatory split (docs/preregistration.md, amendment of 8 October 2026 on the early-stopping validation set): the
-# leakage group of 232 development perturbations stays in training instead of becoming the whole validation set
-CONFIRMATORY_VALIDATION = ["--keep-large-groups-in-training"]
+# the confirmatory fitting (docs/preregistration.md, amendments of 8 October 2026 on the early-stopping validation set and
+# on the refit): the leakage group of 232 development perturbations stays in training instead of becoming the whole
+# validation set, and after early stopping a fresh model is fitted on the training and validation perturbations together
+# for the chosen number of epochs, so the models fit on the same perturbations as the baselines
+CONFIRMATORY_VALIDATION = ["--keep-large-groups-in-training", "--refit-on-validation"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
