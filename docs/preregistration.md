@@ -210,6 +210,24 @@ confirmation.
   variability or sampling warm-up per knockout about 0.9 core-hours; the perturbations a Human-GEM knockout can represent
   hold 14 percent of the kept pairs (235 genes, 15 drugs); no brain medium is defined; and a drug is not a knockout. It stays exploratory.
 
+Amendment, 8 October 2026, written before any lockbox run and before the slice runs it refers to had finished: node
+descriptors. On the slice, adding the node descriptors without brain expression lowered both encoders' macro and micro
+AUPRC in all six readings of experiments/compare_twin_runs.py (per fold, pooled and within degree strata). Message
+passing (b3_typed_nodes_descriptors against b3_typed_nodes): macro per fold -0.030 [-0.056, -0.004], within degree strata
+-0.018 [-0.039, -0.002], micro pooled -0.018 [-0.035, +0.003]; with the descriptors it scored the same as the
+descriptors-only control without a graph (+0.002 [-0.023, +0.027] per fold). Linear response
+(b3_linear_response_cofactors_descriptors against b3_linear_response_cofactors): micro pooled -0.025 [-0.043, -0.008],
+micro per fold -0.027 [-0.051, -0.002], macro pooled -0.003 [-0.016, +0.014]. The confirmatory configurations read the
+descriptors with brain region and cell-class expression, which the slice had not tested, so two slice arms now test them
+(b3_linear_response_cofactors_descriptors_brain and b3_typed_nodes_descriptors_brain). Rule: for each encoder, take the six
+differences of its brain-expression arm minus the same encoder without descriptors (b3_linear_response_cofactors;
+b3_typed_nodes). If their mean is below zero, that encoder's two confirmatory configurations drop --node-descriptors, their
+development pilots are moved aside and rerun before the first lockbox run, and the linear-response encoder keeps its
+cell-class channels; otherwise they stay as specified. The rule uses the point estimates, not the intervals, because the
+slice cannot resolve differences of this size (half-widths of 0.015 to 0.04) and an input that does not help on
+development data adds parameters to a model trained on about 1,000 perturbations. Limitation: the slice is the metabolic
+graph, without the signalling, receptor and electrical layers of graph_full_neuronal.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
