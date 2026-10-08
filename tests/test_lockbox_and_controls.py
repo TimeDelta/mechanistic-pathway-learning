@@ -1,4 +1,3 @@
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -184,6 +183,36 @@ def test_scorer_refuses_malformed_predictions_and_other_rewiring(tmp_path) -> No
         _, reason = read_model_run(directory, lockbox_ids, "lock", "selection", variant, symptoms=symptoms, rewiring_swaps_per_edge=50)
         assert reason == expected_reason, name
 
+
+
+def test_scorer_refuses_a_rewired_run_without_symmetric_rewiring_when_required(tmp_path) -> None:
+    from score_confirmatory import read_model_run
+    lockbox_ids, symptoms = ["P1", "P2"], ["a", "b", "c"]
+    base = {"test_perturbation_ids": lockbox_ids, "lockbox": {"sha256": "lock"}, "label_selection_sha256": "selection", "labels_permuted": False,
+            "refit": {"epochs": 3}, "arguments": {"keep_large_groups_in_training": True}, "symptoms": symptoms}
+    for name, rewiring, expected_reason in [("symmetric", {"swaps_per_edge": 50, "undirected_relations": ["binds"]}, "ok"),
+                                            ("directed", {"swaps_per_edge": 50}, "its rewiring did not keep the relations stored in both directions symmetric (--keep-reciprocated-relations-symmetric)")]:
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "DONE").write_text("done\n")
+        (directory / "results.json").write_text(json.dumps({**base, "rewiring": rewiring}))
+        np.save(directory / "test_predictions.npy", np.zeros((2, 3)))
+        _, reason = read_model_run(directory, lockbox_ids, "lock", "selection", "rewired", symptoms=symptoms, rewiring_swaps_per_edge=50, require_symmetric_rewiring=True)
+        assert reason == expected_reason, name
+        assert read_model_run(directory, lockbox_ids, "lock", "selection", "rewired", symptoms=symptoms, rewiring_swaps_per_edge=50)[1] == "ok"
+
+
+def test_group_bootstrap_draws_whole_groups_and_the_perturbation_bootstrap_draws_rows() -> None:
+    from score_confirmatory import bootstrap_rows
+    members_of_group = [np.array([0, 1, 2]), np.array([3]), np.array([4, 5])]
+    generator = np.random.default_rng(0)
+    for _ in range(50):
+        rows = bootstrap_rows("group", members_of_group, 6, generator)
+        counts = np.bincount(rows, minlength=6)
+        assert counts[0] == counts[1] == counts[2] and counts[4] == counts[5]  # a group is drawn whole or not at all
+        assert sum(len(members_of_group[g]) for g in range(3)) >= 0 and len(rows) == 3 * counts[0] + counts[3] + 2 * counts[4]
+    rows = bootstrap_rows("perturbation", members_of_group, 6, np.random.default_rng(0))
+    assert len(rows) == 6 and rows.max() < 6
 
 def test_scorer_refuses_runs_with_other_arguments_inputs_or_permutation(tmp_path) -> None:
     from score_confirmatory import expected_run_arguments, read_model_run

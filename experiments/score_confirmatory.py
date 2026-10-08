@@ -21,8 +21,10 @@ Readings, each the seed mean of a model's score minus the score of the best base
 - the rewiring difference: the model on the real graph minus the same model on its rewired graph (real labels).
 The best baseline is chosen per reading by its seed-mean score on the lockbox, without reference to any model.
 
-Inference: a paired bootstrap over lockbox perturbations (the same resampled rows for every model, seed, baseline and
-labelling), one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). Two hypotheses per model:
+Inference: a paired bootstrap over the lockbox's leakage groups (--bootstrap-unit group, the user's decision of 8 October
+2026: whole groups are drawn with replacement, the same resampled rows for every model, seed, baseline and labelling),
+one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). The bootstrap over single perturbations, which understates
+the variance when perturbations of one group co-vary, is reported beside it as a sensitivity reading. Two hypotheses per model:
 - H1 (prediction): the macro, micro and both within-strata readings exceed zero, the macro difference is at least
   --minimum-macro-difference and the micro difference at least --minimum-micro-difference. Intersection-union test:
   p(H1) is the largest of the four p-values.
@@ -107,6 +109,19 @@ def fixed_sequence_decisions(complete: bool, p_h1: float, p_h2: float, meets_min
     return {"H1_confirmed": h1_confirmed, "H2_confirmed": bool(h1_confirmed and p_h2 <= alpha)}
 
 
+def bootstrap_rows(unit: str, members_of_group: list[np.ndarray], num_rows: int, generator: np.random.Generator) -> np.ndarray:
+    """Row indices of one bootstrap resample of the lockbox. unit "perturbation" draws num_rows rows with replacement;
+    unit "group" draws as many leakage groups as the lockbox holds, with replacement, and takes every row of each drawn
+    group (a cluster bootstrap), so the dependence among perturbations sharing disease annotations or targets stays
+    inside a resample (the user's decision of 8 October 2026)."""
+    if unit == "perturbation":
+        return generator.integers(0, num_rows, num_rows)
+    if unit == "group":
+        drawn = generator.integers(0, len(members_of_group), len(members_of_group))
+        return np.concatenate([members_of_group[group] for group in drawn])
+    raise ValueError(f"unknown bootstrap unit {unit!r}")
+
+
 def one_sided_p(resampled_differences: np.ndarray) -> float:
     finite = resampled_differences[np.isfinite(resampled_differences)]
     return float((1 + np.sum(finite <= 0)) / (finite.size + 1)) if finite.size else 1.0
@@ -136,7 +151,7 @@ def expected_run_arguments(model: str, seed: int, group_by: str, lockbox: Path) 
 def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str,
                    require_refit: bool = True, symptoms: list[str] | None = None, rewiring_swaps_per_edge: int | None = None,
                    expected_arguments: dict | None = None, input_hashes: dict | None = None,
-                   permutation_sha256: str | None = None) -> tuple[np.ndarray | None, str]:
+                   permutation_sha256: str | None = None, require_symmetric_rewiring: bool = False) -> tuple[np.ndarray | None, str]:
     """Lockbox predictions of one finished run, or None with the reason it cannot be used. With require_refit (the
     amendments of 8 October 2026) a run counts only if it kept the large leakage groups in training and was refitted on
     its training and validation perturbations, so it fitted on the same perturbations as the baselines. A run whose
@@ -162,6 +177,8 @@ def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256
         return None, "trained on another symptom list"
     if variant == "rewired" and rewiring_swaps_per_edge is not None and (results.get("rewiring") or {}).get("swaps_per_edge") != rewiring_swaps_per_edge:
         return None, f"its rewiring did not use {rewiring_swaps_per_edge} swaps per edge"
+    if variant == "rewired" and require_symmetric_rewiring and not (results.get("rewiring") or {}).get("undirected_relations"):
+        return None, "its rewiring did not keep the relations stored in both directions symmetric (--keep-reciprocated-relations-symmetric)"
     if expected_arguments is not None:
         recorded = results.get("arguments") or {}
         differing = sorted(key for key, value in expected_arguments.items() if recorded.get(key, value) != value)
@@ -195,6 +212,11 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="*", default=[0, 1, 2, 3, 4])
     parser.add_argument("--num-bootstrap", type=int, default=4000)
     parser.add_argument("--bootstrap-seed", type=int, default=20261008)
+    parser.add_argument("--bootstrap-unit", choices=["group", "perturbation"], default="group",
+                        help="what the paired bootstrap resamples for the p-values and intervals that decide: whole leakage groups of the lockbox (the "
+                             "user's decision of 8 October 2026) or single perturbations; the other is reported beside it as a sensitivity reading")
+    parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
+                        help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
     parser.add_argument("--minimum-macro-difference", type=float, default=0.041,
                         help="smallest macro AUPRC difference that counts: the projected 95 percent half-width of a macro difference on a 20 percent hold-out")
@@ -271,7 +293,8 @@ def main() -> None:
                                                      require_refit=not arguments.allow_runs_without_refit, symptoms=data.symptoms,
                                                      rewiring_swaps_per_edge=arguments.rewiring_swaps_per_edge,
                                                      expected_arguments=expected_run_arguments(model, seed, arguments.group_by, arguments.lockbox),
-                                                     input_hashes=input_hashes, permutation_sha256=permutation_sha256_by_seed.get(seed))
+                                                     input_hashes=input_hashes, permutation_sha256=permutation_sha256_by_seed.get(seed),
+                                                     require_symmetric_rewiring=not arguments.allow_asymmetric_rewiring)
                 if predictions is None:
                     missing_runs[model].append(f"{split_directory}: {reason}")
                 else:
@@ -321,26 +344,35 @@ def main() -> None:
         return values
 
     point = {model: differences(observed, model) for model in complete_models}
-    generator = np.random.default_rng(arguments.bootstrap_seed)
-    resampled = {model: {reading: [] for reading in ALL_READINGS} for model in complete_models}
-    for _ in range(arguments.num_bootstrap if complete_models else 0):
-        scored = reading_scores(generator.integers(0, len(rows), len(rows)))
-        for model in complete_models:
-            for reading, value in differences(scored, model).items():
-                resampled[model][reading].append(value)
+    group_of_row = np.array([data.group_ids[i] for i in rows])
+    members_of_group = [np.flatnonzero(group_of_row == group) for group in sorted(set(group_of_row.tolist()))]
+    bootstrap_units = [arguments.bootstrap_unit] + [unit for unit in ("group", "perturbation") if unit != arguments.bootstrap_unit]
+    resampled_by_unit = {}
+    for unit_index, unit in enumerate(bootstrap_units):  # the deciding unit first, then the sensitivity reading
+        generator = np.random.default_rng(arguments.bootstrap_seed + unit_index)
+        resampled_by_unit[unit] = {model: {reading: [] for reading in ALL_READINGS} for model in complete_models}
+        for _ in range(arguments.num_bootstrap if complete_models else 0):
+            scored = reading_scores(bootstrap_rows(unit, members_of_group, len(rows), generator))
+            for model in complete_models:
+                for reading, value in differences(scored, model).items():
+                    resampled_by_unit[unit][model][reading].append(value)
+    resampled = resampled_by_unit[arguments.bootstrap_unit]
+
+    def interval_and_p(values: list[float]) -> dict:
+        values = np.array(values, dtype=float)
+        finite = values[np.isfinite(values)]
+        return {"p_one_sided": one_sided_p(values), "lower_95": float(np.quantile(finite, 0.025)) if finite.size else float("nan"),
+                "upper_95": float(np.quantile(finite, 0.975)) if finite.size else float("nan"), "num_resamples_defined": int(finite.size)}
 
     entries = {}
     for model in arguments.models:
         entry = {"complete": model in complete_models, "missing_runs": missing_runs[model]}
         if model in complete_models:
-            readings = {}
-            for reading in ALL_READINGS:
-                values = np.array(resampled[model][reading], dtype=float)
-                finite = values[np.isfinite(values)]
-                readings[reading] = {"difference": point[model][reading], "p_one_sided": one_sided_p(values),
-                                     "lower_95": float(np.quantile(finite, 0.025)) if finite.size else float("nan"),
-                                     "upper_95": float(np.quantile(finite, 0.975)) if finite.size else float("nan"), "num_resamples_defined": int(finite.size)}
+            readings = {reading: {"difference": point[model][reading], **interval_and_p(resampled[model][reading])} for reading in ALL_READINGS}
             entry["readings"] = readings
+            sensitivity_unit = bootstrap_units[1]
+            entry["sensitivity_bootstrap"] = {"unit": sensitivity_unit, "readings": {reading: interval_and_p(resampled_by_unit[sensitivity_unit][model][reading]) for reading in ALL_READINGS}}
+            entry["sensitivity_bootstrap"]["p_h1"] = max(entry["sensitivity_bootstrap"]["readings"][reading]["p_one_sided"] for reading in H1_READINGS)
             entry["meets_minimum_differences"] = bool(readings["macro"]["difference"] >= arguments.minimum_macro_difference
                                                       and readings["micro"]["difference"] >= arguments.minimum_micro_difference)
             entry["p_h1"] = max(readings[reading]["p_one_sided"] for reading in H1_READINGS)
@@ -357,7 +389,8 @@ def main() -> None:
     output = {
         "scorings": previous_scorings + [scoring], "lockbox": str(arguments.lockbox), "lockbox_sha256": lockbox_sha256, "label_selection_sha256": selection_sha256,
         "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
-        "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "alpha_one_sided_per_model": arguments.alpha,
+        "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "bootstrap_unit": arguments.bootstrap_unit, "num_lockbox_groups": len(members_of_group),
+        "alpha_one_sided_per_model": arguments.alpha,
         "minimum_macro_difference": arguments.minimum_macro_difference, "minimum_micro_difference": arguments.minimum_micro_difference, "runs_without_refit_allowed": arguments.allow_runs_without_refit,
         "best_baseline": best_baseline,
         "baseline_scores": {labelling: {name: {reading: seed_mean(by_seed, reading) for reading in base_readings} for name, by_seed in by_name.items()}
@@ -370,7 +403,8 @@ def main() -> None:
 
     lines = ["# Confirmatory test on the lockbox (generated by experiments/score_confirmatory.py)", "",
              f"Lockbox {arguments.lockbox} ({len(rows)} perturbations, SHA-256 {lockbox_sha256[:12]}); label selection {str(selection_sha256)[:12]}; seeds {arguments.seeds}; "
-             f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox perturbations; each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
+             f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox {'leakage groups (' + str(len(members_of_group)) + ')' if arguments.bootstrap_unit == 'group' else 'perturbations'}; "
+             f"each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
              f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. With {len(entries)} models "
              f"and no correction across them, the chance that at least one is confirmed by luck is at most {1 - (1 - arguments.alpha) ** len(entries):.3f} if they were "
              f"independent, and less since they share the data and baselines. Scorings: {len(previous_scorings) + 1}.", "",
@@ -385,6 +419,8 @@ def main() -> None:
         cells = [f"{entry['readings'][reading]['difference']:+.3f} [{entry['readings'][reading]['lower_95']:+.3f}, {entry['readings'][reading]['upper_95']:+.3f}]"
                  for reading in ALL_READINGS]
         lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
+    lines += ["", f"Sensitivity reading, resampling {bootstrap_units[1]}s instead: "
+              + "; ".join(f"{model} p(H1) {entry['sensitivity_bootstrap']['p_h1']:.4f}" for model, entry in entries.items() if entry["complete"]) + "."]
     lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. H1 takes the first four readings, H2 adds "
               "the two rewiring readings. Rewiring: the model on the real graph minus the same model on its rewired graph. Permutation (secondary, in neither "
               "hypothesis): the advantage on the real labels minus the advantage when model and baseline are trained and scored on labels permuted within "
