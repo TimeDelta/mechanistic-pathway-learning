@@ -134,11 +134,12 @@ def test_scorer_average_precision_equals_sklearn_with_ties():
     assert np.isclose(micro_auprc(predictions, outcomes, mask, [0, 2]), average_precision_score(outcomes[:, [0, 2]][mask[:, [0, 2]]], predictions[:, [0, 2]][mask[:, [0, 2]]]))
 
 
-def test_holm_steps_down_and_stops_at_the_first_failure():
-    from score_confirmatory import holm_rejections, one_sided_p
+def test_fixed_sequence_tests_h2_only_after_h1_and_needs_the_floors():
+    from score_confirmatory import fixed_sequence_decisions, one_sided_p
 
-    rejected = holm_rejections({"a": 0.001, "b": 0.02, "c": 0.004, "d": 0.5}, alpha=0.025)
-    assert rejected == {"a": True, "c": True, "b": False, "d": False}  # 0.001 <= 0.025/4, 0.004 <= 0.025/3, 0.02 > 0.025/2
-    assert holm_rejections({"a": 0.01, "b": 0.0004}, alpha=0.001) == {"a": False, "b": True}
-    assert holm_rejections({"a": 0.0004, "b": 0.0004}, alpha=0.001) == {"a": True, "b": True}
+    assert fixed_sequence_decisions(True, 0.01, 0.02, True, alpha=0.025) == {"H1_confirmed": True, "H2_confirmed": True}
+    assert fixed_sequence_decisions(True, 0.01, 0.04, True, alpha=0.025) == {"H1_confirmed": True, "H2_confirmed": False}
+    assert fixed_sequence_decisions(True, 0.03, 0.03, True, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}
+    assert fixed_sequence_decisions(True, 0.001, 0.001, False, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a floor missed
+    assert fixed_sequence_decisions(False, 0.001, 0.001, True, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a run missing
     assert one_sided_p(np.array([0.1, 0.2, -0.1, np.nan])) == (1 + 1) / (3 + 1)

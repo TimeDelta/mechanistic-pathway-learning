@@ -171,6 +171,13 @@ CONFIGURATIONS: dict[str, list[str]] = {
                                               *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS],
     "confirmatory_linear_response_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+    # the ablation branch without node descriptors (user, 8 October 2026): each confirmatory configuration less --node-descriptors
+    "confirmatory_message_passing_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS],
+    "confirmatory_message_passing_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER, *FULL_GRAPH_ARGUMENTS],
+    "confirmatory_linear_response_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS],
+    "confirmatory_linear_response_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER, *FULL_GRAPH_ARGUMENTS],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],

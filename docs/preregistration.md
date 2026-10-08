@@ -308,6 +308,24 @@ docs/graph_reliance.md and docs/descriptor_treatments.md, chosen or not: selecti
 estimate of the chosen arm optimistic, which does not reach the lockbox, since the lockbox is scored once by a model
 fixed before it is opened.
 
+Amendment, 8 October 2026, before any lockbox run (the user's decisions): the test, the micro floor, a no-descriptor
+branch and graph paring.
+- Test. Each of the four models is a candidate and is tested on its own at one-sided 0.025: H1 first, and H2 only if
+  that model's H1 is confirmed, at the same level. Holm's procedure over the eight hypotheses is withdrawn; nothing is
+  divided across models. Consequence, stated beside the results by experiments/score_confirmatory.py: with four models
+  and no correction across them, the chance that at least one is confirmed by luck is above 0.025, at most
+  1 - 0.975^4 = 0.096 if the four were independent and less since they share the data, the lockbox and the baselines.
+- Floors. The macro difference must be at least 0.05 (unchanged); the micro difference at least 0.028, the median
+  projected 95 percent half-width of a micro difference on a 20 percent hold-out (the precision statement above). At
+  one-sided 0.025 a micro difference at the floor has a 95 percent interval that just reaches zero, so the micro floor adds
+  little to the test itself; the effect sizes and intervals are reported next to every decision.
+- Ablation branch. The four configurations without --node-descriptors (confirmatory_*_without_descriptors in
+  experiments/run_main_model_batch.py) are an ablation, run as development pilots (runs/full/ablation_pilots_without_descriptors.sh)
+  and reported against the descriptor configurations; they are not among the tested models.
+- Graph paring. Pared graph variants are tested on the development set only if the development pilots do not beat the
+  development baselines. After the lockbox has been scored a pared graph can only be an exploratory result, because the
+  lockbox is not scored twice.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

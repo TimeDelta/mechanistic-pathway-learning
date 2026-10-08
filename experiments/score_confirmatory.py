@@ -19,13 +19,17 @@ The best baseline is chosen per reading by its seed-mean score on the lockbox, w
 
 Inference: a paired bootstrap over lockbox perturbations (the same resampled rows for every model, seed, baseline and
 labelling), one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). Two hypotheses per model:
-- H1 (prediction): the macro, micro and both within-strata readings exceed zero, and the macro and micro differences
-  are at least --minimum-difference. Intersection-union test: p(H1) is the largest of the four p-values.
+- H1 (prediction): the macro, micro and both within-strata readings exceed zero, the macro difference is at least
+  --minimum-macro-difference and the micro difference at least --minimum-micro-difference. Intersection-union test:
+  p(H1) is the largest of the four p-values.
 - H2 (graph content): H1 and both rewiring readings exceed zero; p(H2) = max(p(H1), the two rewiring p-values).
 The two permutation readings are secondary (the user's decision of 8 October 2026): reported with their intervals and
 p-values, outside both hypotheses.
-Holm's step-down procedure runs over the eight hypotheses at one-sided --alpha. A model with any missing run is not
-confirmatory: its hypotheses keep p = 1, so the family size does not change.
+Each model is tested on its own at one-sided --alpha (the user's decision of 8 October 2026: every model is a
+candidate with the full level): H1 first and, only if H1 is confirmed, H2 at the same level. A model with any missing
+run is not confirmed. No correction is made across the models, so the chance that at least one of four models is
+confirmed by luck is above --alpha (at most 1 - (1 - alpha)^4, about 0.096 at 0.025, if the four were independent; less,
+since they share the data and the baselines); the output states this beside the results.
 
 The lockbox is scored once. A SCORED marker records when; a second scoring needs --rescore and is listed in the output.
 
@@ -89,14 +93,11 @@ def micro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray,
     return average_precision(predictions[:, columns][labelled], outcomes[:, columns][labelled])
 
 
-def holm_rejections(p_values: dict[str, float], alpha: float) -> dict[str, bool]:
-    """Holm step-down: sorted ascending, the i-th smallest (from 0) is rejected while p <= alpha / (m - i)."""
-    rejected = {name: False for name in p_values}
-    for position, (name, p_value) in enumerate(sorted(p_values.items(), key=lambda item: item[1])):
-        if p_value > alpha / (len(p_values) - position):
-            break
-        rejected[name] = True
-    return rejected
+def fixed_sequence_decisions(complete: bool, p_h1: float, p_h2: float, meets_minimum_differences: bool, alpha: float) -> dict[str, bool]:
+    """H1 then H2 at the same level: H2 is tested only once H1 is confirmed, so the chance of any false confirmation stays at
+    alpha (the fixed-sequence test, one of the procedures Bretz et al., Statistics in Medicine 28, 586, 2009, write as a graph)."""
+    h1_confirmed = bool(complete and meets_minimum_differences and p_h1 <= alpha)
+    return {"H1_confirmed": h1_confirmed, "H2_confirmed": bool(h1_confirmed and p_h2 <= alpha)}
 
 
 def one_sided_p(resampled_differences: np.ndarray) -> float:
@@ -138,8 +139,10 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="*", default=[0, 1, 2, 3, 4])
     parser.add_argument("--num-bootstrap", type=int, default=4000)
     parser.add_argument("--bootstrap-seed", type=int, default=20261008)
-    parser.add_argument("--alpha", type=float, default=0.025, help="one-sided family-wise level (a two-sided 95 percent interval excluding zero)")
-    parser.add_argument("--minimum-difference", type=float, default=0.05, help="smallest macro and micro AUPRC difference that counts")
+    parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
+    parser.add_argument("--minimum-macro-difference", type=float, default=0.05, help="smallest macro AUPRC difference that counts")
+    parser.add_argument("--minimum-micro-difference", type=float, default=0.028,
+                        help="smallest micro AUPRC difference that counts: the projected 95 percent half-width of a micro difference on a 20 percent hold-out")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
@@ -249,7 +252,7 @@ def main() -> None:
             for reading, value in differences(scored, model).items():
                 resampled[model][reading].append(value)
 
-    p_values, entries = {}, {}
+    entries = {}
     for model in arguments.models:
         entry = {"complete": model in complete_models, "missing_runs": missing_runs[model]}
         if model in complete_models:
@@ -261,26 +264,22 @@ def main() -> None:
                                      "lower_95": float(np.quantile(finite, 0.025)) if finite.size else float("nan"),
                                      "upper_95": float(np.quantile(finite, 0.975)) if finite.size else float("nan"), "num_resamples_defined": int(finite.size)}
             entry["readings"] = readings
-            entry["meets_minimum_difference"] = all(readings[reading]["difference"] >= arguments.minimum_difference for reading in ("macro", "micro"))
+            entry["meets_minimum_differences"] = bool(readings["macro"]["difference"] >= arguments.minimum_macro_difference
+                                                      and readings["micro"]["difference"] >= arguments.minimum_micro_difference)
             entry["p_h1"] = max(readings[reading]["p_one_sided"] for reading in H1_READINGS)
             entry["p_h2"] = max([entry["p_h1"]] + [readings[reading]["p_one_sided"] for reading in H2_EXTRA_READINGS])
             entry["model_scores"] = {variant: {reading: seed_mean(observed["models"][model][variant], reading) for reading in base_readings} for variant in VARIANT_SUFFIXES}
             entry["seed_scores_real"] = {str(seed): observed["models"][model]["real"][seed] for seed in arguments.seeds}
-        p_values[f"{model}:H1"] = entry.get("p_h1", 1.0)
-        p_values[f"{model}:H2"] = entry.get("p_h2", 1.0)
+        entry.update(fixed_sequence_decisions(entry["complete"], entry.get("p_h1", 1.0), entry.get("p_h2", 1.0), entry.get("meets_minimum_differences", False), arguments.alpha))
         entries[model] = entry
-    rejected = holm_rejections(p_values, arguments.alpha)
-    for model, entry in entries.items():
-        for hypothesis in ("H1", "H2"):
-            entry[f"{hypothesis}_rejected_by_holm"] = rejected[f"{model}:{hypothesis}"]
-            entry[f"{hypothesis}_confirmed"] = bool(rejected[f"{model}:{hypothesis}"] and entry["complete"] and entry.get("meets_minimum_difference", False))
 
     scoring = {"scored_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                "commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()}
     output = {
         "scorings": previous_scorings + [scoring], "lockbox": str(arguments.lockbox), "lockbox_sha256": lockbox_sha256, "label_selection_sha256": selection_sha256,
         "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
-        "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "alpha_one_sided": arguments.alpha, "minimum_difference": arguments.minimum_difference,
+        "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "alpha_one_sided_per_model": arguments.alpha,
+        "minimum_macro_difference": arguments.minimum_macro_difference, "minimum_micro_difference": arguments.minimum_micro_difference,
         "best_baseline": best_baseline,
         "baseline_scores": {labelling: {name: {reading: seed_mean(by_seed, reading) for reading in base_readings} for name, by_seed in by_name.items()}
                             for labelling, by_name in observed["baselines"].items()},
@@ -292,8 +291,10 @@ def main() -> None:
 
     lines = ["# Confirmatory test on the lockbox (generated by experiments/score_confirmatory.py)", "",
              f"Lockbox {arguments.lockbox} ({len(rows)} perturbations, SHA-256 {lockbox_sha256[:12]}); label selection {str(selection_sha256)[:12]}; seeds {arguments.seeds}; "
-             f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox perturbations; Holm over {len(p_values)} hypotheses at one-sided {arguments.alpha}; "
-             f"minimum macro and micro difference {arguments.minimum_difference}. Scorings: {len(previous_scorings) + 1}.", "",
+             f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox perturbations; each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
+             f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. With {len(entries)} models "
+             f"and no correction across them, the chance that at least one is confirmed by luck is at most {1 - (1 - arguments.alpha) ** len(entries):.3f} if they were "
+             f"independent, and less since they share the data and baselines. Scorings: {len(previous_scorings) + 1}.", "",
              "Best baseline per reading (seed-mean lockbox score, chosen before any model was read): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
              "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",

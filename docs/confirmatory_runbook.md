@@ -60,7 +60,9 @@ score_confirmatory.py runs once; a second scoring (--rescore, or a run after SCO
 
 ## Not to be done
 
-- Full-graph training other than the jobs above.
+- Full-graph training other than the jobs above, the ablation_pilots_without_descriptors job (development pilots of the
+  no-descriptor branch, user, 8 October 2026) and development runs of a descriptor treatment the slice selects (the user
+  allowed full-graph tests of the treatments on 8 October).
 - Edits to the four confirmatory configurations, configs/lockbox_v1.json, experiments/score_confirmatory.py or the
   decision rule, except where step 2 directs or the user decides.
 - Regenerating graph_full_neuronal, evidence_full_v2, the better_v1 selection, the node descriptors or the cell-class
