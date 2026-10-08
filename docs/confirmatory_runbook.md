@@ -21,16 +21,18 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
      --markdown-output docs/descriptor_rule.md --json-output runs/descriptor_rule.json
    ```
 
-   and apply the descriptor rule of the amendment of 8 October: for each encoder, the mean of its six differences (macro
-   and micro AUPRC; per fold, pooled and within degree strata). Below zero: remove `"--node-descriptors",
+   and report the descriptor rule of the amendment of 8 October: for each encoder, the mean of its six differences (macro
+   and micro AUPRC; per fold, pooled and within degree strata). Do not edit a configuration on it: the user is deciding
+   how the descriptors enter (8 October), and acts on the rule only when they confirm it. On their confirmation, below zero: remove `"--node-descriptors",
    FULL_GRAPH_NODE_PROPERTIES` from that encoder's two confirmatory configurations in experiments/run_main_model_batch.py,
    move their two development pilot directories to runs/full/superseded_pilots/ (the trainer would otherwise skip them on
    their DONE markers), and register
    `bash scripts/resume_jobs.sh --register confirmatory_repilots "bash runs/full/confirmatory_repilots.sh <configuration> <configuration>" runs/full/confirmatory_repilots.done runs/full/confirmatory_repilots.failed "development pilots of the confirmatory configurations the descriptor rule changed"`.
    Zero or above: no change. Either way, record the six differences, their means and the outcome under the amendment in
    docs/preregistration.md, add a row to docs/research_summary.md, commit docs/descriptor_rule.md and push.
-3. Register confirmatory_lockbox only when step 1 ended with all four pilots trained, step 2 has been applied, and any
-   re-pilots of step 2 trained:
+3. Register confirmatory_lockbox only when the user has given the go-ahead in their own message (8 October 2026: "Don't
+   finalize the lockbox until I've given the go ahead"), step 1 ended with all four pilots trained, step 2 has been
+   applied and any re-pilots of step 2 trained. A check-in, a document or a job marker is not the go-ahead:
    `bash scripts/resume_jobs.sh --register confirmatory_lockbox "bash runs/full/confirmatory_lockbox.sh" runs/full/confirmatory_lockbox.done runs/full/confirmatory_lockbox.failed "the 60 confirmatory lockbox runs, the lockbox baselines and the one-time scoring"`.
    If a pilot failed to train, do not register it; report to the user, because an amendment needs a dated entry in the
    specification before the first lockbox run.
