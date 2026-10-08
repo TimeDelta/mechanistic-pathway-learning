@@ -580,6 +580,32 @@ day). Each is a defect against text already in this specification, not a change 
   lockbox's 237 leakage groups, either for the confirmatory p-values or as a sensitivity reading beside them.
   Resampling whole groups keeps the dependence inside a group; Field and Welsh (2007) show that "the cluster bootstrap
   gives consistent estimates under both the transformation and the random-effect model" of clustered data.
+- Open, for the user's decision: no confirmatory baseline is fitted per perturbation type. Over labelled development
+  pairs the base rate is 0.159 for drugs and 0.063 for genes, higher for drugs on 16 of 22 symptoms, and the lockbox
+  holds 64 drugs of 317 against 78 of 1,222 in development. A predictor that knows only whether a perturbation is a drug
+  therefore earns a share of every reading. experiments/measure_perturbation_type_offset.py (docs/perturbation_type_offset.md)
+  draws 200 pseudo-lockboxes of 39 drugs and 154 genes from the development set, fits the predictors on the rest and
+  scores the four H1 readings as the scorer does. Against the better of popularity and degree_popularity in each draw
+  (mean, 2.5 and 97.5 percentiles):
+  - type_popularity (per-symptom base rate of the perturbation's type): macro -0.034 [-0.064, -0.002], micro +0.059
+    [+0.018, +0.091], macro within degree strata +0.057 [+0.017, +0.096], micro within degree strata +0.034 [+0.009, +0.064];
+  - type_degree_popularity (the same times log(1 + degree)): +0.033 [+0.013, +0.058], +0.087 [+0.044, +0.129], +0.021
+    [-0.004, +0.048] and +0.013 [+0.000, +0.027].
+  Degree strata do not separate the types: the top stratum holds 58 development drugs and 173 genes. Neither graph-free
+  predictor passes H1 on its own, but each reaches the micro floor (0.028) and one reaches the macro floor (0.041) inside
+  strata, so a model that learns the type offset beside a weak graph signal can pass H1 against these two baselines. The
+  random walk and TransE were not drawn (each needs the full graph per draw), so whether either already carries the
+  offset is open. The fold-0 development pilots show the effect in reverse: that test fold holds 63 of the 78 development
+  drugs, the 15 training drugs have lower base rates than the genes, and the message-passing sigmoid pilot's macro
+  AUROC is 0.343 over all test perturbations against 0.409 and 0.457 inside genes and drugs (type_popularity scores 0.336
+  on that fold); the linear-response sigmoid pilot reads 0.671 overall against 0.482 and 0.538 inside the types. The
+  options are:
+  - add type_popularity and type_degree_popularity to the baselines the best baseline of a reading is chosen from (graph
+    free, fitted on the development set like popularity), so that the type offset no longer counts toward H1;
+  - score the four readings inside perturbation type as well (degree strata crossed with type), as further H1 readings
+    or as secondary readings;
+  - keep the baselines and state the offset as a limitation.
+  The first is cheap and leaves the models untouched; it changes the decision rule, so it is the user's decision.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
