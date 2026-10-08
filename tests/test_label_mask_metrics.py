@@ -99,6 +99,43 @@ def test_label_selection_masks_positive_pairs_in_the_loader(tmp_path):
     assert load_experiment_data(graph, evidence).label_mask is None
 
 
+
+def test_mask_grades_masks_grade_c_only_pairs_and_leaves_positives(tmp_path):
+    """--mask-grades C: a pair with grade C evidence only is neither positive nor negative; a pair with grade A and C stays a positive."""
+    import json
+    import subprocess
+    import sys
+
+    import pandas as pd
+
+    from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+
+    graph = tmp_path / "graph"
+    evidence = tmp_path / "evidence"
+    graph.mkdir()
+    evidence.mkdir()
+    pd.DataFrame({"node_id": ["GENE:A", "GENE:B", "R1"], "node_type": ["gene", "gene", "reaction"], "degree": [1, 1, 2],
+                  "is_currency": [False, False, False]}).to_parquet(graph / "nodes.parquet")
+    pd.DataFrame({"source_id": ["GENE:A", "GENE:B"], "target_id": ["R1", "R1"], "relation_type": ["catalyzed_by"] * 2}).to_parquet(graph / "edges.parquet")
+    (graph / "relation_types.json").write_text(json.dumps(["catalyzed_by"]))
+    rows = []
+    for gene, symptom, grade in [("A", "anxiety", "A"), ("A", "anxiety", "C"), ("A", "fatigue", "C"), ("B", "anxiety", "A"), ("B", "apathy", "A")]:
+        rows.append({"perturbation_id": gene, "perturbation_type": "gene", "perturbation_label": gene, "group_id": gene, "symptom": symptom,
+                     "relation": "induces", "grade": grade, "weight": 1.0, "in_metabolic_layer": True, "label_frequency": 0.5, "source": "HPO",
+                     "perturbation_nodes": json.dumps([[f"GENE:{gene}", -1.0, 1.0]])})
+    pd.DataFrame(rows).to_parquet(evidence / "evidence_records.parquet")
+    selection = tmp_path / "selection.parquet"
+    subprocess.run([sys.executable, "experiments/build_label_selection.py", "--evidence-dir", str(evidence), "--mask-grades", "C", "--output", str(selection)],
+                   check=True, capture_output=True)
+    data = load_experiment_data(graph, evidence, symptoms=["anxiety", "apathy", "fatigue"], label_selection=selection)
+    row_a, fatigue, anxiety = data.perturbation_ids.index("A"), data.symptoms.index("fatigue"), data.symptoms.index("anxiety")
+    assert data.outcomes[row_a, fatigue] == 0 and not data.label_mask[row_a, fatigue]  # grade C only: masked
+    assert data.outcomes[row_a, anxiety] == 1 and data.label_mask[row_a, anxiety]  # grade A and C: a kept positive
+    assert data.label_mask.sum() == data.label_mask.size - 1
+    assert data.label_selection_summary["masked_negative_pairs"] == 1 and data.label_selection_summary["masked_pairs"] == 0
+    summary = json.loads(selection.with_suffix(".summary.json").read_text())
+    assert summary["positive_pairs"] == 3 and summary["masked_negative_pairs"] == 1
+
 def test_micro_auprc_pools_every_labelled_pair_and_skips_masked_ones():
     from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import micro_auprc
     outcomes = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]])

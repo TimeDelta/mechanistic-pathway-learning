@@ -114,7 +114,7 @@ def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "Expe
         # the summary's counts are over all perturbations; these are over the rows kept (development, without the lockbox)
         positive, kept = changes["outcomes"] > 0, np.asarray(changes["label_mask"], dtype=bool)
         changes["label_selection_summary"] = {**data.label_selection_summary, "after_restriction": {
-            "perturbations": int(len(positions)), "positive_pairs": int(positive.sum()), "masked_pairs": int((positive & ~kept).sum()),
+            "perturbations": int(len(positions)), "positive_pairs": int(positive.sum()), "masked_pairs": int((positive & ~kept).sum()), "masked_negative_pairs": int((~positive & ~kept).sum()),
             "kept_positive_pairs": int((positive & kept).sum())}}
     return dataclasses.replace(data, **changes)
 
@@ -207,7 +207,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     label_selection is a parquet of (perturbation_id, symptom, keep) written by experiments/build_label_selection.py.
     A positive pair with keep False stays a positive in outcomes but is masked out (label_mask False): the trainer gives
     it zero weight and the metrics leave it out, so it is neither a positive nor a negative. Keeping outcome 1 means a
-    code path that ignores the mask behaves as it did before the selection, never as if the pair were negative."""
+    code path that ignores the mask behaves as it did before the selection, never as if the pair were negative. A row
+    with masks_a_negative True (build_label_selection.py --mask-grades) masks a pair that is not a positive (grade C
+    evidence only) in the same way."""
     if group_by not in GROUPING_COLUMNS:
         raise ValueError(f"group_by must be one of {sorted(GROUPING_COLUMNS)}")
     group_column = GROUPING_COLUMNS[group_by]
@@ -270,8 +272,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         selection = pd.read_parquet(label_selection)
         label_mask = np.ones_like(outcomes, dtype=bool)
         perturbation_row = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
-        set_aside = selection[~selection.keep.astype(bool)]
-        masked, not_positive = 0, 0
+        masks_a_negative = selection.masks_a_negative.astype(bool) if "masks_a_negative" in selection.columns else pd.Series(False, index=selection.index)
+        set_aside = selection[~selection.keep.astype(bool) & ~masks_a_negative]
+        masked, not_positive, masked_negatives = 0, 0, 0
         for row in set_aside.itertuples(index=False):
             position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
             if position is None or column is None or outcomes[position, column] == 0:
@@ -279,6 +282,12 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
                 continue
             label_mask[position, column] = False
             masked += 1
+        for row in selection[masks_a_negative].itertuples(index=False):  # --mask-grades rows: a pair with grade C evidence only
+            position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
+            if position is not None and column is not None and outcomes[position, column] == 0:
+                label_mask[position, column] = False
+                masked_negatives += 1
+        selection = selection[~masks_a_negative]
         selected_pairs = set(zip(selection.perturbation_id, selection.symptom))
         positive_rows, positive_columns = np.nonzero(outcomes)
         without_a_row = sum((perturbation_ids[r], symptoms[c]) not in selected_pairs for r, c in zip(positive_rows.tolist(), positive_columns.tolist()))
@@ -288,6 +297,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
                                    "positive_pairs": int(outcomes.sum()), "masked_pairs": masked,
                                    "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum()),
                                    "positive_pairs_without_a_selection_row": int(without_a_row)}
+        if masks_a_negative.any():
+            label_selection_summary["masked_negative_pairs"] = masked_negatives
     group_ids = [groups[p] for p in perturbation_ids]
     if group_by == "disease_cluster_and_targets":
         group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [seeds[p] for p in perturbation_ids], node_ids)
