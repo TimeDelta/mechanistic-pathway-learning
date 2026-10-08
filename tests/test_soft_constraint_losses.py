@@ -63,3 +63,39 @@ def test_log_space_loss_matches_the_clamped_loss_inside_the_clamp_and_keeps_the_
         torch.sigmoid(logits), outcome, weight, log_probability=torch.nn.functional.logsigmoid(logits), log_complement=torch.nn.functional.logsigmoid(-logits)), logits)
     assert clamped_gradient[3] == 0.0 and clamped_gradient[4] == 0.0
     assert log_space_gradient[3] > 0.15 and log_space_gradient[4] < -0.15  # about (sigmoid(z) - target) / 5
+
+
+def test_equal_drug_loss_shares_gives_every_drug_the_same_row_total_and_leaves_genes_alone() -> None:
+    import numpy as np
+
+    from mechanistic_pathway_learning.models.soft_constraint_losses import equal_drug_loss_shares
+
+    pair_weights = np.array([
+        [1.0, 1.0, 1.0, 1.0],  # drug, total 4
+        [0.5, 0.0, 0.0, 0.5],  # drug, total 1
+        [2.0, 0.0, 1.0, 0.0],  # gene, total 3
+        [0.0, 0.0, 0.0, 0.0],  # drug with every pair masked
+        [3.0, 3.0, 0.0, 0.0],  # drug outside the fitted set, total 6
+    ], dtype=np.float32)
+    is_drug = np.array([True, True, False, True, True])
+    fit_indices = np.array([0, 1, 2, 3])
+    rescaled = equal_drug_loss_shares(pair_weights, is_drug, fit_indices)
+
+    common_total = (4.0 + 1.0) / 2
+    assert rescaled.dtype == pair_weights.dtype
+    assert np.allclose(rescaled.sum(axis=1)[[0, 1, 4]], common_total)
+    assert np.allclose(rescaled[2], pair_weights[2])
+    assert np.allclose(rescaled[3], 0.0)
+    assert np.isclose(rescaled[[0, 1]].sum(), pair_weights[[0, 1]].sum())
+    # the pattern inside a row is kept: only its scale changes
+    assert np.allclose(rescaled[1] / rescaled[1].sum(), pair_weights[1] / pair_weights[1].sum())
+
+
+def test_equal_drug_loss_shares_without_fitted_drugs_returns_the_weights_unchanged() -> None:
+    import numpy as np
+
+    from mechanistic_pathway_learning.models.soft_constraint_losses import equal_drug_loss_shares
+
+    pair_weights = np.array([[1.0, 2.0], [3.0, 0.0]])
+    rescaled = equal_drug_loss_shares(pair_weights, np.array([False, True]), np.array([0]))
+    assert np.array_equal(rescaled, pair_weights)

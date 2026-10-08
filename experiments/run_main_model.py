@@ -83,7 +83,7 @@ from mechanistic_pathway_learning.models.linear_response_encoder import (
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
-from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, evidence_weighted_binary_cross_entropy
+from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, equal_drug_loss_shares, evidence_weighted_binary_cross_entropy
 
 CHECKPOINT_REQUESTED = False
 MINIMUM_POSITIVES_TO_SCORE = 5
@@ -249,7 +249,7 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 # arguments a resumed process may change without changing what the checkpoint was trained for
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
-ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes"}
+ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares"}
 
 
 def array_sha256(values) -> str:
@@ -436,6 +436,19 @@ def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_
     head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
 
 
+def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
+    """The loss's weight per (perturbation, symptom): a positive at its evidence weight (at 1 when the frequency is the
+    target), a negative at --negative-weight, a pair set aside by the selection at zero; under --equal-drug-shares each
+    drug's row is rescaled to the mean drug row total over fit_indices (equal_drug_loss_shares)."""
+    positive = data.outcomes > 0
+    weights = np.where(positive, 1.0 if frequency_targets else np.maximum(data.weights, 1e-3), arguments.negative_weight)
+    if label_mask is not None:
+        weights = weights * label_mask
+    if getattr(arguments, "equal_drug_shares", False):
+        weights = equal_drug_loss_shares(weights, np.array([kind == "drug" for kind in data.perturbation_types]), fit_indices)
+    return weights
+
+
 def weighted_constant_optimum(data, fit_indices: np.ndarray, label_mask, arguments) -> np.ndarray:
     """Per symptom, the constant probability that minimises the training loss over fit_indices: the weighted mean of the
     loss's targets, sum(w t) / sum(w), with the loss's weights (a positive at its evidence weight, a negative at
@@ -447,12 +460,9 @@ def weighted_constant_optimum(data, fit_indices: np.ndarray, label_mask, argumen
     if arguments.positive_target_from_frequency:
         frequencies = data.frequencies[fit_indices]
         targets = np.where(positive, np.where(np.isnan(frequencies), arguments.positive_target, np.maximum(frequencies, arguments.minimum_frequency_target)), 0.0)
-        weights = np.where(positive, 1.0, arguments.negative_weight)
     else:
         targets = np.where(positive, arguments.positive_target, 0.0)
-        weights = np.where(positive, np.maximum(data.weights[fit_indices], 1e-3), arguments.negative_weight)
-    if label_mask is not None:
-        weights = weights * label_mask[fit_indices]
+    weights = loss_pair_weights(data, label_mask, arguments, fit_indices, frequency_targets=arguments.positive_target_from_frequency)[fit_indices]
     return (weights * targets).sum(axis=0) / np.maximum(weights.sum(axis=0), 1e-12)
 
 
@@ -589,9 +599,7 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
 def time_training_steps(data, encoder, head, optimizer, train_indices, validation_indices, adjacencies, label_mask, arguments, device) -> None:
     """Seconds per training step (forward, backward, optimizer step) and per prediction batch; nothing is scored."""
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
-    weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
-    if label_mask is not None:
-        weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)
+    weights = torch.as_tensor(loss_pair_weights(data, label_mask, arguments, train_indices), dtype=torch.float32)
     order = np.random.default_rng(arguments.seed).permutation(train_indices)
     step_seconds = []
     for step in range(arguments.timing_batches):
@@ -754,6 +762,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="open question 8: use the reported HPO or label frequency (floored at --minimum-frequency-target) as the target of a positive pair instead of --positive-target")
     parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
     parser.add_argument("--negative-weight", type=float, default=0.2)
+    parser.add_argument("--equal-drug-shares", action="store_true",
+                        help="rescale each drug's loss weights to one common row total (the mean over the training drugs), so every drug has the same share of the gradient; gene rows unchanged")
     parser.add_argument("--description-length-coefficient", type=float, default=1e-6)
     parser.add_argument("--checkpoint-every-minutes", type=float, default=20.0)
     parser.add_argument("--time-budget-seconds", type=float, default=0.0, help="stop training after this many seconds (0 = no limit)")
@@ -928,16 +938,12 @@ def main() -> None:
                            **({"laboratory_readout": laboratory_readout.state_dict()} if laboratory_readout is not None else {})}, checkpoint_path)
 
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
-    weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
-    if label_mask is not None:
-        weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)  # a pair set aside by the selection is neither positive nor negative
+    # a pair set aside by the selection is neither positive nor negative; under --positive-target-from-frequency the frequency is the target, not the weight
+    weights = torch.as_tensor(loss_pair_weights(data, label_mask, arguments, train_indices, frequency_targets=arguments.positive_target_from_frequency), dtype=torch.float32)
     positive_targets = None
     if arguments.positive_target_from_frequency:
         frequency = np.where(np.isnan(data.frequencies), arguments.positive_target, np.maximum(data.frequencies, arguments.minimum_frequency_target))
         positive_targets = torch.as_tensor(np.where(data.outcomes > 0, frequency, 0.0), dtype=torch.float32)
-        weights = torch.as_tensor(np.where(data.outcomes > 0, 1.0, arguments.negative_weight), dtype=torch.float32)  # the frequency is the target, not the weight
-        if label_mask is not None:
-            weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)
     node_cost = float(np.log(len(data.node_ids)))
 
     def training_step(model_encoder, model_head, model_laboratory_readout, model_optimizer, batch) -> tuple[float, float, float, float | None]:

@@ -21,10 +21,30 @@ is expected to pass them as degree-matched sampled negatives with a lower weight
 """
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
 PROBABILITY_EPSILON = 1e-6
+
+
+def equal_drug_loss_shares(pair_weights: np.ndarray, is_drug: np.ndarray, fit_indices: np.ndarray) -> np.ndarray:
+    """Loss weights [perturbations, symptoms] with every drug's row rescaled to one common total: the mean row total
+    of the drugs among fit_indices. Gene rows are unchanged, and so is the summed weight of the fitted drugs.
+
+    The loss divides by the batch's summed weight, so a perturbation's share of the gradient follows its row total. A
+    drug with many weighted positives (often one with many targets) would otherwise pull harder than a drug with one;
+    with equal shares each drug counts the same. A drug row with no weight (every pair masked) stays at zero.
+    """
+    row_totals = pair_weights.sum(axis=1)
+    weighted_drug = np.asarray(is_drug, dtype=bool) & (row_totals > 0)
+    fitted_drugs = np.asarray(fit_indices, dtype=int)[weighted_drug[np.asarray(fit_indices, dtype=int)]]
+    if not len(fitted_drugs):
+        return pair_weights
+    common_total = row_totals[fitted_drugs].mean()
+    scale = np.ones(len(pair_weights), dtype=np.float64)
+    scale[weighted_drug] = common_total / row_totals[weighted_drug]
+    return (pair_weights * scale[:, None]).astype(pair_weights.dtype)
 
 
 def evidence_weighted_binary_cross_entropy(
