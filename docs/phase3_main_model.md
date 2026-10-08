@@ -9,13 +9,18 @@
 | random_walk_with_restart | 0.245 | 0.293 ± 0.014 | nan | nan ± nan | 0.532 | 0.530 ± 0.012 | 0.441 | 0.532 | nan | 451 |
 | knowledge_graph_embedding_transe | 0.213 | 0.256 ± 0.019 | nan | nan ± nan | 0.504 | 0.509 ± 0.028 | 0.408 | 0.488 | nan | 451 |
 | b3_sigmoid_disease_cluster | 0.208 | 0.260 ± 0.025 | 0.354 | 0.363 ± 0.011 | 0.470 | 0.503 ± 0.018 | 0.627 | 0.814 | 0.227 | 451 |
-| b3_typed_nodes_disease_cluster | 0.214 | 0.293 ± 0.031 | 0.373 | 0.387 ± 0.013 | 0.474 | 0.514 ± 0.023 | 0.657 | 0.798 | 0.239 | 451 |
+| runs/b3_typed_nodes_disease_cluster | 0.214 | 0.293 ± 0.031 | 0.373 | 0.387 ± 0.013 | 0.474 | 0.514 ± 0.023 | 0.657 | 0.798 | 0.239 | 451 |
 | b6_default_disease_cluster | 0.225 | 0.262 ± 0.028 | 0.371 | 0.379 ± 0.010 | 0.477 | 0.491 ± 0.037 | 0.646 | 0.820 | 0.196 | 451 |
 | b6_mechanistic_disease_cluster | 0.216 | 0.272 ± 0.025 | 0.365 | 0.384 ± 0.024 | 0.493 | 0.502 ± 0.035 | 0.646 | 0.820 | 0.199 | 451 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.221 | 0.281 ± 0.029 | 0.373 | 0.385 ± 0.022 | 0.492 | 0.507 ± 0.033 | 0.646 | 0.820 | 0.232 | 451 |
 | b3_degree_only_disease_cluster | 0.198 | 0.246 ± 0.026 | 0.366 | 0.382 ± 0.024 | 0.438 | 0.490 ± 0.027 | 0.655 | 0.820 | 0.246 | 451 |
 | b3_descriptors_only_disease_cluster | 0.201 | 0.260 ± 0.042 | 0.358 | 0.367 ± 0.021 | 0.461 | 0.497 ± 0.018 | 0.631 | 0.858 | 0.250 | 451 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 0.205 | 0.263 ± 0.041 | 0.366 | 0.375 ± 0.021 | 0.466 | 0.502 ± 0.024 | 0.638 | 0.827 | 0.231 | 451 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 0.199 | 0.252 ± 0.033 | 0.360 | 0.368 ± 0.024 | 0.447 | 0.486 ± 0.046 | 0.656 | 0.818 | 0.245 | 451 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 0.198 | 0.266 ± 0.025 | 0.365 | 0.374 ± 0.028 | 0.434 | 0.478 ± 0.030 | 0.641 | 0.792 | 0.246 | 451 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 0.198 | 0.254 ± 0.035 | 0.364 | 0.374 ± 0.019 | 0.445 | 0.483 ± 0.038 | 0.654 | 0.816 | 0.243 | 451 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 0.209 | 0.264 ± 0.038 | 0.379 | 0.387 ± 0.030 | 0.461 | 0.501 ± 0.044 | 0.652 | 0.820 | 0.243 | 451 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 0.207 | 0.278 ± 0.047 | 0.372 | 0.392 ± 0.041 | 0.476 | 0.528 ± 0.032 | 0.649 | 0.814 | 0.238 | 451 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | 0.197 | 0.249 ± 0.041 | 0.342 | 0.353 ± 0.027 | 0.452 | 0.473 ± 0.031 | 0.648 | 0.796 | 0.239 | 451 |
 | b3_linear_response_cofactors_disease_cluster | 0.199 | 0.266 ± 0.023 | 0.367 | 0.380 ± 0.020 | 0.447 | 0.500 ± 0.026 | 0.656 | 0.814 | 0.244 | 451 |
 | b3_linear_response_cofactors_laboratory_disease_cluster | 0.200 | 0.264 ± 0.022 | 0.369 | 0.378 ± 0.022 | 0.448 | 0.500 ± 0.023 | 0.656 | 0.814 | 0.244 | 451 |
@@ -29,7 +34,13 @@
 | b3_linear_response_cofactors_unsigned_disease_cluster | 0.202 | 0.266 ± 0.020 | 0.365 | 0.381 ± 0.029 | 0.444 | 0.495 ± 0.024 | 0.648 | 0.812 | 0.249 | 451 |
 | b3_linear_response_disease_cluster | 0.202 | 0.262 ± 0.017 | 0.369 | 0.376 ± 0.029 | 0.445 | 0.492 ± 0.021 | 0.653 | 0.818 | 0.250 | 451 |
 | b3_local_structural_disease_cluster | 0.197 | 0.241 ± 0.027 | 0.367 | 0.377 ± 0.018 | 0.443 | 0.464 ± 0.015 | 0.659 | 0.816 | 0.241 | 451 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | 0.215 | 0.271 ± 0.032 | 0.340 | 0.348 ± 0.014 | 0.478 | 0.497 ± 0.038 | 0.637 | 0.789 | 0.228 | 451 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 0.209 | 0.268 ± 0.028 | 0.356 | 0.365 ± 0.023 | 0.461 | 0.502 ± 0.021 | 0.648 | 0.785 | 0.237 | 451 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 0.203 | 0.260 ± 0.015 | 0.348 | 0.362 ± 0.011 | 0.453 | 0.498 ± 0.032 | 0.634 | 0.805 | 0.246 | 451 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 0.208 | 0.262 ± 0.017 | 0.357 | 0.368 ± 0.022 | 0.457 | 0.479 ± 0.036 | 0.647 | 0.814 | 0.240 | 451 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 0.233 | 0.296 ± 0.041 | 0.383 | 0.392 ± 0.025 | 0.511 | 0.544 ± 0.028 | 0.644 | 0.794 | 0.240 | 451 |
 | b3_typed_nodes_descriptors_disease_cluster | 0.213 | 0.263 ± 0.026 | 0.356 | 0.365 ± 0.013 | 0.461 | 0.497 ± 0.027 | 0.633 | 0.805 | 0.235 | 451 |
+| runs/encoder/b3_typed_nodes_disease_cluster | 0.212 | 0.281 ± 0.031 | 0.361 | 0.375 ± 0.006 | 0.474 | 0.529 ± 0.032 | 0.647 | 0.823 | 0.240 | 451 |
 | b3_typed_nodes_laboratory_disease_cluster | 0.213 | 0.285 ± 0.032 | 0.358 | 0.375 ± 0.015 | 0.470 | 0.528 ± 0.017 | 0.635 | 0.807 | 0.244 | 451 |
 | b6_linear_response_cofactors_neuronal_disease_cluster | 0.221 | 0.271 ± 0.042 | 0.379 | 0.385 ± 0.018 | 0.491 | 0.492 ± 0.061 | 0.658 | 0.856 | 0.111 | 451 |
 | b6_linear_response_disease_cluster | 0.210 | 0.258 ± 0.022 | 0.356 | 0.364 ± 0.024 | 0.473 | 0.492 ± 0.032 | 0.646 | 0.820 | 0.213 | 451 |
@@ -48,13 +59,18 @@ Macro AUPRC by perturbation degree tercile (pooled predictions):
 | random_walk_with_restart | 0.278 | 0.217 | 0.268 |
 | knowledge_graph_embedding_transe | 0.228 | 0.210 | 0.246 |
 | b3_sigmoid_disease_cluster | 0.220 | 0.213 | 0.232 |
-| b3_typed_nodes_disease_cluster | 0.241 | 0.217 | 0.229 |
+| runs/b3_typed_nodes_disease_cluster | 0.241 | 0.217 | 0.229 |
 | b6_default_disease_cluster | 0.249 | 0.211 | 0.256 |
 | b6_mechanistic_disease_cluster | 0.218 | 0.227 | 0.231 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.260 | 0.227 | 0.236 |
 | b3_degree_only_disease_cluster | 0.203 | 0.187 | 0.221 |
 | b3_descriptors_only_disease_cluster | 0.218 | 0.209 | 0.231 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 0.210 | 0.213 | 0.233 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 0.215 | 0.214 | 0.221 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 0.216 | 0.193 | 0.225 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 0.218 | 0.198 | 0.222 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 0.229 | 0.200 | 0.231 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 0.213 | 0.211 | 0.239 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | 0.214 | 0.195 | 0.216 |
 | b3_linear_response_cofactors_disease_cluster | 0.217 | 0.194 | 0.228 |
 | b3_linear_response_cofactors_laboratory_disease_cluster | 0.218 | 0.194 | 0.229 |
@@ -68,7 +84,13 @@ Macro AUPRC by perturbation degree tercile (pooled predictions):
 | b3_linear_response_cofactors_unsigned_disease_cluster | 0.231 | 0.200 | 0.223 |
 | b3_linear_response_disease_cluster | 0.224 | 0.206 | 0.230 |
 | b3_local_structural_disease_cluster | 0.206 | 0.199 | 0.213 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | 0.216 | 0.202 | 0.257 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 0.220 | 0.198 | 0.232 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 0.221 | 0.184 | 0.226 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 0.238 | 0.191 | 0.232 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 0.246 | 0.199 | 0.276 |
 | b3_typed_nodes_descriptors_disease_cluster | 0.236 | 0.207 | 0.247 |
+| runs/encoder/b3_typed_nodes_disease_cluster | 0.246 | 0.194 | 0.237 |
 | b3_typed_nodes_laboratory_disease_cluster | 0.244 | 0.200 | 0.238 |
 | b6_linear_response_cofactors_neuronal_disease_cluster | 0.254 | 0.222 | 0.236 |
 | b6_linear_response_disease_cluster | 0.213 | 0.199 | 0.231 |
@@ -84,13 +106,18 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 
 | A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | micro AUPRC A - B [95% CI] | macro AUROC A - B [95% CI] |
 |---|---|---|---|---|---|---|
-| b3_sigmoid_disease_cluster | b3_typed_nodes_disease_cluster | 451 | -0.006 [-0.021, +0.011] | 0.27 | -0.019 [-0.039, +0.004] | -0.004 [-0.035, +0.027] |
+| b3_sigmoid_disease_cluster | runs/b3_typed_nodes_disease_cluster | 451 | -0.006 [-0.021, +0.011] | 0.27 | -0.019 [-0.039, +0.004] | -0.004 [-0.035, +0.027] |
 | b3_sigmoid_disease_cluster | b6_default_disease_cluster | 451 | -0.018 [-0.039, -0.000] | 0.03 | -0.017 [-0.042, +0.001] | -0.007 [-0.051, +0.050] |
 | b3_sigmoid_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.008 [-0.026, +0.012] | 0.21 | -0.011 [-0.028, +0.007] | -0.023 [-0.063, +0.032] |
 | b3_sigmoid_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.014 [-0.040, +0.007] | 0.10 | -0.019 [-0.042, +0.001] | -0.021 [-0.066, +0.025] |
 | b3_sigmoid_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.009 [-0.006, +0.029] | 0.88 | -0.012 [-0.029, +0.009] | +0.032 [+0.000, +0.068] |
 | b3_sigmoid_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.006 [-0.009, +0.026] | 0.79 | -0.004 [-0.023, +0.018] | +0.010 [-0.020, +0.046] |
 | b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.002 [-0.012, +0.023] | 0.65 | -0.012 [-0.032, +0.007] | +0.004 [-0.029, +0.040] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.009 [-0.005, +0.030] | 0.91 | -0.006 [-0.024, +0.014] | +0.023 [-0.007, +0.062] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.010 [-0.003, +0.029] | 0.91 | -0.011 [-0.030, +0.011] | +0.036 [+0.004, +0.076] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.010 [-0.003, +0.031] | 0.93 | -0.010 [-0.029, +0.010] | +0.026 [-0.005, +0.065] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.001 [-0.015, +0.019] | 0.52 | -0.025 [-0.042, -0.007] | +0.010 [-0.018, +0.049] |
+| b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.000 [-0.017, +0.019] | 0.56 | -0.018 [-0.038, +0.001] | -0.006 [-0.042, +0.030] |
 | b3_sigmoid_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.011 [-0.010, +0.032] | 0.84 | +0.012 [-0.010, +0.033] | +0.018 [-0.012, +0.054] |
 | b3_sigmoid_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.008 [-0.004, +0.029] | 0.89 | -0.013 [-0.031, +0.008] | +0.023 [-0.010, +0.064] |
 | b3_sigmoid_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.008 [-0.004, +0.029] | 0.89 | -0.015 [-0.032, +0.006] | +0.023 [-0.010, +0.064] |
@@ -104,7 +131,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_sigmoid_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.006 [-0.007, +0.024] | 0.79 | -0.011 [-0.027, +0.012] | +0.026 [-0.003, +0.058] |
 | b3_sigmoid_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.006 [-0.009, +0.023] | 0.78 | -0.015 [-0.036, +0.008] | +0.025 [-0.006, +0.056] |
 | b3_sigmoid_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.011 [-0.001, +0.031] | 0.96 | -0.013 [-0.033, +0.008] | +0.028 [-0.006, +0.062] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.007 [-0.026, +0.012] | 0.20 | +0.014 [-0.003, +0.032] | -0.008 [-0.038, +0.032] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.001 [-0.010, +0.017] | 0.52 | -0.002 [-0.022, +0.018] | +0.009 [-0.020, +0.038] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.005 [-0.014, +0.020] | 0.70 | +0.006 [-0.012, +0.025] | +0.018 [-0.013, +0.048] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.000 [-0.018, +0.018] | 0.41 | -0.003 [-0.023, +0.018] | +0.013 [-0.015, +0.050] |
+| b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.025 [-0.042, -0.010] | 0.01 | -0.029 [-0.048, -0.010] | -0.041 [-0.071, -0.007] |
 | b3_sigmoid_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.005 [-0.024, +0.016] | 0.29 | -0.002 [-0.020, +0.017] | +0.010 [-0.018, +0.039] |
+| b3_sigmoid_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.004 [-0.020, +0.011] | 0.34 | -0.007 [-0.029, +0.016] | -0.004 [-0.032, +0.033] |
 | b3_sigmoid_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.006 [-0.016, +0.009] | 0.31 | -0.004 [-0.021, +0.014] | +0.000 [-0.031, +0.027] |
 | b3_sigmoid_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.013 [-0.030, +0.006] | 0.07 | -0.025 [-0.044, -0.008] | -0.020 [-0.057, +0.028] |
 | b3_sigmoid_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.024, +0.016] | 0.38 | -0.002 [-0.020, +0.016] | -0.002 [-0.036, +0.040] |
@@ -117,43 +150,59 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_sigmoid_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.024, +0.014] | 0.26 | +0.156 [+0.134, +0.182] | -0.034 [-0.070, +0.010] |
 | b3_sigmoid_disease_cluster | popularity | 451 | +0.018 [+0.012, +0.041] | 1.00 | -0.006 [-0.022, +0.012] | +0.050 [+0.019, +0.085] |
 | b3_sigmoid_disease_cluster | random_walk_with_restart | 451 | -0.037 [-0.056, -0.011] | 0.01 | +0.113 [+0.087, +0.138] | -0.061 [-0.097, -0.023] |
-| b3_typed_nodes_disease_cluster | b6_default_disease_cluster | 451 | -0.012 [-0.035, +0.010] | 0.07 | +0.002 [-0.026, +0.022] | -0.003 [-0.045, +0.050] |
-| b3_typed_nodes_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.002 [-0.023, +0.018] | 0.34 | +0.008 [-0.014, +0.035] | -0.018 [-0.055, +0.032] |
-| b3_typed_nodes_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.008 [-0.041, +0.011] | 0.21 | +0.000 [-0.022, +0.023] | -0.017 [-0.057, +0.026] |
-| b3_typed_nodes_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.015 [-0.002, +0.036] | 0.95 | +0.008 [-0.015, +0.028] | +0.036 [-0.001, +0.079] |
-| b3_typed_nodes_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.012 [-0.007, +0.030] | 0.88 | +0.015 [-0.005, +0.039] | +0.014 [-0.020, +0.055] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.008 [-0.007, +0.024] | 0.86 | +0.007 [-0.013, +0.024] | +0.009 [-0.027, +0.044] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.017 [-0.004, +0.033] | 0.94 | +0.031 [+0.011, +0.050] | +0.022 [-0.017, +0.060] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.014 [+0.001, +0.028] | 0.98 | +0.006 [-0.012, +0.024] | +0.027 [-0.000, +0.058] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.014 [+0.001, +0.027] | 0.98 | +0.004 [-0.013, +0.023] | +0.027 [-0.001, +0.058] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | +0.010 [-0.004, +0.022] | 0.90 | +0.002 [-0.016, +0.019] | +0.023 [-0.005, +0.054] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | +0.010 [-0.002, +0.025] | 0.94 | +0.004 [-0.018, +0.021] | +0.026 [-0.002, +0.059] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | +0.015 [+0.000, +0.029] | 0.97 | +0.004 [-0.015, +0.021] | +0.032 [+0.004, +0.066] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.005 [-0.015, +0.022] | 0.70 | +0.040 [+0.018, +0.058] | +0.004 [-0.031, +0.039] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | +0.012 [-0.000, +0.024] | 0.97 | +0.008 [-0.011, +0.026] | +0.029 [+0.002, +0.056] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.021 [+0.009, +0.037] | 1.00 | +0.023 [+0.007, +0.041] | +0.036 [+0.002, +0.079] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | +0.013 [-0.000, +0.027] | 0.97 | +0.005 [-0.013, +0.023] | +0.025 [-0.001, +0.054] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.011 [-0.001, +0.026] | 0.96 | +0.008 [-0.010, +0.027] | +0.030 [+0.003, +0.059] |
-| b3_typed_nodes_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.012 [-0.000, +0.025] | 0.95 | +0.004 [-0.015, +0.024] | +0.029 [+0.002, +0.057] |
-| b3_typed_nodes_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.016 [+0.003, +0.031] | 0.99 | +0.006 [-0.013, +0.025] | +0.032 [+0.001, +0.068] |
-| b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.001 [-0.020, +0.019] | 0.49 | +0.018 [-0.003, +0.037] | +0.014 [-0.021, +0.044] |
-| b3_typed_nodes_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.000 [-0.014, +0.014] | 0.52 | +0.015 [-0.002, +0.029] | +0.004 [-0.020, +0.027] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.008 [-0.029, +0.008] | 0.17 | -0.005 [-0.026, +0.015] | -0.016 [-0.061, +0.036] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.019, +0.022] | 0.58 | +0.017 [-0.006, +0.042] | +0.002 [-0.030, +0.043] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.029, +0.007] | 0.14 | -0.003 [-0.024, +0.019] | -0.006 [-0.047, +0.042] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.008 [-0.012, +0.026] | 0.76 | +0.037 [+0.016, +0.058] | -0.003 [-0.039, +0.043] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.008 [-0.015, +0.026] | 0.74 | +0.007 [-0.017, +0.032] | +0.014 [-0.017, +0.047] |
-| b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.005 [-0.019, +0.026] | 0.59 | +0.038 [+0.015, +0.061] | -0.001 [-0.036, +0.049] |
-| b3_typed_nodes_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.011 [-0.035, +0.009] | 0.15 | +0.014 [-0.014, +0.036] | -0.001 [-0.037, +0.048] |
-| b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.003 [-0.016, +0.020] | 0.62 | +0.057 [+0.032, +0.079] | -0.016 [-0.052, +0.036] |
-| b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.018, +0.019] | 0.46 | +0.176 [+0.149, +0.203] | -0.030 [-0.063, +0.015] |
-| b3_typed_nodes_disease_cluster | popularity | 451 | +0.024 [+0.016, +0.043] | 1.00 | +0.013 [-0.007, +0.038] | +0.054 [+0.025, +0.093] |
-| b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.031 [-0.055, -0.011] | 0.01 | +0.132 [+0.103, +0.159] | -0.057 [-0.092, -0.011] |
+| runs/b3_typed_nodes_disease_cluster | b6_default_disease_cluster | 451 | -0.012 [-0.035, +0.010] | 0.07 | +0.002 [-0.026, +0.022] | -0.003 [-0.045, +0.050] |
+| runs/b3_typed_nodes_disease_cluster | b6_mechanistic_disease_cluster | 451 | -0.002 [-0.023, +0.018] | 0.34 | +0.008 [-0.014, +0.035] | -0.018 [-0.055, +0.032] |
+| runs/b3_typed_nodes_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | -0.008 [-0.041, +0.011] | 0.21 | +0.000 [-0.022, +0.023] | -0.017 [-0.057, +0.026] |
+| runs/b3_typed_nodes_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.015 [-0.002, +0.036] | 0.95 | +0.008 [-0.015, +0.028] | +0.036 [-0.001, +0.079] |
+| runs/b3_typed_nodes_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.012 [-0.007, +0.030] | 0.88 | +0.015 [-0.005, +0.039] | +0.014 [-0.020, +0.055] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.008 [-0.007, +0.024] | 0.86 | +0.007 [-0.013, +0.024] | +0.009 [-0.027, +0.044] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.014 [+0.001, +0.029] | 0.98 | +0.013 [-0.007, +0.035] | +0.028 [-0.005, +0.061] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.016 [+0.001, +0.032] | 0.99 | +0.008 [-0.012, +0.027] | +0.040 [+0.010, +0.076] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.016 [+0.000, +0.032] | 0.98 | +0.009 [-0.010, +0.029] | +0.030 [-0.007, +0.064] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | +0.005 [-0.009, +0.021] | 0.78 | -0.006 [-0.025, +0.015] | +0.014 [-0.018, +0.049] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.006 [-0.007, +0.022] | 0.80 | +0.001 [-0.015, +0.017] | -0.001 [-0.037, +0.031] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.017 [-0.004, +0.033] | 0.94 | +0.031 [+0.011, +0.050] | +0.022 [-0.017, +0.060] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.014 [+0.001, +0.028] | 0.98 | +0.006 [-0.012, +0.024] | +0.027 [-0.000, +0.058] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.014 [+0.001, +0.027] | 0.98 | +0.004 [-0.013, +0.023] | +0.027 [-0.001, +0.058] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | +0.010 [-0.004, +0.022] | 0.90 | +0.002 [-0.016, +0.019] | +0.023 [-0.005, +0.054] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | +0.010 [-0.002, +0.025] | 0.94 | +0.004 [-0.018, +0.021] | +0.026 [-0.002, +0.059] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | +0.015 [+0.000, +0.029] | 0.97 | +0.004 [-0.015, +0.021] | +0.032 [+0.004, +0.066] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.005 [-0.015, +0.022] | 0.70 | +0.040 [+0.018, +0.058] | +0.004 [-0.031, +0.039] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | +0.012 [-0.000, +0.024] | 0.97 | +0.008 [-0.011, +0.026] | +0.029 [+0.002, +0.056] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.021 [+0.009, +0.037] | 1.00 | +0.023 [+0.007, +0.041] | +0.036 [+0.002, +0.079] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | +0.013 [-0.000, +0.027] | 0.97 | +0.005 [-0.013, +0.023] | +0.025 [-0.001, +0.054] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.011 [-0.001, +0.026] | 0.96 | +0.008 [-0.010, +0.027] | +0.030 [+0.003, +0.059] |
+| runs/b3_typed_nodes_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.012 [-0.000, +0.025] | 0.95 | +0.004 [-0.015, +0.024] | +0.029 [+0.002, +0.057] |
+| runs/b3_typed_nodes_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.016 [+0.003, +0.031] | 0.99 | +0.006 [-0.013, +0.025] | +0.032 [+0.001, +0.068] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.002 [-0.020, +0.016] | 0.36 | +0.033 [+0.013, +0.052] | -0.004 [-0.031, +0.036] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | +0.005 [-0.005, +0.018] | 0.83 | +0.017 [-0.000, +0.034] | +0.013 [-0.016, +0.044] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.010 [-0.006, +0.028] | 0.86 | +0.025 [+0.007, +0.043] | +0.022 [-0.007, +0.051] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.005 [-0.012, +0.021] | 0.66 | +0.017 [-0.002, +0.036] | +0.017 [-0.012, +0.050] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.020 [-0.035, -0.004] | 0.01 | -0.010 [-0.029, +0.009] | -0.037 [-0.065, +0.000] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.001 [-0.020, +0.019] | 0.49 | +0.018 [-0.003, +0.037] | +0.014 [-0.021, +0.044] |
+| runs/b3_typed_nodes_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.001 [-0.013, +0.013] | 0.51 | +0.013 [-0.005, +0.030] | +0.000 [-0.029, +0.027] |
+| runs/b3_typed_nodes_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.000 [-0.014, +0.014] | 0.52 | +0.015 [-0.002, +0.029] | +0.004 [-0.020, +0.027] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.008 [-0.029, +0.008] | 0.17 | -0.005 [-0.026, +0.015] | -0.016 [-0.061, +0.036] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.019, +0.022] | 0.58 | +0.017 [-0.006, +0.042] | +0.002 [-0.030, +0.043] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.029, +0.007] | 0.14 | -0.003 [-0.024, +0.019] | -0.006 [-0.047, +0.042] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.008 [-0.012, +0.026] | 0.76 | +0.037 [+0.016, +0.058] | -0.003 [-0.039, +0.043] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.008 [-0.015, +0.026] | 0.74 | +0.007 [-0.017, +0.032] | +0.014 [-0.017, +0.047] |
+| runs/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.005 [-0.019, +0.026] | 0.59 | +0.038 [+0.015, +0.061] | -0.001 [-0.036, +0.049] |
+| runs/b3_typed_nodes_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.011 [-0.035, +0.009] | 0.15 | +0.014 [-0.014, +0.036] | -0.001 [-0.037, +0.048] |
+| runs/b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.003 [-0.016, +0.020] | 0.62 | +0.057 [+0.032, +0.079] | -0.016 [-0.052, +0.036] |
+| runs/b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.018, +0.019] | 0.46 | +0.176 [+0.149, +0.203] | -0.030 [-0.063, +0.015] |
+| runs/b3_typed_nodes_disease_cluster | popularity | 451 | +0.024 [+0.016, +0.043] | 1.00 | +0.013 [-0.007, +0.038] | +0.054 [+0.025, +0.093] |
+| runs/b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.031 [-0.055, -0.011] | 0.01 | +0.132 [+0.103, +0.159] | -0.057 [-0.092, -0.011] |
 | b6_default_disease_cluster | b6_mechanistic_disease_cluster | 451 | +0.010 [-0.005, +0.028] | 0.93 | +0.007 [-0.007, +0.026] | -0.016 [-0.035, +0.009] |
 | b6_default_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | 451 | +0.004 [-0.015, +0.022] | 0.66 | -0.002 [-0.019, +0.016] | -0.014 [-0.045, +0.021] |
 | b6_default_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.027 [+0.013, +0.045] | 1.00 | +0.006 [-0.010, +0.023] | +0.039 [+0.007, +0.068] |
 | b6_default_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.024 [+0.002, +0.045] | 0.97 | +0.013 [-0.005, +0.035] | +0.017 [-0.034, +0.056] |
 | b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.020 [+0.004, +0.041] | 0.99 | +0.005 [-0.016, +0.030] | +0.012 [-0.033, +0.050] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.026 [+0.010, +0.047] | 1.00 | +0.012 [-0.005, +0.033] | +0.031 [-0.011, +0.067] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.028 [+0.009, +0.049] | 1.00 | +0.006 [-0.017, +0.029] | +0.043 [+0.005, +0.082] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.028 [+0.010, +0.048] | 1.00 | +0.007 [-0.010, +0.027] | +0.033 [-0.011, +0.072] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | +0.017 [+0.002, +0.036] | 0.99 | -0.008 [-0.024, +0.013] | +0.017 [-0.023, +0.057] |
+| b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.018 [+0.000, +0.040] | 0.97 | -0.001 [-0.023, +0.023] | +0.001 [-0.042, +0.042] |
 | b6_default_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.029 [+0.007, +0.051] | 0.99 | +0.029 [+0.007, +0.053] | +0.025 [-0.027, +0.072] |
 | b6_default_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.026 [+0.007, +0.048] | 1.00 | +0.004 [-0.015, +0.025] | +0.030 [-0.005, +0.068] |
 | b6_default_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.026 [+0.008, +0.048] | 1.00 | +0.002 [-0.019, +0.024] | +0.030 [-0.006, +0.068] |
@@ -167,7 +216,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_default_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.023 [+0.006, +0.045] | 1.00 | +0.006 [-0.014, +0.029] | +0.033 [-0.009, +0.076] |
 | b6_default_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.023 [+0.004, +0.047] | 1.00 | +0.002 [-0.022, +0.026] | +0.032 [-0.009, +0.071] |
 | b6_default_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.028 [+0.014, +0.050] | 1.00 | +0.004 [-0.016, +0.028] | +0.035 [+0.002, +0.066] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | +0.010 [-0.009, +0.031] | 0.82 | +0.031 [+0.010, +0.055] | -0.001 [-0.046, +0.044] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | +0.017 [+0.002, +0.039] | 0.98 | +0.015 [-0.005, +0.037] | +0.016 [-0.025, +0.064] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.022 [+0.002, +0.044] | 0.98 | +0.023 [+0.002, +0.045] | +0.025 [-0.018, +0.070] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.017 [+0.001, +0.036] | 0.98 | +0.015 [-0.005, +0.040] | +0.020 [-0.020, +0.052] |
+| b6_default_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.008 [-0.026, +0.012] | 0.19 | -0.012 [-0.032, +0.009] | -0.034 [-0.079, +0.008] |
 | b6_default_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.012 [-0.009, +0.033] | 0.90 | +0.016 [-0.008, +0.042] | +0.017 [-0.032, +0.059] |
+| b6_default_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.013 [-0.006, +0.036] | 0.93 | +0.011 [-0.010, +0.035] | +0.003 [-0.042, +0.043] |
 | b6_default_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.012 [-0.008, +0.035] | 0.94 | +0.013 [-0.007, +0.036] | +0.007 [-0.042, +0.051] |
 | b6_default_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | +0.004 [-0.018, +0.026] | 0.68 | -0.007 [-0.026, +0.011] | -0.013 [-0.065, +0.034] |
 | b6_default_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.015 [-0.000, +0.032] | 0.97 | +0.015 [+0.000, +0.035] | +0.005 [-0.016, +0.033] |
@@ -184,6 +239,11 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_mechanistic_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.017 [+0.002, +0.038] | 0.98 | -0.001 [-0.018, +0.014] | +0.055 [+0.012, +0.087] |
 | b6_mechanistic_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.014 [-0.009, +0.031] | 0.89 | +0.007 [-0.011, +0.026] | +0.032 [-0.021, +0.065] |
 | b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.010 [-0.008, +0.030] | 0.90 | -0.002 [-0.020, +0.015] | +0.027 [-0.017, +0.065] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.016 [-0.003, +0.036] | 0.94 | +0.005 [-0.012, +0.022] | +0.046 [+0.006, +0.084] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.018 [+0.000, +0.039] | 0.98 | -0.000 [-0.021, +0.019] | +0.058 [+0.022, +0.090] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.018 [+0.001, +0.036] | 0.97 | +0.001 [-0.017, +0.018] | +0.048 [+0.010, +0.086] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | +0.007 [-0.010, +0.025] | 0.82 | -0.014 [-0.031, +0.003] | +0.032 [-0.012, +0.067] |
+| b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.008 [-0.009, +0.029] | 0.83 | -0.008 [-0.027, +0.008] | +0.017 [-0.029, +0.052] |
 | b6_mechanistic_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.019 [-0.002, +0.039] | 0.95 | +0.023 [+0.000, +0.046] | +0.041 [-0.010, +0.082] |
 | b6_mechanistic_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.016 [-0.003, +0.040] | 0.95 | -0.003 [-0.025, +0.017] | +0.046 [+0.010, +0.081] |
 | b6_mechanistic_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.016 [-0.001, +0.039] | 0.96 | -0.004 [-0.028, +0.016] | +0.045 [+0.011, +0.080] |
@@ -197,7 +257,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_mechanistic_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.013 [-0.004, +0.036] | 0.92 | -0.000 [-0.021, +0.023] | +0.049 [+0.005, +0.085] |
 | b6_mechanistic_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.013 [-0.006, +0.033] | 0.92 | -0.004 [-0.029, +0.019] | +0.047 [+0.006, +0.081] |
 | b6_mechanistic_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.018 [+0.003, +0.039] | 0.98 | -0.002 [-0.023, +0.018] | +0.050 [+0.009, +0.080] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | +0.000 [-0.018, +0.017] | 0.52 | +0.024 [+0.002, +0.046] | +0.015 [-0.030, +0.055] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | +0.007 [-0.007, +0.025] | 0.82 | +0.009 [-0.010, +0.026] | +0.031 [-0.010, +0.074] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.012 [-0.007, +0.030] | 0.85 | +0.016 [-0.004, +0.035] | +0.040 [+0.001, +0.084] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.007 [-0.011, +0.022] | 0.77 | +0.008 [-0.011, +0.027] | +0.036 [-0.004, +0.069] |
+| b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.018 [-0.035, -0.002] | 0.02 | -0.019 [-0.036, -0.001] | -0.018 [-0.068, +0.029] |
 | b6_mechanistic_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.002 [-0.021, +0.020] | 0.65 | +0.009 [-0.013, +0.030] | +0.032 [-0.019, +0.071] |
+| b6_mechanistic_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.003 [-0.015, +0.023] | 0.62 | +0.004 [-0.018, +0.027] | +0.019 [-0.021, +0.051] |
 | b6_mechanistic_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.002 [-0.017, +0.022] | 0.60 | +0.006 [-0.012, +0.024] | +0.023 [-0.023, +0.056] |
 | b6_mechanistic_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.006 [-0.030, +0.016] | 0.27 | -0.014 [-0.033, +0.004] | +0.002 [-0.048, +0.047] |
 | b6_mechanistic_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.005 [-0.010, +0.019] | 0.78 | +0.009 [-0.001, +0.021] | +0.020 [-0.005, +0.046] |
@@ -213,6 +279,11 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_mechanistic_expected_gate_disease_cluster | b3_degree_only_disease_cluster | 451 | +0.023 [+0.003, +0.049] | 0.98 | +0.007 [-0.008, +0.023] | +0.053 [+0.016, +0.096] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_descriptors_only_disease_cluster | 451 | +0.020 [-0.006, +0.048] | 0.94 | +0.015 [-0.004, +0.035] | +0.031 [-0.009, +0.068] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | +0.016 [-0.003, +0.044] | 0.94 | +0.007 [-0.012, +0.025] | +0.026 [-0.017, +0.078] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.022 [+0.004, +0.052] | 1.00 | +0.013 [-0.006, +0.031] | +0.045 [+0.011, +0.079] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.024 [+0.005, +0.051] | 0.99 | +0.008 [-0.015, +0.027] | +0.057 [+0.026, +0.090] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.024 [+0.005, +0.050] | 0.99 | +0.009 [-0.009, +0.025] | +0.047 [+0.013, +0.083] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | +0.013 [-0.004, +0.042] | 0.93 | -0.006 [-0.024, +0.015] | +0.031 [-0.010, +0.082] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.014 [-0.002, +0.046] | 0.94 | +0.001 [-0.017, +0.019] | +0.016 [-0.020, +0.054] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.025 [+0.001, +0.054] | 0.97 | +0.031 [+0.009, +0.051] | +0.039 [-0.007, +0.091] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.022 [+0.001, +0.048] | 0.98 | +0.006 [-0.013, +0.025] | +0.044 [+0.012, +0.081] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.022 [+0.002, +0.048] | 0.98 | +0.004 [-0.016, +0.023] | +0.044 [+0.012, +0.080] |
@@ -226,7 +297,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.019 [-0.001, +0.046] | 0.96 | +0.008 [-0.012, +0.027] | +0.047 [+0.008, +0.090] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.019 [-0.004, +0.050] | 0.96 | +0.004 [-0.018, +0.025] | +0.046 [+0.008, +0.090] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.024 [+0.006, +0.056] | 0.99 | +0.006 [-0.012, +0.023] | +0.049 [+0.018, +0.084] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | +0.006 [-0.019, +0.033] | 0.68 | +0.033 [+0.005, +0.055] | +0.013 [-0.031, +0.064] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | +0.013 [-0.002, +0.043] | 0.94 | +0.017 [-0.003, +0.034] | +0.030 [-0.005, +0.072] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.018 [-0.007, +0.047] | 0.92 | +0.025 [+0.001, +0.046] | +0.039 [-0.003, +0.080] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.013 [-0.008, +0.042] | 0.88 | +0.016 [-0.004, +0.034] | +0.034 [-0.002, +0.076] |
+| b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.012 [-0.034, +0.013] | 0.17 | -0.010 [-0.027, +0.008] | -0.020 [-0.067, +0.031] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.008 [-0.016, +0.034] | 0.75 | +0.017 [-0.005, +0.037] | +0.031 [-0.008, +0.072] |
+| b6_mechanistic_expected_gate_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.009 [-0.012, +0.036] | 0.80 | +0.012 [-0.010, +0.034] | +0.017 [-0.018, +0.054] |
 | b6_mechanistic_expected_gate_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.008 [-0.008, +0.037] | 0.80 | +0.014 [-0.006, +0.037] | +0.022 [-0.016, +0.059] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | +0.000 [-0.023, +0.034] | 0.49 | -0.006 [-0.024, +0.013] | +0.001 [-0.038, +0.046] |
 | b6_mechanistic_expected_gate_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.011 [-0.013, +0.040] | 0.80 | +0.017 [-0.003, +0.037] | +0.019 [-0.018, +0.055] |
@@ -241,6 +318,11 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b6_mechanistic_expected_gate_disease_cluster | random_walk_with_restart | 451 | -0.023 [-0.049, +0.002] | 0.05 | +0.132 [+0.101, +0.157] | -0.040 [-0.081, +0.004] |
 | b3_degree_only_disease_cluster | b3_descriptors_only_disease_cluster | 451 | -0.003 [-0.025, +0.012] | 0.35 | +0.008 [-0.010, +0.027] | -0.022 [-0.059, +0.012] |
 | b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | -0.007 [-0.022, +0.010] | 0.26 | -0.001 [-0.017, +0.017] | -0.028 [-0.063, +0.009] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | -0.001 [-0.015, +0.016] | 0.46 | +0.006 [-0.010, +0.025] | -0.009 [-0.039, +0.026] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.001 [-0.013, +0.017] | 0.51 | +0.000 [-0.019, +0.022] | +0.004 [-0.028, +0.036] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.001 [-0.014, +0.017] | 0.55 | +0.002 [-0.014, +0.022] | -0.006 [-0.037, +0.025] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.010 [-0.022, +0.007] | 0.12 | -0.013 [-0.029, +0.003] | -0.022 [-0.049, +0.010] |
+| b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.009 [-0.024, +0.010] | 0.16 | -0.007 [-0.024, +0.011] | -0.038 [-0.065, -0.001] |
 | b3_degree_only_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.002 [-0.021, +0.019] | 0.55 | +0.024 [-0.002, +0.042] | -0.014 [-0.047, +0.018] |
 | b3_degree_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.001 [-0.016, +0.017] | 0.41 | -0.002 [-0.020, +0.019] | -0.009 [-0.036, +0.024] |
 | b3_degree_only_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | -0.001 [-0.016, +0.018] | 0.41 | -0.003 [-0.024, +0.017] | -0.009 [-0.036, +0.023] |
@@ -254,7 +336,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_degree_only_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.004 [-0.018, +0.015] | 0.30 | +0.000 [-0.019, +0.023] | -0.006 [-0.040, +0.029] |
 | b3_degree_only_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.018, +0.015] | 0.28 | -0.003 [-0.023, +0.019] | -0.007 [-0.042, +0.028] |
 | b3_degree_only_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.001 [-0.012, +0.017] | 0.63 | -0.001 [-0.020, +0.020] | -0.004 [-0.030, +0.026] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.017 [-0.038, +0.001] | 0.04 | +0.025 [+0.003, +0.048] | -0.040 [-0.073, -0.004] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.010 [-0.025, +0.005] | 0.10 | +0.010 [-0.012, +0.027] | -0.023 [-0.056, +0.010] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.005 [-0.023, +0.011] | 0.21 | +0.017 [-0.004, +0.036] | -0.014 [-0.055, +0.028] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.010 [-0.025, +0.003] | 0.06 | +0.009 [-0.013, +0.030] | -0.019 [-0.049, +0.009] |
+| b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.035 [-0.050, -0.020] | 0.00 | -0.018 [-0.036, +0.000] | -0.073 [-0.104, -0.038] |
 | b3_degree_only_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.015 [-0.033, +0.001] | 0.04 | +0.010 [-0.011, +0.031] | -0.022 [-0.058, +0.009] |
+| b3_degree_only_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.014 [-0.029, +0.002] | 0.05 | +0.005 [-0.014, +0.027] | -0.036 [-0.073, -0.008] |
 | b3_degree_only_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.015 [-0.030, +0.002] | 0.06 | +0.007 [-0.011, +0.026] | -0.032 [-0.073, +0.001] |
 | b3_degree_only_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.023 [-0.042, -0.006] | 0.01 | -0.013 [-0.028, +0.002] | -0.052 [-0.094, -0.009] |
 | b3_degree_only_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.002] | 0.04 | +0.010 [-0.007, +0.029] | -0.034 [-0.070, +0.005] |
@@ -268,6 +356,11 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_degree_only_disease_cluster | popularity | 451 | +0.009 [+0.002, +0.027] | 1.00 | +0.006 [-0.003, +0.018] | +0.018 [-0.007, +0.044] |
 | b3_degree_only_disease_cluster | random_walk_with_restart | 451 | -0.046 [-0.071, -0.026] | 0.00 | +0.125 [+0.098, +0.148] | -0.093 [-0.122, -0.060] |
 | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 451 | -0.004 [-0.016, +0.013] | 0.34 | -0.008 [-0.024, +0.009] | -0.005 [-0.032, +0.025] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.002 [-0.010, +0.020] | 0.66 | -0.002 [-0.020, +0.015] | +0.014 [-0.019, +0.045] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.004 [-0.011, +0.024] | 0.64 | -0.007 [-0.028, +0.012] | +0.026 [-0.017, +0.061] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.004 [-0.007, +0.023] | 0.73 | -0.006 [-0.024, +0.011] | +0.016 [-0.013, +0.052] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.007 [-0.019, +0.012] | 0.24 | -0.021 [-0.038, -0.000] | -0.000 [-0.028, +0.033] |
+| b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.006 [-0.021, +0.013] | 0.28 | -0.014 [-0.035, +0.002] | -0.015 [-0.052, +0.015] |
 | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.005 [-0.012, +0.020] | 0.68 | +0.016 [+0.000, +0.031] | +0.008 [-0.025, +0.041] |
 | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.002 [-0.013, +0.021] | 0.59 | -0.009 [-0.029, +0.009] | +0.013 [-0.021, +0.044] |
 | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.002 [-0.013, +0.021] | 0.58 | -0.011 [-0.033, +0.007] | +0.013 [-0.022, +0.043] |
@@ -281,7 +374,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.001 [-0.016, +0.019] | 0.49 | -0.007 [-0.026, +0.012] | +0.016 [-0.018, +0.050] |
 | b3_descriptors_only_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.001 [-0.016, +0.019] | 0.47 | -0.011 [-0.034, +0.009] | +0.015 [-0.017, +0.050] |
 | b3_descriptors_only_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.004 [-0.011, +0.023] | 0.73 | -0.009 [-0.028, +0.011] | +0.018 [-0.014, +0.053] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.014 [-0.033, +0.005] | 0.11 | +0.018 [-0.004, +0.039] | -0.018 [-0.061, +0.024] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.007 [-0.020, +0.013] | 0.23 | +0.002 [-0.016, +0.021] | -0.001 [-0.037, +0.039] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.002 [-0.019, +0.014] | 0.36 | +0.010 [-0.008, +0.028] | +0.008 [-0.030, +0.040] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.007 [-0.026, +0.012] | 0.23 | +0.001 [-0.021, +0.020] | +0.003 [-0.034, +0.042] |
+| b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.032 [-0.051, -0.012] | 0.00 | -0.025 [-0.045, -0.005] | -0.051 [-0.088, -0.016] |
 | b3_descriptors_only_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.012 [-0.028, +0.008] | 0.11 | +0.002 [-0.018, +0.024] | +0.000 [-0.031, +0.031] |
+| b3_descriptors_only_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.011 [-0.028, +0.009] | 0.12 | -0.003 [-0.021, +0.016] | -0.014 [-0.049, +0.021] |
 | b3_descriptors_only_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.012 [-0.027, +0.008] | 0.14 | -0.001 [-0.021, +0.019] | -0.009 [-0.046, +0.028] |
 | b3_descriptors_only_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.020 [-0.044, +0.001] | 0.04 | -0.021 [-0.042, +0.001] | -0.030 [-0.072, +0.012] |
 | b3_descriptors_only_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.009 [-0.028, +0.012] | 0.19 | +0.002 [-0.017, +0.021] | -0.012 [-0.047, +0.029] |
@@ -294,6 +393,11 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_descriptors_only_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.011 [-0.029, +0.010] | 0.10 | +0.160 [+0.136, +0.184] | -0.044 [-0.084, +0.003] |
 | b3_descriptors_only_disease_cluster | popularity | 451 | +0.012 [+0.004, +0.031] | 1.00 | -0.002 [-0.017, +0.015] | +0.041 [+0.012, +0.067] |
 | b3_descriptors_only_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.066, -0.020] | 0.00 | +0.117 [+0.090, +0.142] | -0.071 [-0.105, -0.032] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 451 | +0.006 [-0.006, +0.017] | 0.83 | +0.007 [-0.007, +0.021] | +0.019 [-0.005, +0.042] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.007 [-0.007, +0.021] | 0.83 | +0.001 [-0.017, +0.017] | +0.031 [-0.003, +0.063] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.008 [-0.006, +0.018] | 0.91 | +0.002 [-0.012, +0.018] | +0.021 [-0.005, +0.046] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.003 [-0.012, +0.006] | 0.26 | -0.013 [-0.025, +0.000] | +0.005 [-0.017, +0.035] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.002 [-0.014, +0.008] | 0.35 | -0.006 [-0.019, +0.007] | -0.010 [-0.034, +0.011] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.008 [-0.006, +0.019] | 0.85 | +0.024 [+0.011, +0.038] | +0.014 [-0.011, +0.040] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.006 [-0.009, +0.019] | 0.78 | -0.001 [-0.018, +0.015] | +0.019 [-0.010, +0.044] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.006 [-0.009, +0.019] | 0.76 | -0.003 [-0.021, +0.014] | +0.018 [-0.010, +0.044] |
@@ -307,7 +411,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.003 [-0.012, +0.016] | 0.68 | +0.001 [-0.016, +0.016] | +0.022 [-0.006, +0.046] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.003 [-0.014, +0.016] | 0.65 | -0.003 [-0.019, +0.013] | +0.020 [-0.006, +0.048] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.008 [-0.007, +0.022] | 0.85 | -0.001 [-0.020, +0.017] | +0.023 [-0.014, +0.057] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.010 [-0.030, +0.006] | 0.09 | +0.026 [+0.008, +0.045] | -0.012 [-0.043, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.003 [-0.015, +0.012] | 0.30 | +0.010 [-0.005, +0.030] | +0.004 [-0.028, +0.039] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.002 [-0.017, +0.015] | 0.51 | +0.018 [-0.001, +0.035] | +0.013 [-0.021, +0.046] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.003 [-0.022, +0.011] | 0.25 | +0.010 [-0.010, +0.026] | +0.008 [-0.025, +0.041] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.028 [-0.047, -0.014] | 0.00 | -0.017 [-0.034, +0.001] | -0.046 [-0.081, -0.011] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.008 [-0.023, +0.006] | 0.13 | +0.011 [-0.006, +0.025] | +0.005 [-0.029, +0.035] |
+| b3_linear_response_cofactors_descriptors_brain_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.007 [-0.023, +0.008] | 0.18 | +0.006 [-0.017, +0.024] | -0.008 [-0.040, +0.028] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.008 [-0.022, +0.008] | 0.14 | +0.008 [-0.008, +0.026] | -0.004 [-0.042, +0.032] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.016 [-0.038, +0.003] | 0.04 | -0.012 [-0.030, +0.008] | -0.025 [-0.073, +0.025] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.005 [-0.025, +0.013] | 0.19 | +0.010 [-0.007, +0.028] | -0.007 [-0.042, +0.039] |
@@ -320,6 +430,176 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.008 [-0.028, +0.008] | 0.17 | +0.169 [+0.144, +0.193] | -0.039 [-0.078, +0.010] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | popularity | 451 | +0.016 [+0.009, +0.031] | 1.00 | +0.006 [-0.009, +0.023] | +0.046 [+0.017, +0.080] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | random_walk_with_restart | 451 | -0.040 [-0.063, -0.021] | 0.00 | +0.125 [+0.098, +0.149] | -0.066 [-0.101, -0.023] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.001 [-0.011, +0.011] | 0.56 | -0.005 [-0.022, +0.011] | +0.012 [-0.014, +0.041] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.001 [-0.006, +0.008] | 0.69 | -0.004 [-0.010, +0.002] | +0.002 [-0.010, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.009 [-0.019, +0.003] | 0.09 | -0.019 [-0.036, -0.003] | -0.014 [-0.036, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.008 [-0.018, +0.002] | 0.07 | -0.013 [-0.028, +0.002] | -0.029 [-0.056, -0.003] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.002 [-0.016, +0.016] | 0.58 | +0.018 [+0.003, +0.036] | -0.005 [-0.037, +0.023] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.000 [-0.011, +0.010] | 0.49 | -0.008 [-0.022, +0.009] | -0.000 [-0.028, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | -0.000 [-0.012, +0.010] | 0.47 | -0.009 [-0.024, +0.008] | -0.001 [-0.029, +0.023] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | -0.004 [-0.021, +0.007] | 0.22 | -0.012 [-0.029, +0.004] | -0.004 [-0.035, +0.026] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | -0.004 [-0.015, +0.007] | 0.33 | -0.009 [-0.026, +0.007] | -0.001 [-0.028, +0.029] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | +0.001 [-0.013, +0.010] | 0.55 | -0.009 [-0.026, +0.008] | +0.004 [-0.021, +0.034] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.009 [-0.025, +0.005] | 0.09 | +0.027 [+0.010, +0.045] | -0.024 [-0.053, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | -0.003 [-0.016, +0.010] | 0.34 | -0.005 [-0.019, +0.011] | +0.002 [-0.034, +0.026] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.006 [-0.007, +0.019] | 0.80 | +0.010 [-0.008, +0.026] | +0.008 [-0.022, +0.042] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | -0.001 [-0.014, +0.009] | 0.41 | -0.008 [-0.024, +0.009] | -0.003 [-0.031, +0.022] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.003 [-0.015, +0.008] | 0.32 | -0.005 [-0.019, +0.008] | +0.003 [-0.026, +0.027] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.003 [-0.016, +0.007] | 0.31 | -0.009 [-0.025, +0.006] | +0.001 [-0.025, +0.026] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.002 [-0.009, +0.013] | 0.68 | -0.007 [-0.020, +0.007] | +0.004 [-0.024, +0.032] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.016 [-0.036, +0.002] | 0.04 | +0.019 [+0.001, +0.039] | -0.031 [-0.062, +0.007] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.010 [-0.020, +0.003] | 0.08 | +0.004 [-0.012, +0.020] | -0.015 [-0.041, +0.014] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.004 [-0.021, +0.010] | 0.22 | +0.011 [-0.006, +0.028] | -0.006 [-0.043, +0.027] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.009 [-0.026, +0.004] | 0.10 | +0.003 [-0.015, +0.024] | -0.011 [-0.043, +0.020] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.034 [-0.051, -0.022] | 0.00 | -0.024 [-0.037, -0.006] | -0.065 [-0.104, -0.035] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.014 [-0.029, +0.001] | 0.03 | +0.004 [-0.012, +0.023] | -0.014 [-0.041, +0.020] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.013 [-0.028, -0.001] | 0.02 | -0.001 [-0.027, +0.019] | -0.027 [-0.056, +0.002] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.014 [-0.027, -0.002] | 0.01 | +0.001 [-0.015, +0.020] | -0.023 [-0.054, +0.009] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.022 [-0.042, -0.006] | 0.00 | -0.019 [-0.037, -0.000] | -0.044 [-0.086, +0.007] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.011 [-0.032, +0.006] | 0.12 | +0.004 [-0.013, +0.020] | -0.026 [-0.062, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.024 [-0.042, -0.010] | 0.00 | -0.017 [-0.036, +0.003] | -0.033 [-0.078, +0.002] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.006 [-0.027, +0.006] | 0.18 | +0.024 [+0.006, +0.039] | -0.031 [-0.065, +0.009] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.007 [-0.025, +0.009] | 0.20 | -0.006 [-0.024, +0.013] | -0.014 [-0.050, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.010 [-0.033, +0.004] | 0.12 | +0.025 [+0.009, +0.041] | -0.028 [-0.062, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.025 [-0.052, -0.007] | 0.01 | +0.000 [-0.022, +0.020] | -0.028 [-0.064, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | degree_popularity | 451 | -0.012 [-0.028, +0.003] | 0.10 | +0.043 [+0.025, +0.062] | -0.044 [-0.085, +0.004] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.014 [-0.031, +0.002] | 0.04 | +0.162 [+0.137, +0.187] | -0.058 [-0.096, -0.014] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | popularity | 451 | +0.010 [+0.003, +0.025] | 0.99 | -0.000 [-0.015, +0.016] | +0.027 [-0.003, +0.059] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | random_walk_with_restart | 451 | -0.046 [-0.071, -0.028] | 0.00 | +0.119 [+0.088, +0.140] | -0.085 [-0.121, -0.043] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 451 | +0.000 [-0.010, +0.013] | 0.51 | +0.001 [-0.016, +0.018] | -0.010 [-0.038, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.011 [-0.023, +0.004] | 0.10 | -0.014 [-0.031, +0.006] | -0.026 [-0.053, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.010 [-0.019, +0.001] | 0.04 | -0.007 [-0.018, +0.004] | -0.041 [-0.073, -0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.001 [-0.015, +0.017] | 0.48 | +0.023 [+0.006, +0.039] | -0.018 [-0.055, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.002 [-0.009, +0.005] | 0.34 | -0.002 [-0.010, +0.007] | -0.013 [-0.032, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | -0.002 [-0.009, +0.005] | 0.30 | -0.004 [-0.011, +0.003] | -0.013 [-0.032, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | -0.005 [-0.017, +0.001] | 0.09 | -0.006 [-0.014, +0.001] | -0.017 [-0.047, +0.009] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | -0.006 [-0.015, +0.006] | 0.23 | -0.004 [-0.020, +0.014] | -0.014 [-0.036, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | -0.001 [-0.009, +0.008] | 0.42 | -0.004 [-0.017, +0.007] | -0.008 [-0.026, +0.009] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.011 [-0.029, +0.008] | 0.10 | +0.032 [+0.015, +0.053] | -0.036 [-0.069, +0.006] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | -0.004 [-0.015, +0.005] | 0.23 | +0.000 [-0.012, +0.011] | -0.011 [-0.042, +0.018] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.005 [-0.008, +0.020] | 0.75 | +0.015 [+0.001, +0.032] | -0.004 [-0.036, +0.028] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | -0.002 [-0.010, +0.004] | 0.19 | -0.003 [-0.010, +0.004] | -0.015 [-0.043, +0.003] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.004 [-0.012, +0.003] | 0.14 | +0.000 [-0.006, +0.008] | -0.010 [-0.036, +0.011] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.014, +0.003] | 0.10 | -0.004 [-0.012, +0.004] | -0.011 [-0.035, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.001 [-0.009, +0.012] | 0.60 | -0.002 [-0.016, +0.013] | -0.008 [-0.034, +0.018] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.017 [-0.039, +0.003] | 0.06 | +0.025 [+0.006, +0.052] | -0.044 [-0.075, -0.011] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.011 [-0.022, +0.004] | 0.09 | +0.009 [-0.010, +0.032] | -0.027 [-0.059, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.005 [-0.022, +0.007] | 0.15 | +0.017 [+0.001, +0.036] | -0.018 [-0.049, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.010 [-0.026, +0.000] | 0.03 | +0.009 [-0.008, +0.026] | -0.023 [-0.055, +0.003] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.035 [-0.053, -0.023] | 0.00 | -0.018 [-0.039, -0.001] | -0.077 [-0.117, -0.041] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.015 [-0.031, -0.001] | 0.01 | +0.010 [-0.007, +0.026] | -0.026 [-0.063, +0.006] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.014 [-0.029, -0.001] | 0.01 | +0.005 [-0.017, +0.025] | -0.040 [-0.074, -0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.016 [-0.028, -0.001] | 0.01 | +0.007 [-0.009, +0.025] | -0.036 [-0.067, -0.004] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.023 [-0.044, -0.005] | 0.01 | -0.013 [-0.031, +0.004] | -0.056 [-0.097, -0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.004] | 0.08 | +0.009 [-0.013, +0.029] | -0.038 [-0.080, +0.003] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.025 [-0.045, -0.009] | 0.00 | -0.011 [-0.030, +0.005] | -0.046 [-0.086, -0.006] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.007 [-0.024, +0.006] | 0.12 | +0.029 [+0.010, +0.048] | -0.043 [-0.075, -0.007] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.008 [-0.027, +0.008] | 0.17 | -0.001 [-0.021, +0.020] | -0.026 [-0.063, +0.008] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.011 [-0.034, +0.005] | 0.07 | +0.030 [+0.010, +0.051] | -0.041 [-0.073, +0.004] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.026 [-0.055, -0.008] | 0.01 | +0.006 [-0.021, +0.030] | -0.041 [-0.069, -0.006] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | degree_popularity | 451 | -0.013 [-0.031, +0.002] | 0.07 | +0.049 [+0.025, +0.076] | -0.056 [-0.090, -0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.015 [-0.033, -0.000] | 0.02 | +0.168 [+0.143, +0.195] | -0.070 [-0.104, -0.031] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | popularity | 451 | +0.009 [+0.001, +0.026] | 0.98 | +0.005 [-0.013, +0.027] | +0.014 [-0.014, +0.044] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | random_walk_with_restart | 451 | -0.047 [-0.069, -0.024] | 0.00 | +0.124 [+0.095, +0.150] | -0.097 [-0.134, -0.062] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 451 | -0.011 [-0.021, +0.001] | 0.04 | -0.015 [-0.031, -0.001] | -0.016 [-0.039, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | -0.010 [-0.022, +0.002] | 0.05 | -0.008 [-0.024, +0.008] | -0.031 [-0.059, -0.008] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.001 [-0.016, +0.014] | 0.47 | +0.022 [+0.006, +0.039] | -0.007 [-0.041, +0.020] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.002 [-0.013, +0.007] | 0.38 | -0.003 [-0.019, +0.014] | -0.003 [-0.024, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | -0.002 [-0.013, +0.007] | 0.37 | -0.005 [-0.021, +0.013] | -0.003 [-0.024, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | -0.006 [-0.023, +0.005] | 0.16 | -0.008 [-0.025, +0.008] | -0.007 [-0.038, +0.021] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | -0.006 [-0.015, +0.007] | 0.21 | -0.005 [-0.021, +0.012] | -0.004 [-0.032, +0.023] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | -0.001 [-0.013, +0.009] | 0.39 | -0.005 [-0.022, +0.012] | +0.002 [-0.021, +0.034] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.011 [-0.029, +0.005] | 0.06 | +0.031 [+0.013, +0.051] | -0.026 [-0.057, +0.008] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | -0.004 [-0.017, +0.008] | 0.26 | -0.001 [-0.014, +0.014] | -0.000 [-0.032, +0.026] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.005 [-0.009, +0.019] | 0.74 | +0.014 [-0.005, +0.030] | +0.006 [-0.029, +0.038] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | -0.003 [-0.014, +0.007] | 0.28 | -0.004 [-0.021, +0.012] | -0.005 [-0.033, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.004 [-0.015, +0.007] | 0.21 | -0.001 [-0.014, +0.013] | +0.000 [-0.026, +0.025] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.018, +0.006] | 0.22 | -0.005 [-0.021, +0.012] | -0.001 [-0.027, +0.020] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.001 [-0.011, +0.013] | 0.56 | -0.003 [-0.016, +0.014] | +0.002 [-0.029, +0.032] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.017 [-0.038, +0.001] | 0.04 | +0.024 [+0.005, +0.043] | -0.034 [-0.065, -0.001] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.011 [-0.023, +0.002] | 0.06 | +0.008 [-0.009, +0.025] | -0.017 [-0.042, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.005 [-0.025, +0.008] | 0.17 | +0.016 [-0.001, +0.032] | -0.008 [-0.038, +0.025] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.010 [-0.028, +0.002] | 0.06 | +0.007 [-0.015, +0.025] | -0.013 [-0.042, +0.019] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.035 [-0.052, -0.024] | 0.00 | -0.019 [-0.033, -0.003] | -0.067 [-0.102, -0.030] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.015 [-0.033, +0.000] | 0.04 | +0.008 [-0.011, +0.029] | -0.016 [-0.045, +0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.014 [-0.030, -0.000] | 0.03 | +0.003 [-0.024, +0.024] | -0.030 [-0.063, +0.002] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.016 [-0.029, -0.003] | 0.01 | +0.005 [-0.012, +0.025] | -0.025 [-0.060, +0.006] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.023 [-0.044, -0.005] | 0.01 | -0.015 [-0.033, +0.004] | -0.046 [-0.097, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.006] | 0.08 | +0.008 [-0.009, +0.023] | -0.028 [-0.064, +0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.025 [-0.044, -0.009] | 0.00 | -0.013 [-0.034, +0.008] | -0.035 [-0.082, -0.000] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.008 [-0.029, +0.006] | 0.12 | +0.028 [+0.009, +0.045] | -0.033 [-0.067, +0.009] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.008 [-0.026, +0.008] | 0.15 | -0.002 [-0.021, +0.017] | -0.016 [-0.049, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.011 [-0.034, +0.003] | 0.09 | +0.029 [+0.013, +0.046] | -0.030 [-0.072, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.027 [-0.051, -0.009] | 0.01 | +0.004 [-0.021, +0.023] | -0.030 [-0.067, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | degree_popularity | 451 | -0.013 [-0.030, +0.002] | 0.05 | +0.048 [+0.026, +0.067] | -0.046 [-0.088, +0.002] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.015 [-0.032, +0.000] | 0.03 | +0.166 [+0.141, +0.190] | -0.060 [-0.097, -0.017] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | popularity | 451 | +0.008 [+0.002, +0.024] | 0.98 | +0.004 [-0.014, +0.019] | +0.025 [-0.006, +0.060] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | random_walk_with_restart | 451 | -0.047 [-0.071, -0.028] | 0.00 | +0.123 [+0.096, +0.147] | -0.087 [-0.126, -0.049] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 451 | +0.001 [-0.009, +0.011] | 0.57 | +0.007 [-0.008, +0.021] | -0.015 [-0.048, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.012 [-0.009, +0.025] | 0.87 | +0.037 [+0.019, +0.054] | +0.008 [-0.027, +0.039] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.009 [-0.006, +0.022] | 0.89 | +0.012 [-0.007, +0.029] | +0.013 [-0.019, +0.041] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.009 [-0.007, +0.022] | 0.89 | +0.010 [-0.010, +0.028] | +0.013 [-0.020, +0.040] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | +0.005 [-0.014, +0.017] | 0.70 | +0.007 [-0.010, +0.026] | +0.009 [-0.030, +0.039] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | +0.005 [-0.007, +0.019] | 0.81 | +0.010 [-0.009, +0.028] | +0.012 [-0.018, +0.038] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | +0.010 [-0.004, +0.021] | 0.94 | +0.010 [-0.008, +0.028] | +0.018 [-0.012, +0.049] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | +0.000 [-0.018, +0.014] | 0.46 | +0.046 [+0.031, +0.062] | -0.010 [-0.043, +0.022] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | +0.007 [-0.010, +0.019] | 0.78 | +0.014 [-0.006, +0.033] | +0.016 [-0.023, +0.045] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.016 [+0.003, +0.027] | 0.99 | +0.029 [+0.014, +0.044] | +0.022 [-0.011, +0.048] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | +0.008 [-0.008, +0.020] | 0.84 | +0.011 [-0.009, +0.028] | +0.011 [-0.021, +0.038] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.006 [-0.010, +0.020] | 0.81 | +0.014 [-0.008, +0.032] | +0.016 [-0.021, +0.043] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.007 [-0.009, +0.020] | 0.81 | +0.010 [-0.009, +0.028] | +0.015 [-0.019, +0.041] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.011 [-0.002, +0.024] | 0.95 | +0.012 [-0.006, +0.031] | +0.018 [-0.016, +0.046] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.007 [-0.025, +0.010] | 0.18 | +0.039 [+0.019, +0.059] | -0.018 [-0.046, +0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.000 [-0.011, +0.013] | 0.51 | +0.023 [+0.006, +0.040] | -0.001 [-0.033, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.005 [-0.015, +0.018] | 0.66 | +0.031 [+0.013, +0.047] | +0.008 [-0.033, +0.040] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.000 [-0.017, +0.014] | 0.38 | +0.022 [+0.005, +0.041] | +0.003 [-0.031, +0.034] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.025 [-0.039, -0.015] | 0.00 | -0.004 [-0.018, +0.010] | -0.051 [-0.087, -0.024] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.004 [-0.024, +0.011] | 0.24 | +0.023 [+0.005, +0.044] | +0.000 [-0.046, +0.026] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.004 [-0.021, +0.012] | 0.28 | +0.018 [-0.003, +0.035] | -0.014 [-0.052, +0.021] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.005 [-0.019, +0.011] | 0.27 | +0.020 [+0.004, +0.039] | -0.009 [-0.050, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.013 [-0.033, +0.004] | 0.06 | +0.000 [-0.016, +0.018] | -0.030 [-0.072, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.023, +0.016] | 0.33 | +0.023 [+0.009, +0.038] | -0.012 [-0.052, +0.031] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.034, -0.000] | 0.02 | +0.002 [-0.013, +0.019] | -0.019 [-0.057, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.003 [-0.016, +0.018] | 0.55 | +0.043 [+0.027, +0.057] | -0.017 [-0.053, +0.022] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.003 [-0.018, +0.017] | 0.57 | +0.013 [-0.005, +0.032] | +0.000 [-0.034, +0.042] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.000 [-0.023, +0.015] | 0.34 | +0.044 [+0.028, +0.061] | -0.014 [-0.050, +0.029] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.016 [-0.042, +0.001] | 0.05 | +0.019 [-0.006, +0.039] | -0.014 [-0.051, +0.025] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | degree_popularity | 451 | -0.002 [-0.019, +0.012] | 0.31 | +0.063 [+0.044, +0.081] | -0.030 [-0.072, +0.011] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.022, +0.012] | 0.26 | +0.181 [+0.155, +0.207] | -0.044 [-0.082, -0.003] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | popularity | 451 | +0.019 [+0.012, +0.032] | 1.00 | +0.019 [+0.004, +0.035] | +0.041 [+0.011, +0.068] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.061, -0.018] | 0.00 | +0.138 [+0.109, +0.163] | -0.071 [-0.108, -0.036] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | 451 | +0.011 [-0.007, +0.026] | 0.86 | +0.030 [+0.014, +0.048] | +0.024 [-0.008, +0.054] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | +0.008 [-0.004, +0.018] | 0.92 | +0.005 [-0.010, +0.016] | +0.029 [+0.009, +0.048] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | +0.008 [-0.004, +0.018] | 0.91 | +0.003 [-0.011, +0.015] | +0.028 [+0.008, +0.047] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | +0.004 [-0.012, +0.014] | 0.64 | +0.001 [-0.012, +0.012] | +0.025 [-0.000, +0.051] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | 451 | +0.004 [-0.009, +0.017] | 0.73 | +0.003 [-0.016, +0.022] | +0.028 [-0.002, +0.062] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | 451 | +0.009 [-0.003, +0.019] | 0.92 | +0.003 [-0.012, +0.015] | +0.034 [+0.004, +0.064] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | 451 | -0.001 [-0.018, +0.013] | 0.41 | +0.040 [+0.021, +0.059] | +0.006 [-0.028, +0.047] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | 451 | +0.006 [-0.007, +0.015] | 0.77 | +0.007 [-0.005, +0.019] | +0.031 [+0.003, +0.058] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | 451 | +0.015 [+0.002, +0.029] | 0.99 | +0.022 [+0.009, +0.036] | +0.037 [+0.005, +0.071] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | 451 | +0.007 [-0.005, +0.017] | 0.88 | +0.004 [-0.008, +0.015] | +0.026 [+0.005, +0.047] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.005 [-0.006, +0.015] | 0.81 | +0.007 [-0.007, +0.021] | +0.032 [+0.006, +0.057] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.005 [-0.007, +0.015] | 0.80 | +0.003 [-0.010, +0.015] | +0.031 [+0.006, +0.054] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.010 [-0.001, +0.022] | 0.95 | +0.005 [-0.011, +0.021] | +0.033 [+0.001, +0.061] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.008 [-0.028, +0.011] | 0.15 | +0.032 [+0.009, +0.056] | -0.002 [-0.036, +0.035] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.001 [-0.012, +0.012] | 0.45 | +0.016 [+0.001, +0.034] | +0.015 [-0.018, +0.046] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.004 [-0.012, +0.017] | 0.57 | +0.024 [+0.006, +0.041] | +0.023 [-0.009, +0.057] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.001 [-0.019, +0.012] | 0.36 | +0.016 [-0.001, +0.032] | +0.019 [-0.015, +0.048] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.026 [-0.043, -0.015] | 0.00 | -0.011 [-0.029, +0.004] | -0.035 [-0.068, -0.001] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.006 [-0.025, +0.010] | 0.22 | +0.017 [-0.000, +0.032] | +0.015 [-0.020, +0.044] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.005 [-0.021, +0.011] | 0.21 | +0.012 [-0.012, +0.031] | +0.002 [-0.029, +0.034] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.006 [-0.019, +0.009] | 0.19 | +0.014 [-0.001, +0.030] | +0.006 [-0.025, +0.038] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.014 [-0.034, +0.003] | 0.05 | -0.006 [-0.023, +0.009] | -0.015 [-0.056, +0.030] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.003 [-0.025, +0.013] | 0.31 | +0.016 [-0.004, +0.034] | +0.003 [-0.031, +0.047] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.016 [-0.038, -0.001] | 0.03 | -0.004 [-0.020, +0.010] | -0.004 [-0.047, +0.031] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.002 [-0.017, +0.016] | 0.50 | +0.036 [+0.016, +0.052] | -0.002 [-0.038, +0.043] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.002 [-0.020, +0.016] | 0.55 | +0.007 [-0.013, +0.025] | +0.016 [-0.020, +0.059] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.002 [-0.026, +0.014] | 0.33 | +0.037 [+0.018, +0.055] | +0.001 [-0.035, +0.058] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.017 [-0.045, +0.004] | 0.04 | +0.013 [-0.013, +0.037] | +0.001 [-0.041, +0.042] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | degree_popularity | 451 | -0.003 [-0.023, +0.013] | 0.27 | +0.056 [+0.033, +0.080] | -0.015 [-0.049, +0.032] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.026, +0.009] | 0.24 | +0.175 [+0.150, +0.202] | -0.029 [-0.064, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | popularity | 451 | +0.018 [+0.009, +0.034] | 1.00 | +0.012 [-0.003, +0.031] | +0.056 [+0.026, +0.089] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | random_walk_with_restart | 451 | -0.037 [-0.061, -0.016] | 0.00 | +0.131 [+0.101, +0.160] | -0.056 [-0.091, -0.013] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_disease_cluster | 451 | -0.003 [-0.015, +0.014] | 0.41 | -0.025 [-0.043, -0.006] | +0.005 [-0.029, +0.035] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | 451 | -0.003 [-0.016, +0.014] | 0.42 | -0.027 [-0.047, -0.010] | +0.005 [-0.029, +0.034] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | 451 | -0.007 [-0.025, +0.010] | 0.21 | -0.030 [-0.048, -0.010] | +0.001 [-0.033, +0.034] |
@@ -332,7 +612,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.005 [-0.020, +0.012] | 0.33 | -0.023 [-0.038, -0.007] | +0.008 [-0.024, +0.038] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.005 [-0.021, +0.012] | 0.29 | -0.027 [-0.045, -0.009] | +0.007 [-0.025, +0.039] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_local_structural_disease_cluster | 451 | -0.000 [-0.018, +0.020] | 0.57 | -0.025 [-0.043, -0.005] | +0.009 [-0.024, +0.049] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.018 [-0.037, -0.001] | 0.03 | +0.002 [-0.020, +0.021] | -0.026 [-0.053, +0.005] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.012 [-0.023, +0.011] | 0.14 | -0.014 [-0.031, +0.006] | -0.009 [-0.038, +0.028] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.006 [-0.025, +0.011] | 0.21 | -0.006 [-0.025, +0.016] | -0.001 [-0.042, +0.035] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.011 [-0.031, +0.009] | 0.10 | -0.015 [-0.034, +0.006] | -0.005 [-0.037, +0.029] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.036 [-0.058, -0.017] | 0.01 | -0.041 [-0.064, -0.018] | -0.059 [-0.090, -0.022] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.016 [-0.029, -0.002] | 0.03 | -0.014 [-0.031, +0.006] | -0.008 [-0.035, +0.024] |
+| b3_linear_response_cofactors_descriptors_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.015 [-0.033, +0.006] | 0.10 | -0.019 [-0.040, +0.002] | -0.022 [-0.055, +0.017] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.017 [-0.031, +0.006] | 0.07 | -0.017 [-0.033, +0.006] | -0.018 [-0.056, +0.021] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.024 [-0.044, -0.002] | 0.02 | -0.037 [-0.059, -0.014] | -0.038 [-0.085, +0.006] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.013 [-0.036, +0.009] | 0.10 | -0.014 [-0.034, +0.006] | -0.021 [-0.068, +0.033] |
@@ -356,7 +642,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.003 [-0.008, +0.006] | 0.27 | +0.002 [-0.005, +0.010] | +0.003 [-0.014, +0.018] |
 | b3_linear_response_cofactors_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.003 [-0.010, +0.004] | 0.20 | -0.002 [-0.014, +0.008] | +0.002 [-0.015, +0.021] |
 | b3_linear_response_cofactors_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.002 [-0.008, +0.016] | 0.72 | +0.000 [-0.011, +0.012] | +0.004 [-0.023, +0.031] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.016 [-0.035, +0.003] | 0.06 | +0.027 [+0.006, +0.051] | -0.031 [-0.059, +0.005] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.009 [-0.021, +0.006] | 0.11 | +0.011 [-0.007, +0.029] | -0.014 [-0.044, +0.016] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.004 [-0.018, +0.008] | 0.24 | +0.019 [+0.001, +0.037] | -0.006 [-0.035, +0.026] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.009 [-0.025, +0.003] | 0.07 | +0.011 [-0.009, +0.028] | -0.010 [-0.040, +0.016] |
+| b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.034 [-0.053, -0.021] | 0.00 | -0.016 [-0.038, +0.003] | -0.064 [-0.094, -0.030] |
 | b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.014 [-0.030, +0.000] | 0.04 | +0.012 [-0.007, +0.028] | -0.013 [-0.050, +0.014] |
+| b3_linear_response_cofactors_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.013 [-0.029, -0.000] | 0.02 | +0.007 [-0.018, +0.027] | -0.027 [-0.058, +0.006] |
 | b3_linear_response_cofactors_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.014 [-0.026, +0.001] | 0.03 | +0.009 [-0.006, +0.027] | -0.023 [-0.052, +0.009] |
 | b3_linear_response_cofactors_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.022 [-0.042, -0.003] | 0.02 | -0.011 [-0.027, +0.004] | -0.043 [-0.083, +0.006] |
 | b3_linear_response_cofactors_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.011 [-0.033, +0.008] | 0.10 | +0.011 [-0.008, +0.033] | -0.025 [-0.060, +0.012] |
@@ -379,7 +671,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_laboratory_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.003 [-0.009, +0.005] | 0.27 | +0.004 [-0.004, +0.012] | +0.003 [-0.014, +0.019] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.002 [-0.010, +0.005] | 0.20 | -0.000 [-0.012, +0.009] | +0.002 [-0.016, +0.021] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.002 [-0.008, +0.016] | 0.73 | +0.002 [-0.009, +0.015] | +0.005 [-0.022, +0.031] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.016 [-0.035, +0.003] | 0.06 | +0.029 [+0.008, +0.054] | -0.031 [-0.059, +0.004] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.009 [-0.021, +0.006] | 0.12 | +0.013 [-0.007, +0.034] | -0.014 [-0.043, +0.017] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.004 [-0.018, +0.009] | 0.24 | +0.021 [+0.003, +0.039] | -0.005 [-0.036, +0.026] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.009 [-0.025, +0.003] | 0.07 | +0.012 [-0.007, +0.030] | -0.010 [-0.039, +0.017] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.034 [-0.053, -0.020] | 0.00 | -0.014 [-0.036, +0.006] | -0.064 [-0.094, -0.030] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.013 [-0.029, +0.000] | 0.04 | +0.013 [-0.005, +0.030] | -0.013 [-0.049, +0.014] |
+| b3_linear_response_cofactors_laboratory_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.013 [-0.029, -0.000] | 0.03 | +0.008 [-0.016, +0.029] | -0.027 [-0.057, +0.006] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.014 [-0.027, -0.001] | 0.03 | +0.010 [-0.005, +0.028] | -0.022 [-0.052, +0.009] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.022 [-0.042, -0.003] | 0.03 | -0.010 [-0.026, +0.007] | -0.043 [-0.083, +0.006] |
 | b3_linear_response_cofactors_laboratory_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.011 [-0.033, +0.007] | 0.10 | +0.013 [-0.007, +0.036] | -0.025 [-0.060, +0.012] |
@@ -401,7 +699,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.001 [-0.005, +0.012] | 0.74 | +0.006 [-0.002, +0.014] | +0.007 [-0.008, +0.023] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.001 [-0.006, +0.011] | 0.68 | +0.003 [-0.007, +0.011] | +0.006 [-0.014, +0.026] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.006 [-0.002, +0.021] | 0.92 | +0.005 [-0.007, +0.017] | +0.008 [-0.027, +0.036] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.012 [-0.029, +0.007] | 0.14 | +0.031 [+0.011, +0.057] | -0.027 [-0.059, +0.015] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.005 [-0.016, +0.013] | 0.30 | +0.016 [-0.001, +0.037] | -0.010 [-0.044, +0.020] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.000 [-0.014, +0.014] | 0.46 | +0.023 [+0.004, +0.044] | -0.002 [-0.028, +0.024] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.005 [-0.020, +0.008] | 0.25 | +0.015 [-0.003, +0.031] | -0.006 [-0.039, +0.027] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.030 [-0.047, -0.013] | 0.00 | -0.012 [-0.033, +0.006] | -0.060 [-0.088, -0.023] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.010 [-0.026, +0.007] | 0.13 | +0.016 [-0.002, +0.034] | -0.009 [-0.048, +0.020] |
+| b3_linear_response_cofactors_laboratory_manganese_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.009 [-0.024, +0.007] | 0.18 | +0.011 [-0.013, +0.030] | -0.023 [-0.058, +0.018] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.010 [-0.023, +0.007] | 0.15 | +0.013 [-0.002, +0.030] | -0.019 [-0.052, +0.013] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.018 [-0.040, +0.005] | 0.06 | -0.007 [-0.023, +0.008] | -0.039 [-0.081, +0.007] |
 | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.007 [-0.027, +0.011] | 0.24 | +0.016 [-0.005, +0.038] | -0.022 [-0.057, +0.018] |
@@ -422,7 +726,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.001 [-0.011, +0.013] | 0.52 | +0.004 [-0.011, +0.020] | +0.004 [-0.022, +0.028] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.001 [-0.013, +0.011] | 0.51 | -0.000 [-0.018, +0.019] | +0.003 [-0.025, +0.025] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.006 [-0.007, +0.019] | 0.82 | +0.002 [-0.014, +0.018] | +0.006 [-0.021, +0.032] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.012 [-0.033, +0.006] | 0.10 | +0.029 [+0.005, +0.052] | -0.030 [-0.058, -0.001] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.005 [-0.018, +0.011] | 0.21 | +0.013 [-0.007, +0.034] | -0.013 [-0.042, +0.018] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.000 [-0.018, +0.015] | 0.36 | +0.021 [+0.000, +0.041] | -0.004 [-0.038, +0.029] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.005 [-0.023, +0.008] | 0.20 | +0.012 [-0.007, +0.032] | -0.009 [-0.044, +0.026] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.030 [-0.049, -0.015] | 0.00 | -0.014 [-0.037, +0.007] | -0.063 [-0.104, -0.028] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.010 [-0.028, +0.007] | 0.10 | +0.013 [-0.007, +0.031] | -0.012 [-0.052, +0.018] |
+| b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.009 [-0.026, +0.006] | 0.09 | +0.008 [-0.011, +0.025] | -0.026 [-0.063, +0.008] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.010 [-0.025, +0.005] | 0.08 | +0.010 [-0.006, +0.034] | -0.022 [-0.062, +0.013] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.018 [-0.039, +0.001] | 0.03 | -0.010 [-0.030, +0.011] | -0.042 [-0.086, -0.000] |
 | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.007 [-0.030, +0.011] | 0.19 | +0.013 [-0.008, +0.038] | -0.024 [-0.064, +0.020] |
@@ -442,7 +752,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.004 [-0.014, +0.008] | 0.28 | +0.004 [-0.010, +0.018] | -0.002 [-0.029, +0.021] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.004 [-0.015, +0.007] | 0.28 | +0.000 [-0.013, +0.015] | -0.003 [-0.029, +0.020] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.001 [-0.009, +0.014] | 0.62 | +0.002 [-0.012, +0.021] | -0.000 [-0.027, +0.026] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.017 [-0.038, +0.004] | 0.04 | +0.029 [+0.008, +0.053] | -0.036 [-0.068, -0.000] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.010 [-0.022, +0.007] | 0.10 | +0.013 [-0.007, +0.038] | -0.019 [-0.052, +0.012] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.005 [-0.023, +0.009] | 0.23 | +0.021 [+0.002, +0.042] | -0.010 [-0.037, +0.019] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.010 [-0.027, +0.003] | 0.10 | +0.012 [-0.007, +0.032] | -0.015 [-0.046, +0.014] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.035 [-0.052, -0.019] | 0.00 | -0.014 [-0.035, +0.006] | -0.069 [-0.111, -0.032] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.015 [-0.030, +0.002] | 0.04 | +0.014 [-0.005, +0.033] | -0.018 [-0.057, +0.012] |
+| b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.014 [-0.027, +0.001] | 0.04 | +0.008 [-0.008, +0.032] | -0.032 [-0.066, -0.002] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.015 [-0.028, -0.001] | 0.01 | +0.011 [-0.004, +0.030] | -0.028 [-0.061, -0.001] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.023 [-0.043, -0.005] | 0.01 | -0.009 [-0.024, +0.009] | -0.048 [-0.089, -0.003] |
 | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.012 [-0.034, +0.006] | 0.10 | +0.013 [-0.006, +0.036] | -0.030 [-0.076, +0.009] |
@@ -461,7 +777,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | +0.006 [-0.010, +0.024] | 0.76 | -0.032 [-0.050, -0.016] | +0.026 [-0.015, +0.056] |
 | b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.006 [-0.011, +0.027] | 0.76 | -0.036 [-0.058, -0.020] | +0.025 [-0.013, +0.058] |
 | b3_linear_response_cofactors_log_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.011 [-0.007, +0.031] | 0.91 | -0.034 [-0.055, -0.016] | +0.028 [-0.009, +0.060] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.007 [-0.030, +0.012] | 0.24 | -0.008 [-0.027, +0.010] | -0.008 [-0.044, +0.027] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.000 [-0.012, +0.016] | 0.54 | -0.023 [-0.038, -0.008] | +0.009 [-0.025, +0.038] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.005 [-0.014, +0.021] | 0.66 | -0.016 [-0.034, -0.002] | +0.018 [-0.018, +0.052] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.000 [-0.021, +0.017] | 0.44 | -0.024 [-0.040, -0.004] | +0.013 [-0.026, +0.048] |
+| b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.025 [-0.045, -0.008] | 0.00 | -0.051 [-0.070, -0.032] | -0.041 [-0.081, -0.003] |
 | b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.005 [-0.027, +0.017] | 0.30 | -0.023 [-0.042, -0.004] | +0.010 [-0.036, +0.039] |
+| b3_linear_response_cofactors_log_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.004 [-0.019, +0.014] | 0.33 | -0.028 [-0.047, -0.012] | -0.004 [-0.040, +0.030] |
 | b3_linear_response_cofactors_log_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.005 [-0.019, +0.013] | 0.28 | -0.026 [-0.044, -0.010] | +0.000 [-0.044, +0.031] |
 | b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.013 [-0.034, +0.006] | 0.08 | -0.046 [-0.069, -0.023] | -0.020 [-0.064, +0.016] |
 | b3_linear_response_cofactors_log_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.025, +0.016] | 0.45 | -0.023 [-0.042, -0.008] | -0.002 [-0.049, +0.043] |
@@ -479,7 +801,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.000 [-0.006, +0.008] | 0.47 | +0.000 [-0.007, +0.009] | +0.001 [-0.015, +0.017] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.000 [-0.009, +0.007] | 0.46 | -0.004 [-0.014, +0.006] | -0.000 [-0.017, +0.017] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.005 [-0.005, +0.017] | 0.83 | -0.002 [-0.015, +0.010] | +0.002 [-0.035, +0.035] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.013 [-0.033, +0.004] | 0.09 | +0.025 [+0.005, +0.048] | -0.033 [-0.062, +0.016] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.007 [-0.019, +0.008] | 0.21 | +0.009 [-0.010, +0.028] | -0.016 [-0.048, +0.013] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.001 [-0.018, +0.011] | 0.29 | +0.017 [-0.002, +0.035] | -0.008 [-0.033, +0.019] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.006 [-0.025, +0.008] | 0.18 | +0.009 [-0.010, +0.025] | -0.012 [-0.042, +0.027] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.031 [-0.049, -0.018] | 0.00 | -0.018 [-0.039, -0.001] | -0.066 [-0.096, -0.029] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.011 [-0.031, +0.004] | 0.08 | +0.010 [-0.009, +0.027] | -0.015 [-0.050, +0.017] |
+| b3_linear_response_cofactors_shared_gain_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.010 [-0.027, +0.005] | 0.10 | +0.004 [-0.016, +0.023] | -0.029 [-0.061, +0.012] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.012 [-0.024, +0.002] | 0.07 | +0.007 [-0.010, +0.023] | -0.025 [-0.054, +0.007] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.019 [-0.040, -0.001] | 0.03 | -0.013 [-0.031, +0.005] | -0.046 [-0.087, +0.010] |
 | b3_linear_response_cofactors_shared_gain_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.008 [-0.031, +0.009] | 0.17 | +0.009 [-0.011, +0.030] | -0.028 [-0.063, +0.008] |
@@ -496,7 +824,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_spectral_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.010 [-0.022, +0.005] | 0.12 | -0.015 [-0.030, +0.005] | -0.006 [-0.037, +0.030] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.009 [-0.022, +0.007] | 0.10 | -0.019 [-0.034, -0.003] | -0.007 [-0.039, +0.028] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b3_local_structural_disease_cluster | 451 | -0.005 [-0.015, +0.010] | 0.28 | -0.017 [-0.033, +0.002] | -0.004 [-0.031, +0.024] |
+| b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.023 [-0.043, -0.007] | 0.01 | +0.010 [-0.011, +0.031] | -0.040 [-0.073, -0.002] |
+| b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.016 [-0.027, -0.002] | 0.01 | -0.006 [-0.023, +0.010] | -0.023 [-0.060, +0.011] |
+| b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.011 [-0.027, +0.003] | 0.07 | +0.002 [-0.014, +0.019] | -0.014 [-0.061, +0.023] |
+| b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.016 [-0.030, -0.003] | 0.01 | -0.007 [-0.023, +0.009] | -0.019 [-0.051, +0.016] |
+| b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.041 [-0.057, -0.029] | 0.00 | -0.034 [-0.051, -0.016] | -0.073 [-0.109, -0.042] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.020 [-0.041, -0.004] | 0.01 | -0.006 [-0.021, +0.011] | -0.022 [-0.064, +0.011] |
+| b3_linear_response_cofactors_spectral_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.019 [-0.032, -0.004] | 0.00 | -0.011 [-0.029, +0.006] | -0.036 [-0.070, -0.002] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.021 [-0.033, -0.008] | 0.01 | -0.009 [-0.024, +0.009] | -0.032 [-0.078, +0.004] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.029 [-0.048, -0.014] | 0.00 | -0.029 [-0.045, -0.016] | -0.052 [-0.090, -0.013] |
 | b3_linear_response_cofactors_spectral_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.018 [-0.038, -0.002] | 0.02 | -0.006 [-0.023, +0.011] | -0.034 [-0.073, +0.007] |
@@ -512,7 +846,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | 451 | -0.002 [-0.007, +0.008] | 0.36 | +0.003 [-0.005, +0.011] | +0.005 [-0.009, +0.021] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_linear_response_disease_cluster | 451 | -0.002 [-0.009, +0.007] | 0.31 | -0.001 [-0.012, +0.009] | +0.004 [-0.015, +0.023] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.003 [-0.007, +0.017] | 0.79 | +0.001 [-0.008, +0.013] | +0.007 [-0.021, +0.036] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.015 [-0.033, +0.004] | 0.07 | +0.028 [+0.008, +0.053] | -0.029 [-0.057, +0.015] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.008 [-0.019, +0.008] | 0.14 | +0.012 [-0.006, +0.032] | -0.012 [-0.039, +0.019] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.003 [-0.017, +0.010] | 0.27 | +0.020 [+0.003, +0.040] | -0.003 [-0.028, +0.024] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.008 [-0.023, +0.004] | 0.10 | +0.011 [-0.008, +0.030] | -0.008 [-0.036, +0.021] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.033 [-0.051, -0.020] | 0.00 | -0.015 [-0.037, +0.005] | -0.062 [-0.091, -0.030] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.013 [-0.028, +0.001] | 0.05 | +0.013 [-0.006, +0.030] | -0.011 [-0.043, +0.017] |
+| b3_linear_response_cofactors_total_in_degree_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.012 [-0.029, +0.003] | 0.07 | +0.007 [-0.016, +0.027] | -0.025 [-0.054, +0.009] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.013 [-0.025, +0.002] | 0.04 | +0.010 [-0.006, +0.027] | -0.020 [-0.049, +0.009] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.021 [-0.042, -0.004] | 0.01 | -0.010 [-0.027, +0.004] | -0.041 [-0.084, +0.011] |
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.010 [-0.030, +0.006] | 0.12 | +0.012 [-0.007, +0.035] | -0.023 [-0.057, +0.013] |
@@ -527,7 +867,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_total_in_degree_disease_cluster | random_walk_with_restart | 451 | -0.045 [-0.067, -0.024] | 0.00 | +0.127 [+0.098, +0.151] | -0.082 [-0.119, -0.042] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b3_linear_response_disease_cluster | 451 | +0.000 [-0.007, +0.005] | 0.46 | -0.004 [-0.012, +0.003] | -0.001 [-0.013, +0.011] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.005 [-0.004, +0.017] | 0.84 | -0.002 [-0.013, +0.010] | +0.001 [-0.031, +0.032] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.013 [-0.033, +0.005] | 0.09 | +0.025 [+0.006, +0.050] | -0.034 [-0.063, +0.003] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.007 [-0.017, +0.009] | 0.18 | +0.009 [-0.008, +0.028] | -0.017 [-0.047, +0.011] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.001 [-0.015, +0.012] | 0.28 | +0.017 [-0.000, +0.038] | -0.009 [-0.034, +0.017] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.006 [-0.024, +0.007] | 0.14 | +0.008 [-0.010, +0.026] | -0.013 [-0.043, +0.019] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.031 [-0.048, -0.020] | 0.00 | -0.018 [-0.038, -0.000] | -0.067 [-0.095, -0.036] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.011 [-0.030, +0.002] | 0.06 | +0.010 [-0.007, +0.027] | -0.016 [-0.054, +0.012] |
+| b3_linear_response_cofactors_unsigned_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.010 [-0.026, +0.004] | 0.07 | +0.004 [-0.020, +0.025] | -0.030 [-0.064, +0.002] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.011 [-0.024, +0.002] | 0.06 | +0.007 [-0.008, +0.025] | -0.026 [-0.053, +0.004] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.019 [-0.042, +0.000] | 0.04 | -0.013 [-0.033, +0.003] | -0.046 [-0.096, +0.007] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.008 [-0.032, +0.008] | 0.19 | +0.009 [-0.012, +0.030] | -0.029 [-0.066, +0.012] |
@@ -541,7 +887,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_cofactors_unsigned_disease_cluster | popularity | 451 | +0.013 [+0.002, +0.030] | 1.00 | +0.005 [-0.012, +0.025] | +0.024 [-0.005, +0.056] |
 | b3_linear_response_cofactors_unsigned_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.065, -0.021] | 0.00 | +0.124 [+0.096, +0.147] | -0.087 [-0.127, -0.049] |
 | b3_linear_response_disease_cluster | b3_local_structural_disease_cluster | 451 | +0.005 [-0.005, +0.017] | 0.87 | +0.002 [-0.014, +0.021] | +0.003 [-0.024, +0.031] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.013 [-0.034, +0.005] | 0.09 | +0.029 [+0.008, +0.058] | -0.033 [-0.060, +0.009] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.007 [-0.017, +0.009] | 0.20 | +0.013 [-0.005, +0.036] | -0.016 [-0.043, +0.012] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.001 [-0.015, +0.011] | 0.33 | +0.021 [+0.003, +0.043] | -0.007 [-0.033, +0.023] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.006 [-0.023, +0.005] | 0.14 | +0.012 [-0.005, +0.031] | -0.012 [-0.040, +0.018] |
+| b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.031 [-0.048, -0.019] | 0.00 | -0.014 [-0.035, +0.004] | -0.066 [-0.094, -0.034] |
 | b3_linear_response_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.011 [-0.030, +0.004] | 0.07 | +0.013 [-0.005, +0.032] | -0.015 [-0.049, +0.014] |
+| b3_linear_response_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.010 [-0.026, +0.004] | 0.09 | +0.008 [-0.014, +0.030] | -0.029 [-0.056, +0.005] |
 | b3_linear_response_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.011 [-0.024, +0.003] | 0.09 | +0.010 [-0.004, +0.030] | -0.025 [-0.054, +0.008] |
 | b3_linear_response_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.019 [-0.040, +0.001] | 0.04 | -0.010 [-0.029, +0.010] | -0.045 [-0.094, +0.007] |
 | b3_linear_response_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.008 [-0.031, +0.009] | 0.19 | +0.013 [-0.008, +0.035] | -0.027 [-0.062, +0.010] |
@@ -554,7 +906,13 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_linear_response_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.011 [-0.031, +0.006] | 0.10 | +0.171 [+0.145, +0.197] | -0.059 [-0.093, -0.012] |
 | b3_linear_response_disease_cluster | popularity | 451 | +0.013 [+0.003, +0.032] | 0.99 | +0.009 [-0.010, +0.032] | +0.025 [-0.006, +0.058] |
 | b3_linear_response_disease_cluster | random_walk_with_restart | 451 | -0.043 [-0.066, -0.022] | 0.00 | +0.128 [+0.101, +0.152] | -0.086 [-0.119, -0.047] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | 451 | -0.018 [-0.040, -0.001] | 0.02 | +0.027 [+0.005, +0.052] | -0.035 [-0.071, +0.008] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | -0.012 [-0.024, +0.001] | 0.04 | +0.011 [-0.009, +0.028] | -0.019 [-0.052, +0.016] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | -0.006 [-0.022, +0.004] | 0.12 | +0.019 [-0.000, +0.036] | -0.010 [-0.046, +0.026] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.011 [-0.027, +0.002] | 0.04 | +0.010 [-0.009, +0.027] | -0.015 [-0.047, +0.018] |
+| b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.036 [-0.054, -0.023] | 0.00 | -0.016 [-0.037, +0.002] | -0.069 [-0.107, -0.033] |
 | b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.016 [-0.037, -0.001] | 0.02 | +0.011 [-0.008, +0.027] | -0.018 [-0.053, +0.021] |
+| b3_local_structural_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.015 [-0.031, -0.002] | 0.01 | +0.006 [-0.017, +0.026] | -0.032 [-0.066, -0.003] |
 | b3_local_structural_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.016 [-0.031, -0.002] | 0.01 | +0.008 [-0.008, +0.027] | -0.027 [-0.065, +0.007] |
 | b3_local_structural_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.024 [-0.043, -0.007] | 0.00 | -0.012 [-0.029, +0.005] | -0.048 [-0.087, -0.009] |
 | b3_local_structural_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.013 [-0.035, +0.004] | 0.07 | +0.011 [-0.010, +0.032] | -0.030 [-0.063, +0.011] |
@@ -567,6 +925,87 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_local_structural_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.016 [-0.034, -0.000] | 0.03 | +0.169 [+0.146, +0.191] | -0.062 [-0.092, -0.027] |
 | b3_local_structural_disease_cluster | popularity | 451 | +0.008 [-0.000, +0.023] | 0.96 | +0.007 [-0.011, +0.024] | +0.023 [-0.005, +0.053] |
 | b3_local_structural_disease_cluster | random_walk_with_restart | 451 | -0.048 [-0.071, -0.027] | 0.00 | +0.126 [+0.096, +0.150] | -0.089 [-0.126, -0.047] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 451 | +0.006 [-0.006, +0.027] | 0.85 | -0.016 [-0.033, +0.002] | +0.017 [-0.017, +0.043] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.012 [-0.009, +0.030] | 0.88 | -0.008 [-0.026, +0.007] | +0.025 [-0.016, +0.056] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.007 [-0.010, +0.024] | 0.74 | -0.016 [-0.039, +0.002] | +0.021 [-0.012, +0.051] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.018 [-0.034, +0.002] | 0.03 | -0.043 [-0.064, -0.022] | -0.033 [-0.075, -0.003] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.002 [-0.014, +0.021] | 0.60 | -0.015 [-0.037, +0.004] | +0.018 [-0.018, +0.047] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.003 [-0.013, +0.024] | 0.63 | -0.020 [-0.044, -0.001] | +0.004 [-0.033, +0.035] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.002 [-0.015, +0.021] | 0.62 | -0.018 [-0.037, +0.000] | +0.008 [-0.033, +0.037] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.006 [-0.026, +0.018] | 0.31 | -0.038 [-0.065, -0.016] | -0.012 [-0.054, +0.032] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.005 [-0.014, +0.022] | 0.68 | -0.016 [-0.036, +0.003] | +0.005 [-0.039, +0.052] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.008 [-0.027, +0.014] | 0.20 | -0.036 [-0.061, -0.014] | -0.002 [-0.047, +0.041] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.010 [-0.011, +0.026] | 0.83 | +0.004 [-0.016, +0.019] | +0.000 [-0.038, +0.041] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.009 [-0.006, +0.027] | 0.84 | -0.025 [-0.051, -0.003] | +0.018 [-0.024, +0.051] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.006 [-0.016, +0.024] | 0.70 | +0.005 [-0.013, +0.021] | +0.003 [-0.042, +0.054] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.009 [-0.036, +0.015] | 0.20 | -0.019 [-0.044, +0.004] | +0.003 [-0.043, +0.046] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | degree_popularity | 451 | +0.004 [-0.011, +0.022] | 0.69 | +0.024 [+0.002, +0.044] | -0.012 [-0.059, +0.033] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.002 [-0.021, +0.024] | 0.57 | +0.143 [+0.122, +0.165] | -0.026 [-0.066, +0.011] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | popularity | 451 | +0.026 [+0.016, +0.049] | 1.00 | -0.020 [-0.040, +0.000] | +0.058 [+0.026, +0.088] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | random_walk_with_restart | 451 | -0.030 [-0.054, -0.010] | 0.01 | +0.099 [+0.073, +0.126] | -0.053 [-0.091, -0.017] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 451 | +0.006 [-0.014, +0.017] | 0.66 | +0.008 [-0.006, +0.020] | +0.009 [-0.023, +0.033] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | +0.001 [-0.015, +0.011] | 0.37 | -0.001 [-0.015, +0.016] | +0.004 [-0.026, +0.029] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.024 [-0.040, -0.013] | 0.00 | -0.028 [-0.043, -0.011] | -0.050 [-0.086, -0.018] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.004 [-0.024, +0.010] | 0.22 | +0.000 [-0.015, +0.016] | +0.001 [-0.032, +0.029] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.003 [-0.017, +0.008] | 0.24 | -0.005 [-0.022, +0.009] | -0.013 [-0.042, +0.018] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.005 [-0.016, +0.007] | 0.20 | -0.003 [-0.018, +0.012] | -0.009 [-0.039, +0.019] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.012 [-0.031, +0.002] | 0.04 | -0.023 [-0.045, -0.006] | -0.029 [-0.071, +0.019] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.001 [-0.023, +0.013] | 0.39 | -0.000 [-0.015, +0.018] | -0.011 [-0.050, +0.030] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.014 [-0.032, -0.002] | 0.01 | -0.021 [-0.041, -0.000] | -0.019 [-0.060, +0.024] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.003 [-0.020, +0.015] | 0.58 | +0.020 [+0.004, +0.038] | -0.016 [-0.052, +0.021] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.003 [-0.017, +0.015] | 0.59 | -0.010 [-0.028, +0.015] | +0.001 [-0.034, +0.039] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.000 [-0.024, +0.012] | 0.40 | +0.021 [+0.005, +0.038] | -0.014 [-0.052, +0.030] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.016 [-0.042, +0.003] | 0.04 | -0.004 [-0.028, +0.018] | -0.014 [-0.056, +0.026] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | degree_popularity | 451 | -0.002 [-0.019, +0.010] | 0.34 | +0.040 [+0.021, +0.057] | -0.029 [-0.069, +0.017] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.023, +0.009] | 0.23 | +0.158 [+0.137, +0.184] | -0.043 [-0.081, -0.001] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | popularity | 451 | +0.019 [+0.014, +0.032] | 1.00 | -0.004 [-0.019, +0.013] | +0.041 [+0.008, +0.079] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | random_walk_with_restart | 451 | -0.036 [-0.057, -0.021] | 0.00 | +0.115 [+0.089, +0.138] | -0.070 [-0.104, -0.031] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 451 | -0.005 [-0.019, +0.009] | 0.29 | -0.008 [-0.023, +0.008] | -0.005 [-0.036, +0.028] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.030 [-0.045, -0.014] | 0.00 | -0.035 [-0.054, -0.013] | -0.059 [-0.095, -0.025] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.010 [-0.029, +0.009] | 0.18 | -0.007 [-0.023, +0.011] | -0.008 [-0.042, +0.023] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.009 [-0.024, +0.010] | 0.18 | -0.012 [-0.025, +0.000] | -0.022 [-0.054, +0.011] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.010 [-0.022, +0.009] | 0.18 | -0.010 [-0.023, +0.003] | -0.017 [-0.044, +0.010] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.018 [-0.038, +0.003] | 0.04 | -0.030 [-0.051, -0.008] | -0.038 [-0.084, +0.011] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.007 [-0.025, +0.009] | 0.25 | -0.008 [-0.024, +0.010] | -0.020 [-0.059, +0.018] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.020 [-0.038, +0.001] | 0.03 | -0.028 [-0.049, -0.008] | -0.027 [-0.074, +0.026] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | -0.002 [-0.016, +0.012] | 0.36 | +0.012 [-0.003, +0.031] | -0.025 [-0.067, +0.020] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | -0.003 [-0.024, +0.017] | 0.43 | -0.017 [-0.037, +0.003] | -0.008 [-0.045, +0.036] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.006 [-0.024, +0.009] | 0.28 | +0.013 [+0.000, +0.032] | -0.022 [-0.065, +0.019] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.021 [-0.049, +0.004] | 0.04 | -0.011 [-0.037, +0.012] | -0.022 [-0.067, +0.024] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | degree_popularity | 451 | -0.008 [-0.024, +0.008] | 0.22 | +0.032 [+0.014, +0.056] | -0.038 [-0.080, +0.008] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.010 [-0.027, +0.009] | 0.17 | +0.151 [+0.130, +0.181] | -0.052 [-0.093, -0.005] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | popularity | 451 | +0.014 [+0.007, +0.034] | 1.00 | -0.012 [-0.026, +0.007] | +0.033 [-0.004, +0.076] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | random_walk_with_restart | 451 | -0.042 [-0.062, -0.016] | 0.01 | +0.107 [+0.080, +0.134] | -0.079 [-0.117, -0.035] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 451 | -0.025 [-0.039, -0.012] | 0.01 | -0.027 [-0.043, -0.009] | -0.054 [-0.083, -0.024] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | -0.005 [-0.021, +0.010] | 0.34 | +0.001 [-0.017, +0.019] | -0.003 [-0.034, +0.028] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | -0.004 [-0.017, +0.013] | 0.37 | -0.004 [-0.022, +0.012] | -0.017 [-0.039, +0.006] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.005 [-0.017, +0.013] | 0.32 | -0.002 [-0.016, +0.014] | -0.013 [-0.040, +0.015] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.013 [-0.036, +0.008] | 0.10 | -0.022 [-0.042, -0.003] | -0.033 [-0.080, +0.016] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_disease_cluster | 451 | -0.002 [-0.016, +0.013] | 0.43 | +0.001 [-0.019, +0.021] | -0.015 [-0.045, +0.020] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.015 [-0.033, +0.002] | 0.04 | -0.020 [-0.042, -0.002] | -0.023 [-0.065, +0.026] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.003 [-0.012, +0.017] | 0.66 | +0.020 [+0.004, +0.038] | -0.021 [-0.059, +0.023] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.002 [-0.013, +0.019] | 0.66 | -0.009 [-0.029, +0.011] | -0.003 [-0.032, +0.033] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | -0.001 [-0.019, +0.015] | 0.46 | +0.022 [+0.004, +0.039] | -0.018 [-0.047, +0.032] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.016 [-0.041, +0.006] | 0.07 | -0.003 [-0.027, +0.021] | -0.018 [-0.047, +0.023] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | degree_popularity | 451 | -0.003 [-0.016, +0.013] | 0.41 | +0.040 [+0.020, +0.061] | -0.033 [-0.071, +0.012] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.020, +0.013] | 0.34 | +0.159 [+0.137, +0.186] | -0.047 [-0.083, -0.004] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | popularity | 451 | +0.019 [+0.011, +0.038] | 1.00 | -0.003 [-0.018, +0.015] | +0.037 [+0.004, +0.072] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | random_walk_with_restart | 451 | -0.037 [-0.060, -0.016] | 0.01 | +0.116 [+0.086, +0.144] | -0.074 [-0.107, -0.037] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | 451 | +0.020 [+0.001, +0.041] | 0.98 | +0.028 [+0.007, +0.049] | +0.051 [+0.017, +0.080] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.021 [+0.005, +0.041] | 0.99 | +0.023 [+0.000, +0.042] | +0.037 [+0.003, +0.068] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | +0.020 [+0.006, +0.036] | 1.00 | +0.025 [+0.006, +0.045] | +0.041 [+0.004, +0.075] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | +0.012 [-0.008, +0.033] | 0.89 | +0.005 [-0.012, +0.026] | +0.021 [-0.023, +0.075] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.023 [+0.007, +0.037] | 1.00 | +0.027 [+0.010, +0.043] | +0.039 [-0.001, +0.082] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | +0.010 [-0.009, +0.031] | 0.85 | +0.007 [-0.012, +0.028] | +0.031 [-0.008, +0.074] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.028 [+0.011, +0.041] | 1.00 | +0.047 [+0.029, +0.066] | +0.034 [-0.002, +0.081] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.028 [+0.009, +0.045] | 0.99 | +0.018 [-0.001, +0.039] | +0.051 [+0.016, +0.087] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.024 [+0.007, +0.040] | 0.99 | +0.048 [+0.030, +0.067] | +0.036 [-0.007, +0.089] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | +0.009 [-0.017, +0.032] | 0.74 | +0.024 [-0.000, +0.046] | +0.036 [-0.010, +0.085] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | degree_popularity | 451 | +0.022 [+0.007, +0.037] | 1.00 | +0.067 [+0.049, +0.089] | +0.021 [-0.025, +0.071] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.020 [+0.004, +0.040] | 0.99 | +0.186 [+0.160, +0.213] | +0.007 [-0.032, +0.047] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | popularity | 451 | +0.044 [+0.036, +0.063] | 1.00 | +0.023 [+0.005, +0.041] | +0.091 [+0.056, +0.128] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | random_walk_with_restart | 451 | -0.012 [-0.031, +0.010] | 0.17 | +0.142 [+0.115, +0.169] | -0.020 [-0.057, +0.023] |
+| b3_typed_nodes_descriptors_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | 451 | +0.001 [-0.014, +0.018] | 0.57 | -0.005 [-0.022, +0.010] | -0.014 [-0.042, +0.016] |
 | b3_typed_nodes_descriptors_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.000 [-0.015, +0.018] | 0.52 | -0.003 [-0.017, +0.014] | -0.009 [-0.038, +0.023] |
 | b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.008 [-0.032, +0.015] | 0.23 | -0.023 [-0.046, -0.001] | -0.030 [-0.075, +0.018] |
 | b3_typed_nodes_descriptors_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.017, +0.022] | 0.59 | -0.000 [-0.023, +0.018] | -0.012 [-0.049, +0.035] |
@@ -579,6 +1018,18 @@ Difference in pooled macro AUPRC and macro AUROC between two models on the rows 
 | b3_typed_nodes_descriptors_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.000 [-0.023, +0.020] | 0.46 | +0.158 [+0.133, +0.182] | -0.044 [-0.086, +0.004] |
 | b3_typed_nodes_descriptors_disease_cluster | popularity | 451 | +0.024 [+0.014, +0.046] | 1.00 | -0.004 [-0.022, +0.014] | +0.041 [+0.011, +0.079] |
 | b3_typed_nodes_descriptors_disease_cluster | random_walk_with_restart | 451 | -0.032 [-0.053, -0.010] | 0.00 | +0.115 [+0.086, +0.138] | -0.071 [-0.104, -0.021] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | 451 | -0.001 [-0.011, +0.011] | 0.46 | +0.002 [-0.011, +0.016] | +0.004 [-0.022, +0.027] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.009 [-0.030, +0.010] | 0.14 | -0.018 [-0.041, +0.004] | -0.016 [-0.061, +0.029] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.002 [-0.022, +0.020] | 0.58 | +0.005 [-0.013, +0.024] | +0.002 [-0.031, +0.040] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.011 [-0.030, +0.006] | 0.09 | -0.016 [-0.038, +0.004] | -0.006 [-0.046, +0.039] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | 451 | +0.007 [-0.013, +0.025] | 0.70 | +0.025 [+0.008, +0.045] | -0.004 [-0.039, +0.040] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | 451 | +0.006 [-0.013, +0.023] | 0.70 | -0.005 [-0.030, +0.017] | +0.014 [-0.015, +0.049] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_linear_response_time_scales_disease_cluster | 451 | +0.003 [-0.020, +0.022] | 0.56 | +0.026 [+0.009, +0.048] | -0.001 [-0.033, +0.043] |
+| runs/encoder/b3_typed_nodes_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster | 451 | -0.012 [-0.041, +0.011] | 0.12 | +0.001 [-0.023, +0.024] | -0.001 [-0.035, +0.046] |
+| runs/encoder/b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.001 [-0.018, +0.020] | 0.55 | +0.044 [+0.020, +0.070] | -0.016 [-0.056, +0.028] |
+| runs/encoder/b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.001 [-0.019, +0.018] | 0.41 | +0.163 [+0.141, +0.191] | -0.030 [-0.067, +0.013] |
+| runs/encoder/b3_typed_nodes_disease_cluster | popularity | 451 | +0.023 [+0.014, +0.040] | 1.00 | +0.001 [-0.017, +0.021] | +0.054 [+0.021, +0.091] |
+| runs/encoder/b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.033 [-0.057, -0.013] | 0.00 | +0.120 [+0.088, +0.147] | -0.057 [-0.094, -0.022] |
 | b3_typed_nodes_laboratory_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | 451 | -0.008 [-0.031, +0.008] | 0.17 | -0.020 [-0.039, -0.003] | -0.021 [-0.066, +0.029] |
 | b3_typed_nodes_laboratory_disease_cluster | b6_linear_response_disease_cluster | 451 | +0.003 [-0.020, +0.022] | 0.56 | +0.003 [-0.018, +0.020] | -0.003 [-0.035, +0.040] |
 | b3_typed_nodes_laboratory_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | 451 | -0.010 [-0.029, +0.004] | 0.09 | -0.018 [-0.036, +0.000] | -0.010 [-0.053, +0.038] |
@@ -653,13 +1104,18 @@ Rankings scored inside groups of one degree stratum and one test fold (3 degree 
 | model | macro AUPRC within degree strata | micro AUPRC within degree strata | macro AUROC stratified by degree |
 |---|---|---|---|
 | b3_sigmoid_disease_cluster | 0.223 | 0.193 | 0.508 |
-| b3_typed_nodes_disease_cluster | 0.238 | 0.204 | 0.526 |
+| runs/b3_typed_nodes_disease_cluster | 0.238 | 0.204 | 0.526 |
 | b6_default_disease_cluster | 0.232 | 0.196 | 0.474 |
 | b6_mechanistic_disease_cluster | 0.228 | 0.196 | 0.504 |
 | b6_mechanistic_expected_gate_disease_cluster | 0.244 | 0.206 | 0.512 |
 | b3_degree_only_disease_cluster | 0.214 | 0.188 | 0.497 |
 | b3_descriptors_only_disease_cluster | 0.217 | 0.186 | 0.498 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | 0.229 | 0.199 | 0.507 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | 0.216 | 0.186 | 0.486 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | 0.218 | 0.189 | 0.473 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | 0.222 | 0.190 | 0.481 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | 0.231 | 0.197 | 0.502 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | 0.235 | 0.204 | 0.525 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | 0.216 | 0.187 | 0.482 |
 | b3_linear_response_cofactors_disease_cluster | 0.223 | 0.192 | 0.509 |
 | b3_linear_response_cofactors_laboratory_disease_cluster | 0.223 | 0.193 | 0.510 |
@@ -673,7 +1129,13 @@ Rankings scored inside groups of one degree stratum and one test fold (3 degree 
 | b3_linear_response_cofactors_unsigned_disease_cluster | 0.225 | 0.196 | 0.507 |
 | b3_linear_response_disease_cluster | 0.217 | 0.190 | 0.500 |
 | b3_local_structural_disease_cluster | 0.219 | 0.191 | 0.487 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | 0.231 | 0.197 | 0.515 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | 0.230 | 0.195 | 0.503 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | 0.226 | 0.193 | 0.522 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | 0.218 | 0.187 | 0.481 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | 0.240 | 0.207 | 0.534 |
 | b3_typed_nodes_descriptors_disease_cluster | 0.220 | 0.191 | 0.497 |
+| runs/encoder/b3_typed_nodes_disease_cluster | 0.240 | 0.205 | 0.529 |
 | b3_typed_nodes_laboratory_disease_cluster | 0.240 | 0.208 | 0.537 |
 | b6_linear_response_cofactors_neuronal_disease_cluster | 0.220 | 0.190 | 0.479 |
 | b6_linear_response_disease_cluster | 0.216 | 0.184 | 0.484 |
@@ -695,10 +1157,10 @@ Paired bootstrap of the within-strata macro and micro AUPRC, each run against ea
 | b3_sigmoid_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.001 [-0.024, +0.019] | 0.51 | +0.001 [-0.017, +0.016] |
 | b3_sigmoid_disease_cluster | popularity | 451 | +0.011 [+0.005, +0.033] | 1.00 | +0.002 [-0.009, +0.016] |
 | b3_sigmoid_disease_cluster | random_walk_with_restart | 451 | -0.021 [-0.043, +0.007] | 0.04 | -0.013 [-0.030, +0.006] |
-| b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.025 [+0.008, +0.042] | 0.99 | +0.016 [+0.000, +0.034] |
-| b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.017 [-0.006, +0.041] | 0.92 | +0.012 [-0.006, +0.033] |
-| b3_typed_nodes_disease_cluster | popularity | 451 | +0.026 [+0.017, +0.050] | 1.00 | +0.013 [+0.001, +0.030] |
-| b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.005 [-0.030, +0.019] | 0.29 | -0.002 [-0.019, +0.019] |
+| runs/b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.025 [+0.008, +0.042] | 0.99 | +0.016 [+0.000, +0.034] |
+| runs/b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.017 [-0.006, +0.041] | 0.92 | +0.012 [-0.006, +0.033] |
+| runs/b3_typed_nodes_disease_cluster | popularity | 451 | +0.026 [+0.017, +0.050] | 1.00 | +0.013 [+0.001, +0.030] |
+| runs/b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.005 [-0.030, +0.019] | 0.29 | -0.002 [-0.019, +0.019] |
 | b6_default_disease_cluster | degree_popularity | 451 | +0.019 [-0.000, +0.046] | 0.96 | +0.009 [-0.007, +0.029] |
 | b6_default_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.011 [-0.016, +0.039] | 0.79 | +0.004 [-0.016, +0.024] |
 | b6_default_disease_cluster | popularity | 451 | +0.020 [+0.006, +0.051] | 1.00 | +0.005 [-0.009, +0.027] |
@@ -723,6 +1185,26 @@ Paired bootstrap of the within-strata macro and micro AUPRC, each run against ea
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.008 [-0.022, +0.035] | 0.72 | +0.007 [-0.015, +0.028] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | popularity | 451 | +0.017 [+0.009, +0.042] | 0.99 | +0.008 [-0.005, +0.026] |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | random_walk_with_restart | 451 | -0.014 [-0.039, +0.009] | 0.15 | -0.007 [-0.025, +0.016] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | degree_popularity | 451 | +0.003 [-0.018, +0.028] | 0.70 | -0.001 [-0.017, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.027, +0.021] | 0.37 | -0.006 [-0.025, +0.011] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | popularity | 451 | +0.004 [-0.004, +0.031] | 0.93 | -0.005 [-0.016, +0.006] |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | random_walk_with_restart | 451 | -0.027 [-0.053, +0.001] | 0.04 | -0.020 [-0.038, -0.002] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | degree_popularity | 451 | +0.005 [-0.015, +0.024] | 0.74 | +0.002 [-0.013, +0.015] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.003 [-0.029, +0.018] | 0.33 | -0.003 [-0.021, +0.014] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | popularity | 451 | +0.006 [-0.000, +0.026] | 0.97 | -0.002 [-0.011, +0.010] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | random_walk_with_restart | 451 | -0.025 [-0.050, -0.003] | 0.01 | -0.017 [-0.034, -0.000] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | degree_popularity | 451 | +0.008 [-0.013, +0.035] | 0.82 | +0.002 [-0.014, +0.018] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.000 [-0.021, +0.027] | 0.55 | -0.002 [-0.021, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | popularity | 451 | +0.010 [-0.001, +0.039] | 0.96 | -0.001 [-0.013, +0.013] |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | random_walk_with_restart | 451 | -0.022 [-0.049, +0.009] | 0.10 | -0.017 [-0.036, +0.005] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | degree_popularity | 451 | +0.017 [-0.000, +0.035] | 0.96 | +0.009 [-0.008, +0.028] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.009 [-0.018, +0.029] | 0.74 | +0.005 [-0.017, +0.024] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | popularity | 451 | +0.019 [+0.010, +0.037] | 1.00 | +0.006 [-0.006, +0.023] |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | random_walk_with_restart | 451 | -0.013 [-0.038, +0.010] | 0.14 | -0.009 [-0.030, +0.012] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | degree_popularity | 451 | +0.022 [+0.002, +0.044] | 0.98 | +0.016 [-0.002, +0.036] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.013 [-0.015, +0.034] | 0.85 | +0.012 [-0.008, +0.032] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | popularity | 451 | +0.023 [+0.014, +0.044] | 1.00 | +0.013 [-0.001, +0.028] |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | random_walk_with_restart | 451 | -0.008 [-0.033, +0.016] | 0.25 | -0.002 [-0.022, +0.016] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | degree_popularity | 451 | +0.003 [-0.017, +0.026] | 0.66 | -0.001 [-0.018, +0.018] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.005 [-0.030, +0.019] | 0.28 | -0.005 [-0.023, +0.013] |
 | b3_linear_response_cofactors_descriptors_disease_cluster | popularity | 451 | +0.004 [-0.004, +0.027] | 0.91 | -0.004 [-0.016, +0.012] |
@@ -775,10 +1257,34 @@ Paired bootstrap of the within-strata macro and micro AUPRC, each run against ea
 | b3_local_structural_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.003 [-0.029, +0.014] | 0.35 | -0.001 [-0.019, +0.016] |
 | b3_local_structural_disease_cluster | popularity | 451 | +0.007 [+0.003, +0.023] | 0.99 | -0.000 [-0.008, +0.011] |
 | b3_local_structural_disease_cluster | random_walk_with_restart | 451 | -0.025 [-0.053, -0.006] | 0.00 | -0.015 [-0.036, -0.000] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | degree_popularity | 451 | +0.018 [-0.005, +0.041] | 0.94 | +0.010 [-0.008, +0.026] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.009 [-0.020, +0.036] | 0.76 | +0.006 [-0.015, +0.024] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | popularity | 451 | +0.019 [+0.009, +0.044] | 1.00 | +0.007 [-0.003, +0.021] |
+| b3_typed_nodes_descriptors_brain_disease_cluster | random_walk_with_restart | 451 | -0.012 [-0.038, +0.012] | 0.18 | -0.009 [-0.029, +0.010] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | degree_popularity | 451 | +0.016 [-0.003, +0.041] | 0.94 | +0.007 [-0.007, +0.024] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.008 [-0.017, +0.031] | 0.74 | +0.003 [-0.016, +0.018] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | popularity | 451 | +0.018 [+0.010, +0.042] | 1.00 | +0.004 [-0.005, +0.018] |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | random_walk_with_restart | 451 | -0.014 [-0.040, +0.009] | 0.13 | -0.011 [-0.029, +0.008] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | degree_popularity | 451 | +0.013 [-0.004, +0.029] | 0.92 | +0.006 [-0.007, +0.019] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.004 [-0.019, +0.025] | 0.64 | +0.001 [-0.014, +0.016] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | popularity | 451 | +0.014 [+0.008, +0.035] | 1.00 | +0.002 [-0.005, +0.014] |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | random_walk_with_restart | 451 | -0.017 [-0.041, +0.002] | 0.07 | -0.013 [-0.029, +0.004] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | degree_popularity | 451 | +0.004 [-0.012, +0.022] | 0.69 | -0.001 [-0.014, +0.015] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.004 [-0.028, +0.018] | 0.29 | -0.005 [-0.022, +0.011] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | popularity | 451 | +0.006 [-0.001, +0.027] | 0.96 | -0.004 [-0.013, +0.009] |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | random_walk_with_restart | 451 | -0.026 [-0.051, -0.005] | 0.01 | -0.019 [-0.037, -0.001] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | degree_popularity | 451 | +0.026 [+0.008, +0.049] | 0.99 | +0.019 [+0.001, +0.037] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.018 [-0.009, +0.041] | 0.91 | +0.015 [-0.003, +0.033] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | popularity | 451 | +0.028 [+0.021, +0.049] | 1.00 | +0.016 [+0.002, +0.031] |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | random_walk_with_restart | 451 | -0.004 [-0.030, +0.020] | 0.38 | +0.001 [-0.020, +0.022] |
 | b3_typed_nodes_descriptors_disease_cluster | degree_popularity | 451 | +0.006 [-0.008, +0.025] | 0.77 | +0.003 [-0.010, +0.020] |
 | b3_typed_nodes_descriptors_disease_cluster | knowledge_graph_embedding_transe | 451 | -0.002 [-0.026, +0.017] | 0.37 | -0.001 [-0.018, +0.015] |
 | b3_typed_nodes_descriptors_disease_cluster | popularity | 451 | +0.008 [+0.003, +0.026] | 1.00 | -0.000 [-0.010, +0.016] |
 | b3_typed_nodes_descriptors_disease_cluster | random_walk_with_restart | 451 | -0.024 [-0.047, -0.003] | 0.01 | -0.015 [-0.033, +0.002] |
+| runs/encoder/b3_typed_nodes_disease_cluster | degree_popularity | 451 | +0.026 [+0.007, +0.048] | 0.99 | +0.017 [+0.001, +0.035] |
+| runs/encoder/b3_typed_nodes_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.018 [-0.007, +0.041] | 0.89 | +0.013 [-0.007, +0.031] |
+| runs/encoder/b3_typed_nodes_disease_cluster | popularity | 451 | +0.028 [+0.017, +0.052] | 1.00 | +0.014 [+0.001, +0.029] |
+| runs/encoder/b3_typed_nodes_disease_cluster | random_walk_with_restart | 451 | -0.004 [-0.030, +0.018] | 0.35 | -0.001 [-0.019, +0.015] |
 | b3_typed_nodes_laboratory_disease_cluster | degree_popularity | 451 | +0.027 [+0.006, +0.047] | 1.00 | +0.020 [+0.003, +0.040] |
 | b3_typed_nodes_laboratory_disease_cluster | knowledge_graph_embedding_transe | 451 | +0.018 [-0.008, +0.044] | 0.91 | +0.016 [-0.006, +0.035] |
 | b3_typed_nodes_laboratory_disease_cluster | popularity | 451 | +0.028 [+0.016, +0.054] | 1.00 | +0.017 [+0.004, +0.036] |
@@ -819,13 +1325,18 @@ Commits are those the splits ran under (recorded from 6 October 2026; 'not recor
 | run | head | field | pooling | modules | description-length coefficient | learning rate | state dim | layers | labels permuted | splits | mean epochs | commits |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | b3_sigmoid_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 12.4 | not recorded |
-| b3_typed_nodes_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 14.2 | not recorded |
+| runs/b3_typed_nodes_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 14.2 | not recorded |
 | b6_default_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 43.8 | not recorded |
 | b6_mechanistic_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 35.4 | not recorded |
 | b6_mechanistic_expected_gate_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 47.0 | 554018e, c84bf7f, e314e3b, f640f08 |
 | b3_degree_only_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 26.2 | 1b3efd6 |
 | b3_descriptors_only_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.2 | 173cf68 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 15.0 | 059bbf8, f871084 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 17.8 | 11158e0, 8bcb6ec, f1d2925 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 24.6 | 842649f, 8e49e57, c124d8e, d467731 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 18.0 | 11158e0, d467731 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 15.6 | 52da05f, 97bcfd7, fdcfd30 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.4 | c850732, f874ef5 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 15.8 | 34ae673, c720c7a, d2419f1, f43ba74 |
 | b3_linear_response_cofactors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.0 | 198c5b8, 4bc9e73 |
 | b3_linear_response_cofactors_laboratory_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.0 | 6ac9eb1, bd7891b, e780239, f36d03c |
@@ -839,7 +1350,13 @@ Commits are those the splits ran under (recorded from 6 October 2026; 'not recor
 | b3_linear_response_cofactors_unsigned_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 19.4 | 14ec638, 27d851c, 36b2e32, 39e29b3, e330e98 |
 | b3_linear_response_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 20.0 | 0e9cfb3, 10e6cf4, e314e3b |
 | b3_local_structural_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 17.4 | 173cf68 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 13.8 | 059bbf8, 7a030bb, a4b0acd, e2ca5b8 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.8 | c2697e1, dfc86c4, e4cbb18 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 12.8 | 0eff4ab, c850732, f874ef5, fdcfd30 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.8 | 52da05f, 8e49e57, 97bcfd7, c124d8e |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 12.4 | 591f013, b5ed650 |
 | b3_typed_nodes_descriptors_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 11.6 | 173cf68, 6ac9eb1, f36d03c |
+| runs/encoder/b3_typed_nodes_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 16.6 | 11158e0, 8bcb6ec, d467731, f1d2925 |
 | b3_typed_nodes_laboratory_disease_cluster | sigmoid | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 16.8 | 6ac9eb1, e780239, f36d03c |
 | b6_linear_response_cofactors_neuronal_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 37.0 | 03b06d1, 0f008e3, 5150d1d, 59d0b18, 7c5a416, 7e836ed, a9a3e2f |
 | b6_linear_response_disease_cluster | noisy_or | difference | sum | 8 | 1e-06 | 0.002 | 32 | 2 | False | 5 | 46.2 | 0e9cfb3, 1687e09, 198c5b8, 1b3efd6, 1cf0dcb, e314e3b |
@@ -851,18 +1368,18 @@ Commits are those the splits ran under (recorded from 6 October 2026; 'not recor
 
 ## Per-symptom AUPRC (pooled; 95 percent bootstrap interval over perturbations; base rate in parentheses)
 
-| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe | b3_sigmoid_disease_cluster | b3_typed_nodes_disease_cluster | b6_default_disease_cluster | b6_mechanistic_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | b3_degree_only_disease_cluster | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | b3_linear_response_disease_cluster | b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | b6_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) | 0.256 [0.213, 0.324] (0.259) | 0.254 [0.212, 0.321] (0.259) | 0.280 [0.237, 0.345] (0.259) | 0.283 [0.223, 0.342] (0.259) | 0.269 [0.218, 0.333] (0.259) | 0.296 [0.244, 0.360] (0.259) | 0.229 [0.187, 0.287] (0.259) | 0.213 [0.177, 0.260] (0.259) | 0.227 [0.192, 0.272] (0.259) | 0.234 [0.194, 0.285] (0.259) | 0.239 [0.193, 0.314] (0.259) | 0.239 [0.193, 0.313] (0.259) | 0.247 [0.199, 0.318] (0.259) | 0.271 [0.217, 0.343] (0.259) | 0.248 [0.202, 0.325] (0.259) | 0.239 [0.200, 0.291] (0.259) | 0.242 [0.197, 0.316] (0.259) | 0.251 [0.205, 0.320] (0.259) | 0.239 [0.194, 0.314] (0.259) | 0.247 [0.201, 0.323] (0.259) | 0.251 [0.199, 0.332] (0.259) | 0.225 [0.182, 0.285] (0.259) | 0.277 [0.234, 0.340] (0.259) | 0.276 [0.226, 0.346] (0.259) | 0.313 [0.258, 0.406] (0.259) | 0.224 [0.187, 0.271] (0.259) | 0.293 [0.237, 0.374] (0.259) | 0.221 [0.182, 0.271] (0.259) | 0.215 [0.177, 0.261] (0.259) | 0.219 [0.184, 0.265] (0.259) | 0.282 [0.233, 0.378] (0.259) |
-| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) | 0.434 [0.391, 0.489] (0.448) | 0.458 [0.398, 0.514] (0.448) | 0.496 [0.436, 0.556] (0.448) | 0.492 [0.433, 0.570] (0.448) | 0.455 [0.394, 0.524] (0.448) | 0.472 [0.417, 0.537] (0.448) | 0.447 [0.396, 0.506] (0.448) | 0.409 [0.359, 0.466] (0.448) | 0.479 [0.422, 0.551] (0.448) | 0.416 [0.365, 0.477] (0.448) | 0.469 [0.406, 0.537] (0.448) | 0.468 [0.404, 0.537] (0.448) | 0.453 [0.397, 0.516] (0.448) | 0.490 [0.423, 0.550] (0.448) | 0.470 [0.409, 0.534] (0.448) | 0.429 [0.373, 0.485] (0.448) | 0.476 [0.420, 0.538] (0.448) | 0.419 [0.364, 0.479] (0.448) | 0.464 [0.405, 0.541] (0.448) | 0.465 [0.410, 0.530] (0.448) | 0.469 [0.416, 0.538] (0.448) | 0.453 [0.401, 0.515] (0.448) | 0.442 [0.385, 0.505] (0.448) | 0.483 [0.424, 0.550] (0.448) | 0.476 [0.419, 0.540] (0.448) | 0.450 [0.388, 0.519] (0.448) | 0.470 [0.414, 0.538] (0.448) | 0.440 [0.385, 0.507] (0.448) | 0.448 [0.375, 0.513] (0.448) | 0.434 [0.378, 0.495] (0.448) | 0.484 [0.437, 0.553] (0.448) |
-| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) | 0.227 [0.192, 0.283] (0.228) | 0.190 [0.158, 0.242] (0.228) | 0.189 [0.162, 0.238] (0.228) | 0.189 [0.157, 0.233] (0.228) | 0.203 [0.156, 0.256] (0.228) | 0.206 [0.162, 0.260] (0.228) | 0.177 [0.144, 0.220] (0.228) | 0.194 [0.159, 0.242] (0.228) | 0.176 [0.146, 0.226] (0.228) | 0.179 [0.146, 0.227] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.185 [0.154, 0.230] (0.228) | 0.194 [0.163, 0.242] (0.228) | 0.180 [0.149, 0.222] (0.228) | 0.238 [0.186, 0.302] (0.228) | 0.182 [0.152, 0.226] (0.228) | 0.174 [0.145, 0.211] (0.228) | 0.175 [0.147, 0.215] (0.228) | 0.183 [0.153, 0.230] (0.228) | 0.185 [0.154, 0.232] (0.228) | 0.185 [0.153, 0.227] (0.228) | 0.179 [0.151, 0.221] (0.228) | 0.187 [0.157, 0.237] (0.228) | 0.247 [0.206, 0.317] (0.228) | 0.195 [0.153, 0.243] (0.228) | 0.233 [0.186, 0.302] (0.228) | 0.193 [0.156, 0.244] (0.228) | 0.183 [0.149, 0.227] (0.228) | 0.201 [0.158, 0.253] (0.228) | 0.193 [0.155, 0.247] (0.228) |
-| elevated_mood_or_mania | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) | 0.205 [0.176, 0.259] (0.224) | 0.226 [0.186, 0.282] (0.224) | 0.218 [0.176, 0.297] (0.224) | 0.249 [0.202, 0.328] (0.224) | 0.195 [0.162, 0.254] (0.224) | 0.234 [0.198, 0.298] (0.224) | 0.205 [0.175, 0.261] (0.224) | 0.197 [0.165, 0.248] (0.224) | 0.229 [0.194, 0.304] (0.224) | 0.206 [0.171, 0.270] (0.224) | 0.198 [0.166, 0.261] (0.224) | 0.198 [0.165, 0.260] (0.224) | 0.193 [0.159, 0.252] (0.224) | 0.195 [0.164, 0.246] (0.224) | 0.198 [0.165, 0.245] (0.224) | 0.218 [0.179, 0.272] (0.224) | 0.197 [0.162, 0.254] (0.224) | 0.209 [0.175, 0.276] (0.224) | 0.201 [0.167, 0.265] (0.224) | 0.216 [0.173, 0.279] (0.224) | 0.193 [0.161, 0.250] (0.224) | 0.198 [0.166, 0.249] (0.224) | 0.207 [0.173, 0.277] (0.224) | 0.221 [0.189, 0.279] (0.224) | 0.184 [0.151, 0.243] (0.224) | 0.266 [0.226, 0.356] (0.224) | 0.235 [0.198, 0.311] (0.224) | 0.224 [0.190, 0.294] (0.224) | 0.210 [0.176, 0.286] (0.224) | 0.234 [0.198, 0.312] (0.224) | 0.282 [0.220, 0.373] (0.224) |
-| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) | 0.055 [0.035, 0.111] (0.051) | 0.043 [0.027, 0.083] (0.051) | 0.048 [0.032, 0.082] (0.051) | 0.052 [0.031, 0.106] (0.051) | 0.080 [0.046, 0.168] (0.051) | 0.090 [0.045, 0.204] (0.051) | 0.049 [0.029, 0.126] (0.051) | 0.057 [0.032, 0.139] (0.051) | 0.042 [0.028, 0.071] (0.051) | 0.048 [0.030, 0.086] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.078 [0.044, 0.196] (0.051) | 0.045 [0.030, 0.073] (0.051) | 0.045 [0.030, 0.088] (0.051) | 0.044 [0.030, 0.084] (0.051) | 0.056 [0.035, 0.126] (0.051) | 0.044 [0.030, 0.074] (0.051) | 0.052 [0.033, 0.112] (0.051) | 0.047 [0.031, 0.102] (0.051) | 0.050 [0.031, 0.130] (0.051) | 0.055 [0.033, 0.127] (0.051) | 0.049 [0.029, 0.097] (0.051) | 0.050 [0.032, 0.097] (0.051) | 0.070 [0.040, 0.149] (0.051) | 0.069 [0.040, 0.154] (0.051) | 0.051 [0.034, 0.123] (0.051) | 0.071 [0.040, 0.171] (0.051) | 0.051 [0.034, 0.093] (0.051) | 0.081 [0.042, 0.178] (0.051) | 0.065 [0.036, 0.159] (0.051) |
-| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) | 0.406 [0.354, 0.482] (0.399) | 0.413 [0.357, 0.486] (0.399) | 0.413 [0.355, 0.474] (0.399) | 0.436 [0.384, 0.513] (0.399) | 0.415 [0.366, 0.494] (0.399) | 0.400 [0.347, 0.472] (0.399) | 0.389 [0.347, 0.454] (0.399) | 0.453 [0.390, 0.526] (0.399) | 0.418 [0.366, 0.486] (0.399) | 0.400 [0.341, 0.476] (0.399) | 0.398 [0.340, 0.458] (0.399) | 0.401 [0.342, 0.462] (0.399) | 0.415 [0.355, 0.475] (0.399) | 0.386 [0.334, 0.449] (0.399) | 0.391 [0.332, 0.455] (0.399) | 0.395 [0.350, 0.468] (0.399) | 0.407 [0.345, 0.463] (0.399) | 0.370 [0.332, 0.438] (0.399) | 0.414 [0.354, 0.473] (0.399) | 0.402 [0.344, 0.463] (0.399) | 0.410 [0.349, 0.475] (0.399) | 0.405 [0.349, 0.471] (0.399) | 0.454 [0.374, 0.535] (0.399) | 0.424 [0.365, 0.495] (0.399) | 0.413 [0.355, 0.483] (0.399) | 0.387 [0.339, 0.450] (0.399) | 0.388 [0.341, 0.453] (0.399) | 0.388 [0.344, 0.460] (0.399) | 0.432 [0.374, 0.506] (0.399) | 0.396 [0.348, 0.464] (0.399) | 0.391 [0.334, 0.461] (0.399) |
-| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) | 0.103 [0.070, 0.166] (0.084) | 0.105 [0.068, 0.178] (0.084) | 0.096 [0.067, 0.144] (0.084) | 0.132 [0.084, 0.246] (0.084) | 0.110 [0.075, 0.173] (0.084) | 0.110 [0.069, 0.216] (0.084) | 0.111 [0.063, 0.198] (0.084) | 0.088 [0.057, 0.140] (0.084) | 0.078 [0.054, 0.118] (0.084) | 0.105 [0.066, 0.186] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.085 [0.059, 0.135] (0.084) | 0.072 [0.052, 0.112] (0.084) | 0.077 [0.055, 0.122] (0.084) | 0.111 [0.066, 0.215] (0.084) | 0.083 [0.054, 0.133] (0.084) | 0.082 [0.057, 0.132] (0.084) | 0.076 [0.055, 0.113] (0.084) | 0.084 [0.058, 0.132] (0.084) | 0.086 [0.060, 0.152] (0.084) | 0.078 [0.052, 0.125] (0.084) | 0.084 [0.060, 0.119] (0.084) | 0.085 [0.059, 0.131] (0.084) | 0.099 [0.064, 0.193] (0.084) | 0.108 [0.071, 0.186] (0.084) | 0.109 [0.062, 0.176] (0.084) | 0.091 [0.061, 0.157] (0.084) | 0.106 [0.070, 0.170] (0.084) | 0.105 [0.067, 0.195] (0.084) | 0.107 [0.063, 0.211] (0.084) |
-| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) | 0.162 [0.127, 0.227] (0.149) | 0.121 [0.094, 0.161] (0.149) | 0.132 [0.101, 0.177] (0.149) | 0.141 [0.116, 0.201] (0.149) | 0.142 [0.104, 0.205] (0.149) | 0.136 [0.098, 0.197] (0.149) | 0.126 [0.097, 0.166] (0.149) | 0.135 [0.102, 0.199] (0.149) | 0.131 [0.099, 0.187] (0.149) | 0.119 [0.092, 0.152] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.120 [0.092, 0.154] (0.149) | 0.126 [0.098, 0.165] (0.149) | 0.126 [0.098, 0.163] (0.149) | 0.135 [0.102, 0.185] (0.149) | 0.124 [0.096, 0.166] (0.149) | 0.131 [0.103, 0.182] (0.149) | 0.122 [0.095, 0.158] (0.149) | 0.124 [0.095, 0.162] (0.149) | 0.122 [0.093, 0.159] (0.149) | 0.127 [0.097, 0.172] (0.149) | 0.129 [0.106, 0.177] (0.149) | 0.144 [0.109, 0.196] (0.149) | 0.136 [0.107, 0.183] (0.149) | 0.134 [0.104, 0.186] (0.149) | 0.172 [0.123, 0.250] (0.149) | 0.147 [0.116, 0.204] (0.149) | 0.155 [0.117, 0.239] (0.149) | 0.134 [0.105, 0.199] (0.149) | 0.149 [0.112, 0.218] (0.149) |
-| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) | 0.067 [0.043, 0.112] (0.064) | 0.058 [0.038, 0.087] (0.064) | 0.052 [0.036, 0.080] (0.064) | 0.054 [0.036, 0.085] (0.064) | 0.070 [0.041, 0.121] (0.064) | 0.049 [0.032, 0.074] (0.064) | 0.053 [0.036, 0.084] (0.064) | 0.067 [0.041, 0.131] (0.064) | 0.067 [0.044, 0.103] (0.064) | 0.066 [0.043, 0.124] (0.064) | 0.059 [0.039, 0.118] (0.064) | 0.059 [0.040, 0.115] (0.064) | 0.055 [0.037, 0.101] (0.064) | 0.052 [0.034, 0.077] (0.064) | 0.053 [0.037, 0.089] (0.064) | 0.069 [0.044, 0.113] (0.064) | 0.050 [0.034, 0.077] (0.064) | 0.054 [0.038, 0.088] (0.064) | 0.061 [0.040, 0.127] (0.064) | 0.053 [0.038, 0.080] (0.064) | 0.053 [0.037, 0.079] (0.064) | 0.048 [0.034, 0.070] (0.064) | 0.096 [0.040, 0.206] (0.064) | 0.051 [0.034, 0.077] (0.064) | 0.053 [0.036, 0.081] (0.064) | 0.059 [0.038, 0.103] (0.064) | 0.057 [0.040, 0.091] (0.064) | 0.073 [0.041, 0.158] (0.064) | 0.052 [0.035, 0.100] (0.064) | 0.076 [0.040, 0.166] (0.064) | 0.066 [0.041, 0.115] (0.064) |
+| symptom | popularity | degree_popularity | random_walk_with_restart | knowledge_graph_embedding_transe | b3_sigmoid_disease_cluster | runs/b3_typed_nodes_disease_cluster | b6_default_disease_cluster | b6_mechanistic_disease_cluster | b6_mechanistic_expected_gate_disease_cluster | b3_degree_only_disease_cluster | b3_descriptors_only_disease_cluster | b3_linear_response_cofactors_descriptors_brain_disease_cluster | b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | b3_linear_response_cofactors_descriptors_disease_cluster | b3_linear_response_cofactors_disease_cluster | b3_linear_response_cofactors_laboratory_disease_cluster | b3_linear_response_cofactors_laboratory_manganese_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_disease_cluster | b3_linear_response_cofactors_laboratory_neuronal_no_curation_disease_cluster | b3_linear_response_cofactors_log_disease_cluster | b3_linear_response_cofactors_shared_gain_disease_cluster | b3_linear_response_cofactors_spectral_disease_cluster | b3_linear_response_cofactors_total_in_degree_disease_cluster | b3_linear_response_cofactors_unsigned_disease_cluster | b3_linear_response_disease_cluster | b3_local_structural_disease_cluster | b3_typed_nodes_descriptors_brain_disease_cluster | b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | b3_typed_nodes_descriptors_disease_cluster | runs/encoder/b3_typed_nodes_disease_cluster | b3_typed_nodes_laboratory_disease_cluster | b6_linear_response_cofactors_neuronal_disease_cluster | b6_linear_response_disease_cluster | b6_linear_response_gate_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_disease_cluster | b6_linear_response_time_scales_cofactors_log_disease_cluster | b6_linear_response_time_scales_disease_cluster | b6_mechanistic_gate_time_scales_disease_cluster |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| anxiety | 0.219 [0.181, 0.259] (0.259) | 0.243 [0.205, 0.296] (0.259) | 0.335 [0.260, 0.425] (0.259) | 0.256 [0.213, 0.324] (0.259) | 0.254 [0.212, 0.321] (0.259) | 0.280 [0.237, 0.345] (0.259) | 0.283 [0.223, 0.342] (0.259) | 0.269 [0.218, 0.333] (0.259) | 0.296 [0.244, 0.360] (0.259) | 0.229 [0.187, 0.287] (0.259) | 0.213 [0.177, 0.260] (0.259) | 0.227 [0.192, 0.272] (0.259) | 0.267 [0.221, 0.336] (0.259) | 0.243 [0.195, 0.322] (0.259) | 0.229 [0.188, 0.280] (0.259) | 0.226 [0.193, 0.284] (0.259) | 0.247 [0.213, 0.307] (0.259) | 0.234 [0.194, 0.285] (0.259) | 0.239 [0.193, 0.314] (0.259) | 0.239 [0.193, 0.313] (0.259) | 0.247 [0.199, 0.318] (0.259) | 0.271 [0.217, 0.343] (0.259) | 0.248 [0.202, 0.325] (0.259) | 0.239 [0.200, 0.291] (0.259) | 0.242 [0.197, 0.316] (0.259) | 0.251 [0.205, 0.320] (0.259) | 0.239 [0.194, 0.314] (0.259) | 0.247 [0.201, 0.323] (0.259) | 0.251 [0.199, 0.332] (0.259) | 0.225 [0.182, 0.285] (0.259) | 0.293 [0.241, 0.358] (0.259) | 0.281 [0.230, 0.344] (0.259) | 0.244 [0.196, 0.308] (0.259) | 0.276 [0.225, 0.342] (0.259) | 0.316 [0.263, 0.395] (0.259) | 0.277 [0.234, 0.340] (0.259) | 0.293 [0.236, 0.369] (0.259) | 0.276 [0.226, 0.346] (0.259) | 0.313 [0.258, 0.406] (0.259) | 0.224 [0.187, 0.271] (0.259) | 0.293 [0.237, 0.374] (0.259) | 0.221 [0.182, 0.271] (0.259) | 0.215 [0.177, 0.261] (0.259) | 0.219 [0.184, 0.265] (0.259) | 0.282 [0.233, 0.378] (0.259) |
+| cognitive_impairment | 0.425 [0.381, 0.471] (0.448) | 0.442 [0.391, 0.499] (0.448) | 0.442 [0.392, 0.497] (0.448) | 0.434 [0.391, 0.489] (0.448) | 0.458 [0.398, 0.514] (0.448) | 0.496 [0.436, 0.556] (0.448) | 0.492 [0.433, 0.570] (0.448) | 0.455 [0.394, 0.524] (0.448) | 0.472 [0.417, 0.537] (0.448) | 0.447 [0.396, 0.506] (0.448) | 0.409 [0.359, 0.466] (0.448) | 0.479 [0.422, 0.551] (0.448) | 0.431 [0.380, 0.493] (0.448) | 0.450 [0.396, 0.509] (0.448) | 0.446 [0.392, 0.508] (0.448) | 0.522 [0.457, 0.580] (0.448) | 0.484 [0.425, 0.554] (0.448) | 0.416 [0.365, 0.477] (0.448) | 0.469 [0.406, 0.537] (0.448) | 0.468 [0.404, 0.537] (0.448) | 0.453 [0.397, 0.516] (0.448) | 0.490 [0.423, 0.550] (0.448) | 0.470 [0.409, 0.534] (0.448) | 0.429 [0.373, 0.485] (0.448) | 0.476 [0.420, 0.538] (0.448) | 0.419 [0.364, 0.479] (0.448) | 0.464 [0.405, 0.541] (0.448) | 0.465 [0.410, 0.530] (0.448) | 0.469 [0.416, 0.538] (0.448) | 0.453 [0.401, 0.515] (0.448) | 0.431 [0.377, 0.490] (0.448) | 0.434 [0.379, 0.484] (0.448) | 0.432 [0.384, 0.492] (0.448) | 0.428 [0.379, 0.482] (0.448) | 0.471 [0.415, 0.530] (0.448) | 0.442 [0.385, 0.505] (0.448) | 0.453 [0.394, 0.522] (0.448) | 0.483 [0.424, 0.550] (0.448) | 0.476 [0.419, 0.540] (0.448) | 0.450 [0.388, 0.519] (0.448) | 0.470 [0.414, 0.538] (0.448) | 0.440 [0.385, 0.507] (0.448) | 0.448 [0.375, 0.513] (0.448) | 0.434 [0.378, 0.495] (0.448) | 0.484 [0.437, 0.553] (0.448) |
+| depressed_mood | 0.186 [0.157, 0.225] (0.228) | 0.229 [0.188, 0.286] (0.228) | 0.230 [0.187, 0.284] (0.228) | 0.227 [0.192, 0.283] (0.228) | 0.190 [0.158, 0.242] (0.228) | 0.189 [0.162, 0.238] (0.228) | 0.189 [0.157, 0.233] (0.228) | 0.203 [0.156, 0.256] (0.228) | 0.206 [0.162, 0.260] (0.228) | 0.177 [0.144, 0.220] (0.228) | 0.194 [0.159, 0.242] (0.228) | 0.176 [0.146, 0.226] (0.228) | 0.181 [0.153, 0.227] (0.228) | 0.181 [0.152, 0.227] (0.228) | 0.179 [0.150, 0.224] (0.228) | 0.165 [0.136, 0.211] (0.228) | 0.192 [0.162, 0.249] (0.228) | 0.179 [0.146, 0.227] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.179 [0.152, 0.223] (0.228) | 0.185 [0.154, 0.230] (0.228) | 0.194 [0.163, 0.242] (0.228) | 0.180 [0.149, 0.222] (0.228) | 0.238 [0.186, 0.302] (0.228) | 0.182 [0.152, 0.226] (0.228) | 0.174 [0.145, 0.211] (0.228) | 0.175 [0.147, 0.215] (0.228) | 0.183 [0.153, 0.230] (0.228) | 0.185 [0.154, 0.232] (0.228) | 0.185 [0.153, 0.227] (0.228) | 0.189 [0.153, 0.248] (0.228) | 0.193 [0.165, 0.244] (0.228) | 0.171 [0.144, 0.228] (0.228) | 0.186 [0.160, 0.238] (0.228) | 0.183 [0.153, 0.232] (0.228) | 0.179 [0.151, 0.221] (0.228) | 0.204 [0.159, 0.255] (0.228) | 0.187 [0.157, 0.237] (0.228) | 0.247 [0.206, 0.317] (0.228) | 0.195 [0.153, 0.243] (0.228) | 0.233 [0.186, 0.302] (0.228) | 0.193 [0.156, 0.244] (0.228) | 0.183 [0.149, 0.227] (0.228) | 0.201 [0.158, 0.253] (0.228) | 0.193 [0.155, 0.247] (0.228) |
+| elevated_mood_or_mania | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| fatigue | 0.183 [0.152, 0.221] (0.224) | 0.209 [0.175, 0.275] (0.224) | 0.312 [0.242, 0.405] (0.224) | 0.205 [0.176, 0.259] (0.224) | 0.226 [0.186, 0.282] (0.224) | 0.218 [0.176, 0.297] (0.224) | 0.249 [0.202, 0.328] (0.224) | 0.195 [0.162, 0.254] (0.224) | 0.234 [0.198, 0.298] (0.224) | 0.205 [0.175, 0.261] (0.224) | 0.197 [0.165, 0.248] (0.224) | 0.229 [0.194, 0.304] (0.224) | 0.194 [0.164, 0.247] (0.224) | 0.203 [0.165, 0.273] (0.224) | 0.203 [0.170, 0.263] (0.224) | 0.242 [0.199, 0.314] (0.224) | 0.214 [0.177, 0.271] (0.224) | 0.206 [0.171, 0.270] (0.224) | 0.198 [0.166, 0.261] (0.224) | 0.198 [0.165, 0.260] (0.224) | 0.193 [0.159, 0.252] (0.224) | 0.195 [0.164, 0.246] (0.224) | 0.198 [0.165, 0.245] (0.224) | 0.218 [0.179, 0.272] (0.224) | 0.197 [0.162, 0.254] (0.224) | 0.209 [0.175, 0.276] (0.224) | 0.201 [0.167, 0.265] (0.224) | 0.216 [0.173, 0.279] (0.224) | 0.193 [0.161, 0.250] (0.224) | 0.198 [0.166, 0.249] (0.224) | 0.245 [0.207, 0.316] (0.224) | 0.208 [0.171, 0.270] (0.224) | 0.184 [0.153, 0.238] (0.224) | 0.252 [0.208, 0.322] (0.224) | 0.297 [0.249, 0.387] (0.224) | 0.207 [0.173, 0.277] (0.224) | 0.220 [0.180, 0.290] (0.224) | 0.221 [0.189, 0.279] (0.224) | 0.184 [0.151, 0.243] (0.224) | 0.266 [0.226, 0.356] (0.224) | 0.235 [0.198, 0.311] (0.224) | 0.224 [0.190, 0.294] (0.224) | 0.210 [0.176, 0.286] (0.224) | 0.234 [0.198, 0.312] (0.224) | 0.282 [0.220, 0.373] (0.224) |
+| insomnia | 0.042 [0.029, 0.066] (0.051) | 0.077 [0.049, 0.159] (0.051) | 0.060 [0.037, 0.105] (0.051) | 0.055 [0.035, 0.111] (0.051) | 0.043 [0.027, 0.083] (0.051) | 0.048 [0.032, 0.082] (0.051) | 0.052 [0.031, 0.106] (0.051) | 0.080 [0.046, 0.168] (0.051) | 0.090 [0.045, 0.204] (0.051) | 0.049 [0.029, 0.126] (0.051) | 0.057 [0.032, 0.139] (0.051) | 0.042 [0.028, 0.071] (0.051) | 0.054 [0.030, 0.127] (0.051) | 0.047 [0.031, 0.104] (0.051) | 0.055 [0.031, 0.123] (0.051) | 0.039 [0.027, 0.065] (0.051) | 0.046 [0.033, 0.073] (0.051) | 0.048 [0.030, 0.086] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.047 [0.032, 0.095] (0.051) | 0.078 [0.044, 0.196] (0.051) | 0.045 [0.030, 0.073] (0.051) | 0.045 [0.030, 0.088] (0.051) | 0.044 [0.030, 0.084] (0.051) | 0.056 [0.035, 0.126] (0.051) | 0.044 [0.030, 0.074] (0.051) | 0.052 [0.033, 0.112] (0.051) | 0.047 [0.031, 0.102] (0.051) | 0.050 [0.031, 0.130] (0.051) | 0.055 [0.033, 0.127] (0.051) | 0.048 [0.028, 0.110] (0.051) | 0.046 [0.028, 0.083] (0.051) | 0.082 [0.041, 0.229] (0.051) | 0.060 [0.033, 0.157] (0.051) | 0.055 [0.031, 0.143] (0.051) | 0.049 [0.029, 0.097] (0.051) | 0.043 [0.028, 0.071] (0.051) | 0.050 [0.032, 0.097] (0.051) | 0.070 [0.040, 0.149] (0.051) | 0.069 [0.040, 0.154] (0.051) | 0.051 [0.034, 0.123] (0.051) | 0.071 [0.040, 0.171] (0.051) | 0.051 [0.034, 0.093] (0.051) | 0.081 [0.042, 0.178] (0.051) | 0.065 [0.036, 0.159] (0.051) |
+| irritability_or_aggression | 0.381 [0.339, 0.440] (0.399) | 0.394 [0.349, 0.466] (0.399) | 0.432 [0.371, 0.508] (0.399) | 0.406 [0.354, 0.482] (0.399) | 0.413 [0.357, 0.486] (0.399) | 0.413 [0.355, 0.474] (0.399) | 0.436 [0.384, 0.513] (0.399) | 0.415 [0.366, 0.494] (0.399) | 0.400 [0.347, 0.472] (0.399) | 0.389 [0.347, 0.454] (0.399) | 0.453 [0.390, 0.526] (0.399) | 0.418 [0.366, 0.486] (0.399) | 0.403 [0.354, 0.468] (0.399) | 0.405 [0.343, 0.476] (0.399) | 0.408 [0.359, 0.474] (0.399) | 0.416 [0.367, 0.490] (0.399) | 0.416 [0.359, 0.485] (0.399) | 0.400 [0.341, 0.476] (0.399) | 0.398 [0.340, 0.458] (0.399) | 0.401 [0.342, 0.462] (0.399) | 0.415 [0.355, 0.475] (0.399) | 0.386 [0.334, 0.449] (0.399) | 0.391 [0.332, 0.455] (0.399) | 0.395 [0.350, 0.468] (0.399) | 0.407 [0.345, 0.463] (0.399) | 0.370 [0.332, 0.438] (0.399) | 0.414 [0.354, 0.473] (0.399) | 0.402 [0.344, 0.463] (0.399) | 0.410 [0.349, 0.475] (0.399) | 0.405 [0.349, 0.471] (0.399) | 0.429 [0.379, 0.503] (0.399) | 0.476 [0.406, 0.545] (0.399) | 0.433 [0.367, 0.506] (0.399) | 0.410 [0.351, 0.485] (0.399) | 0.482 [0.415, 0.552] (0.399) | 0.454 [0.374, 0.535] (0.399) | 0.403 [0.355, 0.483] (0.399) | 0.424 [0.365, 0.495] (0.399) | 0.413 [0.355, 0.483] (0.399) | 0.387 [0.339, 0.450] (0.399) | 0.388 [0.341, 0.453] (0.399) | 0.388 [0.344, 0.460] (0.399) | 0.432 [0.374, 0.506] (0.399) | 0.396 [0.348, 0.464] (0.399) | 0.391 [0.334, 0.461] (0.399) |
+| psychomotor_agitation | 0.080 [0.056, 0.107] (0.084) | 0.090 [0.059, 0.152] (0.084) | 0.190 [0.111, 0.321] (0.084) | 0.103 [0.070, 0.166] (0.084) | 0.105 [0.068, 0.178] (0.084) | 0.096 [0.067, 0.144] (0.084) | 0.132 [0.084, 0.246] (0.084) | 0.110 [0.075, 0.173] (0.084) | 0.110 [0.069, 0.216] (0.084) | 0.111 [0.063, 0.198] (0.084) | 0.088 [0.057, 0.140] (0.084) | 0.078 [0.054, 0.118] (0.084) | 0.083 [0.057, 0.128] (0.084) | 0.077 [0.056, 0.116] (0.084) | 0.081 [0.056, 0.139] (0.084) | 0.067 [0.049, 0.094] (0.084) | 0.080 [0.055, 0.134] (0.084) | 0.105 [0.066, 0.186] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.080 [0.058, 0.119] (0.084) | 0.085 [0.059, 0.135] (0.084) | 0.072 [0.052, 0.112] (0.084) | 0.077 [0.055, 0.122] (0.084) | 0.111 [0.066, 0.215] (0.084) | 0.083 [0.054, 0.133] (0.084) | 0.082 [0.057, 0.132] (0.084) | 0.076 [0.055, 0.113] (0.084) | 0.084 [0.058, 0.132] (0.084) | 0.086 [0.060, 0.152] (0.084) | 0.078 [0.052, 0.125] (0.084) | 0.084 [0.059, 0.120] (0.084) | 0.071 [0.052, 0.100] (0.084) | 0.094 [0.061, 0.143] (0.084) | 0.095 [0.067, 0.160] (0.084) | 0.104 [0.064, 0.159] (0.084) | 0.084 [0.060, 0.119] (0.084) | 0.102 [0.068, 0.157] (0.084) | 0.085 [0.059, 0.131] (0.084) | 0.099 [0.064, 0.193] (0.084) | 0.108 [0.071, 0.186] (0.084) | 0.109 [0.062, 0.176] (0.084) | 0.091 [0.061, 0.157] (0.084) | 0.106 [0.070, 0.170] (0.084) | 0.105 [0.067, 0.195] (0.084) | 0.107 [0.063, 0.211] (0.084) |
+| psychosis | 0.134 [0.105, 0.175] (0.149) | 0.151 [0.121, 0.204] (0.149) | 0.139 [0.106, 0.180] (0.149) | 0.162 [0.127, 0.227] (0.149) | 0.121 [0.094, 0.161] (0.149) | 0.132 [0.101, 0.177] (0.149) | 0.141 [0.116, 0.201] (0.149) | 0.142 [0.104, 0.205] (0.149) | 0.136 [0.098, 0.197] (0.149) | 0.126 [0.097, 0.166] (0.149) | 0.135 [0.102, 0.199] (0.149) | 0.131 [0.099, 0.187] (0.149) | 0.127 [0.098, 0.167] (0.149) | 0.123 [0.095, 0.161] (0.149) | 0.125 [0.097, 0.168] (0.149) | 0.126 [0.096, 0.176] (0.149) | 0.130 [0.100, 0.170] (0.149) | 0.119 [0.092, 0.152] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.124 [0.097, 0.162] (0.149) | 0.120 [0.092, 0.154] (0.149) | 0.126 [0.098, 0.165] (0.149) | 0.126 [0.098, 0.163] (0.149) | 0.135 [0.102, 0.185] (0.149) | 0.124 [0.096, 0.166] (0.149) | 0.131 [0.103, 0.182] (0.149) | 0.122 [0.095, 0.158] (0.149) | 0.124 [0.095, 0.162] (0.149) | 0.122 [0.093, 0.159] (0.149) | 0.127 [0.097, 0.172] (0.149) | 0.119 [0.090, 0.152] (0.149) | 0.116 [0.089, 0.153] (0.149) | 0.112 [0.087, 0.147] (0.149) | 0.113 [0.089, 0.146] (0.149) | 0.122 [0.095, 0.164] (0.149) | 0.129 [0.106, 0.177] (0.149) | 0.141 [0.111, 0.184] (0.149) | 0.144 [0.109, 0.196] (0.149) | 0.136 [0.107, 0.183] (0.149) | 0.134 [0.104, 0.186] (0.149) | 0.172 [0.123, 0.250] (0.149) | 0.147 [0.116, 0.204] (0.149) | 0.155 [0.117, 0.239] (0.149) | 0.134 [0.105, 0.199] (0.149) | 0.149 [0.112, 0.218] (0.149) |
+| somnolence_or_hypersomnia | 0.055 [0.038, 0.076] (0.064) | 0.064 [0.039, 0.114] (0.064) | 0.063 [0.043, 0.094] (0.064) | 0.067 [0.043, 0.112] (0.064) | 0.058 [0.038, 0.087] (0.064) | 0.052 [0.036, 0.080] (0.064) | 0.054 [0.036, 0.085] (0.064) | 0.070 [0.041, 0.121] (0.064) | 0.049 [0.032, 0.074] (0.064) | 0.053 [0.036, 0.084] (0.064) | 0.067 [0.041, 0.131] (0.064) | 0.067 [0.044, 0.103] (0.064) | 0.053 [0.037, 0.084] (0.064) | 0.052 [0.037, 0.083] (0.064) | 0.054 [0.036, 0.085] (0.064) | 0.074 [0.046, 0.126] (0.064) | 0.059 [0.040, 0.087] (0.064) | 0.066 [0.043, 0.124] (0.064) | 0.059 [0.039, 0.118] (0.064) | 0.059 [0.040, 0.115] (0.064) | 0.055 [0.037, 0.101] (0.064) | 0.052 [0.034, 0.077] (0.064) | 0.053 [0.037, 0.089] (0.064) | 0.069 [0.044, 0.113] (0.064) | 0.050 [0.034, 0.077] (0.064) | 0.054 [0.038, 0.088] (0.064) | 0.061 [0.040, 0.127] (0.064) | 0.053 [0.038, 0.080] (0.064) | 0.053 [0.037, 0.079] (0.064) | 0.048 [0.034, 0.070] (0.064) | 0.098 [0.058, 0.215] (0.064) | 0.055 [0.036, 0.082] (0.064) | 0.076 [0.043, 0.168] (0.064) | 0.055 [0.035, 0.114] (0.064) | 0.069 [0.046, 0.109] (0.064) | 0.096 [0.040, 0.206] (0.064) | 0.050 [0.032, 0.077] (0.064) | 0.051 [0.034, 0.077] (0.064) | 0.053 [0.036, 0.081] (0.064) | 0.059 [0.038, 0.103] (0.064) | 0.057 [0.040, 0.091] (0.064) | 0.073 [0.041, 0.158] (0.064) | 0.052 [0.035, 0.100] (0.064) | 0.076 [0.040, 0.166] (0.064) | 0.066 [0.041, 0.115] (0.064) |
 
 ## Module structure, b6_default_disease_cluster
 
@@ -993,11 +1510,11 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b3_sigmoid_disease_cluster | fold2_seed0 | 90 | 0.238 | 0.505 | 0.620 | 0.822 | 12 | 3 |
 | b3_sigmoid_disease_cluster | fold3_seed0 | 90 | 0.270 | 0.515 | 0.616 | 0.744 | 13 | 4 |
 | b3_sigmoid_disease_cluster | fold4_seed0 | 90 | 0.278 | 0.528 | 0.608 | 0.889 | 14 | 5 |
-| b3_typed_nodes_disease_cluster | fold0_seed0 | 91 | 0.277 | 0.553 | 0.687 | 0.802 | 18 | 9 |
-| b3_typed_nodes_disease_cluster | fold1_seed0 | 90 | 0.344 | 0.511 | 0.616 | 0.767 | 10 | 1 |
-| b3_typed_nodes_disease_cluster | fold2_seed0 | 90 | 0.263 | 0.513 | 0.658 | 0.811 | 12 | 3 |
-| b3_typed_nodes_disease_cluster | fold3_seed0 | 90 | 0.312 | 0.513 | 0.627 | 0.756 | 13 | 4 |
-| b3_typed_nodes_disease_cluster | fold4_seed0 | 90 | 0.267 | 0.478 | 0.695 | 0.856 | 18 | 9 |
+| runs/b3_typed_nodes_disease_cluster | fold0_seed0 | 91 | 0.277 | 0.553 | 0.687 | 0.802 | 18 | 9 |
+| runs/b3_typed_nodes_disease_cluster | fold1_seed0 | 90 | 0.344 | 0.511 | 0.616 | 0.767 | 10 | 1 |
+| runs/b3_typed_nodes_disease_cluster | fold2_seed0 | 90 | 0.263 | 0.513 | 0.658 | 0.811 | 12 | 3 |
+| runs/b3_typed_nodes_disease_cluster | fold3_seed0 | 90 | 0.312 | 0.513 | 0.627 | 0.756 | 13 | 4 |
+| runs/b3_typed_nodes_disease_cluster | fold4_seed0 | 90 | 0.267 | 0.478 | 0.695 | 0.856 | 18 | 9 |
 | b6_default_disease_cluster | fold0_seed0 | 91 | 0.217 | 0.492 | 0.691 | 0.802 | 40 | 31 |
 | b6_default_disease_cluster | fold1_seed0 | 90 | 0.281 | 0.497 | 0.625 | 0.800 | 40 | 31 |
 | b6_default_disease_cluster | fold2_seed0 | 90 | 0.291 | 0.472 | 0.628 | 0.778 | 60 | 53 |
@@ -1028,6 +1545,31 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | fold2_seed0 | 90 | 0.230 | 0.485 | 0.599 | 0.778 | 16 | 7 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | fold3_seed0 | 90 | 0.237 | 0.463 | 0.637 | 0.844 | 16 | 7 |
 | b3_linear_response_cofactors_descriptors_brain_disease_cluster | fold4_seed0 | 90 | 0.279 | 0.516 | 0.648 | 0.856 | 16 | 7 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | fold0_seed0 | 91 | 0.213 | 0.477 | 0.694 | 0.835 | 14 | 5 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | fold1_seed0 | 90 | 0.311 | 0.561 | 0.627 | 0.789 | 15 | 6 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | fold2_seed0 | 90 | 0.244 | 0.500 | 0.626 | 0.778 | 24 | 15 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | fold3_seed0 | 90 | 0.235 | 0.417 | 0.642 | 0.778 | 20 | 11 |
+| b3_linear_response_cofactors_descriptors_brain_seed_masked_disease_cluster | fold4_seed0 | 90 | 0.258 | 0.473 | 0.691 | 0.911 | 16 | 7 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | fold0_seed0 | 91 | 0.238 | 0.474 | 0.674 | 0.813 | 24 | 15 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | fold1_seed0 | 90 | 0.313 | 0.534 | 0.600 | 0.789 | 18 | 9 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | fold2_seed0 | 90 | 0.251 | 0.449 | 0.627 | 0.767 | 28 | 19 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | fold3_seed0 | 90 | 0.261 | 0.481 | 0.661 | 0.778 | 20 | 11 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_derived_disease_cluster | fold4_seed0 | 90 | 0.268 | 0.453 | 0.643 | 0.811 | 33 | 24 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | fold0_seed0 | 91 | 0.211 | 0.450 | 0.692 | 0.802 | 14 | 5 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | fold1_seed0 | 90 | 0.316 | 0.533 | 0.627 | 0.789 | 15 | 6 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | fold2_seed0 | 90 | 0.238 | 0.510 | 0.643 | 0.778 | 25 | 16 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | fold3_seed0 | 90 | 0.245 | 0.432 | 0.648 | 0.778 | 20 | 11 |
+| b3_linear_response_cofactors_descriptors_brain_without_gene_disease_cluster | fold4_seed0 | 90 | 0.259 | 0.489 | 0.660 | 0.933 | 16 | 7 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | fold0_seed0 | 91 | 0.248 | 0.562 | 0.688 | 0.802 | 14 | 5 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | fold1_seed0 | 90 | 0.330 | 0.534 | 0.629 | 0.822 | 15 | 6 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | fold2_seed0 | 90 | 0.215 | 0.452 | 0.630 | 0.756 | 17 | 8 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | fold3_seed0 | 90 | 0.251 | 0.452 | 0.655 | 0.856 | 16 | 7 |
+| b3_linear_response_cofactors_descriptors_brain_without_protein_disease_cluster | fold4_seed0 | 90 | 0.276 | 0.508 | 0.657 | 0.867 | 16 | 7 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | fold0_seed0 | 91 | 0.248 | 0.534 | 0.685 | 0.802 | 18 | 9 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | fold1_seed0 | 90 | 0.337 | 0.567 | 0.625 | 0.778 | 15 | 6 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | fold2_seed0 | 90 | 0.222 | 0.487 | 0.596 | 0.767 | 28 | 19 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | fold3_seed0 | 90 | 0.251 | 0.495 | 0.645 | 0.778 | 20 | 11 |
+| b3_linear_response_cofactors_descriptors_brain_zero_init_slow_disease_cluster | fold4_seed0 | 90 | 0.333 | 0.559 | 0.694 | 0.944 | 16 | 7 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | fold0_seed0 | 91 | 0.204 | 0.483 | 0.652 | 0.802 | 15 | 6 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | fold1_seed0 | 90 | 0.298 | 0.491 | 0.619 | 0.789 | 15 | 6 |
 | b3_linear_response_cofactors_descriptors_disease_cluster | fold2_seed0 | 90 | 0.221 | 0.451 | 0.623 | 0.778 | 13 | 4 |
@@ -1093,11 +1635,41 @@ Support size counts gates above 0.5 in the evaluation gate (see the commits note
 | b3_local_structural_disease_cluster | fold2_seed0 | 90 | 0.227 | 0.476 | 0.628 | 0.778 | 12 | 3 |
 | b3_local_structural_disease_cluster | fold3_seed0 | 90 | 0.241 | 0.459 | 0.657 | 0.778 | 20 | 11 |
 | b3_local_structural_disease_cluster | fold4_seed0 | 90 | 0.253 | 0.437 | 0.693 | 0.922 | 16 | 7 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | fold0_seed0 | 91 | 0.217 | 0.453 | 0.680 | 0.780 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | fold1_seed0 | 90 | 0.313 | 0.504 | 0.614 | 0.767 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | fold2_seed0 | 90 | 0.291 | 0.561 | 0.608 | 0.778 | 13 | 4 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | fold3_seed0 | 90 | 0.262 | 0.462 | 0.654 | 0.756 | 14 | 5 |
+| b3_typed_nodes_descriptors_brain_disease_cluster | fold4_seed0 | 90 | 0.271 | 0.506 | 0.627 | 0.867 | 19 | 10 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | fold0_seed0 | 91 | 0.228 | 0.511 | 0.630 | 0.758 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | fold1_seed0 | 90 | 0.315 | 0.518 | 0.631 | 0.722 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | fold2_seed0 | 90 | 0.271 | 0.510 | 0.630 | 0.778 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | fold3_seed0 | 90 | 0.258 | 0.460 | 0.650 | 0.756 | 14 | 5 |
+| b3_typed_nodes_descriptors_brain_seed_masked_disease_cluster | fold4_seed0 | 90 | 0.267 | 0.513 | 0.697 | 0.911 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | fold0_seed0 | 91 | 0.240 | 0.506 | 0.648 | 0.780 | 15 | 6 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | fold1_seed0 | 90 | 0.280 | 0.470 | 0.605 | 0.778 | 10 | 1 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | fold2_seed0 | 90 | 0.275 | 0.557 | 0.629 | 0.778 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | fold3_seed0 | 90 | 0.248 | 0.483 | 0.643 | 0.778 | 13 | 4 |
+| b3_typed_nodes_descriptors_brain_without_gene_derived_disease_cluster | fold4_seed0 | 90 | 0.259 | 0.476 | 0.645 | 0.911 | 14 | 5 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | fold0_seed0 | 91 | 0.256 | 0.533 | 0.651 | 0.791 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | fold1_seed0 | 90 | 0.295 | 0.501 | 0.600 | 0.767 | 11 | 2 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | fold2_seed0 | 90 | 0.253 | 0.468 | 0.649 | 0.844 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | fold3_seed0 | 90 | 0.263 | 0.469 | 0.636 | 0.767 | 13 | 4 |
+| b3_typed_nodes_descriptors_brain_without_gene_disease_cluster | fold4_seed0 | 90 | 0.246 | 0.425 | 0.697 | 0.900 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | fold0_seed0 | 91 | 0.276 | 0.557 | 0.690 | 0.835 | 13 | 4 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | fold1_seed0 | 90 | 0.359 | 0.586 | 0.604 | 0.744 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | fold2_seed0 | 90 | 0.235 | 0.503 | 0.648 | 0.767 | 12 | 3 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | fold3_seed0 | 90 | 0.310 | 0.548 | 0.631 | 0.756 | 13 | 4 |
+| b3_typed_nodes_descriptors_brain_without_protein_disease_cluster | fold4_seed0 | 90 | 0.298 | 0.525 | 0.645 | 0.867 | 12 | 3 |
 | b3_typed_nodes_descriptors_disease_cluster | fold0_seed0 | 91 | 0.227 | 0.525 | 0.638 | 0.780 | 11 | 2 |
 | b3_typed_nodes_descriptors_disease_cluster | fold1_seed0 | 90 | 0.306 | 0.504 | 0.605 | 0.789 | 11 | 2 |
 | b3_typed_nodes_descriptors_disease_cluster | fold2_seed0 | 90 | 0.264 | 0.523 | 0.651 | 0.822 | 13 | 4 |
 | b3_typed_nodes_descriptors_disease_cluster | fold3_seed0 | 90 | 0.267 | 0.454 | 0.649 | 0.778 | 12 | 3 |
 | b3_typed_nodes_descriptors_disease_cluster | fold4_seed0 | 90 | 0.250 | 0.481 | 0.619 | 0.856 | 11 | 2 |
+| runs/encoder/b3_typed_nodes_disease_cluster | fold0_seed0 | 91 | 0.244 | 0.546 | 0.672 | 0.813 | 19 | 10 |
+| runs/encoder/b3_typed_nodes_disease_cluster | fold1_seed0 | 90 | 0.334 | 0.572 | 0.606 | 0.767 | 11 | 2 |
+| runs/encoder/b3_typed_nodes_disease_cluster | fold2_seed0 | 90 | 0.285 | 0.536 | 0.667 | 0.800 | 23 | 14 |
+| runs/encoder/b3_typed_nodes_disease_cluster | fold3_seed0 | 90 | 0.257 | 0.480 | 0.645 | 0.789 | 16 | 7 |
+| runs/encoder/b3_typed_nodes_disease_cluster | fold4_seed0 | 90 | 0.285 | 0.508 | 0.645 | 0.944 | 14 | 5 |
 | b3_typed_nodes_laboratory_disease_cluster | fold0_seed0 | 91 | 0.246 | 0.536 | 0.646 | 0.780 | 16 | 7 |
 | b3_typed_nodes_laboratory_disease_cluster | fold1_seed0 | 90 | 0.343 | 0.530 | 0.589 | 0.744 | 10 | 1 |
 | b3_typed_nodes_laboratory_disease_cluster | fold2_seed0 | 90 | 0.280 | 0.552 | 0.625 | 0.778 | 25 | 16 |
