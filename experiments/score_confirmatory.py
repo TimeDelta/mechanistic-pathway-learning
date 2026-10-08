@@ -109,8 +109,11 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str) -> tuple[np.ndarray | None, str]:
-    """Lockbox predictions of one finished run, or None with the reason it cannot be used."""
+def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str,
+                   require_refit: bool = True) -> tuple[np.ndarray | None, str]:
+    """Lockbox predictions of one finished run, or None with the reason it cannot be used. With require_refit (the
+    amendments of 8 October 2026) a run counts only if it kept the large leakage groups in training and was refitted on
+    its training and validation perturbations, so it fitted on the same perturbations as the baselines."""
     if not (split_directory / "DONE").exists() or not (split_directory / "results.json").exists():
         return None, "not finished"
     results = json.loads((split_directory / "results.json").read_text())
@@ -122,6 +125,8 @@ def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256
         return None, "trained on another label selection"
     if bool(results.get("labels_permuted")) != (variant == "permuted") or (results.get("rewiring") is not None) != (variant == "rewired"):
         return None, "its controls do not match the variant"
+    if require_refit and not (results.get("refit") and (results.get("arguments") or {}).get("keep_large_groups_in_training")):
+        return None, "trained without the refit or with the largest leakage group as its validation set"
     return np.load(split_directory / "test_predictions.npy"), "ok"
 
 
@@ -147,6 +152,8 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
+    parser.add_argument("--allow-runs-without-refit", action="store_true",
+                        help="smoke tests on runs trained before 8 October 2026 only: accept runs without --refit-on-validation and --keep-large-groups-in-training")
     arguments = parser.parse_args()
 
     marker = arguments.output_dir / "SCORED"
@@ -198,7 +205,8 @@ def main() -> None:
         for variant, suffix in VARIANT_SUFFIXES.items():
             for seed in arguments.seeds:
                 split_directory = model_directory / f"lockbox_seed{seed}{suffix}"
-                predictions, reason = read_model_run(split_directory, lockbox_ids, lockbox_sha256, selection_sha256, variant)
+                predictions, reason = read_model_run(split_directory, lockbox_ids, lockbox_sha256, selection_sha256, variant,
+                                                     require_refit=not arguments.allow_runs_without_refit)
                 if predictions is None:
                     missing_runs[model].append(f"{split_directory}: {reason}")
                 else:
@@ -280,7 +288,7 @@ def main() -> None:
         "scorings": previous_scorings + [scoring], "lockbox": str(arguments.lockbox), "lockbox_sha256": lockbox_sha256, "label_selection_sha256": selection_sha256,
         "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
         "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "alpha_one_sided_per_model": arguments.alpha,
-        "minimum_macro_difference": arguments.minimum_macro_difference, "minimum_micro_difference": arguments.minimum_micro_difference,
+        "minimum_macro_difference": arguments.minimum_macro_difference, "minimum_micro_difference": arguments.minimum_micro_difference, "runs_without_refit_allowed": arguments.allow_runs_without_refit,
         "best_baseline": best_baseline,
         "baseline_scores": {labelling: {name: {reading: seed_mean(by_seed, reading) for reading in base_readings} for name, by_seed in by_name.items()}
                             for labelling, by_name in observed["baselines"].items()},

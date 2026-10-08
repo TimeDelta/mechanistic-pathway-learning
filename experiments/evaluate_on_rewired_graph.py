@@ -10,7 +10,8 @@ judged by (docs/preregistration.md, amendment of 8 October 2026 on the descripto
 not usefulness: a model can depend on edges and still predict badly, so it is read beside the AUPRC itself.
 
 The run is rebuilt from the arguments in its results.json (defaults of experiments/run_main_model.py for arguments
-added later), its best weights are loaded from checkpoint.pt, and the test predictions on the real graph are compared
+added later), its best weights are loaded from checkpoint.pt (or the refitted weights from refit_checkpoint.pt for a run
+with --refit-on-validation), and the test predictions on the real graph are compared
 with the stored test_predictions.npy (the reproduction check in the output). The rewiring is
 fast_degree_preserving_rewiring within each relation, as --rewire-swaps-per-edge in the trainer. Each fold writes
 rewired_graph_evaluation.json beside its results and is skipped when that file exists for the same swaps and seed.
@@ -104,7 +105,11 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
     test_indices = np.array([position[perturbation_id] for perturbation_id in results["test_perturbation_ids"]])
     test_outcomes = data.outcomes[test_indices]
     test_mask = None if data.label_mask is None else data.label_mask[test_indices]
-    checkpoint = torch.load(fold_directory / "checkpoint.pt", map_location=device, weights_only=False)
+    if results.get("refit"):  # the scored model is the refit (--refit-on-validation), whose last state is the scored one
+        refit_checkpoint = torch.load(fold_directory / "refit_checkpoint.pt", map_location=device, weights_only=False)
+        checkpoint = {"state": {}, "encoder": refit_checkpoint["encoder"], "head": refit_checkpoint["head"]}
+    else:
+        checkpoint = torch.load(fold_directory / "checkpoint.pt", map_location=device, weights_only=False)
     torch.manual_seed(arguments.seed)
 
     encoder, head, adjacencies = trained_models(data, arguments, checkpoint, device)

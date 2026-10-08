@@ -10,7 +10,10 @@ Splits: --fold k of the grouped perturbation-wise split (leakage groups by --gro
 that curated module is test data). A grouped validation subset of the training perturbations
 (--validation-fraction) drives early stopping (--selection-metric, the validation loss by default); the best
 validation state is restored before the test evaluation. With --keep-large-groups-in-training a leakage group larger
-than half the expected validation set never forms that subset (early_stopping_validation).
+than half the expected validation set never forms that subset (early_stopping_validation). With --refit-on-validation the
+early-stopping run only chooses the number of epochs: a fresh model is then trained on the training and validation
+perturbations together for best epoch + 1 epochs and scores the test (refit_checkpoint.pt, resumable), so it fits on
+the same perturbations as the baselines, which need no validation set.
 
 Encoding: --field difference (default) reads forward(perturbed) - forward(unperturbed), so the head
 sees only what the perturbation changed; --field absolute reads the raw field (base node states
@@ -329,6 +332,18 @@ def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray 
     return float(np.mean(values)) if values else float("nan")
 
 
+def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_mask, arguments, device) -> None:
+    """--init-leak-from-base-rate: start each noisy-OR leak at its symptom's base rate over the perturbations the model
+    is fitted on (over the labelled pairs only under a label selection)."""
+    if not (arguments.init_leak_from_base_rate and arguments.head == "noisy_or"):
+        return
+    if label_mask is None:
+        base_rates = data.outcomes[fit_indices].mean(axis=0)
+    else:  # over the labelled pairs only
+        base_rates = (data.outcomes[fit_indices] * label_mask[fit_indices]).sum(axis=0) / np.maximum(label_mask[fit_indices].sum(axis=0), 1)
+    head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
+
+
 def early_stopping_validation(data, pool: np.ndarray, arguments) -> tuple[np.ndarray, np.ndarray]:
     """Split a training pool into (training, validation): fold 0 of a grouped split of the pool into
     round(1 / --validation-fraction) folds, so no leakage group is on both sides.
@@ -459,6 +474,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
+    parser.add_argument("--refit-on-validation", action="store_true",
+                        help="after early stopping, train a fresh model on the training and validation perturbations together for best epoch + 1 epochs "
+                             "and score the test with it (the early-stopped model's test predictions are kept in test_predictions_early_stopped.npy)")
     parser.add_argument("--keep-large-groups-in-training", action="store_true",
                         help="leakage groups larger than half the expected validation set stay in training and never form the early-stopping validation set "
                              "(without it the largest group goes there first; see early_stopping_validation)")
@@ -606,17 +624,14 @@ def main() -> None:
         data.outcomes = ((full_outcomes > 0) & dated & (data.evidence_dates <= cutoff_ordinal)).astype(float)  # the model only ever sees pre-cutoff positives
         time_split["scored_pairs"] = ~(data.outcomes > 0) & ~time_split["undated_positive"]
     train_indices, validation_indices, test_indices, split_name = split_indices(data, arguments, in_lockbox)
+    if arguments.refit_on_validation and (len(validation_indices) == 0 or arguments.laboratory_label_weight > 0 or arguments.time_split_cutoff is not None):
+        raise ValueError("--refit-on-validation needs a validation set and is not implemented with the laboratory readout or the time split")
     if arguments.permute_labels:
         split_name += "_permuted"
     if arguments.rewire_swaps_per_edge > 0:
         split_name += "_rewired"
     encoder, head = build_models(data, arguments, device)
-    if arguments.init_leak_from_base_rate and arguments.head == "noisy_or":
-        if label_mask is None:
-            base_rates = data.outcomes[train_indices].mean(axis=0)
-        else:  # over the labelled pairs only
-            base_rates = (data.outcomes[train_indices] * label_mask[train_indices]).sum(axis=0) / np.maximum(label_mask[train_indices].sum(axis=0), 1)
-        head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
+    initialise_leaks_from_base_rates(head, data, train_indices, label_mask, arguments, device)
     adjacencies = None  # the linear-response encoder builds its signed adjacency from the edges at construction
     if arguments.encoder == "message_passing":
         adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
@@ -635,12 +650,19 @@ def main() -> None:
     split_signature = {"test_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in test_indices).encode()).hexdigest(),
                        "train_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in train_indices).encode()).hexdigest(),
                        "lockbox_sha256": (lockbox_summary or {}).get("sha256"), "rewiring": rewiring_summary, "labels_permuted": bool(arguments.permute_labels)}
+    refit_after_done = False
     if arguments.resume and (split_directory / "DONE").exists():
         finished = json.loads((split_directory / "results.json").read_text()) if (split_directory / "results.json").exists() else {}
         if "test_perturbation_ids" in finished and finished["test_perturbation_ids"] != [data.perturbation_ids[i] for i in test_indices]:
             raise SystemExit(f"{split_directory} is DONE for other test perturbations (another lockbox or grouping); use another --run-dir")
-        print(f"{split_name}: DONE marker present; skipping (delete the marker to retrain)")
-        return
+        if not (arguments.refit_on_validation and finished.get("refit") is None and (split_directory / "checkpoint.pt").exists()):
+            print(f"{split_name}: DONE marker present; skipping (delete the marker to retrain)")
+            return
+        # an early-stopping run finished before --refit-on-validation was added: keep its results and train only the refit
+        refit_after_done = True
+        if not (split_directory / "results_early_stopped.json").exists():
+            (split_directory / "results_early_stopped.json").write_text((split_directory / "results.json").read_text())
+        print(f"{split_name}: DONE without a refit; refitting from the stored early-stopping checkpoint (its results kept in results_early_stopped.json)")
     split_directory.mkdir(parents=True, exist_ok=True)
     checkpoint_path = split_directory / "checkpoint.pt"
     state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None, "code_provenance": []}
@@ -654,6 +676,8 @@ def main() -> None:
         state = checkpoint["state"]
         if state.get("split_signature", split_signature) != split_signature:
             raise SystemExit(f"{checkpoint_path} was written for another split (signature {state['split_signature']}); use another --run-dir")
+        if refit_after_done:
+            state.update(training_finished=True, stopped_early=bool(finished.get("stopped_early")))
         print(f"resumed at epoch {state['epoch']}")
     if "code_provenance" not in state:  # a checkpoint written before commits were recorded: its epochs ran under unrecorded code
         state["code_provenance"] = [{"started_at_epoch": 0, "commit": None, "tracked_changes": None}] if state["epoch"] > 0 else []
@@ -679,35 +703,45 @@ def main() -> None:
         if label_mask is not None:
             weights = weights * torch.as_tensor(label_mask, dtype=torch.float32)
     node_cost = float(np.log(len(data.node_ids)))
+
+    def training_step(model_encoder, model_head, model_laboratory_readout, model_optimizer, batch) -> tuple[float, float, float, float | None]:
+        """One optimizer step on a batch; returns the loss, its BCE and penalty parts and the laboratory loss (None without it)."""
+        node_index, sign_and_magnitude = pad_perturbations(data, batch)
+        field = encode(model_encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
+        output = model_head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
+        if positive_targets is not None:
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0)
+        else:
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
+        penalty = arguments.description_length_coefficient * model_head.description_length_penalty(node_cost=node_cost)
+        loss = bce + penalty
+        laboratory_value = None
+        if model_laboratory_readout is not None and laboratory_index.count(batch):
+            positions, nodes, slots, directions = laboratory_index.batch(batch, device)
+            laboratory_loss = laboratory_sign_loss(model_laboratory_readout.label_scores(field, positions, nodes, slots, len(directions)), directions)
+            loss = loss + arguments.laboratory_label_weight * laboratory_loss
+            laboratory_value = laboratory_loss.item()
+        model_optimizer.zero_grad()
+        loss.backward()
+        model_optimizer.step()
+        return loss.item(), bce.item(), float(penalty), laboratory_value
+
     started = time.time()
     last_checkpoint = time.time()
     generator = np.random.default_rng(arguments.seed + state["epoch"])
-    stopped_early = False
-    for epoch in range(state["epoch"], arguments.max_epochs):
+    stopped_early = bool(state.get("stopped_early", False))
+    # a checkpoint written after early stopping ended (training_finished) is not trained further on resume
+    for epoch in range(arguments.max_epochs if state.get("training_finished") else state["epoch"], arguments.max_epochs):
         order = generator.permutation(train_indices)
         epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory = 0.0, 0.0, 0.0, 0.0
         for start in range(0, len(order), arguments.batch_size):
             batch = order[start : start + arguments.batch_size]
-            node_index, sign_and_magnitude = pad_perturbations(data, batch)
-            field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
-            output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
-            if positive_targets is not None:
-                bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0)
-            else:
-                bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
-            penalty = arguments.description_length_coefficient * head.description_length_penalty(node_cost=node_cost)
-            loss = bce + penalty
-            if laboratory_readout is not None and laboratory_index.count(batch):
-                positions, nodes, slots, directions = laboratory_index.batch(batch, device)
-                laboratory_loss = laboratory_sign_loss(laboratory_readout.label_scores(field, positions, nodes, slots, len(directions)), directions)
-                loss = loss + arguments.laboratory_label_weight * laboratory_loss
-                epoch_laboratory += laboratory_loss.item() * len(batch)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item() * len(batch)
-            epoch_bce += bce.item() * len(batch)
-            epoch_penalty += float(penalty) * len(batch)
+            loss_value, bce_value, penalty_value, laboratory_value = training_step(encoder, head, laboratory_readout, optimizer, batch)
+            if laboratory_value is not None:
+                epoch_laboratory += laboratory_value * len(batch)
+            epoch_loss += loss_value * len(batch)
+            epoch_bce += bce_value * len(batch)
+            epoch_penalty += penalty_value * len(batch)
             if CHECKPOINT_REQUESTED or (time.time() - last_checkpoint) / 60.0 >= arguments.checkpoint_every_minutes:
                 save_checkpoint()
                 last_checkpoint = time.time()
@@ -740,11 +774,73 @@ def main() -> None:
         if arguments.time_budget_seconds and time.time() - started > arguments.time_budget_seconds:
             print("time budget reached")
             break
+    if arguments.refit_on_validation:
+        state.update(training_finished=True, stopped_early=stopped_early)
+        save_checkpoint()  # a resume during the refit must not train the early-stopping model further
+        (split_directory / "DONE").unlink(missing_ok=True)  # written again when the refit has scored the test
     if state["best_encoder"] is not None:
         encoder.load_state_dict(state["best_encoder"])
         head.load_state_dict(state["best_head"])
         if laboratory_readout is not None and state.get("best_laboratory_readout") is not None:
             laboratory_readout.load_state_dict(state["best_laboratory_readout"])
+
+    refit_summary = None
+    if arguments.refit_on_validation:
+        # Goodfellow, Bengio and Courville, Deep Learning (2016), section 7.8, algorithm 7.2: initialise again and train on
+        # all the training data for the number of epochs early stopping chose; same epochs, not same optimizer steps
+        early_stopped_predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
+        np.save(split_directory / "test_predictions_early_stopped.npy", early_stopped_predictions)
+        early_stopped_test_mask = None if label_mask is None else label_mask[test_indices]
+        early_stopped_scores = {"macro_auprc": macro_auprc(early_stopped_predictions, data.outcomes[test_indices], early_stopped_test_mask),
+                                "micro_auprc": micro_auprc(early_stopped_predictions, data.outcomes[test_indices], early_stopped_test_mask)}
+        refit_indices = np.sort(np.concatenate([train_indices, validation_indices]))
+        refit_checkpoint_path = split_directory / "refit_checkpoint.pt"
+        torch.manual_seed(arguments.seed)
+        encoder, head = build_models(data, arguments, device)
+        initialise_leaks_from_base_rates(head, data, refit_indices, label_mask, arguments, device)
+        optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
+        refit_state = {"epoch": 0, "next_batch_start": 0, "epoch_sums": [0.0, 0.0, 0.0], "history": [], "epochs": state["best_epoch"] + 1,
+                       "num_perturbations": int(len(refit_indices)), "code_provenance": []}
+        if arguments.resume and refit_checkpoint_path.exists():
+            refit_checkpoint = torch.load(refit_checkpoint_path, map_location=device, weights_only=False)
+            encoder.load_state_dict(refit_checkpoint["encoder"])
+            head.load_state_dict(refit_checkpoint["head"])
+            optimizer.load_state_dict(refit_checkpoint["optimizer"])
+            refit_state = refit_checkpoint["refit_state"]
+            torch.set_rng_state(refit_checkpoint["torch_rng_state"])
+            print(f"refit resumed at epoch {refit_state['epoch']}, batch start {refit_state['next_batch_start']}")
+        refit_state["code_provenance"].append({"started_at_epoch": refit_state["epoch"], **provenance})
+
+        def save_refit_checkpoint() -> None:
+            torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "refit_state": refit_state,
+                        "torch_rng_state": torch.get_rng_state()}, refit_checkpoint_path)
+
+        print(f"refit on {len(refit_indices)} training and validation perturbations for {refit_state['epochs']} epochs (best validation epoch {state['best_epoch']})")
+        last_checkpoint = time.time()
+        for epoch in range(refit_state["epoch"], refit_state["epochs"]):
+            order = np.random.default_rng(arguments.seed + 100_000 + epoch).permutation(refit_indices)  # per epoch, so a resume sees the same order
+            for start in range(refit_state["next_batch_start"], len(order), arguments.batch_size):
+                batch = order[start : start + arguments.batch_size]
+                loss_value, bce_value, penalty_value, _ = training_step(encoder, head, None, optimizer, batch)
+                refit_state["epoch_sums"] = [refit_state["epoch_sums"][0] + loss_value * len(batch), refit_state["epoch_sums"][1] + bce_value * len(batch),
+                                             refit_state["epoch_sums"][2] + penalty_value * len(batch)]
+                refit_state["next_batch_start"] = start + arguments.batch_size
+                if CHECKPOINT_REQUESTED or (time.time() - last_checkpoint) / 60.0 >= arguments.checkpoint_every_minutes:
+                    save_refit_checkpoint()
+                    last_checkpoint = time.time()
+                    if CHECKPOINT_REQUESTED:
+                        print("refit checkpoint written on signal; exiting for requeue")
+                        return
+            loss_sum, bce_sum, penalty_sum = refit_state["epoch_sums"]
+            refit_state["history"].append({"epoch": epoch, "train_loss": loss_sum / len(order), "train_bce": bce_sum / len(order), "train_penalty": penalty_sum / len(order)})
+            refit_state.update(epoch=epoch + 1, next_batch_start=0, epoch_sums=[0.0, 0.0, 0.0])
+            save_refit_checkpoint()
+            print(f"refit epoch {epoch} loss {refit_state['history'][-1]['train_loss']:.4f}", flush=True)
+        refit_summary = {"epochs": refit_state["epochs"], "num_perturbations": refit_state["num_perturbations"], "history": refit_state["history"],
+                         "code_provenance": refit_state["code_provenance"], "early_stopped_test_predictions": "test_predictions_early_stopped.npy",
+                         "early_stopped_scores": early_stopped_scores}
+        if not arguments.score_lockbox:
+            print(f"early-stopped model on the test: macro AUPRC {early_stopped_scores['macro_auprc']:.3f}, micro AUPRC {early_stopped_scores['micro_auprc']:.3f}")
 
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
     test_outcomes = data.outcomes[test_indices]
@@ -814,7 +910,7 @@ def main() -> None:
         "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
         "laboratory_labels": laboratory_results,
-        "lockbox": lockbox_summary, "rewiring": rewiring_summary,
+        "lockbox": lockbox_summary, "rewiring": rewiring_summary, "refit": refit_summary,
     }
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]

@@ -143,3 +143,22 @@ def test_fixed_sequence_tests_h2_only_after_h1_and_needs_the_floors():
     assert fixed_sequence_decisions(True, 0.001, 0.001, False, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a floor missed
     assert fixed_sequence_decisions(False, 0.001, 0.001, True, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a run missing
     assert one_sided_p(np.array([0.1, 0.2, -0.1, np.nan])) == (1 + 1) / (3 + 1)
+
+
+def test_scorer_accepts_only_refitted_runs_with_the_large_groups_in_training(tmp_path) -> None:
+    from score_confirmatory import read_model_run
+    lockbox_ids = ["P1", "P2"]
+    base = {"test_perturbation_ids": lockbox_ids, "lockbox": {"sha256": "lock"}, "label_selection_sha256": "selection", "labels_permuted": False, "rewiring": None}
+    cases = {"refitted": ({"refit": {"epochs": 3}, "arguments": {"keep_large_groups_in_training": True}}, "ok"),
+             "no_refit": ({"refit": None, "arguments": {"keep_large_groups_in_training": True}}, "trained without the refit or with the largest leakage group as its validation set"),
+             "old_split": ({"refit": {"epochs": 3}, "arguments": {}}, "trained without the refit or with the largest leakage group as its validation set")}
+    for name, (extra, expected_reason) in cases.items():
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "DONE").write_text("done\n")
+        (directory / "results.json").write_text(json.dumps({**base, **extra}))
+        np.save(directory / "test_predictions.npy", np.zeros((2, 3)))
+        predictions, reason = read_model_run(directory, lockbox_ids, "lock", "selection", "real")
+        assert reason == expected_reason and (predictions is not None) == (expected_reason == "ok")
+        _, reason_allowed = read_model_run(directory, lockbox_ids, "lock", "selection", "real", require_refit=False)
+        assert reason_allowed == "ok"
