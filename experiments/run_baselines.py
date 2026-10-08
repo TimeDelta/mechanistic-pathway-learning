@@ -58,7 +58,7 @@ from pathlib import Path
 import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
-from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring
+from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, rewire_walk_graph
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
@@ -330,9 +330,11 @@ def main() -> None:
                         help="degree-preserving rewiring control for the random walk; 0 skips it. The default was 2 until 7 October 2026, "
                              "which left the slice graph under-mixed (docs/graph_content_null_results.md); 50 matches "
                              "experiments/run_rewiring_null_distribution.py. Documents generated before then say 2 in their rewiring heading")
-    parser.add_argument("--rewiring-method", choices=["pair_sampling", "integer_draws"], default="pair_sampling",
+    parser.add_argument("--rewiring-method", choices=["pair_sampling", "integer_draws", "walk_graph"], default="pair_sampling",
                         help="pair_sampling: degree_preserving_rewiring, O(edges) per swap, behind every rewiring result before 7 October 2026; "
-                             "integer_draws: fast_degree_preserving_rewiring, the same swap rule at O(1) per swap (the full graph)")
+                             "integer_draws: fast_degree_preserving_rewiring, the same swap rule at O(1) per swap (the full graph); "
+                             "walk_graph: the walk's own undirected simple graph rewired so every node keeps its number of neighbours (the other two move apart "
+                             "two stored edges joining one pair and give the walk a denser graph; negative_controls.rewire_walk_graph)")
     parser.add_argument("--lockbox", type=Path, default=None, help="lockbox file from experiments/draw_lockbox.py; its perturbations are removed before every split")
     parser.add_argument("--score-lockbox", action="store_true", help="with --lockbox: fit on the development set and score the lockbox once")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
@@ -392,11 +394,19 @@ def main() -> None:
     np.save(arguments.output_dir / "permutation_source_rows.npy", permutation_source_row)  # the permuted labels are data.outcomes[these rows]
     if arguments.rewiring_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])
-        rewire = fast_degree_preserving_rewiring if arguments.rewiring_method == "integer_draws" else degree_preserving_rewiring
-        rewired = rewire(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
-        results["rewiring"] = {"method": arguments.rewiring_method, "swaps_per_edge": arguments.rewiring_swaps_per_edge, "seed": arguments.seed,
-                               "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
-                               "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
+        if arguments.rewiring_method == "walk_graph":  # the walk's own undirected simple graph, every node keeping its number of neighbours
+            rewired = rewire_walk_graph(len(data.node_ids), data.edge_source, data.edge_target, np.where(data.is_currency)[0],
+                                        num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
+            real_pairs = rewire_walk_graph(len(data.node_ids), data.edge_source, data.edge_target, np.where(data.is_currency)[0], num_swaps_per_edge=0)
+            results["rewiring"] = {"method": arguments.rewiring_method, "swaps_per_edge": arguments.rewiring_swaps_per_edge, "seed": arguments.seed,
+                                   "num_walk_pairs": int(rewired.shape[1]),
+                                   "share_of_walk_pairs_unchanged": float(len(set(map(tuple, real_pairs.T.tolist())) & set(map(tuple, rewired.T.tolist()))) / max(rewired.shape[1], 1))}
+        else:
+            rewire = fast_degree_preserving_rewiring if arguments.rewiring_method == "integer_draws" else degree_preserving_rewiring
+            rewired = rewire(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewiring_swaps_per_edge, random_seed=arguments.seed)
+            results["rewiring"] = {"method": arguments.rewiring_method, "swaps_per_edge": arguments.rewiring_swaps_per_edge, "seed": arguments.seed,
+                                   "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
+                                   "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
         rewired_adjacency = build_normalized_adjacency(len(data.node_ids), rewired[0], rewired[1], np.where(data.is_currency)[0])
         predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro,
                                                              grouped_labels, label_mask=label_mask)

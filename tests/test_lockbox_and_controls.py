@@ -183,3 +183,56 @@ def test_scorer_refuses_malformed_predictions_and_other_rewiring(tmp_path) -> No
         np.save(directory / "test_predictions.npy", predictions)
         _, reason = read_model_run(directory, lockbox_ids, "lock", "selection", variant, symptoms=symptoms, rewiring_swaps_per_edge=50)
         assert reason == expected_reason, name
+
+
+def test_rewiring_keeps_an_undirected_relation_symmetric_and_every_degree() -> None:
+    from collections import Counter
+
+    from mechanistic_pathway_learning.evaluation.negative_controls import fast_degree_preserving_rewiring, reciprocated_relations
+
+    generator = np.random.default_rng(3)
+    pairs = set()
+    while len(pairs) < 60:
+        first, second = generator.integers(0, 40, size=2).tolist()
+        if first != second:
+            pairs.add((min(first, second), max(first, second)))
+    pairs = sorted(pairs)
+    undirected = [(a, b) for a, b in pairs[:50]] + [(b, a) for a, b in pairs[:50]]  # relation 0: stored both ways
+    one_way = [(a, b) for a, b in pairs[50:]]  # relation 0 too, without the reverse
+    directed = [(int(a), int(b)) for a, b in generator.integers(40, 80, size=(80, 2)) if a != b]  # relation 1
+    edges = np.array(undirected + one_way + directed).T
+    relations = np.array([0] * (len(undirected) + len(one_way)) + [1] * len(directed))
+    assert reciprocated_relations(edges, relations) == [0]
+    unchanged = fast_degree_preserving_rewiring(edges, relations, num_swaps_per_edge=20, random_seed=5)
+    np.testing.assert_array_equal(unchanged, fast_degree_preserving_rewiring(edges, relations, num_swaps_per_edge=20, random_seed=5, undirected_relations=()))
+    rewired = fast_degree_preserving_rewiring(edges, relations, num_swaps_per_edge=20, random_seed=5, undirected_relations=[0])
+
+    def reciprocated_share(edge_index, relation):
+        stored = set(zip(edge_index[0, relations == relation].tolist(), edge_index[1, relations == relation].tolist()))
+        return sum((t, s) in stored for s, t in stored) / len(stored)
+
+    assert reciprocated_share(edges, 0) == reciprocated_share(rewired, 0) == 100 / 110
+    assert reciprocated_share(unchanged, 0) < 0.5  # rewiring the two directions apart breaks the symmetry
+    for relation in (0, 1):
+        for row in (0, 1):
+            assert Counter(edges[row, relations == relation].tolist()) == Counter(rewired[row, relations == relation].tolist())
+        stored = list(zip(rewired[0, relations == relation].tolist(), rewired[1, relations == relation].tolist()))
+        assert len(stored) == len(set(stored)) and all(s != t for s, t in stored)
+    assert (rewired != edges).any(axis=0).mean() > 0.5
+
+
+def test_walk_graph_rewiring_keeps_the_neighbour_count_the_walk_sees() -> None:
+    from mechanistic_pathway_learning.evaluation.negative_controls import rewire_walk_graph
+    from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_baseline import build_normalized_adjacency
+
+    generator = np.random.default_rng(7)
+    source = generator.integers(0, 60, size=400)
+    target = generator.integers(0, 60, size=400)
+    source, target = np.concatenate([source, target]), np.concatenate([target, source])  # every edge stored both ways
+    excluded = np.array([0, 1])
+    real = build_normalized_adjacency(60, source, target, excluded)
+    rewired_edges = rewire_walk_graph(60, source, target, excluded, num_swaps_per_edge=20, random_seed=3)
+    rewired = build_normalized_adjacency(60, rewired_edges[0], rewired_edges[1], excluded)
+    np.testing.assert_array_equal(np.diff(real.tocsc().indptr), np.diff(rewired.tocsc().indptr))  # neighbours per node
+    assert real.nnz == rewired.nnz and (real != rewired).nnz > 0
+    assert not np.isin(rewired_edges, excluded).any()

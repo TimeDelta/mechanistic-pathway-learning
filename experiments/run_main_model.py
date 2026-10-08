@@ -44,7 +44,7 @@ import pandas as pd
 import torch
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
-from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring
+from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, reciprocated_relations
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
@@ -495,6 +495,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="with --lockbox: train on every development perturbation (validation drawn from them) and score the lockbox once; the confirmatory runs (docs/preregistration.md)")
     parser.add_argument("--rewire-swaps-per-edge", type=int, default=0,
                         help="negative control: degree-preserving rewiring of the graph within each relation before the model is built (attempted swaps per edge; 0 = the real graph); seeded by --seed")
+    parser.add_argument("--keep-reciprocated-relations-symmetric", action="store_true",
+                        help="with --rewire-swaps-per-edge: a relation stored in both directions (binds) is rewired as undirected edges, so it stays symmetric "
+                             "(negative_controls.reciprocated_relations, fast_degree_preserving_rewiring); off by default, which reproduces earlier rewired runs")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
@@ -637,10 +640,14 @@ def main() -> None:
     rewiring_summary = None
     if arguments.rewire_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])
-        rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewire_swaps_per_edge, random_seed=arguments.seed)
+        undirected_relations = reciprocated_relations(original_edges, data.edge_relation) if arguments.keep_reciprocated_relations_symmetric else []
+        rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewire_swaps_per_edge, random_seed=arguments.seed,
+                                                  undirected_relations=undirected_relations)
         rewiring_summary = {"swaps_per_edge": arguments.rewire_swaps_per_edge, "seed": arguments.seed, "num_edges": int(rewired.shape[1]),
                             "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
                             "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
+        if arguments.keep_reciprocated_relations_symmetric:  # only then, so the split signature of earlier rewired runs is unchanged
+            rewiring_summary["undirected_relations"] = [data.relation_types[relation] for relation in undirected_relations]
         data.edge_source, data.edge_target = rewired[0], rewired[1]  # before the encoder and the adjacencies are built
         print(f"rewired graph: {rewiring_summary}")
     time_split = None

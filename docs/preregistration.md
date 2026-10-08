@@ -450,6 +450,31 @@ day). Each is a defect against text already in this specification, not a change 
   logits; for the noisy-OR head the log(1 - P) it already forms); it is off by default, which reproduces every earlier
   run bit for bit (checked on a toy graph for both heads). Whether the confirmatory configurations take it, which would
   need new development pilots of the configurations that change, is the user's decision.
+- Open, for the user's decision: the rewiring of H2 swaps every stored edge within its relation on its own. binds is
+  undirected and stored in both directions (30,682 of its 31,118 edges have their reverse in graph_full_neuronal), and
+  after 50 swaps per edge 1,664 do: the null graph keeps every in- and out-degree per relation but not the symmetry,
+  so the real-minus-rewired difference also measures the loss of reciprocity. --keep-reciprocated-relations-symmetric
+  (trainer and experiments/evaluate_on_rewired_graph.py; negative_controls.reciprocated_relations) rewires a relation
+  stored in both directions as undirected edges, by undirected double-edge swaps written back in both directions, the
+  treatment Maslov and Sneppen gave undirected networks; on the full graph it keeps all 30,682 reverse pairs, every
+  per-relation degree, no duplicate or self-loop, and leaves 0.45 percent of edges unchanged (32 seconds). It is off by
+  default, which reproduces every rewired run so far. Not covered by it: a reversible reaction's substrate_of and
+  product_of edges between the same metabolite and reaction (15,867 pairs) are two relations and still move apart.
+- Open, for the user's decision: a rewired run keeps node features computed from the real gene-reaction associations
+  (the reaction_brain descriptor block and the reactions' cell-class weights come from the Human-GEM gene rules), so a
+  model trained on the rewired graph still sees which genes catalyse each reaction through its features. This makes
+  the rewiring difference of H2 smaller than the wiring's whole contribution: it can cost H2 power, not make it
+  confirm wrongly. The alternatives are recomputing those blocks from the rewired catalyzed_by edges, or stating it as a
+  limitation.
+- The random walk's rewiring control is corrected. The walk merges the relations into one undirected graph with each
+  pair once; rewiring the stored directed edges per relation moves apart two edges joining one pair (binds both ways, a
+  reversible reaction's two edges), so the walk's rewired graph was denser than its real one (slice: 112,920 adjacency
+  entries against about 135,000). --rewiring-method walk_graph (experiments/run_baselines.py and
+  experiments/run_rewiring_null_distribution.py; negative_controls.rewire_walk_graph) rewires the walk's own graph so
+  every node keeps its number of neighbours. The development reading that the slice wiring carries signal for the walk
+  (docs/rewiring_null_distribution.md, 0 of 20 rewirings as good as the real graph, p = 0.048) used the old null and is
+  rerun with the new one (docs/rewiring_null_distribution_walk_graph.md). No confirmatory reading uses the walk's
+  rewiring.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
