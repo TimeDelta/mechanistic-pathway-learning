@@ -116,16 +116,29 @@ def describe_support(node_ids: list[str], nodes: pd.DataFrame, gate_values: np.n
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
+    parser.add_argument("--graph-dir", type=Path, default=None, help="default: the graph directory the run was trained on (its results.json arguments)")
     parser.add_argument("--curated-modules", type=Path, default=Path("docs/curated_pathway_modules.csv"))
     parser.add_argument("--support-threshold", type=float, default=0.5)
     parser.add_argument("--link-threshold", type=float, default=0.5)
     parser.add_argument("--downstream-hops", type=int, default=3)
     parser.add_argument("--top-k", type=int, default=15)
     parser.add_argument("--minimum-support-nodes", type=int, default=25, help="when fewer gates exceed the threshold, the top-ranked gates up to this many form the support (reported as such)")
-    parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
+    parser.add_argument("--evidence-dir", type=Path, default=None, help="default: the evidence directory the run was trained on")
     parser.add_argument("--markdown-output", type=Path, default=None)
     arguments = parser.parse_args()
+    split_directories = sorted(path for path in arguments.run_dir.iterdir() if path.is_dir() and (path / "module_support.npy").exists() and (path / "results.json").exists())
+    # the module supports index the nodes of the graph the run was trained on; reading another graph's node list
+    # (the old fixed default, data/processed/graph, for a graph_neuronal run) misnames nodes or fails
+    recorded_arguments = [json.loads((path / "results.json").read_text()).get("arguments", {}) for path in split_directories]
+    trained_on = {(recorded.get("graph_dir"), recorded.get("evidence_dir")) for recorded in recorded_arguments}
+    if len(trained_on) > 1:
+        raise SystemExit(f"the splits of {arguments.run_dir} were trained on different graph or evidence directories: {sorted(trained_on, key=str)}")
+    recorded_graph_dir, recorded_evidence_dir = next(iter(trained_on)) if trained_on else (None, None)
+    for name, recorded in (("graph_dir", recorded_graph_dir), ("evidence_dir", recorded_evidence_dir)):
+        if getattr(arguments, name) is None:
+            setattr(arguments, name, Path(recorded or ("data/processed/graph" if name == "graph_dir" else "data/processed/evidence")))
+        elif recorded is not None and Path(recorded) != getattr(arguments, name):
+            print(f"warning: --{name.replace('_', '-')} {getattr(arguments, name)} differs from the run's {recorded}")
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir)
     position_of = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
@@ -135,11 +148,12 @@ def main() -> None:
     adjacency = directed_adjacency(edges, currency)
     curated = {module: {f"GENE:{symbol}" for symbol in symbols} for module, symbols in read_curated_modules(arguments.curated_modules).items()}
 
-    split_directories = sorted(path for path in arguments.run_dir.iterdir() if path.is_dir() and (path / "module_support.npy").exists() and (path / "results.json").exists())
-    analysis = {"run_dir": str(arguments.run_dir), "splits": {}, "stability": {}}
+    analysis = {"run_dir": str(arguments.run_dir), "graph_dir": str(arguments.graph_dir), "splits": {}, "stability": {}}
     all_supports: list[tuple[str, int, set[str]]] = []
     for split_directory in split_directories:
         results, support = load_split(split_directory)
+        if support.shape[1] != len(node_ids):
+            raise SystemExit(f"{split_directory}: module supports cover {support.shape[1]} nodes but {arguments.graph_dir} has {len(node_ids)}")
         symptoms = results["symptoms"]
         links = np.array(results["module_symptom_links"])  # [K, S]
         supports, gate_values, support_rule = {}, {}, {}
