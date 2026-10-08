@@ -32,6 +32,7 @@ import copy
 from collections import Counter
 import hashlib
 import json
+import os
 import signal
 import subprocess
 import time
@@ -274,6 +275,14 @@ def build_models(data, arguments, device):
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def atomic_torch_save(payload: dict, path: Path) -> None:
+    """torch.save to a temporary file, then rename it over the checkpoint, so a kill during the write leaves the
+    previous checkpoint intact instead of a truncated one that every later resume fails to load."""
+    temporary_path = path.with_name(path.name + ".partial")
+    torch.save(payload, temporary_path)
+    os.replace(temporary_path, path)
 
 
 def git_provenance() -> dict:
@@ -676,6 +685,7 @@ def main() -> None:
     split_directory.mkdir(parents=True, exist_ok=True)
     checkpoint_path = split_directory / "checkpoint.pt"
     state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None, "code_provenance": []}
+    checkpoint_torch_rng_state = None
     if arguments.resume and checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         encoder.load_state_dict(checkpoint["encoder"])
@@ -684,6 +694,7 @@ def main() -> None:
             laboratory_readout.load_state_dict(checkpoint["laboratory_readout"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         state = checkpoint["state"]
+        checkpoint_torch_rng_state = checkpoint.get("torch_rng_state")  # absent in checkpoints written before 8 October 2026
         if state.get("split_signature", split_signature) != split_signature:
             raise SystemExit(f"{checkpoint_path} was written for another split (signature {state['split_signature']}); use another --run-dir")
         if refit_after_done:
@@ -698,8 +709,9 @@ def main() -> None:
     state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance})  # one entry per process, so a resumed run lists every commit it ran under
 
     def save_checkpoint() -> None:
-        torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state,
-                    **({"laboratory_readout": laboratory_readout.state_dict()} if laboratory_readout is not None else {})}, checkpoint_path)
+        atomic_torch_save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state,
+                           "torch_rng_state": torch.get_rng_state(),  # the noisy-OR gate noise draws from it
+                           **({"laboratory_readout": laboratory_readout.state_dict()} if laboratory_readout is not None else {})}, checkpoint_path)
 
     outcomes = torch.as_tensor(data.outcomes, dtype=torch.float32)
     weights = torch.as_tensor(np.where(data.outcomes > 0, np.maximum(data.weights, 1e-3), arguments.negative_weight), dtype=torch.float32)
@@ -738,13 +750,30 @@ def main() -> None:
 
     started = time.time()
     last_checkpoint = time.time()
+    # A resumed run continues the epoch-order generator and the torch generator where the checkpoint left them, and a
+    # mid-epoch checkpoint finishes its epoch with the same order from the next batch, so a resumed run trains as an
+    # uninterrupted one does. Checkpoints written before 8 October 2026 hold neither: they reseed the order with
+    # seed + epoch and restart a mid-epoch checkpoint's epoch from its first batch, as that code did.
     generator = np.random.default_rng(arguments.seed + state["epoch"])
+    if state.get("epoch_order_generator_state") is not None:
+        generator.bit_generator.state = state["epoch_order_generator_state"]
+    if checkpoint_torch_rng_state is not None:
+        torch.set_rng_state(checkpoint_torch_rng_state)
     stopped_early = bool(state.get("stopped_early", False))
+    time_budget_reached = False
     # a checkpoint written after early stopping ended (training_finished) is not trained further on resume
     for epoch in range(arguments.max_epochs if state.get("training_finished") else state["epoch"], arguments.max_epochs):
-        order = generator.permutation(train_indices)
-        epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory = 0.0, 0.0, 0.0, 0.0
-        for start in range(0, len(order), arguments.batch_size):
+        in_progress = state.pop("epoch_in_progress", None)
+        if in_progress is not None and in_progress["epoch"] == epoch:
+            order = np.asarray(in_progress["order"], dtype=int)
+            first_batch_start = in_progress["next_batch_start"]
+            epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory = in_progress["sums"]
+            print(f"continuing epoch {epoch} at batch start {first_batch_start}")
+        else:
+            order = generator.permutation(train_indices)
+            first_batch_start = 0
+            epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory = 0.0, 0.0, 0.0, 0.0
+        for start in range(first_batch_start, len(order), arguments.batch_size):
             batch = order[start : start + arguments.batch_size]
             loss_value, bce_value, penalty_value, laboratory_value = training_step(encoder, head, laboratory_readout, optimizer, batch)
             if laboratory_value is not None:
@@ -753,7 +782,11 @@ def main() -> None:
             epoch_bce += bce_value * len(batch)
             epoch_penalty += penalty_value * len(batch)
             if CHECKPOINT_REQUESTED or (time.time() - last_checkpoint) / 60.0 >= arguments.checkpoint_every_minutes:
+                state["epoch_in_progress"] = {"epoch": epoch, "order": order.tolist(), "next_batch_start": start + arguments.batch_size,
+                                              "sums": [epoch_loss, epoch_bce, epoch_penalty, epoch_laboratory]}
+                state["epoch_order_generator_state"] = generator.bit_generator.state
                 save_checkpoint()
+                state.pop("epoch_in_progress")
                 last_checkpoint = time.time()
                 if CHECKPOINT_REQUESTED:
                     print("checkpoint written on signal; exiting for requeue")
@@ -775,6 +808,7 @@ def main() -> None:
                 state["epochs_without_improvement"] += 1
         state["history"].append(entry)
         state["epoch"] = epoch + 1
+        state["epoch_order_generator_state"] = generator.bit_generator.state
         print(f"epoch {epoch} loss {entry['train_loss']:.4f} (bce {entry['train_bce']:.4f}, penalty {entry['train_penalty']:.4f})" + (f" validation loss {entry['validation_loss']:.4f} macro AUPRC {entry['validation_macro_auprc']:.3f}" if "validation_loss" in entry else "") + f" elapsed {entry['elapsed_seconds']:.0f}s", flush=True)
         save_checkpoint()
         if len(validation_indices) and state["epochs_without_improvement"] >= arguments.patience:
@@ -783,10 +817,15 @@ def main() -> None:
             break
         if arguments.time_budget_seconds and time.time() - started > arguments.time_budget_seconds:
             print("time budget reached")
+            time_budget_reached = True
             break
+    # a resume after early stopping (a crash while scoring, or during the refit) must not train the early-stopping model
+    # further; a run that used up --max-epochs stays resumable with a larger --max-epochs, except under the refit
+    if stopped_early or time_budget_reached or arguments.refit_on_validation:
+        state["training_finished"] = True
+    state["stopped_early"] = stopped_early
+    save_checkpoint()
     if arguments.refit_on_validation:
-        state.update(training_finished=True, stopped_early=stopped_early)
-        save_checkpoint()  # a resume during the refit must not train the early-stopping model further
         (split_directory / "DONE").unlink(missing_ok=True)  # written again when the refit has scored the test
     if state["best_encoder"] is not None:
         encoder.load_state_dict(state["best_encoder"])
@@ -824,8 +863,8 @@ def main() -> None:
         refit_state["code_provenance"].append({"started_at_epoch": refit_state["epoch"], **provenance})
 
         def save_refit_checkpoint() -> None:
-            torch.save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "refit_state": refit_state,
-                        "torch_rng_state": torch.get_rng_state()}, refit_checkpoint_path)
+            atomic_torch_save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "refit_state": refit_state,
+                               "torch_rng_state": torch.get_rng_state()}, refit_checkpoint_path)
 
         print(f"refit on {len(refit_indices)} training and validation perturbations for {refit_state['epochs']} epochs (best validation epoch {state['best_epoch']})")
         last_checkpoint = time.time()

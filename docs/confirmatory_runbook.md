@@ -11,7 +11,8 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    baselines (runs/full/baselines_v2_development, docs/phase2_baselines_full_v2_development.md). When it ends, check that
    each pilot trained: the training loss falls, no NaN, an early-stopping epoch. A low development score is not a failure
    to train. Report each pilot's development macro and micro AUPRC against the development baselines and commit the
-   baseline document. Compare on fold 0 (the per-fold rows of the baseline document): that fold holds the leakage group
+   baseline document. Compare on fold 0 (the per_fold entries with fold 0 in runs/full/baselines_v2_development/results.json;
+   the baseline document shows pooled scores and per-fold means only): that fold holds the leakage group
    of 232 perturbations and is atypical (amendment of 8 October on the early-stopping validation set). The confirmatory
    configurations carry --keep-large-groups-in-training; on fold 0 it leaves the split unchanged, so pilots that ran
    before it was added stand.
@@ -35,13 +36,15 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    8 October: "I really don't want to drop them"; amendment on how the node descriptors enter), so no configuration
    changes on it.
 2b. descriptor_treatments_message_passing and descriptor_treatments_linear_response (slice, registered 8 October 2026):
-   b3_typed_nodes retrained under the current code, then the seed_masked and zero_init_slow arms of both encoders, five
-   folds each; the message-passing job then writes docs/graph_reliance.md, docs/descriptor_rule.md (again, against the
+   b3_typed_nodes retrained under the current code, then five arms of each encoder, five folds each: seed_masked and
+   zero_init_slow (amendment on how the node descriptors enter) and without_gene, without_gene_derived and
+   without_protein (amendment on descriptor blocks per node type); the message-passing job then writes docs/graph_reliance.md, docs/descriptor_rule.md (again, against the
    retrained b3_typed_nodes) and docs/descriptor_treatments.md (runs/encoder/descriptor_treatments_summary.sh). When it
-   ends, report the treatment rule of that amendment for each encoder: each arm's graph reliance, the mean of its six
-   differences against the plain arm, and which treatment the rule picks. Do not edit a configuration on it before the
+   ends, report the treatment rule for each encoder over all five arms: each arm's graph reliance, the mean of its six
+   differences against the plain arm, and which arm the rule picks. Do not edit a configuration on it before the
    user confirms. On their confirmation, for an encoder whose treatment changes: add `"--descriptor-treatment",
-   "<treatment>"` (and `"--descriptor-learning-rate", "0.0002"` for zero_init_slow) to that encoder's two confirmatory
+   "<treatment>"` (and `"--descriptor-learning-rate", "0.0002"` for zero_init_slow), or for a block arm the
+   `--drop-descriptor-blocks` arguments of its slice configuration, to that encoder's two confirmatory
    configurations in experiments/run_main_model_batch.py, move their two development pilot directories to
    runs/full/superseded_pilots/ (the trainer would otherwise skip them on their DONE markers), and register
    `bash scripts/resume_jobs.sh --register confirmatory_repilots "bash runs/full/confirmatory_repilots.sh <configuration> <configuration>" runs/full/confirmatory_repilots.done runs/full/confirmatory_repilots.failed "development pilots of the confirmatory configurations the treatment rule changed"`.
@@ -57,7 +60,11 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
 4. confirmatory_lockbox: the 60 lockbox runs (four models, seeds 0 to 4, real labels, permuted labels and a rewired
    graph), then the lockbox baselines for seeds 0 to 4, then experiments/score_confirmatory.py, which writes
    runs/confirmatory/SCORED and docs/confirmatory_results.md. When it ends, report docs/confirmatory_results.md as the
-   scorer wrote it, commit it and tell the user.
+   scorer wrote it, commit it and tell the user. If the scorer stops because a run is missing or refused, it writes
+   nothing (no output, no SCORED marker) and prints the runs and the reasons; the reasons name no score, so they may be
+   read. Resume a missing run by registering the same job again (the trainer resumes from its checkpoint) and score
+   after it; report a refused run to the user. --allow-incomplete (score with that model not confirmed) only on the
+   user's decision.
 
 ## Blinding
 

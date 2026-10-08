@@ -152,3 +152,17 @@ def test_popularity_base_rate_leaves_set_aside_pairs_out() -> None:
     masked = PopularityBaseline().fit(outcomes * mask, training_label_mask=mask)
     assert np.allclose(unmasked.symptom_base_rate, [0.25, 0.25])  # a set-aside positive counted as a negative
     assert np.allclose(masked.symptom_base_rate, [1 / 3, 1 / 3])  # one kept positive over three labelled pairs
+
+
+def test_bootstrap_leaves_out_resamples_without_a_positive() -> None:
+    import numpy as np
+
+    from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import bootstrap_interval, per_symptom_auprc
+
+    generator = np.random.default_rng(1)
+    outcomes = np.zeros((100, 1))
+    outcomes[:5, 0] = 1.0  # five positives: about 0.6 percent of resamples hold none
+    predictions = generator.random((100, 1)) + outcomes  # positives rank first
+    assert np.isnan(per_symptom_auprc(predictions[5:], outcomes[5:], 0))
+    interval = bootstrap_interval(lambda p, y: per_symptom_auprc(p, y, 0), predictions, outcomes, num_bootstrap=2000)
+    assert interval.lower == 1.0  # every resample with a positive ranks it first; a resample without one is not a 0

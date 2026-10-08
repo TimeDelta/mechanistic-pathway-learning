@@ -110,10 +110,12 @@ def file_sha256(path: Path) -> str:
 
 
 def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str,
-                   require_refit: bool = True) -> tuple[np.ndarray | None, str]:
+                   require_refit: bool = True, symptoms: list[str] | None = None, rewiring_swaps_per_edge: int | None = None) -> tuple[np.ndarray | None, str]:
     """Lockbox predictions of one finished run, or None with the reason it cannot be used. With require_refit (the
     amendments of 8 October 2026) a run counts only if it kept the large leakage groups in training and was refitted on
-    its training and validation perturbations, so it fitted on the same perturbations as the baselines."""
+    its training and validation perturbations, so it fitted on the same perturbations as the baselines. A run whose
+    predictions are not finite, or not one row per lockbox perturbation and one column per symptom of the data, or
+    (rewired variant) whose rewiring used another number of swaps per edge, is refused rather than scored."""
     if not (split_directory / "DONE").exists() or not (split_directory / "results.json").exists():
         return None, "not finished"
     results = json.loads((split_directory / "results.json").read_text())
@@ -127,7 +129,16 @@ def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256
         return None, "its controls do not match the variant"
     if require_refit and not (results.get("refit") and (results.get("arguments") or {}).get("keep_large_groups_in_training")):
         return None, "trained without the refit or with the largest leakage group as its validation set"
-    return np.load(split_directory / "test_predictions.npy"), "ok"
+    if symptoms is not None and results.get("symptoms") != symptoms:
+        return None, "trained on another symptom list"
+    if variant == "rewired" and rewiring_swaps_per_edge is not None and (results.get("rewiring") or {}).get("swaps_per_edge") != rewiring_swaps_per_edge:
+        return None, f"its rewiring did not use {rewiring_swaps_per_edge} swaps per edge"
+    predictions = np.load(split_directory / "test_predictions.npy")
+    if predictions.shape != (len(lockbox_ids), len(symptoms) if symptoms is not None else predictions.shape[1]):
+        return None, f"predictions of shape {predictions.shape}"
+    if not np.isfinite(predictions).all():
+        return None, "predictions that are not finite"
+    return predictions, "ok"
 
 
 def main() -> None:
@@ -154,6 +165,10 @@ def main() -> None:
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
     parser.add_argument("--allow-runs-without-refit", action="store_true",
                         help="smoke tests on runs trained before 8 October 2026 only: accept runs without --refit-on-validation and --keep-large-groups-in-training")
+    parser.add_argument("--rewiring-swaps-per-edge", type=int, default=50, help="the swaps per edge every rewired run must have used (runs/full/confirmatory_lockbox.sh)")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="score although a model has a missing or refused run (that model is then not confirmed); without it the scorer stops before "
+                             "writing anything, so a failed run can be resumed and the single scoring is not spent")
     arguments = parser.parse_args()
 
     marker = arguments.output_dir / "SCORED"
@@ -206,12 +221,16 @@ def main() -> None:
             for seed in arguments.seeds:
                 split_directory = model_directory / f"lockbox_seed{seed}{suffix}"
                 predictions, reason = read_model_run(split_directory, lockbox_ids, lockbox_sha256, selection_sha256, variant,
-                                                     require_refit=not arguments.allow_runs_without_refit)
+                                                     require_refit=not arguments.allow_runs_without_refit, symptoms=data.symptoms,
+                                                     rewiring_swaps_per_edge=arguments.rewiring_swaps_per_edge)
                 if predictions is None:
                     missing_runs[model].append(f"{split_directory}: {reason}")
                 else:
                     model_predictions[model][variant][seed] = predictions
     complete_models = [model for model in arguments.models if not missing_runs[model]]
+    if len(complete_models) < len(arguments.models) and not arguments.allow_incomplete:
+        raise SystemExit("not scored (no output, no SCORED marker): runs missing or refused:\n" + "\n".join(
+            reason for model in arguments.models for reason in missing_runs[model]) + "\nresume the runs, or pass --allow-incomplete")
 
     def reading_scores(index: np.ndarray) -> dict:
         """Every score on the resampled rows index: baselines and models, per seed, labelling and reading."""
@@ -283,7 +302,9 @@ def main() -> None:
         entries[model] = entry
 
     scoring = {"scored_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-               "commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()}
+               "commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip(),
+               "tracked_changes": subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.splitlines(),
+               "incomplete_allowed": arguments.allow_incomplete}
     output = {
         "scorings": previous_scorings + [scoring], "lockbox": str(arguments.lockbox), "lockbox_sha256": lockbox_sha256, "label_selection_sha256": selection_sha256,
         "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
@@ -304,7 +325,7 @@ def main() -> None:
              f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. With {len(entries)} models "
              f"and no correction across them, the chance that at least one is confirmed by luck is at most {1 - (1 - arguments.alpha) ** len(entries):.3f} if they were "
              f"independent, and less since they share the data and baselines. Scorings: {len(previous_scorings) + 1}.", "",
-             "Best baseline per reading (seed-mean lockbox score, chosen before any model was read): "
+             "Best baseline per reading (the highest seed-mean lockbox score on real labels; no model score enters the choice): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
              "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]

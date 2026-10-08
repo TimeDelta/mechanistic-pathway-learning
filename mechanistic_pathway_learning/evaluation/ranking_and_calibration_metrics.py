@@ -67,7 +67,11 @@ def per_symptom_auroc(predictions: np.ndarray, outcomes: np.ndarray, symptom_ind
 
 
 def per_symptom_auprc(predictions: np.ndarray, outcomes: np.ndarray, symptom_index: int, mask: np.ndarray | None = None) -> float:
+    """AUPRC over the labelled rows; NaN when they hold no positive, where scikit-learn returns 0.0 (version 1.9) and
+    bootstrap_interval would count a resample without a positive as a score of 0 instead of leaving it out."""
     rows = scored_rows(len(outcomes), symptom_index, mask)
+    if not outcomes[rows, symptom_index].any():
+        return float("nan")
     return float(average_precision_score(outcomes[rows, symptom_index], predictions[rows, symptom_index]))
 
 

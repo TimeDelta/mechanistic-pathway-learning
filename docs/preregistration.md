@@ -283,7 +283,7 @@ plain stays. Point estimates, as in the descriptor rule, because the slice does 
 The margin of -0.01 is below the slice's resolution on purpose: the treatments exist to move the work from the
 descriptors to the graph, which the user asked for, and the rule rejects only a treatment whose loss is large enough to
 show. As with the descriptor rule, the outcome is reported and applied only on the user's confirmation
-(docs/confirmatory_runbook.md, step 2); a change means new development pilots of the changed configurations before the
+(docs/confirmatory_runbook.md, step 2b); a change means new development pilots of the changed configurations before the
 first lockbox run. Cost: seed_masked propagates a reference per perturbation, so a message-passing step takes about 2.4
 times as long (3.8 against 1.55 seconds on the slice), and so would the 30 message-passing lockbox runs; in the
 linear-response encoder it costs one more gate per perturbation. Limitations: test-time rewiring measures how much a
@@ -419,6 +419,28 @@ day). Each is a defect against text already in this specification, not a change 
   groups and the grouped folds are drawn by group, so neither changes. The --min-holdout-positives filter counts kept
   positive pairs (it counted every positive, so hold-outs qualified on pairs that are never scored): on the development
   set 6 subsystems qualify instead of 21, and no curated module reaches 10 kept positives (the largest has 9).
+- A resumed run now trains as an uninterrupted one does (experiments/run_main_model.py). Before: the epoch order was
+  reseeded with seed + epoch on resume, where an uninterrupted run draws it from one generator; the torch generator
+  behind the noisy-OR gate noise restarted; a checkpoint written in the middle of an epoch restarted that epoch from
+  its first batch with a new order, after its first batches had already been applied (a checkpoint on the last batch
+  of an epoch trained that epoch twice); and without the refit a crash after early stopping trained further epochs on
+  resume. The checkpoint now holds both generators' states and, mid-epoch, the epoch's order, the next batch and the
+  partial sums; a run that stopped early is marked finished. Checkpoints are written to a temporary file and renamed.
+  On a toy graph (52 perturbations; both heads; resume at an epoch boundary, a mid-epoch interrupt, an interrupt on an
+  epoch's last batch, a crash while scoring) every resumed run gives the test predictions of the uninterrupted run
+  (largest difference 0), and an uninterrupted run gives the predictions of the code before the change. Runs that
+  resumed under the old code keep their results; their test scores are what that run trained to, not what a run from
+  scratch would give (the two finished development sigmoid pilots resumed at end-of-epoch checkpoints, their optimizer
+  step counts show no batch trained twice).
+- experiments/score_confirmatory.py refuses a run whose predictions are not finite or not one row per lockbox
+  perturbation and one column per symptom, whose symptom list differs from the data's, or (rewired variant) whose
+  rewiring used another number of swaps per edge than 50; before, a NaN score ranked as the lowest. If a run is missing
+  or refused it writes nothing, so a failed run can be resumed without spending the single scoring
+  (--allow-incomplete scores with that model not confirmed, only on the user's decision). The scoring record holds the
+  git status beside the commit.
+- Per-symptom AUPRC is undefined without a positive: per_symptom_auprc returns NaN there, where scikit-learn 1.9
+  returns 0, so the per-symptom bootstrap intervals (secondary readings) leave such resamples out instead of scoring
+  them 0. The confirmatory scorer computes its own AUPRC, which already left them out.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

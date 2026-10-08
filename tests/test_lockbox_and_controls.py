@@ -162,3 +162,24 @@ def test_scorer_accepts_only_refitted_runs_with_the_large_groups_in_training(tmp
         assert reason == expected_reason and (predictions is not None) == (expected_reason == "ok")
         _, reason_allowed = read_model_run(directory, lockbox_ids, "lock", "selection", "real", require_refit=False)
         assert reason_allowed == "ok"
+
+
+def test_scorer_refuses_malformed_predictions_and_other_rewiring(tmp_path) -> None:
+    from score_confirmatory import read_model_run
+    lockbox_ids, symptoms = ["P1", "P2"], ["a", "b", "c"]
+    base = {"test_perturbation_ids": lockbox_ids, "lockbox": {"sha256": "lock"}, "label_selection_sha256": "selection", "labels_permuted": False,
+            "refit": {"epochs": 3}, "arguments": {"keep_large_groups_in_training": True}, "symptoms": symptoms}
+    cases = {"finite": ({}, np.zeros((2, 3)), "real", "ok"),
+             "not_finite": ({}, np.array([[0.1, np.nan, 0.2], [0.3, 0.4, 0.5]]), "real", "predictions that are not finite"),
+             "wrong_shape": ({}, np.zeros((2, 2)), "real", "predictions of shape (2, 2)"),
+             "other_symptoms": ({"symptoms": ["a", "b", "d"]}, np.zeros((2, 3)), "real", "trained on another symptom list"),
+             "rewired_50": ({"rewiring": {"swaps_per_edge": 50}}, np.zeros((2, 3)), "rewired", "ok"),
+             "rewired_2": ({"rewiring": {"swaps_per_edge": 2}}, np.zeros((2, 3)), "rewired", "its rewiring did not use 50 swaps per edge")}
+    for name, (extra, predictions, variant, expected_reason) in cases.items():
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "DONE").write_text("done\n")
+        (directory / "results.json").write_text(json.dumps({"rewiring": None, **base, **extra}))
+        np.save(directory / "test_predictions.npy", predictions)
+        _, reason = read_model_run(directory, lockbox_ids, "lock", "selection", variant, symptoms=symptoms, rewiring_swaps_per_edge=50)
+        assert reason == expected_reason, name
