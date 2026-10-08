@@ -104,6 +104,8 @@ class NoisyOrOutput:
     link_probability: Tensor  # [num_pathway_modules, num_symptoms] for the requested relation
     leak_probability: Tensor  # [num_symptoms] for the requested relation, or [batch_size, num_symptoms] with a perturbation covariate
     module_support: Tensor  # [num_pathway_modules, num_graph_nodes]
+    symptom_log_probability: Tensor | None = None  # log P = log(-expm1(log(1 - P)))
+    symptom_log_complement: Tensor | None = None  # log(1 - P), the sum the noisy-OR forms in log space
 
     def module_contribution(self) -> Tensor:
         """Per-sample contribution link_{k,s} * activation_k, shape [batch_size, K, S].
@@ -218,13 +220,15 @@ class NoisyOrPathwayModuleHead(nn.Module):
         module_activation = self.module_activation(node_state_field, module_support)
         link_probability = self.link_probability(relation_index)
         leak_probability = self.leak_probability(relation_index, perturbation_covariate)
-        symptom_probability = noisy_or_combination(module_activation, link_probability, leak_probability)
+        log_probability_no_symptom = noisy_or_log_probability_no_symptom(module_activation, link_probability, leak_probability)
         return NoisyOrOutput(
-            symptom_probability=symptom_probability,
+            symptom_probability=1.0 - torch.exp(log_probability_no_symptom),
             module_activation=module_activation,
             link_probability=link_probability,
             leak_probability=leak_probability,
             module_support=module_support,
+            symptom_log_probability=torch.log(-torch.expm1(log_probability_no_symptom)),
+            symptom_log_complement=log_probability_no_symptom,
         )
 
     def description_length_penalty(self, node_cost: float = 1.0, link_cost: float = 1.0) -> Tensor:
@@ -244,9 +248,13 @@ def noisy_or_combination(module_activation: Tensor, link_probability: Tensor, le
 
     Computed in log space: log(1 - P) = log(1 - leak) + sum_k log(1 - link * activation).
     """
+    return 1.0 - torch.exp(noisy_or_log_probability_no_symptom(module_activation, link_probability, leak_probability))
+
+
+def noisy_or_log_probability_no_symptom(module_activation: Tensor, link_probability: Tensor, leak_probability: Tensor) -> Tensor:
+    """log(1 - P) [B, S] = log(1 - leak) + sum_k log(1 - link * activation)."""
     per_module_failure = 1.0 - (module_activation[:, :, None] * link_probability[None, :, :]).clamp(max=1.0 - PROBABILITY_EPSILON)
     log_leak_failure = torch.log1p(-leak_probability.clamp(max=1.0 - PROBABILITY_EPSILON))
     if log_leak_failure.dim() == 1:  # one leak per symptom; [B, S] when the leak depends on a perturbation covariate
         log_leak_failure = log_leak_failure[None, :]
-    log_probability_no_symptom = log_leak_failure + torch.log(per_module_failure).sum(dim=1)
-    return 1.0 - torch.exp(log_probability_no_symptom)
+    return log_leak_failure + torch.log(per_module_failure).sum(dim=1)

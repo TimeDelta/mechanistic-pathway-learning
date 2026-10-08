@@ -33,15 +33,26 @@ def evidence_weighted_binary_cross_entropy(
     evidence_weight: Tensor,
     positive_target: float = 0.99,
     negative_target: float = 0.0,
+    log_probability: Tensor | None = None,
+    log_complement: Tensor | None = None,
 ) -> Tensor:
     """Weighted BCE with label smoothing on positives; all tensors broadcast to the same shape.
 
     symptom_probability: model output in (0, 1).
     observed_outcome: 1.0 for an observed link, 0.0 for a sampled negative.
     evidence_weight: per-observation weight from the evidence grade (0 excludes the observation).
+    log_probability, log_complement: log P and log(1 - P) computed by the head in log space. Given both, the loss uses
+    them; otherwise it takes the logarithms of P clamped to [1e-6, 1 - 1e-6], where a pair beyond the clamp (a sigmoid
+    logit below -13.8 for a positive, above 13.8 for a negative) has a constant loss and no gradient. PyTorch's
+    BCEWithLogitsLoss documents the same point: combining the sigmoid and the loss "is more numerically stable than using
+    a plain Sigmoid followed by a BCELoss".
     """
-    clamped_probability = symptom_probability.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
     smoothed_target = observed_outcome * positive_target + (1.0 - observed_outcome) * negative_target
+    if log_probability is not None and log_complement is not None:
+        per_observation_loss = -(smoothed_target * log_probability + (1.0 - smoothed_target) * log_complement)
+        total_weight = evidence_weight.sum().clamp_min(PROBABILITY_EPSILON)
+        return (per_observation_loss * evidence_weight).sum() / total_weight
+    clamped_probability = symptom_probability.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
     per_observation_loss = -(
         smoothed_target * torch.log(clamped_probability) + (1.0 - smoothed_target) * torch.log1p(-clamped_probability)
     )

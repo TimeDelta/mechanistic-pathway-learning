@@ -155,3 +155,15 @@ def test_degree_offset_makes_the_leak_depend_on_the_covariate_and_starts_neutral
     assert head.leak_covariate_slope.shape == (2,)  # one slope per relation, shared by the symptoms
     assert head.leak_covariate_slope is not None
     assert NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=2, num_symptoms=3).leak_covariate_slope is None
+
+
+def test_noisy_or_head_returns_log_probabilities_consistent_with_its_probabilities() -> None:
+    import torch
+
+    from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
+
+    torch.manual_seed(0)
+    head = NoisyOrPathwayModuleHead(num_graph_nodes=6, node_state_dim=4, num_pathway_modules=3, num_symptoms=2)
+    output = head(torch.randn(5, 6, 4))
+    assert torch.allclose(torch.exp(output.symptom_log_probability), output.symptom_probability, atol=1e-6)
+    assert torch.allclose(torch.exp(output.symptom_log_complement), 1.0 - output.symptom_probability, atol=1e-6)

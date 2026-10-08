@@ -19,6 +19,8 @@ from torch import Tensor, nn
 @dataclass
 class SigmoidHeadOutput:
     symptom_probability: Tensor  # [batch_size, num_symptoms]
+    symptom_log_probability: Tensor | None = None  # log P, from the logits (no clamp)
+    symptom_log_complement: Tensor | None = None  # log(1 - P)
 
 
 class RelationalGnnSigmoidHead(nn.Module):
@@ -37,7 +39,8 @@ class RelationalGnnSigmoidHead(nn.Module):
         logits = self.readout(pooled)
         if self.covariate_slope is not None and perturbation_covariate is not None:
             logits = logits + perturbation_covariate[:, None] * self.covariate_slope
-        return SigmoidHeadOutput(symptom_probability=torch.sigmoid(logits))
+        return SigmoidHeadOutput(symptom_probability=torch.sigmoid(logits), symptom_log_probability=nn.functional.logsigmoid(logits),
+                                 symptom_log_complement=nn.functional.logsigmoid(-logits))
 
     def description_length_penalty(self, node_cost: float = 1.0, link_cost: float = 1.0) -> Tensor:  # noqa: ARG002
         return torch.zeros((), device=self.readout[0].weight.device)

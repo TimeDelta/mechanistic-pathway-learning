@@ -441,6 +441,15 @@ day). Each is a defect against text already in this specification, not a change 
 - Per-symptom AUPRC is undefined without a positive: per_symptom_auprc returns NaN there, where scikit-learn 1.9
   returns 0, so the per-symptom bootstrap intervals (secondary readings) leave such resamples out instead of scoring
   them 0. The confirmatory scorer computes its own AUPRC, which already left them out.
+- Open, for the user's decision: the training loss takes the logarithms of P clamped to [1e-6, 1 - 1e-6]
+  (mechanistic_pathway_learning/models/soft_constraint_losses.py), so a pair beyond the clamp has a constant loss and
+  no gradient: a positive the sigmoid head scores below logit -13.8 cannot be pulled back, and the validation loss that
+  stops training caps it. In the fold-0 development pilots 3.7 percent (message passing) and 1.2 percent (linear
+  response) of the sigmoid heads' test probabilities are below 1e-6, among them 13 and 3 labelled positives; on the slice
+  0.5 and 0.04 percent. --bce-in-log-space computes both losses from the heads' log P and log(1 - P) (log-sigmoid of the
+  logits; for the noisy-OR head the log(1 - P) it already forms); it is off by default, which reproduces every earlier
+  run bit for bit (checked on a toy graph for both heads). Whether the confirmatory configurations take it, which would
+  need new development pilots of the configurations that change, is the user's decision.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

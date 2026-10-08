@@ -45,3 +45,21 @@ def test_anchor_penalty_is_zero_at_prior_and_grows_away_from_it() -> None:
     moved = torch.full((2, 3), 0.5)
     assert anchored_link_prior_penalty(moved, prior, pseudo_count).item() > 1.0
     assert torch.all(bernoulli_kl_divergence(prior, moved) >= 0.0)
+
+
+def test_log_space_loss_matches_the_clamped_loss_inside_the_clamp_and_keeps_the_gradient_beyond_it() -> None:
+    logits = torch.tensor([-2.0, 0.5, 3.0, 15.0, -15.0], requires_grad=True)
+    outcome = torch.tensor([1.0, 0.0, 1.0, 0.0, 1.0])
+    weight = torch.ones(5)
+    inside = slice(0, 3)
+    clamped = evidence_weighted_binary_cross_entropy(torch.sigmoid(logits[inside]), outcome[inside], weight[inside])
+    in_log_space = evidence_weighted_binary_cross_entropy(torch.sigmoid(logits[inside]), outcome[inside], weight[inside],
+                                                          log_probability=torch.nn.functional.logsigmoid(logits[inside]),
+                                                          log_complement=torch.nn.functional.logsigmoid(-logits[inside]))
+    assert torch.allclose(clamped, in_log_space, atol=1e-6)
+    # a negative at logit 15 and a positive at logit -15: no gradient through the clamp, the full one in log space
+    clamped_gradient, = torch.autograd.grad(evidence_weighted_binary_cross_entropy(torch.sigmoid(logits), outcome, weight), logits)
+    log_space_gradient, = torch.autograd.grad(evidence_weighted_binary_cross_entropy(
+        torch.sigmoid(logits), outcome, weight, log_probability=torch.nn.functional.logsigmoid(logits), log_complement=torch.nn.functional.logsigmoid(-logits)), logits)
+    assert clamped_gradient[3] == 0.0 and clamped_gradient[4] == 0.0
+    assert log_space_gradient[3] > 0.15 and log_space_gradient[4] < -0.15  # about (sigmoid(z) - target) / 5

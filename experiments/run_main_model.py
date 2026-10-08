@@ -323,19 +323,29 @@ def encode(encoder, node_index, sign_and_magnitude, adjacencies, field_kind: str
     return encoder(node_index, sign_and_magnitude, relation_adjacencies=adjacencies)
 
 
-def predict(encoder, head, data, indices: np.ndarray, adjacencies, arguments, device) -> np.ndarray:
+def predict(encoder, head, data, indices: np.ndarray, adjacencies, arguments, device, with_log_parts: bool = False):
+    """Symptom probabilities [len(indices), S]; with_log_parts, also log P and log(1 - P) from the head (for the
+    validation loss under --bce-in-log-space)."""
     encoder.eval()
     head.eval()
-    predictions = []
+    predictions, log_probabilities, log_complements = [], [], []
     with torch.no_grad():
         for start in range(0, len(indices), arguments.batch_size):
             batch = indices[start : start + arguments.batch_size]
             node_index, sign_and_magnitude = pad_perturbations(data, batch)
             field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
-            predictions.append(head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device)).symptom_probability.cpu().numpy())
+            output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
+            predictions.append(output.symptom_probability.cpu().numpy())
+            if with_log_parts:
+                log_probabilities.append(output.symptom_log_probability.cpu().numpy())
+                log_complements.append(output.symptom_log_complement.cpu().numpy())
     encoder.train()
     head.train()
-    return np.concatenate(predictions, axis=0) if predictions else np.zeros((0, len(data.symptoms)))
+    empty = np.zeros((0, len(data.symptoms)))
+    probabilities = np.concatenate(predictions, axis=0) if predictions else empty
+    if not with_log_parts:
+        return probabilities
+    return probabilities, (np.concatenate(log_probabilities, axis=0) if log_probabilities else empty), (np.concatenate(log_complements, axis=0) if log_complements else empty)
 
 
 def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:
@@ -570,6 +580,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--max-epochs", type=int, default=60)
     parser.add_argument("--positive-target", type=float, default=0.99)
+    parser.add_argument("--bce-in-log-space", action="store_true",
+                        help="training and validation loss from the head's log P and log(1 - P) instead of P clamped to [1e-6, 1 - 1e-6], under which a "
+                             "pair beyond the clamp has a constant loss and no gradient (a sigmoid logit below -13.8 for a positive); off by default, "
+                             "which reproduces every run before 8 October 2026")
     parser.add_argument("--positive-target-from-frequency", action="store_true",
                         help="open question 8: use the reported HPO or label frequency (floored at --minimum-frequency-target) as the target of a positive pair instead of --positive-target")
     parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
@@ -731,10 +745,12 @@ def main() -> None:
         node_index, sign_and_magnitude = pad_perturbations(data, batch)
         field = encode(model_encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
         output = model_head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
+        log_parts = ({"log_probability": output.symptom_log_probability, "log_complement": output.symptom_log_complement}
+                     if arguments.bce_in_log_space else {})
         if positive_targets is not None:
-            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0)
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0, **log_parts)
         else:
-            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target)
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target, **log_parts)
         penalty = arguments.description_length_coefficient * model_head.description_length_penalty(node_cost=node_cost)
         loss = bce + penalty
         laboratory_value = None
@@ -795,9 +811,16 @@ def main() -> None:
         if laboratory_readout is not None:
             entry["train_laboratory_loss"] = epoch_laboratory / max(1, len(order))
         if len(validation_indices):
-            validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
+            validation_log_parts = {}
+            if arguments.bce_in_log_space:
+                validation_predictions, validation_log_probability, validation_log_complement = predict(encoder, head, data, validation_indices, adjacencies, arguments, device, with_log_parts=True)
+                validation_log_parts = {"log_probability": torch.as_tensor(validation_log_probability, dtype=torch.float32),
+                                        "log_complement": torch.as_tensor(validation_log_complement, dtype=torch.float32)}
+            else:
+                validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
             entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices], None if label_mask is None else label_mask[validation_indices])
-            entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), outcomes[validation_indices], weights[validation_indices], positive_target=arguments.positive_target))
+            entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), outcomes[validation_indices], weights[validation_indices],
+                                                                                    positive_target=arguments.positive_target, **validation_log_parts))
             improved = (entry["validation_loss"] < state["best_validation_loss"] - 1e-5) if arguments.selection_metric == "loss" else (entry["validation_macro_auprc"] > state["best_validation_auprc"] + 1e-4)
             if improved:
                 state.update(best_validation_auprc=entry["validation_macro_auprc"], best_validation_loss=entry["validation_loss"], best_epoch=epoch, epochs_without_improvement=0,
