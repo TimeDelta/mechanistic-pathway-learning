@@ -4,7 +4,7 @@ Every two slice configurations in experiments/run_main_model_batch.py whose argu
 
 | A (carries the change) | B | change | A per fold | B per fold | per fold, t | pooled, bootstrap | within degree strata |
 |---|---|---|---|---|---|---|---|
-| b3_typed_nodes_descriptors_brain | b3_typed_nodes | `given on the command line` | 0.271 ± 0.036 | 0.293 ± 0.034 | -0.022 [-0.068, +0.024] | +0.002 [-0.014, +0.019] | -0.007 [-0.031, +0.017] |
+| b3_typed_nodes_descriptors_brain | b3_typed_nodes | `given on the command line` | 0.271 ± 0.036 | 0.281 ± 0.035 | -0.010 [-0.029, +0.008] | +0.003 [-0.014, +0.023] | -0.009 [-0.032, +0.015] |
 | b3_linear_response_cofactors_descriptors_brain | b3_linear_response_cofactors | `given on the command line` | 0.263 ± 0.046 | 0.266 ± 0.025 | -0.003 [-0.041, +0.035] | +0.006 [-0.007, +0.018] | +0.007 [-0.014, +0.029] |
 
 ## Micro AUPRC
@@ -13,7 +13,7 @@ The same three readings in micro AUPRC, which ranks every labelled perturbation-
 
 | A (carries the change) | B | per fold, t | pooled, bootstrap | within degree strata |
 |---|---|---|---|---|
-| b3_typed_nodes_descriptors_brain | b3_typed_nodes | -0.040 [-0.057, -0.022] | -0.033 [-0.052, -0.012] | -0.006 [-0.024, +0.011] |
+| b3_typed_nodes_descriptors_brain | b3_typed_nodes | -0.027 [-0.051, -0.004] | -0.020 [-0.041, -0.001] | -0.007 [-0.025, +0.011] |
 | b3_linear_response_cofactors_descriptors_brain | b3_linear_response_cofactors | -0.004 [-0.021, +0.012] | -0.001 [-0.018, +0.016] | +0.007 [-0.011, +0.025] |
 
 ## Set aside
