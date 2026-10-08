@@ -19,9 +19,11 @@ The best baseline is chosen per reading by its seed-mean score on the lockbox, w
 
 Inference: a paired bootstrap over lockbox perturbations (the same resampled rows for every model, seed, baseline and
 labelling), one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). Two hypotheses per model:
-- H1 (prediction): the macro, micro, both within-strata and both permutation readings exceed zero, and the macro and
-  micro differences are at least --minimum-difference. Intersection-union test: p(H1) is the largest of the six p-values.
+- H1 (prediction): the macro, micro and both within-strata readings exceed zero, and the macro and micro differences
+  are at least --minimum-difference. Intersection-union test: p(H1) is the largest of the four p-values.
 - H2 (graph content): H1 and both rewiring readings exceed zero; p(H2) = max(p(H1), the two rewiring p-values).
+The two permutation readings are secondary (the user's decision of 8 October 2026): reported with their intervals and
+p-values, outside both hypotheses.
 Holm's step-down procedure runs over the eight hypotheses at one-sided --alpha. A model with any missing run is not
 confirmatory: its hypotheses keep p = 1, so the family size does not change.
 
@@ -50,8 +52,10 @@ CONFIRMATORY_MODELS = ("confirmatory_message_passing_noisy_or", "confirmatory_me
 BASELINES = ("popularity", "degree_popularity", "random_walk_with_restart", "knowledge_graph_embedding_transe")
 VARIANT_SUFFIXES = {"real": "", "permuted": "_permuted", "rewired": "_rewired"}
 MINIMUM_POSITIVES_TO_SCORE = 5
-H1_READINGS = ("macro", "micro", "macro_within_degree_strata", "micro_within_degree_strata", "macro_permutation", "micro_permutation")
+H1_READINGS = ("macro", "micro", "macro_within_degree_strata", "micro_within_degree_strata")
 H2_EXTRA_READINGS = ("macro_rewiring", "micro_rewiring")
+SECONDARY_READINGS = ("macro_permutation", "micro_permutation")
+ALL_READINGS = H1_READINGS + H2_EXTRA_READINGS + SECONDARY_READINGS
 
 
 def average_precision(scores: np.ndarray, labels: np.ndarray) -> float:
@@ -238,7 +242,7 @@ def main() -> None:
 
     point = {model: differences(observed, model) for model in complete_models}
     generator = np.random.default_rng(arguments.bootstrap_seed)
-    resampled = {model: {reading: [] for reading in H1_READINGS + H2_EXTRA_READINGS} for model in complete_models}
+    resampled = {model: {reading: [] for reading in ALL_READINGS} for model in complete_models}
     for _ in range(arguments.num_bootstrap if complete_models else 0):
         scored = reading_scores(generator.integers(0, len(rows), len(rows)))
         for model in complete_models:
@@ -250,7 +254,7 @@ def main() -> None:
         entry = {"complete": model in complete_models, "missing_runs": missing_runs[model]}
         if model in complete_models:
             readings = {}
-            for reading in H1_READINGS + H2_EXTRA_READINGS:
+            for reading in ALL_READINGS:
                 values = np.array(resampled[model][reading], dtype=float)
                 finite = values[np.isfinite(values)]
                 readings[reading] = {"difference": point[model][reading], "p_one_sided": one_sided_p(values),
@@ -292,18 +296,19 @@ def main() -> None:
              f"minimum macro and micro difference {arguments.minimum_difference}. Scorings: {len(previous_scorings) + 1}.", "",
              "Best baseline per reading (seed-mean lockbox score, chosen before any model was read): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
-             "| model | complete | macro | micro | macro within strata | micro within strata | macro permutation | micro permutation | macro rewiring | micro rewiring | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
+             "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for model, entry in entries.items():
         if not entry["complete"]:
             lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 8 + " 1 | no | 1 | no |")
             continue
         cells = [f"{entry['readings'][reading]['difference']:+.3f} [{entry['readings'][reading]['lower_95']:+.3f}, {entry['readings'][reading]['upper_95']:+.3f}]"
-                 for reading in H1_READINGS + H2_EXTRA_READINGS]
+                 for reading in ALL_READINGS]
         lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
-    lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. Permutation: the advantage on the real labels "
-              "minus the advantage when model and baseline are trained and scored on labels permuted within degree strata. Rewiring: the model on the real graph "
-              "minus the same model on its rewired graph."]
+    lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. H1 takes the first four readings, H2 adds "
+              "the two rewiring readings. Rewiring: the model on the real graph minus the same model on its rewired graph. Permutation (secondary, in neither "
+              "hypothesis): the advantage on the real labels minus the advantage when model and baseline are trained and scored on labels permuted within "
+              "degree strata."]
     arguments.markdown_output.write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

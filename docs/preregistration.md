@@ -226,7 +226,17 @@ development pilots are moved aside and rerun before the first lockbox run, and t
 cell-class channels; otherwise they stay as specified. The rule uses the point estimates, not the intervals, because the
 slice cannot resolve differences of this size (half-widths of 0.015 to 0.04) and an input that does not help on
 development data adds parameters to a model trained on about 1,000 perturbations. Limitation: the slice is the metabolic
-graph, without the signalling, receptor and electrical layers of graph_full_neuronal.
+graph, without the signalling, receptor and electrical layers of graph_full_neuronal. Held on 8 October: the user is
+deciding how the descriptors enter, so the rule is reported when its runs finish and applied only on their confirmation.
+
+Amendment, 8 October 2026, before any lockbox run (the user's decision): the two permutation readings leave H1 and become
+secondary readings, reported with their intervals and p-values outside both hypotheses. H1 is now the macro, micro and
+both within-strata readings above zero with the macro and micro differences at least 0.05; H2 is H1 and both rewiring
+readings above zero; Holm still runs over the eight hypotheses. Reason: the difference in differences subtracts a second
+noisy difference, so if the two are nearly uncorrelated its standard error is about 1.4 times that of the plain
+difference and it would decide H1 (a projection, not a measurement). The within-strata readings and the degree_popularity
+baseline remain the degree control. experiments/score_confirmatory.py implements it. The lockbox runs start only on the
+user's go-ahead.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
