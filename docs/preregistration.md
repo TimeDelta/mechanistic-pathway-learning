@@ -315,10 +315,16 @@ branch and graph paring.
   divided across models. Consequence, stated beside the results by experiments/score_confirmatory.py: with four models
   and no correction across them, the chance that at least one is confirmed by luck is above 0.025, at most
   1 - 0.975^4 = 0.096 if the four were independent and less since they share the data, the lockbox and the baselines.
-- Floors. The macro difference must be at least 0.05 (unchanged); the micro difference at least 0.028, the median
-  projected 95 percent half-width of a micro difference on a 20 percent hold-out (the precision statement above). At
-  one-sided 0.025 a micro difference at the floor has a 95 percent interval that just reaches zero, so the micro floor adds
-  little to the test itself; the effect sizes and intervals are reported next to every decision.
+- Floors. The macro difference must be at least 0.041 and the micro difference at least 0.028, the median projected
+  95 percent half-widths of a macro and a micro difference on a 20 percent hold-out (the precision statement above). The
+  first version of this amendment kept the macro floor at 0.05; the user moved it to 0.041 the same day, before any
+  lockbox run, so that both floors are the same kind of bar: what the lockbox can detect, not a judged smallest effect
+  worth having (a micro difference is the less noisy of the two, so one value of 0.05 would have been a different bar for
+  each). At one-sided 0.025 a difference at its floor has a 95 percent interval that just reaches zero
+  when the realised width equals the projection, so a floor binds only when the lockbox interval comes out narrower than
+  projected and the floors add little to the significance test; the effect sizes and intervals reported next to every
+  decision carry the question of size. With Holm withdrawn, the 0.06 and 0.04 of the precision statement (Holm's smallest
+  level) no longer apply: at one-sided 0.025 the smallest differences the lockbox can confirm are near the half-widths.
 - Ablation branch. The four configurations without --node-descriptors (confirmatory_*_without_descriptors in
   experiments/run_main_model_batch.py) are an ablation, run as development pilots (runs/full/ablation_pilots_without_descriptors.sh)
   and reported against the descriptor configurations; they are not among the tested models.

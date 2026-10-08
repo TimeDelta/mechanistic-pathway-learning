@@ -140,7 +140,8 @@ def main() -> None:
     parser.add_argument("--num-bootstrap", type=int, default=4000)
     parser.add_argument("--bootstrap-seed", type=int, default=20261008)
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
-    parser.add_argument("--minimum-macro-difference", type=float, default=0.05, help="smallest macro AUPRC difference that counts")
+    parser.add_argument("--minimum-macro-difference", type=float, default=0.041,
+                        help="smallest macro AUPRC difference that counts: the projected 95 percent half-width of a macro difference on a 20 percent hold-out")
     parser.add_argument("--minimum-micro-difference", type=float, default=0.028,
                         help="smallest micro AUPRC difference that counts: the projected 95 percent half-width of a micro difference on a 20 percent hold-out")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
