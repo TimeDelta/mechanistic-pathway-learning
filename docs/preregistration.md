@@ -823,6 +823,13 @@ modules are fixed first.
   stands for the gene and its product, and 11,723 of the 12,810 gene nodes take part in a protein-level relation, while
   the 1,681 protein_entity nodes are Reactome complexes and sets); the confirmatory pathway test (options and the
   decisions it needs: docs/pathway_test_options.md).
+- The user, the same day, on the gene and protein split (docs/gene_protein_split.md): "The rest of that suggested split
+  between the genes and proteins makes sense I think except the registered degree strata SHOULD change to the new split",
+  and "the brain expression is still provided via pseudo-gene descriptors". Not built and not applied. Measured: the
+  mapping is not one to one (57 gene nodes share a reviewed entry with another gene, 37 have several entries, and
+  isoforms are not resolved by any source), and on the split 140 of 142 drugs fall in the top degree stratum. Open:
+  where the expression block sits, the encodes relation in the H2 rewiring, and whether the confirmatory_v2
+  configurations move to the split graph.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
