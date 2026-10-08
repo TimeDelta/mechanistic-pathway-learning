@@ -1,9 +1,10 @@
-"""Write docs/node_descriptor_columns.md: the name of every node descriptor column, which node type fills it, and where
-each descriptor table puts it.
+"""Write docs/node_descriptor_columns.md: the name of every column of the final node descriptor table (the full neuronal
+graph with brain expression), which node type fills it, and a name for each protein component.
 
-The column lists are read from the descriptor tables themselves, and a column is listed for a node type only when at
-least one node of that type has a non-zero value in it, so the document cannot drift from the tables. Each table's
-SHA-256 is recorded; when a table changes, rerun this script, raise DOCUMENT_VERSION and add a line to CHANGES.
+The column lists are read from the table itself, and a column is listed for a node type only when at least one node of
+that type has a non-zero value in it, so the document cannot drift from the table. The protein component names come
+from experiments/name_protein_descriptor_components.py. The table's SHA-256 is recorded; when it changes, rerun both
+scripts, raise DOCUMENT_VERSION and add a line to CHANGES.
 
     python experiments/write_descriptor_column_doc.py
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -19,29 +21,17 @@ import pandas as pd
 
 from mechanistic_pathway_learning.graph.node_descriptors import descriptor_blocks
 
-DOCUMENT_VERSION = 1
+DOCUMENT_VERSION = 2
 CHANGES = [
     (1, "2026-10-08", "First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables."),
+    (2, "2026-10-08", "Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); "
+                      "a name for each of the 64 protein components from the annotations it correlates with most."),
 ]
-# (descriptor table, graph directory whose nodes it describes, where it is used)
-TABLES = [
-    ("data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet", "data/processed/graph_full_neuronal",
-     "the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py)"),
-    ("data/processed/node_descriptors/full_neuronal_descriptors_brain_expression_resolved.parquet", "data/processed/graph_full_neuronal",
-     "merged full graph with the protein block resolved per entry (twin of the full split)"),
-    ("data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet", "data/processed/graph_full_neuronal_split",
-     "full graph with genes and proteins split"),
-    ("data/processed/node_descriptors/slice_descriptors_brain_expression.parquet", "data/processed/graph", "slice"),
-    ("data/processed/node_descriptors/slice_descriptors_brain_expression_resolved.parquet", "data/processed/graph",
-     "slice with the protein block resolved per entry (twin of the split slice)"),
-    ("data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet", "data/processed/graph_split", "slice with genes and proteins split"),
-    ("data/processed/graph/node_descriptors.parquet", "data/processed/graph", "slice configurations without brain expression"),
-    ("data/processed/graph_full_neuronal/node_descriptors.parquet", "data/processed/graph_full_neuronal", "full graph without brain expression"),
-    ("data/processed/graph_split/node_descriptors.parquet", "data/processed/graph_split", "split slice without brain expression"),
-    ("data/processed/graph_full_neuronal_split/node_descriptors.parquet", "data/processed/graph_full_neuronal_split", "full split without brain expression"),
-]
-REFERENCE_TABLE = TABLES[0][0]
-SPLIT_REFERENCE_TABLE = TABLES[2][0]
+# The final descriptor table, the graph directory whose nodes it describes, and where it is used.
+FINAL_TABLE = "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"
+FINAL_GRAPH_DIR = "data/processed/graph_full_neuronal"
+FINAL_TABLE_USE = "the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py)"
+COMPONENT_NAMES = Path("data/processed/node_descriptors/protein_rrr_component_names.json")  # experiments/name_protein_descriptor_components.py
 EC_CLASS_NAMES = {1: "oxidoreductases", 2: "transferases", 3: "hydrolases", 4: "lyases", 5: "isomerases", 6: "ligases", 7: "translocases"}
 METABOLITE_MEANINGS = {
     "metabolite_log_molecular_weight": "log molecular weight (RDKit MolWt), standardised",
@@ -62,7 +52,7 @@ BRAIN_MEANINGS = {
 }
 
 
-def meaning(column: str) -> str:
+def meaning(column: str, component_names: dict | None = None) -> str:
     if column in METABOLITE_MEANINGS:
         return METABOLITE_MEANINGS[column]
     if column.startswith("reaction_ec_class_"):
@@ -71,6 +61,8 @@ def meaning(column: str) -> str:
     if column == "reaction_has_ec":
         return "1 when the reaction has an annotated EC number"
     if column.startswith("protein_rrr_"):
+        if component_names and column in component_names:
+            return f"{component_names[column]['name']} (see Protein components)"
         return (f"component {column.rsplit('_', 1)[1]} of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto "
                 "EC, GO function, GO component, UniProt location and Pfam annotations; standardised")
     if column == "protein_has_protein_descriptors":
@@ -123,17 +115,39 @@ def structural_feature_names(nodes: pd.DataFrame) -> list[str]:
             + ["log1p_degree", "is_currency", "is_transport", "is_reversible", "log1p_gtex_brain_median_tpm_max", "brain_expressed"])
 
 
-def code_list(columns: list[str]) -> str:
-    return "\n".join(f"- `{column}`" + (f": {meaning(column)}" if meaning(column) else "") for column in columns)
+def code_list(columns: list[str], component_names: dict | None = None) -> str:
+    return "\n".join(f"- `{column}`" + (f": {meaning(column, component_names)}" if meaning(column, component_names) else "") for column in columns)
 
 
-def table_section(table_path: str, graph_dir: str, use: str) -> list[str]:
+def pole_text(entries: list[dict]) -> str:
+    return "; ".join(f"{entry['name']} ({entry['block']}, {entry['correlation']:+.2f})" for entry in entries)
+
+
+def component_section(component_names: dict, names_file: dict) -> list[str]:
+    lines = ["## Protein components", "",
+             "`protein_rrr_1` to `protein_rrr_64` are the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, "
+             "GO function, GO component, UniProt location and Pfam annotations (mechanistic_pathway_learning/graph/protein_descriptors.py, "
+             "docs/protein_descriptor_report.md), averaged over a gene's reviewed entries and standardised. Each is a direction in "
+             "annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. The name gives the "
+             "annotation with the largest positive correlation (high) and the most negative correlation (low) with the component over the "
+             f"{names_file['proteins_correlated']:,} proteins of the fit, and each pole lists up to four annotations (one of any group whose "
+             "proteins nearly coincide, as with a GO term and its parent). A high value means the protein looks like the positive pole, a "
+             "low one like the negative pole. The correlations show how well a name fits: below about 0.3 the name is the strongest "
+             "of weak associations. Generated by experiments/name_protein_descriptor_components.py; the column identifiers in the table "
+             "are unchanged.", "",
+             "| column | name | largest abs. r | positive pole | negative pole |", "|---|---|---|---|---|"]
+    for column, entry in component_names.items():
+        lines.append(f"| `{column}` | {entry['name']} | {entry['largest_absolute_correlation']:.2f} | {pole_text(entry['positive'])} | {pole_text(entry['negative'])} |")
+    return lines + [""]
+
+
+def placement_section(table_path: str, graph_dir: str, use: str) -> list[str]:
     table = read_descriptor_table(table_path)
     nodes = pd.read_parquet(Path(graph_dir) / "nodes.parquet", columns=["node_id", "node_type"])
     filled = columns_filled_per_node_type(table, nodes)
     blocks = descriptor_blocks(table.columns)
     node_counts = nodes.node_type.value_counts()
-    lines = [f"### `{table_path}`", "", f"Used by: {use}. Graph: `{graph_dir}`. {table.shape[1]} columns. SHA-256 `{file_sha256(Path(table_path))[:16]}`.", "",
+    lines = ["## Placement", "", "Cells give how many of a block's columns are non-zero on at least one node of the type (blank: none).", "",
              "| node type | nodes | " + " | ".join(block for block in blocks if blocks[block]) + " |",
              "|---|---|" + "---|" * sum(1 for block in blocks if blocks[block])]
     for node_type, columns in filled.items():
@@ -152,53 +166,44 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("docs/node_descriptor_columns.md"))
     arguments = parser.parse_args()
 
-    reference_table = read_descriptor_table(REFERENCE_TABLE)
-    reference_nodes = pd.read_parquet(Path(TABLES[0][1]) / "nodes.parquet", columns=["node_id", "node_type", "compartment"])
-    split_table = read_descriptor_table(SPLIT_REFERENCE_TABLE)
-    split_nodes = pd.read_parquet(Path(TABLES[2][1]) / "nodes.parquet", columns=["node_id", "node_type"])
-    filled = columns_filled_per_node_type(reference_table, reference_nodes)
-    filled_split = columns_filled_per_node_type(split_table, split_nodes)
-    unused = [column for column in reference_table.columns if not any(column in columns for columns in filled.values())]
+    table = read_descriptor_table(FINAL_TABLE)
+    nodes = pd.read_parquet(Path(FINAL_GRAPH_DIR) / "nodes.parquet", columns=["node_id", "node_type", "compartment"])
+    filled = columns_filled_per_node_type(table, nodes)
+    unused = [column for column in table.columns if not any(column in columns for columns in filled.values())]
+    names_file = json.loads(COMPONENT_NAMES.read_text())
+    component_names = names_file["components"]
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 
     lines = [
         "# Node descriptor columns", "",
         f"Version {DOCUMENT_VERSION}, generated {date.today().isoformat()} by experiments/write_descriptor_column_doc.py from the code at commit {commit}. "
-        "Rerun the script after any descriptor table changes; it reads the column names and their placement from the tables.", "",
+        "Rerun the script after any change to the table; it reads the column names and their placement from the table.", "",
+        f"This document covers the final descriptor table only: `{FINAL_TABLE}` (graph `{FINAL_GRAPH_DIR}`, the full graph with the "
+        f"neuronal variant), used by {FINAL_TABLE_USE}. It holds every block: protein components, brain expression by GTEx tissue, Human "
+        "Protein Atlas region and cell class (with the dopaminergic neuron class), metabolite properties and reaction EC classes. "
+        f"{table.shape[1]} columns; SHA-256 `{file_sha256(Path(FINAL_TABLE))[:16]}`.", "",
         "Every node gets the same descriptor columns. Each node type fills its own block and is 0 in the others, so the "
         "encoder's input layer acts as one linear map per node type and nothing is learned per node "
         "(mechanistic_pathway_learning/graph/node_descriptors.py). A column is listed under a node type below when at least one "
         "node of that type has a non-zero value in it.", "",
-        f"## Columns per node type in the confirmatory table (`{REFERENCE_TABLE}`)", "",
+        "## Columns per node type", "",
     ]
     for node_type, columns in filled.items():
-        lines += [f"### {node_type} ({len(columns)} columns)", "", code_list(columns) if columns else "No descriptor column; all 0.", ""]
+        lines += [f"### {node_type} ({len(columns)} columns)", "", code_list(columns, component_names) if columns else "No descriptor column; all 0.", ""]
     if unused:
-        lines += ["### Columns no node type fills in this table", "", code_list(unused), ""]
-    moved = {node_type: columns for node_type, columns in filled_split.items() if columns != filled.get(node_type)}
-    lines += [f"## Where the split graphs differ (`{SPLIT_REFERENCE_TABLE}`)", "",
-              "With genes and proteins split (docs/gene_protein_split.md), the protein block sits on the protein nodes and the "
-              "gene nodes keep the brain-expression block. Node types whose columns differ from the table above:", ""]
-    for node_type, columns in moved.items():
-        filled_blocks = [f"`{block}`" for block, block_columns in descriptor_blocks(columns).items() if block_columns]
-        lines.append(f"- {node_type}: {len(columns)} columns" + (f", block {' and '.join(filled_blocks)}" if columns else ""))
-    lines += ["", "## Structural features before the descriptors", "",
+        lines += ["### Columns no node type fills", "", code_list(unused, component_names), ""]
+    lines += component_section(component_names, names_file)
+    lines += ["## Structural features before the descriptors", "",
               "The encoders read the descriptors after the structural features of ExperimentData.structural_node_features() "
               "(experiments/run_main_model.py, node_feature_matrix). The code builds these by position, without names; the names "
-              f"below are given here for reading, in order, for `{TABLES[0][1]}`:", "",
-              "\n".join(f"{position + 1}. `{name}`" for position, name in enumerate(structural_feature_names(reference_nodes))), "",
+              "below are given here for reading, in order:", "",
+              "\n".join(f"{position + 1}. `{name}`" for position, name in enumerate(structural_feature_names(nodes))), "",
               "## Blocks", "",
               "experiments/run_main_model.py --drop-descriptor-blocks leaves out whole blocks, by column prefix "
               "(DESCRIPTOR_BLOCK_PREFIXES in node_descriptors.py):", ""]
-    for block, columns in descriptor_blocks(reference_table.columns).items():
+    for block, columns in descriptor_blocks(table.columns).items():
         lines.append(f"- `{block}`: {len(columns)} columns")
-    lines += ["", "## Placement in every descriptor table", "",
-              "Cells give how many of a block's columns are non-zero on at least one node of the type (blank: none).", ""]
-    for table_path, graph_dir, use in TABLES:
-        if Path(table_path).exists() and (Path(graph_dir) / "nodes.parquet").exists():
-            lines += table_section(table_path, graph_dir, use)
-        else:
-            lines += [f"### `{table_path}`", "", "Not present when this version was generated.", ""]
+    lines += [""] + placement_section(FINAL_TABLE, FINAL_GRAPH_DIR, FINAL_TABLE_USE)
     lines += ["## Changes", "", "| version | date | change |", "|---|---|---|"] + [f"| {version} | {day} | {change} |" for version, day, change in CHANGES]
     arguments.output.write_text("\n".join(lines) + "\n")
     print(f"wrote {arguments.output}")

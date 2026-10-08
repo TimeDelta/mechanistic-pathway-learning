@@ -1,77 +1,79 @@
 # Node descriptor columns
 
-Version 1, generated 2026-10-08 by experiments/write_descriptor_column_doc.py from the code at commit f60f5ea. Rerun the script after any descriptor table changes; it reads the column names and their placement from the tables.
+Version 2, generated 2026-10-08 by experiments/write_descriptor_column_doc.py from the code at commit 5c2bc80. Rerun the script after any change to the table; it reads the column names and their placement from the table.
+
+This document covers the final descriptor table only: `data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet` (graph `data/processed/graph_full_neuronal`, the full graph with the neuronal variant), used by the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py). It holds every block: protein components, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the dopaminergic neuron class), metabolite properties and reaction EC classes. 137 columns; SHA-256 `14033cb35ad97098`.
 
 Every node gets the same descriptor columns. Each node type fills its own block and is 0 in the others, so the encoder's input layer acts as one linear map per node type and nothing is learned per node (mechanistic_pathway_learning/graph/node_descriptors.py). A column is listed under a node type below when at least one node of that type has a non-zero value in it.
 
-## Columns per node type in the confirmatory table (`data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet`)
+## Columns per node type
 
 ### gene (92 columns)
 
-- `protein_rrr_1`: component 1 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_2`: component 2 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_3`: component 3 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_4`: component 4 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_5`: component 5 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_6`: component 6 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_7`: component 7 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_8`: component 8 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_9`: component 9 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_10`: component 10 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_11`: component 11 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_12`: component 12 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_13`: component 13 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_14`: component 14 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_15`: component 15 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_16`: component 16 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_17`: component 17 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_18`: component 18 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_19`: component 19 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_20`: component 20 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_21`: component 21 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_22`: component 22 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_23`: component 23 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_24`: component 24 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_25`: component 25 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_26`: component 26 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_27`: component 27 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_28`: component 28 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_29`: component 29 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_30`: component 30 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_31`: component 31 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_32`: component 32 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_33`: component 33 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_34`: component 34 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_35`: component 35 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_36`: component 36 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_37`: component 37 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_38`: component 38 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_39`: component 39 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_40`: component 40 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_41`: component 41 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_42`: component 42 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_43`: component 43 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_44`: component 44 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_45`: component 45 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_46`: component 46 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_47`: component 47 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_48`: component 48 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_49`: component 49 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_50`: component 50 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_51`: component 51 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_52`: component 52 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_53`: component 53 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_54`: component 54 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_55`: component 55 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_56`: component 56 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_57`: component 57 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_58`: component 58 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_59`: component 59 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_60`: component 60 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_61`: component 61 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_62`: component 62 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_63`: component 63 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
-- `protein_rrr_64`: component 64 of the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations; standardised
+- `protein_rrr_1`: high: DNA-binding transcription factor activity; low: purine ribonucleoside triphosphate binding (see Protein components)
+- `protein_rrr_2`: high: nucleus; low: multi-pass membrane protein (see Protein components)
+- `protein_rrr_3`: high: DNA-binding transcription factor activity; low: oxidoreductase activity (see Protein components)
+- `protein_rrr_4`: high: hydrolase activity; low: protein kinase activity (see Protein components)
+- `protein_rrr_5`: high: peptidase activity; low: oxidoreductase activity (see Protein components)
+- `protein_rrr_6`: high: Cytochrome P450 (PF00067); low: EC 2.4 transferases: glycosyltransferases (see Protein components)
+- `protein_rrr_7`: high: Cytochrome P450 (PF00067); low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors (see Protein components)
+- `protein_rrr_8`: high: Ras family (PF00071); low: EC 7.6 translocases: catalysing the translocation of other compounds (see Protein components)
+- `protein_rrr_9`: high: AMP-binding enzyme (PF00501); low: glycosyltransferase activity (see Protein components)
+- `protein_rrr_10`: high: sulfotransferase activity; low: AMP-binding enzyme (PF00501) (see Protein components)
+- `protein_rrr_11`: high: ubiquitin protein ligase activity; low: DNA-binding transcription factor activity (see Protein components)
+- `protein_rrr_12`: high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: AMP-binding enzyme (PF00501) (see Protein components)
+- `protein_rrr_13`: high: aminoacyl-tRNA ligase activity; low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors (see Protein components)
+- `protein_rrr_14`: high: ubiquitin protein ligase activity; low: EC 3.1 hydrolases: acting on ester bonds (see Protein components)
+- `protein_rrr_15`: high: methyltransferase activity; low: EC 3.1 hydrolases: acting on ester bonds (see Protein components)
+- `protein_rrr_16`: high: G protein-coupled receptor activity; low: cytoskeleton (see Protein components)
+- `protein_rrr_17`: high: mitochondrial inner membrane; low: EC 6.1 ligases: forming carbon-oxygen bonds (see Protein components)
+- `protein_rrr_18`: high: ligase activity, forming carbon-oxygen bonds; low: glutathione transferase activity (see Protein components)
+- `protein_rrr_19`: high: methyltransferase activity; low: EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors (see Protein components)
+- `protein_rrr_20`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: Cadherin domain (PF00028) (see Protein components)
+- `protein_rrr_21`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: extracellular matrix structural constituent conferring tensile strength (see Protein components)
+- `protein_rrr_22`: high: Cadherin domain (PF00028); low: Collagen triple helix repeat (20 copies) (PF01391) (see Protein components)
+- `protein_rrr_23`: high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: Cadherin domain (PF00028) (see Protein components)
+- `protein_rrr_24`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: BTB And C-terminal Kelch (PF07707) (see Protein components)
+- `protein_rrr_25`: high: mitochondrial inner membrane; low: glutathione transferase activity (see Protein components)
+- `protein_rrr_26`: high: Immunoglobulin V-set domain (PF07686); low: Collagen triple helix repeat (20 copies) (PF01391) (see Protein components)
+- `protein_rrr_27`: high: ABC transporter (PF00005); low: EC 7.2 translocases: catalysing the translocation of inorganic cations (see Protein components)
+- `protein_rrr_28`: high: Ion transport protein (PF00520); low: macromolecular conformation isomerase activity (see Protein components)
+- `protein_rrr_29`: high: secondary active transmembrane transporter activity; low: G protein-coupled receptor activity (see Protein components)
+- `protein_rrr_30`: high: oxidoreductase activity, acting on the aldehyde or oxo group of donors, NAD or NADP as acceptor; low: vitamin B6 binding (see Protein components)
+- `protein_rrr_31`: high: keratin filament; low: SNAP receptor activity (see Protein components)
+- `protein_rrr_32`: high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: vitamin B6 binding (see Protein components)
+- `protein_rrr_33`: high: Reprolysin (M12B) family zinc metalloprotease (PF01421); low: symporter activity (see Protein components)
+- `protein_rrr_34`: high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: peptidyl-prolyl cis-trans isomerase activity (see Protein components)
+- `protein_rrr_35`: high: Immunoglobulin V-set domain (PF07686); low: Reprolysin (M12B) family zinc metalloprotease (PF01421) (see Protein components)
+- `protein_rrr_36`: high: SNAP receptor activity; low: SPRY domain (PF00622) (see Protein components)
+- `protein_rrr_37`: high: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048); low: Zinc finger, C2H2 type (PF00096) (see Protein components)
+- `protein_rrr_38`: high: transaminase activity; low: Mitochondrial carrier protein (PF00153) (see Protein components)
+- `protein_rrr_39`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) (see Protein components)
+- `protein_rrr_40`: high: Immunoglobulin V-set domain (PF07686); low: Leucine rich repeat (PF13855) (see Protein components)
+- `protein_rrr_41`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: acyltransferase activity, transferring groups other than amino-acyl groups (see Protein components)
+- `protein_rrr_42`: high: Leucine rich repeat (PF13855); low: SNAP receptor activity (see Protein components)
+- `protein_rrr_43`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) (see Protein components)
+- `protein_rrr_44`: high: Mitochondrial carrier protein (PF00153); low: Leucine rich repeat (PF13855) (see Protein components)
+- `protein_rrr_45`: high: Olfactory receptor (PF13853); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_46`: high: Leucine rich repeat (PF13855); low: dioxygenase activity (see Protein components)
+- `protein_rrr_47`: high: Tubulin/FtsZ family, GTPase domain (PF00091); low: Receptor family ligand binding region (PF01094) (see Protein components)
+- `protein_rrr_48`: high: Tubulin/FtsZ family, GTPase domain (PF00091); low: structural constituent of ribosome (see Protein components)
+- `protein_rrr_49`: high: Serpin (serine protease inhibitor) (PF00079); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_50`: high: Cyclin, N-terminal domain (PF00134); low: structural constituent of ribosome (see Protein components)
+- `protein_rrr_51`: high: Serpin (serine protease inhibitor) (PF00079); low: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (see Protein components)
+- `protein_rrr_52`: high: Trypsin (PF00089); low: Ubiquitin carboxyl-terminal hydrolase (PF00443) (see Protein components)
+- `protein_rrr_53`: high: Mitochondrial carrier protein (PF00153); low: Serpin (serine protease inhibitor) (PF00079) (see Protein components)
+- `protein_rrr_54`: high: keratin filament; low: Thioredoxin (PF00085) (see Protein components)
+- `protein_rrr_55`: high: U4/U6 snRNP; low: SNAP receptor activity (see Protein components)
+- `protein_rrr_56`: high: EF-hand domain pair (PF13499); low: Transforming growth factor beta like domain (PF00019) (see Protein components)
+- `protein_rrr_57`: high: Lectin C-type domain (PF00059); low: Receptor family ligand binding region (PF01094) (see Protein components)
+- `protein_rrr_58`: high: PMP-22/EMP/MP20/Claudin family (PF00822); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_59`: high: Serpin (serine protease inhibitor) (PF00079); low: Sugar (and other) transporter (PF00083) (see Protein components)
+- `protein_rrr_60`: high: Ankyrin repeats (3 copies) (PF12796); low: MAGE homology domain (PF01454) (see Protein components)
+- `protein_rrr_61`: high: Ankyrin repeats (3 copies) (PF12796); low: EF-hand domain pair (PF13499) (see Protein components)
+- `protein_rrr_62`: high: Actin (PF00022); low: Serpin (serine protease inhibitor) (PF00079) (see Protein components)
+- `protein_rrr_63`: high: Sugar (and other) transporter (PF00083); low: Immunoglobulin V-set domain (PF07686) (see Protein components)
+- `protein_rrr_64`: high: Ankyrin repeats (3 copies) (PF12796); low: Sugar (and other) transporter (PF00083) (see Protein components)
 - `protein_has_protein_descriptors`: 1 when the node's protein has an ESM-2 embedding; 0 leaves the components at 0
 - `gene_brain_gtex_brain_max`: largest GTEx v10 median TPM over the 13 brain tissues, log1p, standardised
 - `gene_brain_gtex_other_max`: largest GTEx v10 median TPM over every other tissue, log1p, standardised
@@ -160,16 +162,80 @@ No descriptor column; all 0.
 - `reaction_brain_class_dopaminergic_neuron`: dopaminergic cluster 395 of Siletti et al. 2023 (CELLxGENE counts put on the HPA nCPM scale), log1p, standardised; from the gene rule (minimum over and, maximum over or)
 - `reaction_brain_has_expression`: 1 when the gene (for a reaction: a gene in its rule) is in the Human Protein Atlas region table; from the gene rule (minimum over and, maximum over or)
 
-## Where the split graphs differ (`data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet`)
+## Protein components
 
-With genes and proteins split (docs/gene_protein_split.md), the protein block sits on the protein nodes and the gene nodes keep the brain-expression block. Node types whose columns differ from the table above:
+`protein_rrr_1` to `protein_rrr_64` are the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations (mechanistic_pathway_learning/graph/protein_descriptors.py, docs/protein_descriptor_report.md), averaged over a gene's reviewed entries and standardised. Each is a direction in annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. The name gives the annotation with the largest positive correlation (high) and the most negative correlation (low) with the component over the 19,628 proteins of the fit, and each pole lists up to four annotations (one of any group whose proteins nearly coincide, as with a GO term and its parent). A high value means the protein looks like the positive pole, a low one like the negative pole. The correlations show how well a name fits: below about 0.3 the name is the strongest of weak associations. Generated by experiments/name_protein_descriptor_components.py; the column identifiers in the table are unchanged.
 
-- gene: 27 columns, block `gene_brain`
-- protein: 65 columns, block `protein`
+| column | name | largest abs. r | positive pole | negative pole |
+|---|---|---|---|---|
+| `protein_rrr_1` | high: DNA-binding transcription factor activity; low: purine ribonucleoside triphosphate binding | 0.75 | DNA-binding transcription factor activity (GO function, +0.17); secreted (UniProt location, +0.14); Zinc finger, C2H2 type (PF00096) (Pfam, +0.14); G protein-coupled receptor activity (GO function, +0.12) | purine ribonucleoside triphosphate binding (GO function, -0.75); anion binding (GO function, -0.61); ribonucleoside triphosphate phosphatase activity (GO function, -0.55); Protein kinase domain (PF00069) (Pfam, -0.47) |
+| `protein_rrr_2` | high: nucleus; low: multi-pass membrane protein | 0.57 | nucleus (UniProt location, +0.50); nucleic acid binding (GO function, +0.43); DNA binding (GO function, +0.38); transcription regulator activity (GO function, +0.37) | multi-pass membrane protein (UniProt location, -0.57); transporter activity (GO function, -0.53); monoatomic ion transmembrane transporter activity (GO function, -0.47); cell membrane (UniProt location, -0.41) |
+| `protein_rrr_3` | high: DNA-binding transcription factor activity; low: oxidoreductase activity | 0.50 | DNA-binding transcription factor activity (GO function, +0.25); DNA binding (GO function, +0.23); nucleus (UniProt location, +0.21); nucleic acid binding (GO function, +0.21) | oxidoreductase activity (GO function, -0.50); Cytochrome P450 (PF00067) (Pfam, -0.40); oxidoreductase activity, acting on paired donors, with incorporation or reduction of molecular oxygen (GO function, -0.39); monooxygenase activity (GO function, -0.36) |
+| `protein_rrr_4` | high: hydrolase activity; low: protein kinase activity | 0.53 | hydrolase activity (GO function, +0.45); hydrolase activity, acting on acid anhydrides, in phosphorus-containing anhydrides (GO function, +0.42); EC 3.6 hydrolases: acting on acid anhydrides (EC, +0.41); Ras family (PF00071) (Pfam, +0.37) | protein kinase activity (GO function, -0.53); Protein kinase domain (PF00069) (Pfam, -0.52); EC 2.7 transferases: transferring phosphorus-containing groups (EC, -0.48); transferase activity (GO function, -0.32) |
+| `protein_rrr_5` | high: peptidase activity; low: oxidoreductase activity | 0.54 | peptidase activity (GO function, +0.54); serine-type endopeptidase activity (GO function, +0.41); catalytic activity, acting on a protein (GO function, +0.41); Trypsin (PF00089) (Pfam, +0.40) | oxidoreductase activity (GO function, -0.25); EC 1.1 oxidoreductases: acting on the ch-oh group of donors (EC, -0.24); DNA-binding transcription factor activity (GO function, -0.20); short chain dehydrogenase (PF00106) (Pfam, -0.20) |
+| `protein_rrr_6` | high: Cytochrome P450 (PF00067); low: EC 2.4 transferases: glycosyltransferases | 0.45 | Cytochrome P450 (PF00067) (Pfam, +0.38); oxidoreductase activity, acting on paired donors, with incorporation or reduction of molecular oxygen (GO function, +0.32); monooxygenase activity (GO function, +0.32); iron ion binding (GO function, +0.29) | EC 2.4 transferases: glycosyltransferases (EC, -0.45); sulfotransferase activity (GO function, -0.42); UDP-glycosyltransferase activity (GO function, -0.41); single-pass type ii membrane protein (UniProt location, -0.35) |
+| `protein_rrr_7` | high: Cytochrome P450 (PF00067); low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors | 0.52 | Cytochrome P450 (PF00067) (Pfam, +0.52); EC 1.14 oxidoreductases: acting on paired donors, with incorporation or reduction of molecular oxygen. the oxygen incorporated need not be derived from o2 (EC, +0.46); iron ion binding (GO function, +0.42); monooxygenase activity (GO function, +0.40) | EC 1.1 oxidoreductases: acting on the ch-oh group of donors (EC, -0.41); alcohol dehydrogenase [NAD(P)+] activity (GO function, -0.33); short chain dehydrogenase (PF00106) (Pfam, -0.32); steroid dehydrogenase activity, acting on the CH-OH group of donors, NAD or NADP as acceptor (GO function, -0.25) |
+| `protein_rrr_8` | high: Ras family (PF00071); low: EC 7.6 translocases: catalysing the translocation of other compounds | 0.36 | Ras family (PF00071) (Pfam, +0.26); GTP binding (GO function, +0.25); single-pass type i membrane protein (UniProt location, +0.19); molecular function regulator activity (GO function, +0.17) | EC 7.6 translocases: catalysing the translocation of other compounds (EC, -0.36); P-type ATPase, cytoplasmic domain N (PF13246) (Pfam, -0.36); ATPase-coupled transmembrane transporter activity (GO function, -0.36); ABC-type transporter activity (GO function, -0.33) |
+| `protein_rrr_9` | high: AMP-binding enzyme (PF00501); low: glycosyltransferase activity | 0.41 | AMP-binding enzyme (PF00501) (Pfam, +0.41); sulfotransferase activity (GO function, +0.39); ligase activity, forming carbon-sulfur bonds (GO function, +0.35); proteoglycan sulfotransferase activity (GO function, +0.24) | glycosyltransferase activity (GO function, -0.26); UDP-glycosyltransferase activity (GO function, -0.23); EC 3.1 hydrolases: acting on ester bonds (EC, -0.15); phosphoric ester hydrolase activity (GO function, -0.13) |
+| `protein_rrr_10` | high: sulfotransferase activity; low: AMP-binding enzyme (PF00501) | 0.40 | sulfotransferase activity (GO function, +0.40); proteoglycan sulfotransferase activity (GO function, +0.26); ATPase-coupled transmembrane transporter activity (GO function, +0.20); P-type ATPase, cytoplasmic domain N (PF13246) (Pfam, +0.19) | AMP-binding enzyme (PF00501) (Pfam, -0.36); ligase activity, forming carbon-sulfur bonds (GO function, -0.31); transmitter-gated channel activity (GO function, -0.23); hexosyltransferase activity (GO function, -0.22) |
+| `protein_rrr_11` | high: ubiquitin protein ligase activity; low: DNA-binding transcription factor activity | 0.34 | ubiquitin protein ligase activity (GO function, +0.34); acyltransferase activity (GO function, +0.33); B-box zinc finger (PF00643) (Pfam, +0.28); SPRY domain (PF00622) (Pfam, +0.27) | DNA-binding transcription factor activity (GO function, -0.34); Zinc finger, C2H2 type (PF00096) (Pfam, -0.33); DNA binding (GO function, -0.28); KRAB box (PF01352) (Pfam, -0.26) |
+| `protein_rrr_12` | high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: AMP-binding enzyme (PF00501) | 0.43 | Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, +0.43); extracellular ligand-gated monoatomic ion channel activity (GO function, +0.40); gated channel activity (GO function, +0.35); neurotransmitter receptor activity (GO function, +0.34) | AMP-binding enzyme (PF00501) (Pfam, -0.25); ligase activity, forming carbon-sulfur bonds (GO function, -0.21); SPRY domain (PF00622) (Pfam, -0.16); B-box zinc finger (PF00643) (Pfam, -0.16) |
+| `protein_rrr_13` | high: aminoacyl-tRNA ligase activity; low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors | 0.41 | aminoacyl-tRNA ligase activity (GO function, +0.41); catalytic activity, acting on a tRNA (GO function, +0.26); ligase activity (GO function, +0.24); mitochondrion (GO component, +0.23) | EC 1.1 oxidoreductases: acting on the ch-oh group of donors (EC, -0.20); UDP-glycosyltransferase activity (GO function, -0.20); short chain dehydrogenase (PF00106) (Pfam, -0.20); DNA-binding transcription factor activity (GO function, -0.20) |
+| `protein_rrr_14` | high: ubiquitin protein ligase activity; low: EC 3.1 hydrolases: acting on ester bonds | 0.37 | ubiquitin protein ligase activity (GO function, +0.17); B-box zinc finger (PF00643) (Pfam, +0.16); EC 6.1 ligases: forming carbon-oxygen bonds (EC, +0.15); acyltransferase activity (GO function, +0.15) | EC 3.1 hydrolases: acting on ester bonds (EC, -0.37); phosphoric ester hydrolase activity (GO function, -0.33); phosphoprotein phosphatase activity (GO function, -0.29); protein tyrosine phosphatase activity (GO function, -0.27) |
+| `protein_rrr_15` | high: methyltransferase activity; low: EC 3.1 hydrolases: acting on ester bonds | 0.47 | methyltransferase activity (GO function, +0.47); N-methyltransferase activity (GO function, +0.35); RNA methyltransferase activity (GO function, +0.30); lysine N-methyltransferase activity (GO function, +0.24) | EC 3.1 hydrolases: acting on ester bonds (EC, -0.23); DNA-binding transcription factor activity (GO function, -0.22); Zinc finger, C2H2 type (PF00096) (Pfam, -0.21); phosphoric ester hydrolase activity (GO function, -0.20) |
+| `protein_rrr_16` | high: G protein-coupled receptor activity; low: cytoskeleton | 0.53 | G protein-coupled receptor activity (GO function, +0.53); olfactory receptor activity (GO function, +0.44); transmembrane signaling receptor activity (GO function, +0.43); multi-pass membrane protein (UniProt location, +0.39) | cytoskeleton (GO component, -0.22); Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, -0.21); extracellular ligand-gated monoatomic ion channel activity (GO function, -0.20); supramolecular complex (GO component, -0.18) |
+| `protein_rrr_17` | high: mitochondrial inner membrane; low: EC 6.1 ligases: forming carbon-oxygen bonds | 0.30 | mitochondrial inner membrane (GO component, +0.24); mitochondrial envelope (GO component, +0.21); Mitochondrial carrier protein (PF00153) (Pfam, +0.21); multi-pass membrane protein (UniProt location, +0.21) | EC 6.1 ligases: forming carbon-oxygen bonds (EC, -0.30); Cadherin domain (PF00028) (Pfam, -0.25); single-pass type i membrane protein (UniProt location, -0.23); Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, -0.23) |
+| `protein_rrr_18` | high: ligase activity, forming carbon-oxygen bonds; low: glutathione transferase activity | 0.28 | ligase activity, forming carbon-oxygen bonds (GO function, +0.28); ligase activity (GO function, +0.19); short chain dehydrogenase (PF00106) (Pfam, +0.18); catalytic activity, acting on a tRNA (GO function, +0.15) | glutathione transferase activity (GO function, -0.25); EC 2.5 transferases: transferring alkyl or aryl groups, other than methyl groups (EC, -0.20); EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors (EC, -0.20); Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, -0.18) |
+| `protein_rrr_19` | high: methyltransferase activity; low: EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors | 0.26 | methyltransferase activity (GO function, +0.19); glutathione transferase activity (GO function, +0.18); antioxidant activity (GO function, +0.17); BTB And C-terminal Kelch (PF07707) (Pfam, +0.17) | EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors (EC, -0.26); G protein-coupled receptor activity (GO function, -0.24); aldehyde dehydrogenase (NAD+) activity (GO function, -0.24); transmembrane signaling receptor activity (GO function, -0.22) |
+| `protein_rrr_20` | high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: Cadherin domain (PF00028) | 0.37 | hydrolase activity, hydrolyzing O-glycosyl compounds (GO function, +0.26); EC 3.2 hydrolases: glycosylases (EC, +0.24); G protein-coupled receptor activity (GO function, +0.21); nucleic acid conformation isomerase activity (GO function, +0.20) | Cadherin domain (PF00028) (Pfam, -0.37); Cadherin-like (PF08266) (Pfam, -0.30); Cadherin cytoplasmic C-terminal (PF16492) (Pfam, -0.26); Cadherin C-terminal cytoplasmic tail, catenin-binding region (PF15974) (Pfam, -0.23) |
+| `protein_rrr_21` | high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: extracellular matrix structural constituent conferring tensile strength | 0.26 | hydrolase activity, hydrolyzing O-glycosyl compounds (GO function, +0.26); EC 3.2 hydrolases: glycosylases (EC, +0.23); G protein-coupled receptor activity (GO function, +0.23); Olfactory receptor (PF13853) (Pfam, +0.19) | extracellular matrix structural constituent conferring tensile strength (GO function, -0.21); Collagen triple helix repeat (20 copies) (PF01391) (Pfam, -0.20); mitochondrial inner membrane (GO component, -0.20); extracellular matrix structural constituent (GO function, -0.18) |
+| `protein_rrr_22` | high: Cadherin domain (PF00028); low: Collagen triple helix repeat (20 copies) (PF01391) | 0.38 | Cadherin domain (PF00028) (Pfam, +0.38); Cadherin-like (PF08266) (Pfam, +0.31); glutathione transferase activity (GO function, +0.26); Cadherin cytoplasmic C-terminal (PF16492) (Pfam, +0.25) | Collagen triple helix repeat (20 copies) (PF01391) (Pfam, -0.25); extracellular matrix structural constituent conferring tensile strength (GO function, -0.24); extracellular matrix structural constituent (GO function, -0.18); collagenous component of interstitial matrix (GO component, -0.18) |
+| `protein_rrr_23` | high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: Cadherin domain (PF00028) | 0.40 | Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, +0.21); P-type ATPase, cytoplasmic domain N (PF13246) (Pfam, +0.17); extracellular ligand-gated monoatomic ion channel activity (GO function, +0.17); transmembrane signaling receptor activity (GO function, +0.16) | Cadherin domain (PF00028) (Pfam, -0.40); Cadherin-like (PF08266) (Pfam, -0.32); secondary active transmembrane transporter activity (GO function, -0.29); Cadherin cytoplasmic C-terminal (PF16492) (Pfam, -0.27) |
+| `protein_rrr_24` | high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: BTB And C-terminal Kelch (PF07707) | 0.63 | hydrolase activity, hydrolyzing O-glycosyl compounds (GO function, +0.10); EC 3.2 hydrolases: glycosylases (EC, +0.08); Major Facilitator Superfamily (PF07690) (Pfam, +0.08); SNAP receptor activity (GO function, +0.08) | BTB And C-terminal Kelch (PF07707) (Pfam, -0.63); Cul3-RING ubiquitin ligase complex (GO component, -0.58); BTB/POZ domain (PF00651) (Pfam, -0.56); Kelch motif (PF01344) (Pfam, -0.55) |
+| `protein_rrr_25` | high: mitochondrial inner membrane; low: glutathione transferase activity | 0.25 | mitochondrial inner membrane (GO component, +0.25); Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, +0.22); mitochondrial membrane (GO component, +0.21); hydrolase activity, hydrolyzing O-glycosyl compounds (GO function, +0.20) | glutathione transferase activity (GO function, -0.23); Ion transport protein (PF00520) (Pfam, -0.21); EC 2.5 transferases: transferring alkyl or aryl groups, other than methyl groups (EC, -0.17); glutathione peroxidase activity (GO function, -0.17) |
+| `protein_rrr_26` | high: Immunoglobulin V-set domain (PF07686); low: Collagen triple helix repeat (20 copies) (PF01391) | 0.48 | Immunoglobulin V-set domain (PF07686) (Pfam, +0.31); secreted (UniProt location, +0.23); single-pass type i membrane protein (UniProt location, +0.19); signaling receptor regulator activity (GO function, +0.19) | Collagen triple helix repeat (20 copies) (PF01391) (Pfam, -0.48); extracellular matrix structural constituent conferring tensile strength (GO function, -0.47); collagenous component of interstitial matrix (GO component, -0.35); extracellular matrix structural constituent (GO function, -0.27) |
+| `protein_rrr_27` | high: ABC transporter (PF00005); low: EC 7.2 translocases: catalysing the translocation of inorganic cations | 0.33 | ABC transporter (PF00005) (Pfam, +0.33); ABC transporter transmembrane region (PF00664) (Pfam, +0.30); Neurotransmitter-gated ion-channel ligand binding domain (PF02931) (Pfam, +0.23); extracellular ligand-gated monoatomic ion channel activity (GO function, +0.18) | EC 7.2 translocases: catalysing the translocation of inorganic cations (EC, -0.18); Reprolysin (M12B) family zinc metalloprotease (PF01421) (Pfam, -0.18); P-type ATPase actuator domain (PF00122) (Pfam, -0.17); metal ion transmembrane transporter activity (GO function, -0.17) |
+| `protein_rrr_28` | high: Ion transport protein (PF00520); low: macromolecular conformation isomerase activity | 0.27 | Ion transport protein (PF00520) (Pfam, +0.27); voltage-gated monoatomic cation channel activity (GO function, +0.24); potassium channel activity (GO function, +0.22); monoatomic cation channel activity (GO function, +0.19) | macromolecular conformation isomerase activity (GO function, -0.21); cytoskeletal motor activity (GO function, -0.20); Zinc finger, C2H2 type (PF00096) (Pfam, -0.18); Reprolysin (M12B) family zinc metalloprotease (PF01421) (Pfam, -0.16) |
+| `protein_rrr_29` | high: secondary active transmembrane transporter activity; low: G protein-coupled receptor activity | 0.34 | secondary active transmembrane transporter activity (GO function, +0.34); symporter activity (GO function, +0.26); Major Facilitator Superfamily (PF07690) (Pfam, +0.25); Sugar (and other) transporter (PF00083) (Pfam, +0.23) | G protein-coupled receptor activity (GO function, -0.29); transmembrane signaling receptor activity (GO function, -0.22); Olfactory receptor (PF13853) (Pfam, -0.21); Ion transport protein (PF00520) (Pfam, -0.20) |
+| `protein_rrr_30` | high: oxidoreductase activity, acting on the aldehyde or oxo group of donors, NAD or NADP as acceptor; low: vitamin B6 binding | 0.39 | oxidoreductase activity, acting on the aldehyde or oxo group of donors, NAD or NADP as acceptor (GO function, +0.18); EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors (EC, +0.16); short chain dehydrogenase (PF00106) (Pfam, +0.13); hydrolase activity, hydrolyzing O-glycosyl compounds (GO function, +0.12) | vitamin B6 binding (GO function, -0.39); transaminase activity (GO function, -0.30); vitamin binding (GO function, -0.26); Zinc finger, C2H2 type (PF00096) (Pfam, -0.17) |
+| `protein_rrr_31` | high: keratin filament; low: SNAP receptor activity | 0.20 | keratin filament (GO component, +0.20); polymeric cytoskeletal fiber (GO component, +0.20); intermediate filament cytoskeleton (GO component, +0.18); SPRY domain (PF00622) (Pfam, +0.16) | SNAP receptor activity (GO function, -0.17); RNA recognition motif (PF00076) (Pfam, -0.14); single-pass type i membrane protein (UniProt location, -0.14); Immunoglobulin domain (PF13927) (Pfam, -0.14) |
+| `protein_rrr_32` | high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: vitamin B6 binding | 0.22 | EC 1.3 oxidoreductases: acting on the ch-ch group of donors (EC, +0.22); Zinc finger, C2H2 type (PF00096) (Pfam, +0.18); KRAB box (PF01352) (Pfam, +0.15); flavin adenine dinucleotide binding (GO function, +0.15) | vitamin B6 binding (GO function, -0.19); chromatin (GO component, -0.15); transaminase activity (GO function, -0.14); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, -0.13) |
+| `protein_rrr_33` | high: Reprolysin (M12B) family zinc metalloprotease (PF01421); low: symporter activity | 0.31 | Reprolysin (M12B) family zinc metalloprotease (PF01421) (Pfam, +0.31); Thrombospondin type 1 domain (PF19030) (Pfam, +0.23); Disintegrin (PF00200) (Pfam, +0.23); Thrombospondin type 1 domain (PF00090) (Pfam, +0.22) | symporter activity (GO function, -0.18); EC 7.1 translocases: catalysing the translocation of hydrons (EC, -0.18); Major Facilitator Superfamily (PF07690) (Pfam, -0.16); secondary active transmembrane transporter activity (GO function, -0.15) |
+| `protein_rrr_34` | high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: peptidyl-prolyl cis-trans isomerase activity | 0.22 | EC 1.3 oxidoreductases: acting on the ch-ch group of donors (EC, +0.14); chromatin (GO component, +0.14); flavin adenine dinucleotide binding (GO function, +0.13); RNA recognition motif (PF00076) (Pfam, +0.12) | peptidyl-prolyl cis-trans isomerase activity (GO function, -0.22); Zinc finger, C2H2 type (PF00096) (Pfam, -0.20); SNAP receptor activity (GO function, -0.19); KRAB box (PF01352) (Pfam, -0.18) |
+| `protein_rrr_35` | high: Immunoglobulin V-set domain (PF07686); low: Reprolysin (M12B) family zinc metalloprotease (PF01421) | 0.23 | Immunoglobulin V-set domain (PF07686) (Pfam, +0.21); Collagen triple helix repeat (20 copies) (PF01391) (Pfam, +0.21); Immunoglobulin C1-set domain (PF07654) (Pfam, +0.20); extracellular matrix structural constituent conferring tensile strength (GO function, +0.19) | Reprolysin (M12B) family zinc metalloprotease (PF01421) (Pfam, -0.23); metalloendopeptidase activity (GO function, -0.18); Thrombospondin type 1 domain (PF19030) (Pfam, -0.17); Thrombospondin type 1 domain (PF00090) (Pfam, -0.17) |
+| `protein_rrr_36` | high: SNAP receptor activity; low: SPRY domain (PF00622) | 0.22 | SNAP receptor activity (GO function, +0.18); organelle subcompartment (GO component, +0.14); endoplasmic reticulum membrane (UniProt location, +0.13); chromatin (GO component, +0.13) | SPRY domain (PF00622) (Pfam, -0.22); B-box zinc finger (PF00643) (Pfam, -0.20); SPRY-associated domain (PF13765) (Pfam, -0.18); zinc finger of C3HC4-type, RING (PF15227) (Pfam, -0.17) |
+| `protein_rrr_37` | high: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048); low: Zinc finger, C2H2 type (PF00096) | 0.24 | Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, +0.21); chemokine receptor binding (GO function, +0.18); molecular function activator activity (GO function, +0.17); molecular function regulator activity (GO function, +0.17) | Zinc finger, C2H2 type (PF00096) (Pfam, -0.24); KRAB box (PF01352) (Pfam, -0.23); RNA recognition motif (PF00076) (Pfam, -0.19); RNA binding (GO function, -0.15) |
+| `protein_rrr_38` | high: transaminase activity; low: Mitochondrial carrier protein (PF00153) | 0.18 | transaminase activity (GO function, +0.16); vitamin B6 binding (GO function, +0.16); Zinc finger, C2H2 type (PF00096) (Pfam, +0.13); KRAB box (PF01352) (Pfam, +0.12) | Mitochondrial carrier protein (PF00153) (Pfam, -0.18); peptidyl-prolyl cis-trans isomerase activity (GO function, -0.18); hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds (GO function, -0.16); Immunoglobulin V-set domain (PF07686) (Pfam, -0.14) |
+| `protein_rrr_39` | high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) | 0.35 | 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, +0.35); Mitochondrial carrier protein (PF00153) (Pfam, +0.27); peptide receptor activity (GO function, +0.23); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, +0.21) | Olfactory receptor (PF13853) (Pfam, -0.29); Reprolysin (M12B) family zinc metalloprotease (PF01421) (Pfam, -0.13); KRAB box (PF01352) (Pfam, -0.12); EC 3.5 hydrolases: acting on carbon-nitrogen bonds, other than peptide bonds (EC, -0.11) |
+| `protein_rrr_40` | high: Immunoglobulin V-set domain (PF07686); low: Leucine rich repeat (PF13855) | 0.29 | Immunoglobulin V-set domain (PF07686) (Pfam, +0.29); antigen binding (GO function, +0.20); Immunoglobulin C1-set domain (PF07654) (Pfam, +0.20); immunoglobulin complex (GO component, +0.19) | Leucine rich repeat (PF13855) (Pfam, -0.25); Calcium-binding EGF domain (PF07645) (Pfam, -0.17); 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, -0.14); EGF-like domain (PF00008) (Pfam, -0.14) |
+| `protein_rrr_41` | high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: acyltransferase activity, transferring groups other than amino-acyl groups | 0.24 | 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, +0.24); SNAP receptor activity (GO function, +0.22); SPRY domain (PF00622) (Pfam, +0.20); Mitochondrial carrier protein (PF00153) (Pfam, +0.18) | acyltransferase activity, transferring groups other than amino-acyl groups (GO function, -0.15); Immunoglobulin V-set domain (PF07686) (Pfam, -0.14); acylglycerol O-acyltransferase activity (GO function, -0.11); EC 1.3 oxidoreductases: acting on the ch-ch group of donors (EC, -0.11) |
+| `protein_rrr_42` | high: Leucine rich repeat (PF13855); low: SNAP receptor activity | 0.25 | Leucine rich repeat (PF13855) (Pfam, +0.25); Mitochondrial carrier protein (PF00153) (Pfam, +0.17); EC 1.11 oxidoreductases: acting on a peroxide as acceptor (EC, +0.13); PRAME N-terminal domain (PF27091) (Pfam, +0.13) | SNAP receptor activity (GO function, -0.22); Trypsin (PF00089) (Pfam, -0.18); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, -0.17); serine-type endopeptidase activity (GO function, -0.13) |
+| `protein_rrr_43` | high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) | 0.37 | 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, +0.37); G protein-coupled peptide receptor activity (GO function, +0.20); Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, +0.19); chemokine receptor activity (GO function, +0.17) | Olfactory receptor (PF13853) (Pfam, -0.34); Calcium-binding EGF domain (PF07645) (Pfam, -0.12); odorant binding (GO function, -0.12); Actin (PF00022) (Pfam, -0.11) |
+| `protein_rrr_44` | high: Mitochondrial carrier protein (PF00153); low: Leucine rich repeat (PF13855) | 0.30 | Mitochondrial carrier protein (PF00153) (Pfam, +0.23); RNA recognition motif (PF00076) (Pfam, +0.21); mRNA binding (GO function, +0.17); Actin (PF00022) (Pfam, +0.14) | Leucine rich repeat (PF13855) (Pfam, -0.30); dioxygenase activity (GO function, -0.18); Leucine Rich Repeat (PF00560) (Pfam, -0.15); Leucine Rich repeat (PF13516) (Pfam, -0.15) |
+| `protein_rrr_45` | high: Olfactory receptor (PF13853); low: Trypsin (PF00089) | 0.26 | Olfactory receptor (PF13853) (Pfam, +0.26); Serpin (serine protease inhibitor) (PF00079) (Pfam, +0.23); serine-type endopeptidase inhibitor activity (GO function, +0.18); RNA recognition motif (PF00076) (Pfam, +0.17) | Trypsin (PF00089) (Pfam, -0.20); EC 1.6 oxidoreductases: acting on nadh or nadph (EC, -0.17); serine-type endopeptidase activity (GO function, -0.16); 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, -0.14) |
+| `protein_rrr_46` | high: Leucine rich repeat (PF13855); low: dioxygenase activity | 0.26 | Leucine rich repeat (PF13855) (Pfam, +0.26); Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, +0.18); hydro-lyase activity (GO function, +0.18); EC 4.2 lyases: carbon-oxygen lyases (EC, +0.17) | dioxygenase activity (GO function, -0.19); Immunoglobulin V-set domain (PF07686) (Pfam, -0.17); Receptor family ligand binding region (PF01094) (Pfam, -0.14); immunoglobulin complex (GO component, -0.12) |
+| `protein_rrr_47` | high: Tubulin/FtsZ family, GTPase domain (PF00091); low: Receptor family ligand binding region (PF01094) | 0.36 | Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, +0.36); 7 transmembrane receptor (rhodopsin family) (PF00001) (Pfam, +0.14); structural constituent of cytoskeleton (GO function, +0.13); intercellular bridge (GO component, +0.12) | Receptor family ligand binding region (PF01094) (Pfam, -0.19); cyclase activity (GO function, -0.18); phosphorus-oxygen lyase activity (GO function, -0.15); keratin filament (GO component, -0.15) |
+| `protein_rrr_48` | high: Tubulin/FtsZ family, GTPase domain (PF00091); low: structural constituent of ribosome | 0.24 | Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, +0.24); Mitochondrial carrier protein (PF00153) (Pfam, +0.22); Leucine rich repeat (PF13855) (Pfam, +0.19); olfactory receptor activity (GO function, +0.12) | structural constituent of ribosome (GO function, -0.21); large ribosomal subunit (GO component, -0.18); structural constituent of chromatin (GO function, -0.17); cytosolic large ribosomal subunit (GO component, -0.16) |
+| `protein_rrr_49` | high: Serpin (serine protease inhibitor) (PF00079); low: Trypsin (PF00089) | 0.45 | Serpin (serine protease inhibitor) (PF00079) (Pfam, +0.45); serine-type endopeptidase inhibitor activity (GO function, +0.33); endopeptidase inhibitor activity (GO function, +0.27); Ubiquitin carboxyl-terminal hydrolase (PF00443) (Pfam, +0.21) | Trypsin (PF00089) (Pfam, -0.15); serine-type endopeptidase activity (GO function, -0.14); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, -0.13); Leucine rich repeat (PF13855) (Pfam, -0.12) |
+| `protein_rrr_50` | high: Cyclin, N-terminal domain (PF00134); low: structural constituent of ribosome | 0.25 | Cyclin, N-terminal domain (PF00134) (Pfam, +0.25); cyclin-dependent protein kinase regulator activity (GO function, +0.21); cyclin-dependent protein kinase holoenzyme complex (GO component, +0.17); keratin filament (GO component, +0.16) | structural constituent of ribosome (GO function, -0.21); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, -0.20); structural constituent of chromatin (GO function, -0.18); large ribosomal subunit (GO component, -0.18) |
+| `protein_rrr_51` | high: Serpin (serine protease inhibitor) (PF00079); low: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) | 0.26 | Serpin (serine protease inhibitor) (PF00079) (Pfam, +0.25); Tubulin/FtsZ family, GTPase domain (PF00091) (Pfam, +0.22); serine-type endopeptidase inhibitor activity (GO function, +0.18); Hemopexin (PF00045) (Pfam, +0.16) | Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, -0.26); chemokine receptor binding (GO function, -0.21); cytoskeletal motor activity (GO function, -0.18); CCR chemokine receptor binding (GO function, -0.17) |
+| `protein_rrr_52` | high: Trypsin (PF00089); low: Ubiquitin carboxyl-terminal hydrolase (PF00443) | 0.28 | Trypsin (PF00089) (Pfam, +0.19); serine-type endopeptidase activity (GO function, +0.19); Cyclin, N-terminal domain (PF00134) (Pfam, +0.16); Serpin (serine protease inhibitor) (PF00079) (Pfam, +0.15) | Ubiquitin carboxyl-terminal hydrolase (PF00443) (Pfam, -0.28); deubiquitinase activity (GO function, -0.28); cysteine-type peptidase activity (GO function, -0.24); keratin filament (GO component, -0.21) |
+| `protein_rrr_53` | high: Mitochondrial carrier protein (PF00153); low: Serpin (serine protease inhibitor) (PF00079) | 0.30 | Mitochondrial carrier protein (PF00153) (Pfam, +0.19); cyclase activity (GO function, +0.18); phosphorus-oxygen lyase activity (GO function, +0.17); Ankyrin repeats (3 copies) (PF12796) (Pfam, +0.17) | Serpin (serine protease inhibitor) (PF00079) (Pfam, -0.30); serine-type endopeptidase inhibitor activity (GO function, -0.18); keratin filament (GO component, -0.15); endopeptidase inhibitor activity (GO function, -0.14) |
+| `protein_rrr_54` | high: keratin filament; low: Thioredoxin (PF00085) | 0.26 | keratin filament (GO component, +0.26); intermediate filament cytoskeleton (GO component, +0.22); structural constituent of skin epidermis (GO function, +0.17); Keratin, high sulfur B2 protein (PF13885) (Pfam, +0.17) | Thioredoxin (PF00085) (Pfam, -0.18); Actin (PF00022) (Pfam, -0.18); cytoskeletal motor activity (GO function, -0.16); Tetraspanin family (PF00335) (Pfam, -0.15) |
+| `protein_rrr_55` | high: U4/U6 snRNP; low: SNAP receptor activity | 0.24 | U4/U6 snRNP (GO component, +0.14); spliceosomal tri-snRNP complex (GO component, +0.13); C2 domain (PF00168) (Pfam, +0.12); EF-hand domain pair (PF13499) (Pfam, +0.12) | SNAP receptor activity (GO function, -0.24); Ankyrin repeats (3 copies) (PF12796) (Pfam, -0.21); Receptor family ligand binding region (PF01094) (Pfam, -0.14); Ankyrin repeat (PF00023) (Pfam, -0.13) |
+| `protein_rrr_56` | high: EF-hand domain pair (PF13499); low: Transforming growth factor beta like domain (PF00019) | 0.23 | EF-hand domain pair (PF13499) (Pfam, +0.17); calcium ion binding (GO function, +0.16); Immunoglobulin V-set domain (PF07686) (Pfam, +0.13); Rab-GTPase-TBC domain (PF00566) (Pfam, +0.11) | Transforming growth factor beta like domain (PF00019) (Pfam, -0.23); Mitochondrial carrier protein (PF00153) (Pfam, -0.23); keratin filament (GO component, -0.21); intermediate filament cytoskeleton (GO component, -0.18) |
+| `protein_rrr_57` | high: Lectin C-type domain (PF00059); low: Receptor family ligand binding region (PF01094) | 0.24 | Lectin C-type domain (PF00059) (Pfam, +0.16); Actin (PF00022) (Pfam, +0.13); Ankyrin repeats (3 copies) (PF12796) (Pfam, +0.13); Sugar (and other) transporter (PF00083) (Pfam, +0.12) | Receptor family ligand binding region (PF01094) (Pfam, -0.24); Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, -0.19); chemokine receptor binding (GO function, -0.15); dicarboxylic acid transmembrane transporter activity (GO function, -0.14) |
+| `protein_rrr_58` | high: PMP-22/EMP/MP20/Claudin family (PF00822); low: Trypsin (PF00089) | 0.25 | PMP-22/EMP/MP20/Claudin family (PF00822) (Pfam, +0.25); Tetraspanin family (PF00335) (Pfam, +0.16); Immunoglobulin V-set domain (PF07686) (Pfam, +0.16); EF-hand domain pair (PF13499) (Pfam, +0.16) | Trypsin (PF00089) (Pfam, -0.20); Fibronectin type III domain (PF00041) (Pfam, -0.16); serine-type endopeptidase activity (GO function, -0.15); Cyclin, N-terminal domain (PF00134) (Pfam, -0.15) |
+| `protein_rrr_59` | high: Serpin (serine protease inhibitor) (PF00079); low: Sugar (and other) transporter (PF00083) | 0.20 | Serpin (serine protease inhibitor) (PF00079) (Pfam, +0.18); Kinesin motor domain (PF00225) (Pfam, +0.13); polypeptide conformation or assembly isomerase activity (GO function, +0.12); serine-type endopeptidase inhibitor activity (GO function, +0.12) | Sugar (and other) transporter (PF00083) (Pfam, -0.20); EF-hand domain pair (PF13499) (Pfam, -0.18); Transforming growth factor beta like domain (PF00019) (Pfam, -0.15); Ankyrin repeats (3 copies) (PF12796) (Pfam, -0.13) |
+| `protein_rrr_60` | high: Ankyrin repeats (3 copies) (PF12796); low: MAGE homology domain (PF01454) | 0.27 | Ankyrin repeats (3 copies) (PF12796) (Pfam, +0.25); Ankyrin repeat (PF00023) (Pfam, +0.16); Actin (PF00022) (Pfam, +0.13); Ankyrin repeats (many copies) (PF13637) (Pfam, +0.12) | MAGE homology domain (PF01454) (Pfam, -0.27); Melanoma associated antigen family N terminal (PF12440) (Pfam, -0.24); Sema domain (PF01403) (Pfam, -0.21); semaphorin receptor binding (GO function, -0.19) |
+| `protein_rrr_61` | high: Ankyrin repeats (3 copies) (PF12796); low: EF-hand domain pair (PF13499) | 0.39 | Ankyrin repeats (3 copies) (PF12796) (Pfam, +0.39); Ankyrin repeat (PF00023) (Pfam, +0.26); Ankyrin repeats (many copies) (PF13637) (Pfam, +0.20); MAGE homology domain (PF01454) (Pfam, +0.17) | EF-hand domain pair (PF13499) (Pfam, -0.20); Transforming growth factor beta like domain (PF00019) (Pfam, -0.14); S-100/ICaBP type calcium binding domain (PF01023) (Pfam, -0.12); Double treble clef zinc finger, C4 type (PF00105) (Pfam, -0.11) |
+| `protein_rrr_62` | high: Actin (PF00022); low: Serpin (serine protease inhibitor) (PF00079) | 0.30 | Actin (PF00022) (Pfam, +0.30); MAGE homology domain (PF01454) (Pfam, +0.20); Melanoma associated antigen family N terminal (PF12440) (Pfam, +0.18); structural constituent of cytoskeleton (GO function, +0.14) | Serpin (serine protease inhibitor) (PF00079) (Pfam, -0.18); Transforming growth factor beta like domain (PF00019) (Pfam, -0.12); serine-type endopeptidase inhibitor activity (GO function, -0.11); glutamate receptor activity (GO function, -0.11) |
+| `protein_rrr_63` | high: Sugar (and other) transporter (PF00083); low: Immunoglobulin V-set domain (PF07686) | 0.22 | Sugar (and other) transporter (PF00083) (Pfam, +0.22); Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, +0.17); Fibronectin type III domain (PF00041) (Pfam, +0.17); MAGE homology domain (PF01454) (Pfam, +0.16) | Immunoglobulin V-set domain (PF07686) (Pfam, -0.22); antigen binding (GO function, -0.17); immunoglobulin complex (GO component, -0.15); Transforming growth factor beta like domain (PF00019) (Pfam, -0.14) |
+| `protein_rrr_64` | high: Ankyrin repeats (3 copies) (PF12796); low: Sugar (and other) transporter (PF00083) | 0.21 | Ankyrin repeats (3 copies) (PF12796) (Pfam, +0.21); Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (Pfam, +0.15); Lipocalin / cytosolic fatty-acid binding protein family (PF00061) (Pfam, +0.15); U4/U6 snRNP (GO component, +0.15) | Sugar (and other) transporter (PF00083) (Pfam, -0.14); PMP-22/EMP/MP20/Claudin family (PF00822) (Pfam, -0.12); RNA recognition motif (PF00076) (Pfam, -0.12); Leucine rich repeat (PF13855) (Pfam, -0.12) |
 
 ## Structural features before the descriptors
 
-The encoders read the descriptors after the structural features of ExperimentData.structural_node_features() (experiments/run_main_model.py, node_feature_matrix). The code builds these by position, without names; the names below are given here for reading, in order, for `data/processed/graph_full_neuronal`:
+The encoders read the descriptors after the structural features of ExperimentData.structural_node_features() (experiments/run_main_model.py, node_feature_matrix). The code builds these by position, without names; the names below are given here for reading, in order:
 
 1. `type_gene`
 2. `type_membrane_potential`
@@ -203,14 +269,10 @@ experiments/run_main_model.py --drop-descriptor-blocks leaves out whole blocks, 
 - `protein`: 65 columns
 - `gene_brain`: 27 columns
 
-## Placement in every descriptor table
+## Placement
 
 Cells give how many of a block's columns are non-zero on at least one node of the type (blank: none).
 
-### `data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet`
-
-Used by: the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py). Graph: `data/processed/graph_full_neuronal`. 137 columns. SHA-256 `14033cb35ad97098`.
-
 | node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
 |---|---|---|---|---|---|---|
 | gene | 12810 |  |  |  | all | all |
@@ -218,111 +280,10 @@ Used by: the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experime
 | metabolite | 8580 | all |  |  |  |  |
 | protein_entity | 1681 |  |  |  |  |  |
 | reaction | 13793 |  | all | all |  |  |
-
-### `data/processed/node_descriptors/full_neuronal_descriptors_brain_expression_resolved.parquet`
-
-Used by: merged full graph with the protein block resolved per entry (twin of the full split). Graph: `data/processed/graph_full_neuronal`. 137 columns. SHA-256 `9fee213fb2c0716e`.
-
-| node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
-|---|---|---|---|---|---|---|
-| gene | 12810 |  |  |  | all | all |
-| membrane_potential | 1 |  |  |  |  |  |
-| metabolite | 8580 | all |  |  |  |  |
-| protein_entity | 1681 |  |  |  |  |  |
-| reaction | 13793 |  | all | all |  |  |
-
-### `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet`
-
-Used by: full graph with genes and proteins split. Graph: `data/processed/graph_full_neuronal_split`. 137 columns. SHA-256 `27ed5e89ccb369d9`.
-
-| node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
-|---|---|---|---|---|---|---|
-| gene | 12810 |  |  |  |  | all |
-| membrane_potential | 1 |  |  |  |  |  |
-| metabolite | 8580 | all |  |  |  |  |
-| protein | 12709 |  |  |  | all |  |
-| protein_entity | 1681 |  |  |  |  |  |
-| reaction | 13793 |  | all | all |  |  |
-
-### `data/processed/node_descriptors/slice_descriptors_brain_expression.parquet`
-
-Used by: slice. Graph: `data/processed/graph`. 137 columns. SHA-256 `87b2f34ad6bca3f3`.
-
-| node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
-|---|---|---|---|---|---|---|
-| gene | 2848 |  |  |  | all | all |
-| metabolite | 8460 | all |  |  |  |  |
-| reaction | 12877 |  | all | all |  |  |
-
-### `data/processed/node_descriptors/slice_descriptors_brain_expression_resolved.parquet`
-
-Used by: slice with the protein block resolved per entry (twin of the split slice). Graph: `data/processed/graph`. 137 columns. SHA-256 `e35af6f2b98b5489`.
-
-| node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
-|---|---|---|---|---|---|---|
-| gene | 2848 |  |  |  | all | all |
-| metabolite | 8460 | all |  |  |  |  |
-| reaction | 12877 |  | all | all |  |  |
-
-### `data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet`
-
-Used by: slice with genes and proteins split. Graph: `data/processed/graph_split`. 137 columns. SHA-256 `fef2a1b250760a87`.
-
-| node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
-|---|---|---|---|---|---|---|
-| gene | 2848 |  |  |  |  | all |
-| metabolite | 8460 | all |  |  |  |  |
-| protein | 2837 |  |  |  | all |  |
-| reaction | 12877 |  | all | all |  |  |
-
-### `data/processed/graph/node_descriptors.parquet`
-
-Used by: slice configurations without brain expression. Graph: `data/processed/graph`. 83 columns. SHA-256 `5390d78f662d1387`.
-
-| node type | nodes | metabolite | reaction_ec | protein |
-|---|---|---|---|---|
-| gene | 2848 |  |  | all |
-| metabolite | 8460 | all |  |  |
-| reaction | 12877 |  | all |  |
-
-### `data/processed/graph_full_neuronal/node_descriptors.parquet`
-
-Used by: full graph without brain expression. Graph: `data/processed/graph_full_neuronal`. 83 columns. SHA-256 `60afb642110187a7`.
-
-| node type | nodes | metabolite | reaction_ec | protein |
-|---|---|---|---|---|
-| gene | 12810 |  |  | all |
-| membrane_potential | 1 |  |  |  |
-| metabolite | 8580 | all |  |  |
-| protein_entity | 1681 |  |  |  |
-| reaction | 13793 |  | all |  |
-
-### `data/processed/graph_split/node_descriptors.parquet`
-
-Used by: split slice without brain expression. Graph: `data/processed/graph_split`. 83 columns. SHA-256 `1339881da3cb767e`.
-
-| node type | nodes | metabolite | reaction_ec | protein |
-|---|---|---|---|---|
-| gene | 2848 |  |  |  |
-| metabolite | 8460 | all |  |  |
-| protein | 2837 |  |  | all |
-| reaction | 12877 |  | all |  |
-
-### `data/processed/graph_full_neuronal_split/node_descriptors.parquet`
-
-Used by: full split without brain expression. Graph: `data/processed/graph_full_neuronal_split`. 83 columns. SHA-256 `fd34a8c4d7ba38d5`.
-
-| node type | nodes | metabolite | reaction_ec | protein |
-|---|---|---|---|---|
-| gene | 12810 |  |  |  |
-| membrane_potential | 1 |  |  |  |
-| metabolite | 8580 | all |  |  |
-| protein | 12709 |  |  | all |
-| protein_entity | 1681 |  |  |  |
-| reaction | 13793 |  | all |  |
 
 ## Changes
 
 | version | date | change |
 |---|---|---|
 | 1 | 2026-10-08 | First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables. |
+| 2 | 2026-10-08 | Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); a name for each of the 64 protein components from the annotations it correlates with most. |
