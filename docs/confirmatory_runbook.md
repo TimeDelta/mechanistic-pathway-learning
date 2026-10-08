@@ -16,7 +16,8 @@ is the one tested: two models, the noisy-OR head of each encoder (the user dropp
 0. Module fix (the user, 8 October 2026: "Fixing the modules first makes sense"): the slice runs of
    runs/module_fix/module_fix_slice.sh (job module_fix_slice), read with experiments/module_health.py under the rule of
    docs/module_health.md, which was written before the runs. When it ends, report the reading for each encoder to the
-   user. Apply nothing to a confirmatory_v2 configuration before the user decides. Further candidates, if needed, go
+   user. The leak start is applied (the user, 8 October 2026); apply nothing more to a confirmatory_v2 configuration
+   before the user decides. Further candidates, if needed, go
    through the same rule. When the user has decided, write runs/full/v2_development.go, move
    runs/jobs/paused/v2_development.job back to runs/jobs/ and resume it (step 1c).
 1. confirmatory_pilots (first family, registered 8 October 2026): fold 0, seed 0 development pilots of the four confirmatory

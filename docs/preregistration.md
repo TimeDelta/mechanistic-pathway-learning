@@ -814,7 +814,11 @@ modules are fixed first.
   docs/module_health.md, written before its runs.
 - The descriptor-treatment readings above come from slice arms with the sigmoid head (b3_*), so they bear on the
   noisy-OR head only indirectly.
-- Not decided: the descriptor treatments (the restricted picks above); --start-at-weighted-optimum; where the descriptors
+- Leak start (the user, the same day: "Ya. Start at the optimum."). The second family's noisy-OR configurations and
+  their no-descriptor ablations carry --start-at-weighted-optimum, so each leak starts at its symptom's loss-optimal
+  constant and not at the raw base rate (docs/best_epoch_zero.md). The slice runs of docs/module_health.md now say
+  whether the leak start is enough or more of the fix is needed. The v2 runs still wait for that reading.
+- Not decided: the descriptor treatments (the restricted picks above); where the descriptors
   sit (the user: "The genes shouldn't need descriptors but the proteins should"; in graph_full_neuronal a gene node
   stands for the gene and its product, and 11,723 of the 12,810 gene nodes take part in a protein-level relation, while
   the 1,681 protein_entity nodes are Reactome complexes and sets); the confirmatory pathway test.
