@@ -654,8 +654,10 @@ def main() -> None:
         if not arguments.score_lockbox:
             data = restrict_to_perturbations(data, ~in_lockbox)
             in_lockbox = None
+    permutation_source_rows_sha256 = None
     if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
         source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=arguments.seed, partition=in_lockbox)
+        permutation_source_rows_sha256 = array_sha256(source_row)  # experiments/score_confirmatory.py checks it against its own draw
         data.outcomes, data.weights = data.outcomes[source_row], data.weights[source_row]
         if data.frequencies is not None:
             data.frequencies = data.frequencies[source_row]
@@ -1036,6 +1038,10 @@ def main() -> None:
         "test_perturbation_ids": [data.perturbation_ids[i] for i in test_indices],
         "time_split": time_split_results,
         "code_provenance": state["code_provenance"],
+        "graph_files_sha256": {name: file_sha256(Path(arguments.graph_dir) / f"{name}.parquet") for name in ("nodes", "edges")},
+        "evidence_records_sha256": file_sha256(Path(arguments.evidence_dir) / "evidence_records.parquet"),
+        "permutation_source_rows_sha256": permutation_source_rows_sha256,
+        "configuration_fingerprint": state.get("configuration_fingerprint"),
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
         "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),

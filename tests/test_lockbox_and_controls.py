@@ -185,6 +185,32 @@ def test_scorer_refuses_malformed_predictions_and_other_rewiring(tmp_path) -> No
         assert reason == expected_reason, name
 
 
+def test_scorer_refuses_runs_with_other_arguments_inputs_or_permutation(tmp_path) -> None:
+    from score_confirmatory import expected_run_arguments, read_model_run
+    lockbox_ids = ["P1", "P2"]
+    expected = expected_run_arguments("confirmatory_linear_response_sigmoid", 3, "disease_cluster_and_targets", Path("configs/lockbox_v1.json"))
+    assert expected["seed"] == 3 and expected["score_lockbox"] is True and expected["keep_large_groups_in_training"] is True
+    assert expected["encoder"] == "linear_response" and "run_dir" not in expected and "permute_labels" not in expected
+    hashes = {"graph_files_sha256": {"nodes": "n", "edges": "e"}, "evidence_records_sha256": "v", "node_descriptors_sha256": "d", "cell_class_weights_sha256": "c"}
+    base = {"test_perturbation_ids": lockbox_ids, "lockbox": {"sha256": "lock"}, "label_selection_sha256": "selection", "labels_permuted": False, "rewiring": None,
+            "refit": {"epochs": 3}, "arguments": dict(expected), **hashes}
+    cases = {"as_configured": ({}, "real", "ok"),
+             "other_learning_rate": ({"arguments": {**expected, "learning_rate": 0.01}}, "real", "trained with other arguments than its configuration: learning_rate 0.01 (expected 0.002)"),
+             "argument_not_recorded": ({"arguments": {key: value for key, value in expected.items() if key != "bce_in_log_space"}}, "real", "ok"),
+             "other_descriptors": ({"node_descriptors_sha256": "x"}, "real", "trained on other input files than those scored (node_descriptors_sha256)"),
+             "other_graph": ({"graph_files_sha256": {"nodes": "n", "edges": "x"}}, "real", "trained on other input files than those scored (graph_files_sha256)"),
+             "same_permutation": ({"labels_permuted": True, "permutation_source_rows_sha256": "p"}, "permuted", "ok"),
+             "other_permutation": ({"labels_permuted": True, "permutation_source_rows_sha256": "q"}, "permuted", "its label permutation differs from the one the scorer draws for its seed")}
+    for name, (extra, variant, expected_reason) in cases.items():
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "DONE").write_text("done\n")
+        (directory / "results.json").write_text(json.dumps({**base, **extra}))
+        np.save(directory / "test_predictions.npy", np.zeros((2, 3)))
+        _, reason = read_model_run(directory, lockbox_ids, "lock", "selection", variant, expected_arguments=expected, input_hashes=hashes, permutation_sha256="p")
+        assert reason == expected_reason, name
+
+
 def test_rewiring_keeps_an_undirected_relation_symmetric_and_every_degree() -> None:
     from collections import Counter
 

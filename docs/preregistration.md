@@ -449,7 +449,12 @@ day). Each is a defect against text already in this specification, not a change 
   rewiring used another number of swaps per edge than 50; before, a NaN score ranked as the lowest. If a run is missing
   or refused it writes nothing, so a failed run can be resumed without spending the single scoring
   (--allow-incomplete scores with that model not confirmed, only on the user's decision). The scoring record holds the
-  git status beside the commit.
+  git status beside the commit. The scorer also refuses a run whose recorded trainer arguments differ from those its
+  configuration in run_main_model_batch.py gives (the resume controls and the variant's own arguments aside), whose
+  graph, evidence, descriptor or cell-class file hashes differ from the files being scored, or (permuted variant) whose
+  permutation differs from the scorer's draw for that seed. The trainer now records the graph and evidence file hashes
+  and a digest of its permutation in results.json. Before, only the baselines' permutation was checked, and nothing
+  tied a run to its configuration or to the graph and evidence it read.
 - Per-symptom AUPRC is undefined without a positive: per_symptom_auprc returns NaN there, where scikit-learn 1.9
   returns 0, so the per-symptom bootstrap intervals (secondary readings) leave such resamples out instead of scoring
   them 0. The confirmatory scorer computes its own AUPRC, which already left them out.

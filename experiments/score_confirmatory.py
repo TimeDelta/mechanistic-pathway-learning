@@ -4,8 +4,10 @@ Inputs, all trained on the development set and scored on configs/lockbox_v1.json
 - the four confirmatory models (run_main_model_batch.py --lockbox ... --score-lockbox), each with five seeds and, per
   seed, a run on the real labels (lockbox_seed<k>), one on labels permuted within degree strata (lockbox_seed<k>_permuted)
   and one on a degree-preserving rewiring of the graph (lockbox_seed<k>_rewired); a run counts only if it was refitted
-  after early stopping with the large leakage groups in training (amendments of 8 October 2026) and its predictions are
-  finite, one row per lockbox perturbation and one column per symptom;
+  after early stopping with the large leakage groups in training (amendments of 8 October 2026), its predictions are
+  finite, one row per lockbox perturbation and one column per symptom, its recorded arguments are those of its
+  configuration, its graph, evidence, descriptor and cell-class files are the ones scored, and a permuted run used the
+  permutation this script draws for its seed;
 - the baselines of run_baselines.py --lockbox ... --score-lockbox --seed <k> for the same seeds (the seed sets the label
   permutation, which the trainer and the baselines draw identically, and the TransE initialisation).
 
@@ -53,6 +55,8 @@ import numpy as np
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox
 from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import degree_strata, rank_normalise_within_groups
+from run_main_model import RESUME_CONTROL_ARGUMENTS, array_sha256, build_argument_parser
+from run_main_model_batch import CONFIGURATIONS
 
 CONFIRMATORY_MODELS = ("confirmatory_message_passing_noisy_or", "confirmatory_message_passing_sigmoid",
                        "confirmatory_linear_response_noisy_or", "confirmatory_linear_response_sigmoid")
@@ -108,17 +112,39 @@ def one_sided_p(resampled_differences: np.ndarray) -> float:
     return float((1 + np.sum(finite <= 0)) / (finite.size + 1)) if finite.size else 1.0
 
 
-def file_sha256(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def file_sha256(path) -> str | None:
+    """SHA-256 of a file; None for no path (a model without descriptors or cell-class weights)."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest() if path else None
+
+
+# set by the variant (checked separately) or checked by content (the lockbox's hash)
+VARIANT_AND_CONTENT_ARGUMENTS = {"permute_labels", "rewire_swaps_per_edge", "keep_reciprocated_relations_symmetric", "lockbox"}
+
+
+def recorded_arguments(namespace: argparse.Namespace) -> dict:
+    """Arguments in the form run_main_model.py writes them into results.json."""
+    return {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(namespace).items()}
+
+
+def expected_run_arguments(model: str, seed: int, group_by: str, lockbox: Path) -> dict:
+    """The trainer arguments of a lockbox run of model as runs/full/confirmatory_lockbox.sh launches it
+    (run_main_model_batch.py --configuration model --score-lockbox), without the resume controls and the variant."""
+    parsed = build_argument_parser().parse_args(["--group-by", group_by, *CONFIGURATIONS[model], "--lockbox", str(lockbox), "--score-lockbox", "--seed", str(seed)])
+    return {key: value for key, value in recorded_arguments(parsed).items() if key not in RESUME_CONTROL_ARGUMENTS | VARIANT_AND_CONTENT_ARGUMENTS}
 
 
 def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str,
-                   require_refit: bool = True, symptoms: list[str] | None = None, rewiring_swaps_per_edge: int | None = None) -> tuple[np.ndarray | None, str]:
+                   require_refit: bool = True, symptoms: list[str] | None = None, rewiring_swaps_per_edge: int | None = None,
+                   expected_arguments: dict | None = None, input_hashes: dict | None = None,
+                   permutation_sha256: str | None = None) -> tuple[np.ndarray | None, str]:
     """Lockbox predictions of one finished run, or None with the reason it cannot be used. With require_refit (the
     amendments of 8 October 2026) a run counts only if it kept the large leakage groups in training and was refitted on
     its training and validation perturbations, so it fitted on the same perturbations as the baselines. A run whose
     predictions are not finite, or not one row per lockbox perturbation and one column per symptom of the data, or
-    (rewired variant) whose rewiring used another number of swaps per edge, is refused rather than scored."""
+    (rewired variant) whose rewiring used another number of swaps per edge, is refused rather than scored. So is a run
+    whose recorded arguments differ from expected_arguments (its configuration), whose recorded input hashes differ
+    from input_hashes (the files scored now), or (permuted variant) whose label permutation is not the one the scorer
+    draws for its seed."""
     if not (split_directory / "DONE").exists() or not (split_directory / "results.json").exists():
         return None, "not finished"
     results = json.loads((split_directory / "results.json").read_text())
@@ -136,6 +162,17 @@ def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256
         return None, "trained on another symptom list"
     if variant == "rewired" and rewiring_swaps_per_edge is not None and (results.get("rewiring") or {}).get("swaps_per_edge") != rewiring_swaps_per_edge:
         return None, f"its rewiring did not use {rewiring_swaps_per_edge} swaps per edge"
+    if expected_arguments is not None:
+        recorded = results.get("arguments") or {}
+        differing = sorted(key for key, value in expected_arguments.items() if recorded.get(key, value) != value)
+        if differing:
+            return None, "trained with other arguments than its configuration: " + ", ".join(f"{key} {recorded[key]!r} (expected {expected_arguments[key]!r})" for key in differing)
+    if input_hashes is not None:
+        for key, value in input_hashes.items():
+            if results.get(key) != value:
+                return None, f"trained on other input files than those scored ({key})"
+    if variant == "permuted" and permutation_sha256 is not None and results.get("permutation_source_rows_sha256") != permutation_sha256:
+        return None, "its label permutation differs from the one the scorer draws for its seed"
     predictions = np.load(split_directory / "test_predictions.npy")
     if predictions.shape != (len(lockbox_ids), len(symptoms) if symptoms is not None else predictions.shape[1]):
         return None, f"predictions of shape {predictions.shape}"
@@ -197,8 +234,10 @@ def main() -> None:
     outcomes, mask = data.outcomes[rows], label_mask[rows]
 
     labellings = {"real": {seed: (outcomes, mask) for seed in arguments.seeds}, "permuted": {}}
+    permutation_sha256_by_seed: dict[int, str] = {}
     for seed in arguments.seeds:
         source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=seed, partition=in_lockbox)
+        permutation_sha256_by_seed[seed] = array_sha256(source_row)
         baseline_source = arguments.baseline_root / f"seed{seed}" / "permutation_source_rows.npy"
         if not baseline_source.exists() or not np.array_equal(np.load(baseline_source), source_row):
             raise SystemExit(f"{baseline_source} is missing or holds another permutation than seed {seed} draws")
@@ -216,16 +255,23 @@ def main() -> None:
 
     model_predictions: dict[str, dict[str, dict[int, np.ndarray]]] = {}
     missing_runs: dict[str, list[str]] = {}
+    graph_and_evidence_hashes = {"graph_files_sha256": {name: file_sha256(arguments.graph_dir / f"{name}.parquet") for name in ("nodes", "edges")},
+                                 "evidence_records_sha256": file_sha256(arguments.evidence_dir / "evidence_records.parquet")}
     for model in arguments.models:
         model_directory = arguments.run_root / f"{model}_{arguments.group_by}_confirmatory"
         model_predictions[model] = {variant: {} for variant in VARIANT_SUFFIXES}
         missing_runs[model] = []
+        configuration_arguments = expected_run_arguments(model, 0, arguments.group_by, arguments.lockbox)
+        input_hashes = {**graph_and_evidence_hashes, "node_descriptors_sha256": file_sha256(configuration_arguments.get("node_descriptors")),
+                        "cell_class_weights_sha256": file_sha256(configuration_arguments.get("cell_class_weights"))}
         for variant, suffix in VARIANT_SUFFIXES.items():
             for seed in arguments.seeds:
                 split_directory = model_directory / f"lockbox_seed{seed}{suffix}"
                 predictions, reason = read_model_run(split_directory, lockbox_ids, lockbox_sha256, selection_sha256, variant,
                                                      require_refit=not arguments.allow_runs_without_refit, symptoms=data.symptoms,
-                                                     rewiring_swaps_per_edge=arguments.rewiring_swaps_per_edge)
+                                                     rewiring_swaps_per_edge=arguments.rewiring_swaps_per_edge,
+                                                     expected_arguments=expected_run_arguments(model, seed, arguments.group_by, arguments.lockbox),
+                                                     input_hashes=input_hashes, permutation_sha256=permutation_sha256_by_seed.get(seed))
                 if predictions is None:
                     missing_runs[model].append(f"{split_directory}: {reason}")
                 else:
