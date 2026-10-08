@@ -22,17 +22,26 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    ```
 
    and report the descriptor rule of the amendment of 8 October: for each encoder, the mean of its six differences (macro
-   and micro AUPRC; per fold, pooled and within degree strata). Do not edit a configuration on it: the user is deciding
-   how the descriptors enter (8 October), and acts on the rule only when they confirm it. On their confirmation, below zero: remove `"--node-descriptors",
-   FULL_GRAPH_NODE_PROPERTIES` from that encoder's two confirmatory configurations in experiments/run_main_model_batch.py,
-   move their two development pilot directories to runs/full/superseded_pilots/ (the trainer would otherwise skip them on
-   their DONE markers), and register
-   `bash scripts/resume_jobs.sh --register confirmatory_repilots "bash runs/full/confirmatory_repilots.sh <configuration> <configuration>" runs/full/confirmatory_repilots.done runs/full/confirmatory_repilots.failed "development pilots of the confirmatory configurations the descriptor rule changed"`.
-   Zero or above: no change. Either way, record the six differences, their means and the outcome under the amendment in
-   docs/preregistration.md, add a row to docs/research_summary.md, commit docs/descriptor_rule.md and push.
+   and micro AUPRC; per fold, pooled and within degree strata). Done on 8 October (linear response +0.002, message passing
+   -0.018 against a b3_typed_nodes that predates the GTEx structural columns). The rule's drop branch is withdrawn (user,
+   8 October: "I really don't want to drop them"; amendment on how the node descriptors enter), so no configuration
+   changes on it.
+2b. descriptor_treatments_message_passing and descriptor_treatments_linear_response (slice, registered 8 October 2026):
+   b3_typed_nodes retrained under the current code, then the seed_masked and zero_init_slow arms of both encoders, five
+   folds each; the message-passing job then writes docs/graph_reliance.md, docs/descriptor_rule.md (again, against the
+   retrained b3_typed_nodes) and docs/descriptor_treatments.md (runs/encoder/descriptor_treatments_summary.sh). When it
+   ends, report the treatment rule of that amendment for each encoder: each arm's graph reliance, the mean of its six
+   differences against the plain arm, and which treatment the rule picks. Do not edit a configuration on it before the
+   user confirms. On their confirmation, for an encoder whose treatment changes: add `"--descriptor-treatment",
+   "<treatment>"` (and `"--descriptor-learning-rate", "0.0002"` for zero_init_slow) to that encoder's two confirmatory
+   configurations in experiments/run_main_model_batch.py, move their two development pilot directories to
+   runs/full/superseded_pilots/ (the trainer would otherwise skip them on their DONE markers), and register
+   `bash scripts/resume_jobs.sh --register confirmatory_repilots "bash runs/full/confirmatory_repilots.sh <configuration> <configuration>" runs/full/confirmatory_repilots.done runs/full/confirmatory_repilots.failed "development pilots of the confirmatory configurations the treatment rule changed"`.
+   Either way, record the readings and the outcome under the amendment in docs/preregistration.md, add a row to
+   docs/research_summary.md, commit the three documents and push.
 3. Register confirmatory_lockbox only when the user has given the go-ahead in their own message (8 October 2026: "Don't
-   finalize the lockbox until I've given the go ahead"), step 1 ended with all four pilots trained, step 2 has been
-   applied and any re-pilots of step 2 trained. A check-in, a document or a job marker is not the go-ahead:
+   finalize the lockbox until I've given the go ahead"), step 1 ended with all four pilots trained, step 2b has been
+   reported, the user has confirmed its outcome, and any re-pilots of step 2b trained. A check-in, a document or a job marker is not the go-ahead:
    `bash scripts/resume_jobs.sh --register confirmatory_lockbox "bash runs/full/confirmatory_lockbox.sh" runs/full/confirmatory_lockbox.done runs/full/confirmatory_lockbox.failed "the 60 confirmatory lockbox runs, the lockbox baselines and the one-time scoring"`.
    If a pilot failed to train, do not register it; report to the user, because an amendment needs a dated entry in the
    specification before the first lockbox run.

@@ -238,6 +238,59 @@ difference and it would decide H1 (a projection, not a measurement). The within-
 baseline remain the degree control. experiments/score_confirmatory.py implements it. The lockbox runs start only on the
 user's go-ahead.
 
+Amendment, 8 October 2026, before any lockbox run and before the slice runs it names had started: how the node
+descriptors enter. The user keeps the descriptors in both encoders ("I really don't want to drop them") and asked how to
+stop them overwhelming the graph, so the drop branch of the descriptor rule above is withdrawn: neither encoder's
+confirmatory configurations drop --node-descriptors. The rule's readings are still reported (docs/descriptor_rule.md).
+On 8 October they were: linear response, mean of the six differences +0.002 (macro per fold -0.003, pooled +0.006,
+within strata +0.007; micro -0.004, -0.001, +0.007); message passing -0.018 (macro -0.022, +0.002, -0.007; micro -0.040
+[-0.057, -0.022], -0.033 [-0.052, -0.012], -0.006). The message-passing reference, b3_typed_nodes, was trained before the
+structural node features gained the two GTEx brain expression columns (commit cb5cf70, 3 October; 16 structural columns
+against 18), so that comparison, and the message-passing readings of the descriptor amendment above, also change the
+structural features. b3_typed_nodes is retrained under the current code (runs/encoder) and the message-passing readings
+are reported again.
+
+Why a treatment: scored on a degree-preserving rewiring of its graph at test time (experiments/evaluate_on_rewired_graph.py,
+50 attempted swaps per edge, seed 0, the trained weights unchanged), the linear-response encoder without descriptors
+(b3_linear_response_cofactors) loses 0.026 ± 0.019 macro AUPRC over five folds and with the brain-expression descriptors
+0.001 ± 0.010 (micro 0.004 ± 0.019 and -0.002 ± 0.005), at about the same AUPRC on the real graph; the descriptors-only and local-structural controls lose 0.000, as
+a model without edges must. The descriptors replace what the edges gave instead of adding to it. In message passing with
+descriptors the best validation epoch is 2 to 5 on the slice and 0 in the full-graph development pilot, and at the best
+epoch the descriptor weights are at their initial scale (root mean square 0.049 against 0.046 for the initial uniform
+draw), so the descriptors enter as a fixed random projection that tells the nodes apart.
+
+Treatments (mechanistic_pathway_learning/models/descriptor_treatments.py, --descriptor-treatment): seed_masked, under
+which each perturbation's perturbed nodes read their structural columns only, in the message-passing base state (in the
+perturbed pass and in that perturbation's own unperturbed reference) and in the linear-response output gate, while every
+other node keeps its descriptors; and zero_init_slow, under which the descriptor columns get their own linear map,
+initialised at zero and trained at 0.0002, a tenth of the main learning rate. Adam moves a parameter by about one
+learning rate per step, so on the slice (20 steps per epoch) a descriptor weight moves at most about 0.02 in five epochs;
+a weight penalty was not used because under Adam the step does not scale with the gradient (Loshchilov and Hutter, ICLR
+2019: L2 regularization and weight decay "are equivalent for standard stochastic gradient descent (when rescaled by the
+learning rate), but as we demonstrate this is not the case for adaptive gradient algorithms, such as Adam") and a
+penalty acts through the optimum, which early stopping does not reach. With plain (the default) the encoders are
+unchanged: the same parameters, random draws and outputs, bit for bit, as before the treatments existed.
+
+Slice arms (runs/encoder, five disease-cluster folds each): b3_typed_nodes_descriptors_brain_seed_masked,
+b3_typed_nodes_descriptors_brain_zero_init_slow, b3_linear_response_cofactors_descriptors_brain_seed_masked and
+b3_linear_response_cofactors_descriptors_brain_zero_init_slow, each one change from its *_descriptors_brain arm (the
+plain arm). Readings per arm: graph reliance, the mean over folds of the macro and micro AUPRC lost on the rewired graph,
+averaged over the two (docs/graph_reliance.md); and the six differences of experiments/compare_twin_runs.py against the
+plain arm (docs/descriptor_treatments.md). Rule, per encoder: a treatment qualifies if its graph reliance is larger than
+the plain arm's and the mean of its six differences against the plain arm is at least -0.01. The qualifying treatment
+with the larger graph reliance replaces plain in that encoder's two confirmatory configurations; if none qualifies,
+plain stays. Point estimates, as in the descriptor rule, because the slice does not resolve differences of this size.
+The margin of -0.01 is below the slice's resolution on purpose: the treatments exist to move the work from the
+descriptors to the graph, which the user asked for, and the rule rejects only a treatment whose loss is large enough to
+show. As with the descriptor rule, the outcome is reported and applied only on the user's confirmation
+(docs/confirmatory_runbook.md, step 2); a change means new development pilots of the changed configurations before the
+first lockbox run. Cost: seed_masked propagates a reference per perturbation, so a message-passing step takes about 2.4
+times as long (3.8 against 1.55 seconds on the slice), and so would the 30 message-passing lockbox runs; in the
+linear-response encoder it costs one more gate per perturbation. Limitations: test-time rewiring measures how much a
+trained model depends on its edges, not whether the real edges beat degree-matched ones (the retrained rewiring control
+of H2 asks that); one rewiring seed; the slice is the metabolic graph only; and under seed_masked a perturbation's
+neighbours still carry descriptors that describe it indirectly (a gene's reactions carry its EC numbers).
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

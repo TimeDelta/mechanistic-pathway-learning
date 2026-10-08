@@ -70,6 +70,7 @@ from mechanistic_pathway_learning.models.linear_response_encoder import (
     MIXTURE_WEIGHTINGS,
     NORMALISATIONS,
 )
+from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
 from mechanistic_pathway_learning.models.soft_constraint_losses import evidence_weighted_binary_cross_entropy
@@ -150,6 +151,25 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
     return np.concatenate([structural, descriptors.loc[data.node_ids].to_numpy(dtype=np.float32)], axis=1)
 
 
+def descriptor_treatment_inputs(data, arguments) -> dict:
+    """The encoder keywords of --descriptor-treatment: the treatment and the number of descriptor columns at the end of
+    node_feature_matrix."""
+    treatment = getattr(arguments, "descriptor_treatment", "plain")
+    if treatment == "plain":
+        return {}
+    if not getattr(arguments, "node_descriptors", None):
+        raise ValueError(f"--descriptor-treatment {treatment} needs --node-descriptors")
+    if arguments.encoder not in ("message_passing", "linear_response"):
+        raise ValueError(f"--descriptor-treatment {treatment} is defined for the message passing and linear-response encoders")
+    if treatment == "zero_init_slow" and not getattr(arguments, "descriptor_learning_rate", 0.0):
+        raise ValueError("--descriptor-treatment zero_init_slow needs --descriptor-learning-rate")
+    if treatment != "zero_init_slow" and getattr(arguments, "descriptor_learning_rate", 0.0):
+        raise ValueError("--descriptor-learning-rate is defined for --descriptor-treatment zero_init_slow only")
+    num_structural_columns = data.structural_node_features().shape[1]
+    num_descriptor_columns = node_feature_matrix(data, arguments).shape[1] - num_structural_columns
+    return {"descriptor_treatment": treatment, "num_descriptor_columns": num_descriptor_columns}
+
+
 def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
     """Per-node class weights [N, K] of --cell-class-weights (experiments/build_cell_class_weights.py), and, with
     --extracellular-coupling, the extracellular metabolites as one pool shared by every class but the all-cells one
@@ -210,7 +230,8 @@ def build_models(data, arguments, device):
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
                                         edge_signs=arguments.edge_signs, relation_gains=arguments.relation_gains,
                                         cell_class_weights=cell_class_weights, channels_per_cell_class=arguments.channels_per_cell_class,
-                                        extracellular_pool_nodes=pool_nodes, shared_pool_classes=shared_pool_classes).to(device)
+                                        extracellular_pool_nodes=pool_nodes, shared_pool_classes=shared_pool_classes,
+                                        **descriptor_treatment_inputs(data, arguments)).to(device)
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
@@ -222,7 +243,8 @@ def build_models(data, arguments, device):
         if arguments.node_descriptors and arguments.node_features != "typed":
             raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
         node_features = torch.as_tensor(node_feature_matrix(data, arguments)) if arguments.node_features == "typed" else None
-        encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features).to(device)
+        encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features,
+                                                  **descriptor_treatment_inputs(data, arguments)).to(device)
     if arguments.head == "sigmoid":
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling,
                                         degree_offset=arguments.degree_offset).to(device)
@@ -251,16 +273,22 @@ def git_provenance() -> dict:
 def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) -> list[dict]:
     """One group at the main learning rate, plus one group for each noisy-OR time scale (links, leaks, module biases,
     gates) whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the
-    time scale on which that parameter can change. extra_parameters (the laboratory readout) join the main group."""
+    time scale on which that parameter can change. extra_parameters (the laboratory readout) join the main group. Under
+    --descriptor-treatment zero_init_slow the encoder's descriptor map is one more group, at --descriptor-learning-rate
+    with the main weight decay."""
     rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate,
              "gates": getattr(arguments, "gate_learning_rate", 0.0)}
+    descriptor_parameters = encoder.descriptor_parameters() if hasattr(encoder, "descriptor_parameters") else []
+    descriptor_groups = [{"params": descriptor_parameters, "lr": arguments.descriptor_learning_rate}] if descriptor_parameters else []
+    descriptor_ids = {id(parameter) for parameter in descriptor_parameters}
+    encoder_parameters = [parameter for parameter in encoder.parameters() if id(parameter) not in descriptor_ids]
     if not hasattr(head, "time_scale_parameter_groups") or not any(rates.values()):
-        return [{"params": list(encoder.parameters()) + list(head.parameters()) + list(extra_parameters)}]
+        return [{"params": encoder_parameters + list(head.parameters()) + list(extra_parameters)}, *descriptor_groups]
     separate_groups = [{"params": parameters, "lr": rates[name], "weight_decay": 0.0}
                        for name, parameters in head.time_scale_parameter_groups().items() if rates[name]]
     separated_ids = {id(parameter) for group in separate_groups for parameter in group["params"]}
-    other_parameters = list(encoder.parameters()) + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids] + list(extra_parameters)
-    return [{"params": other_parameters}, *separate_groups]
+    other_parameters = encoder_parameters + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids] + list(extra_parameters)
+    return [{"params": other_parameters}, *separate_groups, *descriptor_groups]
 
 
 def encode(encoder, node_index, sign_and_magnitude, adjacencies, field_kind: str):
@@ -371,7 +399,8 @@ def time_training_steps(data, encoder, head, optimizer, train_indices, validatio
                       "torch_threads": torch.get_num_threads()}))
 
 
-def main() -> None:
+def build_argument_parser() -> argparse.ArgumentParser:
+    """The trainer's arguments; experiments/evaluate_on_rewired_graph.py rebuilds a finished run from them."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence"))
@@ -413,6 +442,12 @@ def main() -> None:
                         help="label table of experiments/check_laboratory_label_coverage.py --labels-output")
     parser.add_argument("--node-descriptors", type=Path, default=None,
                         help="parquet of fixed node descriptors indexed by node_id (experiments/build_node_descriptors.py), appended to the structural node features")
+    parser.add_argument("--descriptor-treatment", choices=list(DESCRIPTOR_TREATMENTS), default="plain",
+                        help="with --node-descriptors, how they enter the message passing base state or the linear-response output gate (models/descriptor_treatments.py): "
+                             "plain (one map of all the columns), seed_masked (each perturbation's perturbed nodes read their structural columns only) or "
+                             "zero_init_slow (a separate descriptor map, initialised at zero and trained at --descriptor-learning-rate)")
+    parser.add_argument("--descriptor-learning-rate", type=float, default=0.0,
+                        help="--descriptor-treatment zero_init_slow: learning rate of the descriptor map (required there)")
     parser.add_argument("--cell-class-weights", type=Path, default=None,
                         help="linear-response encoder: parquet of per-node cell-class weights (experiments/build_cell_class_weights.py); the response then propagates once per class")
     parser.add_argument("--channels-per-cell-class", type=int, default=1, help="linear-response encoder with --cell-class-weights: channels (time scales) per class")
@@ -471,7 +506,11 @@ def main() -> None:
                         help="run this many training steps on the training perturbations, print seconds per step and per epoch, and exit: no split directory, validation or test score")
     parser.add_argument("--metabolic-layer-only", action="store_true")
     parser.add_argument("--num-bootstrap", type=int, default=200)
-    arguments = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    arguments = build_argument_parser().parse_args()
     signal.signal(signal.SIGUSR1, request_checkpoint)
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

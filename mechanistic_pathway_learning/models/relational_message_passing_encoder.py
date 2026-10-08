@@ -21,6 +21,12 @@ flags). The second form has no node identity at all: whatever it predicts for a 
 from the structure around it, which is the inductive reading the mechanism claim needs and the
 ablation that separates structure from memorized identity.
 
+With node descriptors among the features, descriptor_treatment (mechanistic_pathway_learning/models/
+descriptor_treatments.py) decides how they enter: plain (one map of all the columns), seed_masked (each perturbation's
+perturbed nodes start from their structural columns only, in the perturbed pass and in its own unperturbed reference,
+so the reference is one pass per perturbation instead of one per batch and a forward costs about twice as much), or
+zero_init_slow (a separate descriptor map that starts at zero and trains at its own learning rate).
+
 Edges are shared across the batch and given once as edge_index [2, num_edges]
 (source row, destination row) with edge_relation_type [num_edges]. Messages are
 mean-aggregated per relation type at the destination node. Compartment changes
@@ -34,6 +40,8 @@ import math
 import torch
 from torch import Tensor, nn
 
+from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_node_mask
+
 PERTURBATION_FEATURE_DIM = 2  # (sign, magnitude)
 
 
@@ -45,22 +53,38 @@ class RelationalMessagePassingEncoder(nn.Module):
         node_state_dim: int,
         num_message_passing_layers: int = 3,
         node_features: Tensor | None = None,
+        num_descriptor_columns: int = 0,
+        descriptor_treatment: str = "plain",
     ) -> None:
         super().__init__()
         self.num_graph_nodes = num_graph_nodes
         self.num_relation_types = num_relation_types
         self.node_state_dim = node_state_dim
         self.num_message_passing_layers = num_message_passing_layers
+        self.descriptor_treatment = descriptor_treatment
+        self.num_descriptor_columns = num_descriptor_columns
+        self.descriptor_projection = None
         if node_features is None:
+            if descriptor_treatment != "plain":
+                raise ValueError("a descriptor treatment needs node features")
             self.base_node_state = nn.Embedding(num_graph_nodes, node_state_dim)
             self.register_buffer("node_features", None)
             self.feature_projection = None
         else:
             if node_features.shape[0] != num_graph_nodes:
                 raise ValueError("node_features must have one row per graph node")
+            check_descriptor_treatment(descriptor_treatment, num_descriptor_columns, node_features.shape[1])
             self.base_node_state = None
             self.register_buffer("node_features", node_features.to(torch.float32))
-            self.feature_projection = nn.Linear(node_features.shape[1], node_state_dim)
+            if descriptor_treatment == "zero_init_slow":
+                self.num_structural_columns = node_features.shape[1] - num_descriptor_columns
+                self.feature_projection = nn.Linear(self.num_structural_columns, node_state_dim)
+                self.descriptor_projection = nn.Linear(num_descriptor_columns, node_state_dim, bias=False)
+                nn.init.zeros_(self.descriptor_projection.weight)
+            else:
+                self.feature_projection = nn.Linear(node_features.shape[1], node_state_dim)
+            if descriptor_treatment == "seed_masked":
+                self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns), persistent=False)
         self.perturbation_injection = nn.Linear(PERTURBATION_FEATURE_DIM, node_state_dim)
         scale = 1.0 / math.sqrt(node_state_dim)
         self.relation_weight = nn.Parameter(
@@ -69,15 +93,36 @@ class RelationalMessagePassingEncoder(nn.Module):
         self.self_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
         self.layer_bias = nn.Parameter(torch.zeros(num_message_passing_layers, node_state_dim))
 
-    def initial_node_state_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor) -> Tensor:
+    def descriptor_parameters(self) -> list[nn.Parameter]:
+        """The parameters that read the descriptor columns on their own (zero_init_slow), for their own learning rate."""
+        return [] if self.descriptor_projection is None else list(self.descriptor_projection.parameters())
+
+    def base_state(self, without_descriptors: bool = False) -> Tensor:
+        """[num_graph_nodes, node_state_dim]: the learned embedding, or the map of the node features (with the descriptor
+        columns set to zero when without_descriptors, under seed_masked)."""
+        if self.base_node_state is not None:
+            return self.base_node_state.weight
+        if self.descriptor_projection is not None:
+            return (self.feature_projection(self.node_features[:, : self.num_structural_columns])
+                    + self.descriptor_projection(self.node_features[:, self.num_structural_columns :]))
+        return self.feature_projection(self.node_features_without_descriptors if without_descriptors else self.node_features)
+
+    def initial_node_state_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, inject: bool = True) -> Tensor:
         """Base state for every node plus the injected perturbation at the perturbed nodes.
 
         perturbation_node_index: [batch_size, max_perturbed_nodes], padded with -1.
         perturbation_sign_and_magnitude: [batch_size, max_perturbed_nodes, 2].
+        Under seed_masked the perturbed nodes take their base state without descriptors; inject=False gives that field
+        with nothing injected, the unperturbed reference of each perturbation.
         """
         batch_size = perturbation_node_index.shape[0]
-        base_state = self.base_node_state.weight if self.base_node_state is not None else self.feature_projection(self.node_features)
+        base_state = self.base_state()
         node_state_field = base_state[None, :, :].expand(batch_size, -1, -1).clone()
+        if self.descriptor_treatment == "seed_masked":
+            seed_rows = seed_node_mask(perturbation_node_index, self.num_graph_nodes)
+            node_state_field = torch.where(seed_rows[:, :, None], self.base_state(without_descriptors=True)[None, :, :], node_state_field)
+        if not inject:
+            return node_state_field
         valid_mask = perturbation_node_index >= 0
         injected_state = self.perturbation_injection(perturbation_sign_and_magnitude) * valid_mask[:, :, None]
         safe_index = perturbation_node_index.clamp_min(0)
@@ -143,7 +188,15 @@ class RelationalMessagePassingEncoder(nn.Module):
         perturbation_sign_and_magnitude: Tensor,
         relation_adjacencies: list[Tensor | None],
     ) -> Tensor:
-        """forward(perturbed) - forward(unperturbed): the propagated change caused by the perturbation."""
+        """forward(perturbed) - forward(unperturbed): the propagated change caused by the perturbation. Under seed_masked the
+        unperturbed reference differs per perturbation (its seeds lack descriptors in both passes), so the perturbed and
+        reference fields propagate together as one batch of twice the size."""
+        if self.descriptor_treatment == "seed_masked":
+            batch_size = perturbation_node_index.shape[0]
+            both = torch.cat([self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude),
+                              self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude, inject=False)], dim=0)
+            propagated = self.propagate(both, relation_adjacencies)
+            return propagated[:batch_size] - propagated[batch_size:]
         perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
         return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
 

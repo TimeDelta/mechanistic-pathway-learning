@@ -91,6 +91,23 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # configurations read them on the full graph; the only change from b3_typed_nodes_descriptors
     "b3_typed_nodes_descriptors_brain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
                                          "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
+    # how the descriptors enter (models/descriptor_treatments.py; amendment of 8 October 2026 on the descriptor treatments):
+    # the perturbed nodes read their structural columns only, or a separate descriptor map starts at zero and trains at a
+    # tenth of the main learning rate; each the only change from its *_descriptors_brain arm
+    "b3_typed_nodes_descriptors_brain_seed_masked": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
+                                                     "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet",
+                                                     "--descriptor-treatment", "seed_masked"],
+    "b3_typed_nodes_descriptors_brain_zero_init_slow": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
+                                                        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet",
+                                                        "--descriptor-treatment", "zero_init_slow", "--descriptor-learning-rate", "0.0002"],
+    "b3_linear_response_cofactors_descriptors_brain_seed_masked": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                                   "--cofactor-relations", "--node-descriptors",
+                                                                   "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet",
+                                                                   "--descriptor-treatment", "seed_masked"],
+    "b3_linear_response_cofactors_descriptors_brain_zero_init_slow": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                                      "--cofactor-relations", "--node-descriptors",
+                                                                      "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet",
+                                                                      "--descriptor-treatment", "zero_init_slow", "--descriptor-learning-rate", "0.0002"],
     "b3_descriptors_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors",
                             "--node-descriptors", "data/processed/graph/node_descriptors.parquet"],
     "b3_local_structural": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors"],

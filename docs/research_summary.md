@@ -162,6 +162,9 @@ Superseded numbers to avoid:
 | 2026-10-08 | Lockbox of 317 perturbations (20 percent of leakage groups, configs/lockbox_v1.json) scored once after every pilot | one untouched test; a 20 percent hold-out gives 95 percent half-widths near 0.041 macro and 0.028 micro AUPRC |
 | 2026-10-08 | Confirmation needs macro, micro, within-degree-strata and permutation readings above zero (intersection-union) and macro and micro differences of 0.05; Holm over eight hypotheses; the rewiring reading is the second hypothesis | user: degree control, rewiring control, both metrics required; docs/preregistration.md |
 | 2026-10-08 | Both encoders multiply only the stacked adjacency rows that hold an edge | 8.6 and 2.7 times faster training steps on the full graph, identical output |
+| 2026-10-08 | The permutation readings leave H1 and are reported as secondary readings | user's decision; the difference in differences subtracts a second noisy difference (about 1.4 times the standard error if the two are nearly uncorrelated) |
+| 2026-10-08 | The node descriptors stay in both encoders; the drop branch of the descriptor rule is withdrawn, and a pre-stated rule picks how they enter (plain, seed_masked or zero_init_slow) from graph reliance and AUPRC on the slice | user: "I really don't want to drop them"; with the brain-expression descriptors the linear-response encoder loses 0.001 macro AUPRC on a test-time rewired graph against 0.026 without them (docs/preregistration.md, amendment on how the node descriptors enter) |
+| 2026-10-08 | b3_typed_nodes is retrained under the current code | the stored run predates the two GTEx structural columns (cb5cf70), so the message-passing descriptor comparisons against it change two things |
 
 AI assistance: code, data processing, reviews and drafts in this repository were produced with Claude Code; commits
 carry a Co-Authored-By line.

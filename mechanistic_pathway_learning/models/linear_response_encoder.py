@@ -73,7 +73,11 @@ is one of the channel groups. The readout expands the K * channels_per_cell_clas
 The system is linear in the input, so the unperturbed response is zero and the field is a difference field by
 construction: no base state, and no node identity, enters it. Node kinds enter only through an output gate,
 field = (h W_expand) * sigmoid(node_features W + b), which lets a pooled readout tell where the response landed
-without adding anything where it did not.
+without adding anything where it did not. With node descriptors among the features, descriptor_treatment
+(mechanistic_pathway_learning/models/descriptor_treatments.py) decides how they enter the gate: plain (one map of all the
+columns), seed_masked (at each perturbation's perturbed nodes, where the response is largest, the gate reads the
+structural columns only) or zero_init_slow (a separate descriptor map in the gate's logit that starts at zero and
+trains at its own learning rate).
 """
 from __future__ import annotations
 
@@ -81,6 +85,8 @@ import math
 
 import torch
 from torch import Tensor, nn
+
+from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_node_mask
 
 SUBSTRATE_RELATION = "substrate_of"
 PRODUCT_RELATION = "product_of"
@@ -331,10 +337,15 @@ class LinearResponseEncoder(nn.Module):
         channels_per_cell_class: int = 1,
         extracellular_pool_nodes: Tensor | None = None,
         shared_pool_classes: Tensor | None = None,
+        num_descriptor_columns: int = 0,
+        descriptor_treatment: str = "plain",
     ) -> None:
         super().__init__()
         if node_features.shape[0] != num_graph_nodes:
             raise ValueError("node_features must have one row per graph node")
+        check_descriptor_treatment(descriptor_treatment, num_descriptor_columns, node_features.shape[1])
+        self.descriptor_treatment = descriptor_treatment
+        self.num_descriptor_columns = num_descriptor_columns
         if not 0.0 < damping <= 1.0 or not 0.0 < contraction < 1.0:
             raise ValueError("damping must be in (0, 1] and contraction in (0, 1)")
         self.num_graph_nodes = num_graph_nodes
@@ -402,7 +413,16 @@ class LinearResponseEncoder(nn.Module):
         self.gain_logit = nn.Parameter(initial_gain_logit)
         self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
         self.channel_expansion = nn.Parameter(torch.randn(propagation_channels, node_state_dim) / propagation_channels**0.5)
-        self.output_gate = nn.Linear(node_features.shape[1], node_state_dim)
+        if descriptor_treatment == "zero_init_slow":
+            self.num_structural_columns = node_features.shape[1] - num_descriptor_columns
+            self.output_gate = nn.Linear(self.num_structural_columns, node_state_dim)
+            self.descriptor_gate = nn.Linear(num_descriptor_columns, node_state_dim, bias=False)
+            nn.init.zeros_(self.descriptor_gate.weight)
+        else:
+            self.output_gate = nn.Linear(node_features.shape[1], node_state_dim)
+            self.descriptor_gate = None
+        if descriptor_treatment == "seed_masked":
+            self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns), persistent=False)
         if uses_mixture:
             rows_with_an_edge = torch.zeros(len(relation_names) * num_graph_nodes, dtype=torch.bool)
             rows_with_an_edge[stacked_adjacency.coalesce().indices()[0]] = True
@@ -550,11 +570,29 @@ class LinearResponseEncoder(nn.Module):
     def forward(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
         """The gated response field [B, N, D]; relation_adjacencies is accepted for the message passing signature and
         ignored, since the signed adjacency is built once from the edges given at construction."""
-        gate = torch.sigmoid(self.output_gate(self.node_features))  # [N, D]
+        gate = self.node_gate(perturbation_node_index)  # [1, N, D], or [B, N, D] under seed_masked
         response = self.response(perturbation_node_index, perturbation_sign_and_magnitude)
         if self.response_scale == "signed_log":
             response = torch.sign(response) * torch.log1p(response.abs() / torch.exp(self.log_response_scale))
-        return (response @ self.channel_expansion) * gate[None, :, :]
+        return (response @ self.channel_expansion) * gate
+
+    def descriptor_parameters(self) -> list[nn.Parameter]:
+        """The parameters that read the descriptor columns on their own (zero_init_slow), for their own learning rate."""
+        return [] if self.descriptor_gate is None else list(self.descriptor_gate.parameters())
+
+    def node_gate(self, perturbation_node_index: Tensor) -> Tensor:
+        """sigmoid of the gate logit per node, [1, N, D]; under seed_masked [B, N, D], with each perturbation's perturbed
+        nodes gated on their structural columns only."""
+        if self.descriptor_gate is not None:
+            logit = (self.output_gate(self.node_features[:, : self.num_structural_columns])
+                     + self.descriptor_gate(self.node_features[:, self.num_structural_columns :]))
+            return torch.sigmoid(logit)[None, :, :]
+        gate = torch.sigmoid(self.output_gate(self.node_features))[None, :, :]
+        if self.descriptor_treatment != "seed_masked":
+            return gate
+        gate_without_descriptors = torch.sigmoid(self.output_gate(self.node_features_without_descriptors))[None, :, :]
+        seed_rows = seed_node_mask(perturbation_node_index, self.num_graph_nodes)
+        return torch.where(seed_rows[:, :, None], gate_without_descriptors, gate)
 
     def perturbation_difference_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
         """The response is linear in the input, so the unperturbed field is zero and the difference field is the field."""
