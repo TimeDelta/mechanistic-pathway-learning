@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -43,6 +44,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scored_rows,
     stratified_auroc,
 )
+from mechanistic_pathway_learning.evaluation.result_cache import array_digest, cached_result, source_digest
 
 MINIMUM_POSITIVES_TO_SCORE = 5
 
@@ -142,6 +144,30 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
     }
 
 
+AGGREGATION_SOURCES = [Path(__file__), Path(__file__).resolve().parents[1] / "mechanistic_pathway_learning" / "evaluation" / "ranking_and_calibration_metrics.py"]
+
+
+def aggregation_source_digest() -> str:
+    return source_digest(*AGGREGATION_SOURCES)
+
+
+def run_entry_key(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None) -> dict:
+    """Every input of aggregate_run_directory: each finished split's results and test predictions, the labels and the code."""
+    digest = hashlib.sha256()
+    for split_directory in sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists() and (path / "results.json").exists()):
+        digest.update(split_directory.name.encode())
+        digest.update((split_directory / "results.json").read_bytes())
+        if (split_directory / "test_predictions.npy").exists():
+            digest.update((split_directory / "test_predictions.npy").read_bytes())
+    return {"what": "run entry", "splits": digest.hexdigest(), "num_bootstrap": num_bootstrap, "label_selection_sha256": label_selection_sha256,
+            "labels": array_digest(data.outcomes, data.label_mask), "perturbations": hashlib.sha256(json.dumps(data.perturbation_ids).encode()).hexdigest(),
+            "source": aggregation_source_digest()}
+
+
+def pair_key(what: str, predictions_a: np.ndarray, predictions_b: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None, num_bootstrap: int) -> dict:
+    return {"what": what, "inputs": array_digest(predictions_a, predictions_b, outcomes, mask), "num_bootstrap": num_bootstrap, "source": aggregation_source_digest()}
+
+
 def run_names(run_directories: list[Path]) -> dict[Path, str]:
     """The name each run is reported under: its directory name, or its whole path where two run directories share a
     name (runs/b3_typed_nodes_disease_cluster and runs/encoder/b3_typed_nodes_disease_cluster), so that neither replaces
@@ -183,7 +209,8 @@ def load_pooled_predictions(aggregated: dict, run_directories: list[Path], basel
     return predictions_by_name, rows_by_name
 
 
-def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_name: dict, data, num_bootstrap: int, num_folds: int = 5, seed: int = 0) -> tuple[dict, list[dict]]:
+def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_name: dict, data, num_bootstrap: int, num_folds: int = 5, seed: int = 0,
+                         cache_directory: Path | None = None) -> tuple[dict, list[dict]]:
     """Scores that give no credit for ordering perturbations by degree: macro AUPRC after ranking each score inside its
     group (rank_normalise_within_groups) and macro AUROC from pairs inside a group only (stratified_auroc), plus the
     paired bootstrap of the first between every run and every baseline. A group is a degree stratum inside one test
@@ -219,16 +246,18 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
             other_positions = np.flatnonzero(other_rows)
             run_pick = np.isin(run_positions, np.flatnonzero(shared))
             other_pick = np.isin(other_positions, np.flatnonzero(shared))
-            difference = paired_bootstrap_macro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], per_symptom_auprc, num_bootstrap,
-                                                           mask=rows_of(data.label_mask, shared))
-            micro_difference = paired_bootstrap_micro_difference(run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], num_bootstrap,
-                                                                 mask=rows_of(data.label_mask, shared))
+            pick_a, pick_b, outcomes_shared, mask_shared = run_normalised[run_pick], other_normalised[other_pick], data.outcomes[shared], rows_of(data.label_mask, shared)
+            difference, micro_difference = cached_result(
+                cache_directory, pair_key("within-strata pair", pick_a, pick_b, outcomes_shared, mask_shared, num_bootstrap),
+                lambda: (paired_bootstrap_macro_difference(pick_a, pick_b, outcomes_shared, per_symptom_auprc, num_bootstrap, mask=mask_shared),  # noqa: B023 (called at once)
+                         paired_bootstrap_micro_difference(pick_a, pick_b, outcomes_shared, num_bootstrap, mask=mask_shared)))  # noqa: B023
             comparisons.append({"a": run_name, "b": other, "rows": int(shared.sum()), "macro_auprc_within_degree_strata": difference,
                                 "micro_auprc_within_degree_strata": micro_difference})
     return scores, comparisons
 
 
-def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int, include_baseline_pairs: bool = True) -> list[dict]:
+def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_directory: Path | None, baseline_split: str, data, num_bootstrap: int, include_baseline_pairs: bool = True,
+                       cache_directory: Path | None = None) -> list[dict]:
     """Paired bootstrap of the pooled macro AUPRC and AUROC difference between every run and every baseline (and between runs) on the rows both scored."""
     predictions_by_name, rows_by_name = load_pooled_predictions(aggregated, run_directories, baseline_directory, baseline_split, data)
     comparisons = []
@@ -240,12 +269,12 @@ def paired_comparisons(aggregated: dict, run_directories: list[Path], baseline_d
             if first not in aggregated and second in aggregated:
                 first, second = second, first  # a run-versus-baseline pair is reported once, with the run as A
             rows = rows_by_name[first] & rows_by_name[second]
-            auprc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auprc, num_bootstrap,
-                                                      mask=rows_of(data.label_mask, rows))
-            auroc = paired_bootstrap_macro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], per_symptom_auroc, num_bootstrap,
-                                                      mask=rows_of(data.label_mask, rows))
-            micro = paired_bootstrap_micro_difference(predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], num_bootstrap,
-                                                      mask=rows_of(data.label_mask, rows))
+            predictions_a, predictions_b, outcomes, mask = predictions_by_name[first][rows], predictions_by_name[second][rows], data.outcomes[rows], rows_of(data.label_mask, rows)
+            auprc, auroc, micro = cached_result(
+                cache_directory, pair_key("pooled pair", predictions_a, predictions_b, outcomes, mask, num_bootstrap),
+                lambda: (paired_bootstrap_macro_difference(predictions_a, predictions_b, outcomes, per_symptom_auprc, num_bootstrap, mask=mask),  # noqa: B023 (called at once)
+                         paired_bootstrap_macro_difference(predictions_a, predictions_b, outcomes, per_symptom_auroc, num_bootstrap, mask=mask),  # noqa: B023
+                         paired_bootstrap_micro_difference(predictions_a, predictions_b, outcomes, num_bootstrap, mask=mask)))  # noqa: B023
             comparisons.append({"a": first, "b": second, "rows": int(rows.sum()), "macro_auprc": auprc, "macro_auroc": auroc, "micro_auprc": micro})
     return comparisons
 
@@ -271,6 +300,10 @@ def main() -> None:
     parser.add_argument("--lockbox", type=Path, default=None,
                         help="the lockbox removed before the runs' folds were drawn; pass the baseline results of run_baselines.py --lockbox with it")
     parser.add_argument("--num-bootstrap", type=int, default=200)
+    parser.add_argument("--cache-dir", type=Path, default=Path("runs/aggregate_cache"),
+                        help="store of per-run entries and paired bootstraps under a key of all their inputs, so a run killed by a reclaimed container resumes; "
+                             "a stored result equals the recomputed one (fixed bootstrap seeds)")
+    parser.add_argument("--no-cache", action="store_true", help="recompute everything and store nothing")
     parser.add_argument("--title", default="Phase 3: proposed model and sigmoid-head baseline")
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/phase3_main_model.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/phase3_aggregate.json"))
@@ -280,8 +313,15 @@ def main() -> None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     aggregated = {}
+    cache_directory = None if arguments.no_cache else arguments.cache_dir
     for run_directory, name in run_names(arguments.run_dirs).items():
-        entry = aggregate_run_directory(run_directory, data, arguments.num_bootstrap, label_selection_sha256)
+        compute_entry = partial(aggregate_run_directory, run_directory, data, arguments.num_bootstrap, label_selection_sha256)
+        if cache_directory is None:
+            entry = compute_entry()
+        else:
+            entry = cached_result(cache_directory, run_entry_key(run_directory, data, arguments.num_bootstrap, label_selection_sha256), compute_entry)
+            if entry is not None and not ((run_directory / "pooled_predictions.npy").exists() and (run_directory / "pooled_scored_rows.npy").exists()):
+                entry = compute_entry()  # the pooled files are written by the computation, so a stored entry without them is recomputed
         if entry is None:
             print(f"{run_directory}: no finished splits")
             continue
@@ -297,9 +337,9 @@ def main() -> None:
             raise ValueError(f"{arguments.baseline_results}: baselines fitted on a different label selection from the one given (--label-selection)")
         baseline_entries = baseline_results["splits"].get(arguments.baseline_split, {})
         baseline_directory = arguments.baseline_results.parent
-    comparisons = paired_comparisons(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data, arguments.num_bootstrap)
+    comparisons = paired_comparisons(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data, arguments.num_bootstrap, cache_directory=cache_directory)
     strata_scores, strata_comparisons = within_degree_strata(aggregated, *load_pooled_predictions(aggregated, arguments.run_dirs, baseline_directory, arguments.baseline_split, data),
-                                                             data, arguments.num_bootstrap)
+                                                             data, arguments.num_bootstrap, cache_directory=cache_directory)
     for comparison in comparisons:
         print(f"{comparison['a']:34s} vs {comparison['b']:28s} macro AUPRC diff {comparison['macro_auprc']['difference']:+.3f} [{comparison['macro_auprc']['lower']:+.3f}, {comparison['macro_auprc']['upper']:+.3f}]  "
               f"macro AUROC diff {comparison['macro_auroc']['difference']:+.3f} [{comparison['macro_auroc']['lower']:+.3f}, {comparison['macro_auroc']['upper']:+.3f}]")

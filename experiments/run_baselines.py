@@ -54,6 +54,7 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import date
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -82,6 +83,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scored_rows,
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
+from mechanistic_pathway_learning.evaluation.result_cache import array_digest, cached_result, source_digest, sparse_digest
 from mechanistic_pathway_learning.models.baselines.knowledge_graph_embedding_baseline import KnowledgeGraphEmbeddingBaseline
 from mechanistic_pathway_learning.models.baselines.popularity_baseline import PopularityBaseline
 from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_baseline import (
@@ -90,6 +92,9 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
 )
 
 BASELINE_NAMES = ("popularity", "degree_popularity", "random_walk_with_restart")
+CACHED_BASELINES = ("random_walk_with_restart", "knowledge_graph_embedding_transe")  # the slow fits; popularity takes milliseconds
+BASELINE_SOURCES = [Path(__file__), *sorted((Path(__file__).resolve().parents[1] / "mechanistic_pathway_learning" / "models" / "baselines").glob("*.py"))]
+_DIGEST_MEMO: dict[int, tuple[object, str]] = {}
 KG_EMBEDDING_NAME = "knowledge_graph_embedding_transe"
 TYPE_POPULARITY_NAMES = ("type_popularity", "type_degree_popularity")
 KG_EMBEDDING_SETTINGS = {"model_name": "TransE", "embedding_dim": 64, "num_epochs": 30, "batch_size": 4096, "learning_rate": 0.01, "margin": 1.0, "negatives_per_positive": 4}
@@ -140,14 +145,37 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, label_mask: np.n
     return (float(np.mean(auprcs)) if auprcs else float("nan"), float(np.mean(aurocs)) if aurocs else float("nan"))
 
 
+def memoised_digest(value, compute) -> str:
+    """Digest of an object that lives for the whole run (the graph, an adjacency), computed once; the reference kept in
+    the memo stops its id from being reused."""
+    if id(value) not in _DIGEST_MEMO:
+        _DIGEST_MEMO[id(value)] = (value, compute(value))
+    return _DIGEST_MEMO[id(value)][1]
+
+
+def fold_cache_key(data, training_outcomes: np.ndarray, train: np.ndarray, test: np.ndarray, model_name: str, restart_probability: float,
+                   normalized_adjacency, random_seed: int, label_mask: np.ndarray | None) -> dict:
+    """Every input of one baseline fit: the rows, the training labels, the graph the fit reads and the code."""
+    graph = memoised_digest(data, lambda d: array_digest(np.array([len(d.node_ids)]), d.edge_source, d.edge_target, d.edge_relation,
+                                                         np.array([len(seeds) for seeds in d.perturbation_seeds]),
+                                                         np.concatenate([np.asarray(seeds, dtype=np.int64) for seeds in d.perturbation_seeds]) if d.perturbation_seeds else None))
+    return {"what": "baseline fold", "model": model_name, "restart_probability": restart_probability, "random_seed": random_seed,
+            "kg_embedding_settings": KG_EMBEDDING_SETTINGS if model_name == KG_EMBEDDING_NAME else None,
+            "rows": array_digest(train, test), "training_outcomes": array_digest(training_outcomes), "label_mask": array_digest(label_mask),
+            "graph": graph, "adjacency": memoised_digest(normalized_adjacency, sparse_digest) if model_name == "random_walk_with_restart" else None,
+            "source": memoised_digest(BASELINE_SOURCES, lambda paths: source_digest(*paths))}
+
+
 def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_name: str, restart_probability: float, normalized_adjacency,
               min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None, label_mask: np.ndarray | None = None,
-              random_seed: int = 0, group_ids: list[str] | None = None) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
+              random_seed: int = 0, group_ids: list[str] | None = None, cache_directory: Path | None = None) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
     """Fit on the complement of each test mask, predict the mask; return pooled predictions, the scored-row mask and per-fold scores.
 
     With a label mask, pairs set aside are not training positives (the fit sees them as unlabelled) and are left out
     of every score. With group_ids (the pathway-wise hold-outs, which select perturbations by seed gene), perturbations
-    sharing a leakage group with a held-out one are left out of that fit as well."""
+    sharing a leakage group with a held-out one are left out of that fit as well. With cache_directory, the slow fits
+    (random walk, TransE) are stored per fold under a key of all their inputs (result_cache), so a restarted run
+    reuses the folds it finished."""
     training_outcomes = outcomes if label_mask is None else outcomes * label_mask
     predictions = np.zeros_like(outcomes)
     scored = np.zeros(outcomes.shape[0], dtype=bool)
@@ -157,7 +185,12 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
         train = ~test if group_ids is None else np.array(training_mask_without_group_partners(test, group_ids))
         if test.sum() == 0 or train.sum() == 0:
             continue
-        predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed, label_mask)
+        fit = partial(fit_and_predict, data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed, label_mask)
+        if cache_directory is not None and model_name in CACHED_BASELINES:
+            predictions[test] = cached_result(cache_directory, fold_cache_key(data, training_outcomes, train, test, model_name, restart_probability,
+                                                                              normalized_adjacency, random_seed, label_mask), fit)
+        else:
+            predictions[test] = fit()
         scored |= test
         fold_of_row[test] = fold_index
         test_label_mask = None if label_mask is None else label_mask[test]
@@ -352,6 +385,9 @@ def main() -> None:
     parser.add_argument("--score-lockbox", action="store_true", help="with --lockbox: fit on the development set and score the lockbox once")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
     parser.add_argument("--with-kg-embedding", action="store_true", help="also run baseline B2 (TransE over graph plus training evidence triples)")
+    parser.add_argument("--no-fold-cache", action="store_true",
+                        help="recompute every random-walk and TransE fold instead of reusing those stored in OUTPUT_DIR/fold_cache under a key of all their inputs "
+                             "(the store lets a run killed by a reclaimed container resume; a stored fold equals the recomputed one)")
     parser.add_argument("--with-type-popularity", action="store_true",
                         help="also run popularity and degree_popularity fitted per perturbation type (drug or gene), the graph-free reading of the type offset "
                              "(docs/perturbation_type_offset.md); off by default, so the confirmatory baseline set is unchanged unless the scorer is given these names")
@@ -408,6 +444,7 @@ def main() -> None:
     }
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     np.save(arguments.output_dir / "permutation_source_rows.npy", permutation_source_row)  # the permuted labels are data.outcomes[these rows]
+    fold_cache = None if arguments.no_fold_cache else arguments.output_dir / "fold_cache"
     if arguments.rewiring_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])
         if arguments.rewiring_method == "walk_graph":  # the walk's own undirected simple graph, every node keeping its number of neighbours
@@ -425,7 +462,7 @@ def main() -> None:
                                    "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
         rewired_adjacency = build_normalized_adjacency(len(data.node_ids), rewired[0], rewired[1], np.where(data.is_currency)[0])
         predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro,
-                                                             grouped_labels, label_mask=label_mask)
+                                                             grouped_labels, label_mask=label_mask, cache_directory=fold_cache)
         results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
         np.save(arguments.output_dir / f"predictions_{primary_split}_rewired_graph_random_walk_with_restart.npy", predictions)
         entry = results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"]
@@ -440,14 +477,14 @@ def main() -> None:
                 continue
             partner_groups = None if split_name == primary_split else data.group_ids  # pathway-wise hold-outs are chosen by seed gene
             predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                 label_mask=label_mask, random_seed=arguments.seed, group_ids=partner_groups)
+                                                                 label_mask=label_mask, random_seed=arguments.seed, group_ids=partner_groups, cache_directory=fold_cache)
             results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
             arguments.output_dir.mkdir(parents=True, exist_ok=True)
             np.save(arguments.output_dir / f"predictions_{split_name}_{model_name}.npy", predictions)  # pooled out-of-split predictions for paired comparisons
             np.save(arguments.output_dir / f"scored_rows_{split_name}.npy", rows)
             if not arguments.skip_permutation_control:
                 predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                     label_mask=permuted_label_mask, random_seed=arguments.seed, group_ids=partner_groups)
+                                                                     label_mask=permuted_label_mask, random_seed=arguments.seed, group_ids=partner_groups, cache_directory=fold_cache)
                 results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask)
                 np.save(arguments.output_dir / f"predictions_{split_name}_label_permutation_{model_name}.npy", predictions)
         for split_name, entries in results["splits"].items():
