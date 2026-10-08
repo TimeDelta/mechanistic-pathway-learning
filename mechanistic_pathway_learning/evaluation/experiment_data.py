@@ -94,35 +94,51 @@ class ExperimentData:
         return np.array([self.node_degree[seeds].sum() if len(seeds) else 0.0 for seeds in self.perturbation_seeds])
 
     @property
-    def perturbation_one_hop_degrees(self) -> np.ndarray:
-        """Summed degree of a perturbation's seeds and of every node one edge from a seed.
+    def perturbation_degrees_with_encoded_proteins(self) -> np.ndarray:
+        """Summed degree of a perturbation's seeds and of the proteins they encode, less the encodes edges themselves.
 
         For degree strata and degree normalisation only; nothing reads it as an input feature. On a graph where genes
-        and proteins are separate nodes (docs/gene_protein_split.md) a perturbed gene node carries only its encodes
-        edge, so perturbation_degrees is 1 for every perturbation and the degree strata collapse to one stratum. One
-        hop out reaches the protein the gene encodes, which is where that gene's edges went.
+        and proteins are separate nodes (docs/gene_protein_split.md) a perturbed gene node has lost to its protein
+        every edge that is about the product, so its seed degree is no longer the degree the merged node had: on the
+        slice it is 1 for every perturbation and the strata collapse to one. The hop over encodes puts the gene and its
+        products back together, and an encodes edge is subtracted twice because it counts in both degrees and did not
+        exist in the merged graph. Measured against the merged graph's seed degree: equal for 99.2 percent of the
+        1,539 full-graph perturbations and for all 451 slice perturbations (docs/gene_protein_split_results.md).
+
+        Reading every node one edge away instead sums the degrees of a gene's other neighbours too, which on the full
+        split graph is a different quantity (median 424 against the merged 16) and moves 43 percent of the strata; it
+        agreed on the slice only because there every seed had exactly one neighbour.
         """
-        neighbours_of_node = [[] for _ in self.node_ids]
-        for source, target in zip(self.edge_source, self.edge_target):
-            neighbours_of_node[source].append(target)
-            neighbours_of_node[target].append(source)
+        relation_types = list(self.relation_types)
+        if "encodes" not in relation_types:
+            return self.perturbation_degrees
+        encodes = relation_types.index("encodes")
+        encoded_partners_of_node = [[] for _ in self.node_ids]
+        for source, target, relation in zip(self.edge_source, self.edge_target, self.edge_relation):
+            if relation != encodes:
+                continue
+            encoded_partners_of_node[source].append(target)
+            encoded_partners_of_node[target].append(source)
         degrees = []
         for seeds in self.perturbation_seeds:
-            reached = {int(seed) for seed in seeds}
+            reached, num_encodes_edges = {int(seed) for seed in seeds}, 0
             for seed in seeds:
-                reached.update(neighbours_of_node[int(seed)])
-            degrees.append(self.node_degree[sorted(reached)].sum() if reached else 0.0)
+                partners = encoded_partners_of_node[int(seed)]
+                num_encodes_edges += len(partners)
+                reached.update(partners)
+            degrees.append(self.node_degree[sorted(reached)].sum() - 2 * num_encodes_edges if reached else 0.0)
         return np.array(degrees)
 
     @property
     def perturbation_degrees_for_strata(self) -> np.ndarray:
-        """perturbation_degrees, or perturbation_one_hop_degrees on a graph that splits genes from proteins.
+        """perturbation_degrees, or perturbation_degrees_with_encoded_proteins on a graph that splits genes from proteins.
 
-        The switch keeps the registered stratification: on the split slice the one-hop degree puts all 451
-        perturbations in the stratum the merged graph's seed degree gives them (docs/gene_protein_split_results.md),
-        while on a merged graph reading one hop out would move three quarters of them.
+        The switch keeps the registered stratification rather than redefining it: the hop over encodes reproduces the
+        merged graph's seed degree for 99.2 percent of the full-graph perturbations and all of the slice's
+        (docs/gene_protein_split_results.md), and on a merged graph, which has no encodes relation, it is the seed
+        degree unchanged.
         """
-        return self.perturbation_one_hop_degrees if "protein" in set(self.node_types.tolist()) else self.perturbation_degrees
+        return self.perturbation_degrees_with_encoded_proteins if "protein" in set(self.node_types.tolist()) else self.perturbation_degrees
 
 
 GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id", "disease_cluster_and_targets": "disease_cluster_id"}

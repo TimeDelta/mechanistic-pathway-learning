@@ -75,10 +75,43 @@ for every perturbation. Three parts of the design read it:
   free permutation;
 - `macro_auprc_by_degree_bin`, whose equal-count bins become arbitrary.
 
-This needs a decision before any confirmatory run moves to a split graph. The options are to read a perturbation's
-degree from the protein nodes its seed gene encodes, to keep the merged graph's degree as the stratifying variable, or
-to drop the degree readings on split graphs and say so in the amendment. The first keeps the reading's meaning: what
-the perturbation reaches is the protein's neighbourhood.
+The fix, which the user proposed ("can't you just add a 1-hop to the degree for the strata and normalization purposes
+only?"): `ExperimentData.perturbation_degrees_for_strata` returns the seed degree on a merged graph and, on a graph
+with protein nodes, `perturbation_degrees_with_encoded_proteins` — the degree of the seeds and of the proteins they
+encode, less the `encodes` edges themselves, which count in both degrees and did not exist in the merged graph. It is
+read for strata, normalisation and the degree-scaled baselines only; no model reads it as a feature.
+
+Which hop matters. Reading *every* node one edge away was tried first and is wrong on the full graph: a gene node
+keeps its regulatory edges there, so the sum picks up its neighbours' degrees as well.
+
+| degree on the split graph | median | max | Spearman against the merged seed degree | same tercile | equal value |
+|---|---|---|---|---|---|
+| full graph, seed only | 2 | 493 | 0.648 | 0.545 | 0.086 |
+| full graph, every node one hop away | 424 | 37,585 | 0.733 | 0.568 | 0.000 |
+| full graph, the encodes hop | 16 | 1,953 | 0.998 | 0.998 | 0.992 |
+| slice, seed only | 1 | 1 | undefined (constant) | 0.379 | 0.386 |
+| slice, every node one hop away | 4 | 147 | 1.000 | 1.000 | 0.000 |
+| slice, the encodes hop | 2 | 145 | 1.000 | 1.000 | 1.000 |
+
+The merged graph's seed degree has median 16 and maximum 1,953 on the full graph (1,539 perturbations,
+`evidence_full_v2` with the better_v2 selection) and median 2, maximum 145 on the slice. So the encodes hop does not
+approximate the registered stratification, it reproduces it: the same degree value for 1,527 of 1,539 full-graph
+perturbations and for all 451 slice perturbations. Reading every neighbour agrees on the slice only because there
+every perturbed gene node had exactly one neighbour; on the full graph it moves 43 percent of the strata assignments
+and inflates the degree by a factor of 26 at the median.
+
+Twelve full-graph perturbations keep a different value. Eleven differ by 1 to 3 edges, from edges the merged build
+deduplicated and the split keeps apart. The twelfth is the H3-3A knockout: 3 in the merged graph against 118 under the
+encodes hop, because `PROTEIN:H3-3A` is the reviewed entry of both H3-3A and H3-3B (one protein, two genes), so the
+protein node carries the product-level edges of both while the merged graph gave each gene its own. That is the split
+working as specified, not an artifact of the degree rule.
+
+What that costs the registered reading: of 1,539 perturbations, six change degree quintile, the stratification the H1
+within-strata reading uses (CASP2, FGF8, GBA1, H3-3A, OTX2, WT1), and three change tercile, the bins of
+`macro_auprc_by_degree_bin` (CNTNAP2, H3-3A, PARK7). CNTNAP2 and PARK7 keep their degree value exactly; they move
+because the bins hold equal counts and a tie at a boundary falls either side depending on the order of the whole
+vector. So the stratification is preserved to within six of 1,539 assignments, and no re-registration of the strata is
+needed for the move to the split graph.
 
 ## Module health
 

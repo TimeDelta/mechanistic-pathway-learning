@@ -4,6 +4,7 @@ import pandas as pd
 
 from mechanistic_pathway_learning.evaluation.measurement_coverage_strata import (
     GENE_PERTURBATION_STRATUM,
+    NOT_IN_THE_TABLE_STRATUM,
     UNMEASURED_DRUG_STRATUM,
     measurement_coverage_strata,
 )
@@ -34,10 +35,11 @@ def test_bins_hold_equal_counts_and_carry_their_range() -> None:
     assert labels[0].endswith("_n3") and "[0,2]" in labels[0] and "[6,8]" in labels[2]
 
 
-def test_a_perturbation_missing_from_the_table_is_not_a_measured_drug() -> None:
+def test_a_perturbation_missing_from_the_table_is_its_own_stratum() -> None:
     coverage = coverage_table([("drug:1", "drug", 5)])
     stratum_of_row, labels = measurement_coverage_strata(["drug:1", "drug:absent"], coverage, num_bins=2)
-    assert stratum_of_row[1] == GENE_PERTURBATION_STRATUM  # no row means no drug measurement, so never a measured stratum
+    assert stratum_of_row[1] == NOT_IN_THE_TABLE_STRATUM  # a table built on another evidence table must not read as a gene
+    assert NOT_IN_THE_TABLE_STRATUM in labels
     assert sum(label.startswith("measured_genes_bin") for label in labels) == 1
 
 

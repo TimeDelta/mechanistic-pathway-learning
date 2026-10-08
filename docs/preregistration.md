@@ -837,6 +837,42 @@ modules are fixed first.
   partners (on by default on a split graph), the encodes relation in the H2 rewiring, the 110 nodes without a reviewed
   entry, and whether the confirmatory_v2 configurations move to the split graph.
 
+Amendment, 9 October 2026, before any second-family run (the user's decision): the confirmatory family trains on the
+graph that splits genes from proteins. This closes the last question of the amendment above.
+- The decision, verbatim: "the confirmatory config should definitely be the split graph and include the protein
+  descriptors and brain expressions, compartments, everything that physiologically makes sense."
+- What changes. The four `confirmatory_v2_*` configurations and their four no-descriptor ablations read
+  `data/processed/graph_full_neuronal_split`; the node descriptors come from
+  `full_neuronal_split_descriptors_brain_expression.parquet`, which puts the 64 protein components on the 12,709
+  protein nodes and the 27 brain region and cell-class expression columns on the gene nodes, with the metabolite and
+  reaction blocks and the compartment features as they already were (docs/node_descriptor_columns.md, version 3); the
+  linear-response encoder reads `full_neuronal_split_cell_class_weights.parquet`; message passing gets a third layer,
+  because a perturbed gene node reaches its protein one hop later (decision 9 of docs/gene_protein_split.md). The
+  development baselines (runs/full/v2_development.sh) and the lockbox baselines and scoring
+  (runs/full/confirmatory_lockbox.sh, which now passes `--graph-dir`) read the same graph, so the models and the
+  baselines see one graph. experiments/score_confirmatory.py itself is unchanged; it takes each run's descriptor and
+  cell-class files from that run's own recorded arguments.
+- What does not change. The evidence table (`evidence_full_v2`), the better_v2 label selection, configs/lockbox_v2.json
+  (drawn on the evidence, not on the graph), configs/head_choice.json, the two tested models, the decision rule, the
+  one-sided 0.025 H1-then-H2 sequence and the floors. No run directory existed under any `confirmatory_v2` name when
+  this was written, so no finished run changes meaning and nothing is re-scored.
+- Degree strata, measured rather than asserted. On a split graph a perturbed gene node has given its product-level
+  edges to the protein, so its seed degree is no longer the degree the merged node had, and on the slice it is 1 for
+  every perturbation, which collapses the registered strata into one. `perturbation_degrees_for_strata` therefore
+  returns, on a graph with protein nodes, the degree of the seeds and of the proteins they encode, less the `encodes`
+  edges themselves. Measured on `graph_full_neuronal_split` against the merged graph's seed degree over the 1,539
+  perturbations of this evidence table: the same degree value for 1,527, Spearman 0.998, and six perturbations change
+  degree quintile (CASP2, FGF8, GBA1, H3-3A, OTX2, WT1); on the slice the value is identical for all 451. The
+  stratification is therefore preserved, not redefined, and is not re-registered. The first implementation of this
+  hop read every node one edge away; that agreed on the slice but moved 43 percent of the full graph's strata, and it
+  was corrected before any run (docs/gene_protein_split_results.md carries both readings).
+- Still open, and blocking the lockbox run. Whether `encodes` is rewired in the H2 control (rewiring it would break
+  the gene-to-protein identity the split exists to express, so holding it fixed is the proposal, not yet a decision);
+  the descriptor treatments; and the development pilots of the two split configurations with the split baselines,
+  which must be run and read first.
+- The slice reading of docs/gene_protein_split_results.md is not evidence against this change: the user does not
+  accept the slice as a verdict on the split until the two confirmatory models are tested on it.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

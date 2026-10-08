@@ -170,8 +170,11 @@ Consequences of the user's decision:
 
 - graph_full_neuronal, the slice graphs and the descriptors are untouched. module_fix_slice, confirmatory_pilots and
   refit_pilots read them.
-- The confirmatory_v2 configurations still name graph_full_neuronal. Moving them to the split graph is the user's
-  decision, after the slice runs below.
+- The confirmatory_v2 configurations named graph_full_neuronal when this was written. Decided since, by the user on
+  9 October 2026: they move to graph_full_neuronal_split with the split descriptor table, the split cell-class weights
+  and a third message-passing layer (docs/preregistration.md, amendment of 9 October 2026). The development pilots on
+  the split graph, the one-hop degree check on the full split graph and the handling of `encodes` in the H2 rewiring
+  come before any lockbox run.
 
 ## Built (8 October 2026, new directories only)
 

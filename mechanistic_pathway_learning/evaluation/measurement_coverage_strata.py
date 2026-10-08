@@ -18,6 +18,7 @@ import pandas as pd
 
 GENE_PERTURBATION_STRATUM = "gene_perturbation"
 UNMEASURED_DRUG_STRATUM = "drug_without_binding_measurements"
+NOT_IN_THE_TABLE_STRATUM = "not_in_the_coverage_table"
 COVERAGE_COLUMN = "genes_with_an_affinity"
 
 
@@ -36,14 +37,17 @@ def measurement_coverage_strata(perturbation_ids: list[str], coverage: pd.DataFr
     A perturbation that is not a drug, or a drug with no row in either binding source, is its own stratum: neither has a
     measured off-target, so pooling them with the measured drugs would hide the comparison rather than make it. The
     measured drugs are cut into num_bins equal-count bins by how many human genes carry an affinity for them, ties
-    broken by position so no bin is empty.
+    broken by position so no bin is empty. A perturbation the table does not hold at all (a coverage table built on
+    another evidence table) is a stratum of its own, never silently a gene.
     """
     rows = coverage.reindex(perturbation_ids)
+    in_table = rows.perturbation_type.notna().to_numpy(dtype=bool)
     is_drug = (rows.perturbation_type == "drug").to_numpy(dtype=bool)
     measured_genes = rows[COVERAGE_COLUMN].to_numpy(dtype=float)
     is_measured_drug = is_drug & np.isfinite(measured_genes) & (measured_genes >= 0)
     measured_positions = np.where(is_measured_drug)[0]
-    stratum_of_row = [GENE_PERTURBATION_STRATUM if not drug else UNMEASURED_DRUG_STRATUM for drug in is_drug]
+    stratum_of_row = [NOT_IN_THE_TABLE_STRATUM if not known else GENE_PERTURBATION_STRATUM if not drug else UNMEASURED_DRUG_STRATUM
+                      for known, drug in zip(in_table, is_drug)]
     bin_labels: list[str] = []
     if len(measured_positions):
         order = measured_positions[np.argsort(measured_genes[measured_positions], kind="stable")]
@@ -57,5 +61,6 @@ def measurement_coverage_strata(perturbation_ids: list[str], coverage: pd.DataFr
             bin_labels.append(label)
             for position in positions:
                 stratum_of_row[position] = label
-    labels = [label for label in (GENE_PERTURBATION_STRATUM, UNMEASURED_DRUG_STRATUM) if label in set(stratum_of_row)] + bin_labels
+    present = set(stratum_of_row)
+    labels = [label for label in (GENE_PERTURBATION_STRATUM, UNMEASURED_DRUG_STRATUM, NOT_IN_THE_TABLE_STRATUM) if label in present] + bin_labels
     return stratum_of_row, labels

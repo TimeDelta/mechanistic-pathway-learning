@@ -23,6 +23,13 @@ is the one tested: two models, the noisy-OR head of each encoder (the user dropp
    fix, since the user may move the confirmatory configurations to the split before v2_development resumes. When the
    user has decided, write runs/full/v2_development.go, move
    runs/jobs/paused/v2_development.job back to runs/jobs/ and resume it (step 1c).
+   Done, 9 October 2026 (the user's decision; docs/preregistration.md, amendment of 9 October 2026): the second family
+   trains on data/processed/graph_full_neuronal_split. The configurations carry it
+   (experiments/run_main_model_batch.py), and because git ignores runs/, the two job scripts were edited in place and
+   the change is recorded here so it can be reapplied in a fresh container: in runs/full/v2_development.sh and
+   runs/full/confirmatory_lockbox.sh the run_baselines.py call reads
+   `--graph-dir data/processed/graph_full_neuronal_split`, and confirmatory_lockbox.sh passes the same
+   `--graph-dir` to experiments/score_confirmatory.py, whose own default still names the merged graph.
 1. confirmatory_pilots (first family, registered 8 October 2026): fold 0, seed 0 development pilots of the four confirmatory
    configurations (runs/full/confirmatory_*_disease_cluster_and_targets_development/fold0_seed0), then the development
    baselines (runs/full/baselines_v2_development, docs/phase2_baselines_full_v2_development.md). When it ends, check that
