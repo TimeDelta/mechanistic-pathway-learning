@@ -66,7 +66,7 @@ def experiment_data(arguments: Namespace):
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by,
                                 label_grades=tuple(arguments.label_grades) if arguments.label_grades else None, label_selection=arguments.label_selection)
     if arguments.lockbox is not None:
-        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))
+        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     return data
 
 

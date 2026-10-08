@@ -92,11 +92,12 @@ MINIMUM_POSITIVES_TO_SCORE = 5
 
 
 def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndarray, model_name: str, restart_probability: float, normalized_adjacency,
-                    random_seed: int = 0) -> np.ndarray:
-    """Fit one baseline on the training rows and predict the test rows; random_seed sets the TransE initialisation and negative sampling."""
+                    random_seed: int = 0, label_mask: np.ndarray | None = None) -> np.ndarray:
+    """Fit one baseline on the training rows and predict the test rows; random_seed sets the TransE initialisation and
+    negative sampling, and label_mask (a label selection) keeps set-aside pairs out of the popularity base rates."""
     degrees = data.perturbation_degrees
     if model_name in ("popularity", "degree_popularity"):
-        model = PopularityBaseline(scale_by_degree=model_name == "degree_popularity").fit(outcomes[train])
+        model = PopularityBaseline(scale_by_degree=model_name == "degree_popularity").fit(outcomes[train], training_label_mask=None if label_mask is None else label_mask[train])
         return model.predict(int(test.sum()), degrees[test])
     if model_name == "random_walk_with_restart":
         model = RandomWalkWithRestartBaseline(restart_probability=restart_probability).fit(
@@ -139,7 +140,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
         train = ~test
         if test.sum() == 0 or train.sum() == 0:
             continue
-        predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed)
+        predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed, label_mask)
         scored |= test
         fold_of_row[test] = fold_index
         test_label_mask = None if label_mask is None else label_mask[test]
@@ -339,7 +340,7 @@ def main() -> None:
         raise SystemExit("--score-lockbox needs --lockbox")
     in_lockbox, lockbox_summary = None, None
     if arguments.lockbox is not None:
-        in_lockbox = read_lockbox(arguments.lockbox, data)
+        in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
         lockbox_summary = {"path": str(arguments.lockbox), "num_lockbox_perturbations": int(in_lockbox.sum()),
                            "role": "scored" if arguments.score_lockbox else "removed before every split"}
         print(f"lockbox: {lockbox_summary}")

@@ -163,7 +163,7 @@ def main() -> None:
 
     label_selection = None if str(arguments.label_selection) in ("", "none") else arguments.label_selection  # none: the slice, for tests of this script
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=label_selection)
-    in_lockbox = read_lockbox(arguments.lockbox, data)
+    in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
     lockbox = json.loads(arguments.lockbox.read_text())
     lockbox_sha256, selection_sha256 = file_sha256(arguments.lockbox), (file_sha256(label_selection) if label_selection else None)
     rows = np.flatnonzero(in_lockbox)

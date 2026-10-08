@@ -112,10 +112,19 @@ def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "Expe
     return dataclasses.replace(data, **changes)
 
 
-def read_lockbox(lockbox_path: Path, data: "ExperimentData") -> np.ndarray:
+def read_lockbox(lockbox_path: Path, data: "ExperimentData", group_by: str | None = None, evidence_directory: Path | None = None) -> np.ndarray:
     """Boolean per perturbation of data: in the lockbox of lockbox_path (experiments/draw_lockbox.py). Refuses a lockbox drawn
-    on another label selection or another leakage grouping, and one naming perturbations the data does not hold."""
+    on another label selection or another leakage grouping, and one naming perturbations the data does not hold. With
+    group_by and evidence_directory (the arguments the data was loaded with) it also refuses data loaded with another
+    grouping, which a finer grouping would otherwise pass (its groups never straddle the lockbox, but its development
+    folds would split drug-target groups), or from another evidence table."""
     lockbox = json.loads(Path(lockbox_path).read_text())
+    if group_by is not None and group_by != lockbox["group_by"]:
+        raise ValueError(f"{lockbox_path} was drawn with group_by {lockbox['group_by']!r}; the data was loaded with {group_by!r}")
+    if evidence_directory is not None and lockbox.get("evidence_records_sha256"):
+        evidence_sha256 = hashlib.sha256((Path(evidence_directory) / "evidence_records.parquet").read_bytes()).hexdigest()
+        if evidence_sha256 != lockbox["evidence_records_sha256"]:
+            raise ValueError(f"{lockbox_path} was drawn on evidence {lockbox['evidence_records_sha256'][:8]}, not on {evidence_directory} ({evidence_sha256[:8]})")
     selection_sha256 = (data.label_selection_summary or {}).get("sha256")
     if lockbox["label_selection_sha256"] != selection_sha256:
         raise ValueError(f"{lockbox_path} was drawn on label selection {lockbox['label_selection_sha256'][:8]}, not on the one loaded ({str(selection_sha256)[:8]})")

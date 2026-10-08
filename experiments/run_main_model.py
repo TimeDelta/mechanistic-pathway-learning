@@ -587,7 +587,7 @@ def main() -> None:
         if arguments.time_split_cutoff is not None or (arguments.score_lockbox and (arguments.holdout_module or arguments.holdout_subsystem)):
             raise ValueError("--score-lockbox is defined for the grouped split only, and --lockbox not with the time split; "
                              "a module or subsystem hold-out runs on the development perturbations (--lockbox without --score-lockbox)")
-        in_lockbox = read_lockbox(arguments.lockbox, data)
+        in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
         lockbox_summary = {"path": str(arguments.lockbox), "sha256": file_sha256(arguments.lockbox), "num_lockbox_perturbations": int(in_lockbox.sum()),
                            "role": "scored" if arguments.score_lockbox else "removed before the split"}
         print(f"lockbox: {lockbox_summary}")

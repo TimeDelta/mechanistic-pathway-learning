@@ -142,3 +142,13 @@ def test_drugs_join_the_groups_of_the_genes_they_target_and_of_drugs_sharing_a_t
     assert group["drug2"] == group["drug3"] == group["B"]  # drug2 and drug3 share node D; drug3 also targets gene B
     assert group["C"] == "cluster:C"  # untouched
     assert len(set(merged)) == 3
+
+
+def test_popularity_base_rate_leaves_set_aside_pairs_out() -> None:
+    from mechanistic_pathway_learning.models.baselines.popularity_baseline import PopularityBaseline
+    outcomes = np.array([[1, 0], [1, 1], [0, 0], [0, 1]], dtype=float)
+    mask = np.array([[True, True], [False, True], [True, True], [True, False]])  # two positives set aside
+    unmasked = PopularityBaseline().fit(outcomes * mask)
+    masked = PopularityBaseline().fit(outcomes * mask, training_label_mask=mask)
+    assert np.allclose(unmasked.symptom_base_rate, [0.25, 0.25])  # a set-aside positive counted as a negative
+    assert np.allclose(masked.symptom_base_rate, [1 / 3, 1 / 3])  # one kept positive over three labelled pairs

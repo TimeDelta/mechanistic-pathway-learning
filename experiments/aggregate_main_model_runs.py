@@ -267,7 +267,7 @@ def main() -> None:
     arguments = parser.parse_args()
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
     if arguments.lockbox is not None:
-        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))
+        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     aggregated = {}
     for run_directory in arguments.run_dirs:

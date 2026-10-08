@@ -18,9 +18,16 @@ class PopularityBaseline:
         self.scale_by_degree = scale_by_degree
         self.symptom_base_rate: np.ndarray | None = None
 
-    def fit(self, training_outcomes: np.ndarray, training_perturbation_degrees: np.ndarray | None = None) -> "PopularityBaseline":
-        """training_outcomes: [num_training_perturbations, num_symptoms] in {0, 1}."""
-        self.symptom_base_rate = training_outcomes.mean(axis=0)
+    def fit(self, training_outcomes: np.ndarray, training_perturbation_degrees: np.ndarray | None = None,
+            training_label_mask: np.ndarray | None = None) -> "PopularityBaseline":
+        """training_outcomes: [num_training_perturbations, num_symptoms] in {0, 1}. With training_label_mask (a label
+        selection), the base rate is over the labelled pairs only: a positive pair the selection set aside is neither a
+        positive nor a negative, as in the trainer's loss and leak initialisation."""
+        if training_label_mask is None:
+            self.symptom_base_rate = training_outcomes.mean(axis=0)
+        else:
+            labelled = np.asarray(training_label_mask, dtype=bool)
+            self.symptom_base_rate = (training_outcomes * labelled).sum(axis=0) / np.maximum(labelled.sum(axis=0), 1)
         return self
 
     def predict(self, num_perturbations: int, perturbation_degrees: np.ndarray | None = None) -> np.ndarray:

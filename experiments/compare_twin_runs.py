@@ -280,7 +280,7 @@ def main() -> None:
     RUN_ROOTS = FULL_GRAPH_RUN_ROOTS if arguments.graph_dir.name.startswith("graph_full") else SLICE_RUN_ROOTS
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
     if arguments.lockbox is not None:
-        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))
+        data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, NUM_FOLDS, 0)
     strata = np.array([fold_by_perturbation[p] for p in data.perturbation_ids]) * 1000 + degree_strata(data.perturbation_degrees)

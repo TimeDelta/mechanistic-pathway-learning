@@ -404,6 +404,14 @@ day). Each is a defect against text already in this specification, not a change 
 - The models' subsystem and module hold-outs run on the development perturbations (--lockbox without --score-lockbox);
   the trainer refused that combination, so the secondary subsystem reading of the models could not run without the
   lockbox perturbations.
+- The popularity and degree-scaled popularity baselines take their base rates over the labelled pairs only
+  (mechanistic_pathway_learning/models/baselines/popularity_baseline.py). They counted a positive pair the selection set
+  aside as a negative, while this specification, the trainer's loss and its leak initialisation treat it as neither.
+  Within a symptom (and within a degree stratum) these baselines rank by degree alone, so macro AUPRC and both
+  within-strata readings are unchanged; the pooled micro ranking changes, by -0.012 to +0.006 in per-fold micro AUPRC on
+  the five development folds (a check run during the review, development rows only).
+- read_lockbox also refuses data loaded with another --group-by or another evidence table than the lockbox was drawn on
+  (it caught only groups straddling the lockbox, which a finer grouping never does).
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
