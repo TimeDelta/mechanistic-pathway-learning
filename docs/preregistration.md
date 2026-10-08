@@ -576,8 +576,10 @@ day). Each is a defect against text already in this specification, not a change 
   The floors (0.041 and 0.028) were estimated with symptoms chosen again in each fold and micro AUPRC over all columns.
   Under the scorer's statistics, resampling single perturbations gives half-widths at or below both floors. Resampling
   groups gives a micro half-width above the micro floor (0.047, or 0.038 on the three lockbox-like pseudo-lockboxes),
-  and the scorer's p-values are smaller than a group bootstrap would give. The alternative is a bootstrap over the lockbox's 237 leakage groups, either for the confirmatory p-values or as a
-  sensitivity reading beside them.
+  and the scorer's p-values are smaller than a group bootstrap would give. The alternative is a bootstrap over the
+  lockbox's 237 leakage groups, either for the confirmatory p-values or as a sensitivity reading beside them.
+  Resampling whole groups keeps the dependence inside a group; Field and Welsh (2007) show that "the cluster bootstrap
+  gives consistent estimates under both the transformation and the random-effect model" of clustered data.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
