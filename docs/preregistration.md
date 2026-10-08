@@ -723,7 +723,11 @@ decisions, after the precision estimate they asked for).
   graph and changes on 56 percent of reaction rows; every other descriptor column is unchanged.
 - Still open: --bce-in-log-space, the per-type popularity baselines and the secondary contrasts. The second family's
   development runs (its four configurations on the five grouped development folds of lockbox_v2 with seed 0, and the
-  development baselines) start now; experiments/choose_heads.py reads them.
+  development baselines; runs/full/v2_development.sh) start when the first family's pilots end; experiments/choose_heads.py
+  reads them. On that development set every fold's early-stopping validation set (92 to 128 perturbations) holds drug
+  kept positives except fold 4's. The first family's no-descriptor ablation pilots were retired before they trained
+  anything; the second family's ablation runs the two chosen heads without descriptors on the same five folds after the
+  head choice.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
