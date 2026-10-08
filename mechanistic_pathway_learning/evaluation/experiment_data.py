@@ -194,6 +194,30 @@ def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_typ
     return [name_of_root[find("perturbation:" + perturbation_id)][1] for perturbation_id in perturbation_ids]
 
 
+GENE_TO_PROTEIN_FILE = "gene_to_protein.parquet"  # written by experiments/build_gene_protein_split.py; absent from merged graphs
+
+
+def read_protein_of_gene(graph_directory: Path) -> dict[str, str]:
+    """gene node id -> protein node id of a split graph (docs/gene_protein_split.md); empty for a merged graph."""
+    path = Path(graph_directory) / GENE_TO_PROTEIN_FILE
+    if not path.exists():
+        return {}
+    table = pd.read_parquet(path)
+    return dict(zip(table.gene_node_id, table.protein_node_id))
+
+
+def drug_seeds_on_proteins(triples: list, protein_of_gene: dict[str, str]) -> list:
+    """A drug acts on proteins: each target gene node is replaced by its protein node. When two target genes encode one
+    shared protein node, the first triple is kept, so the node is seeded once."""
+    seen, result = set(), []
+    for node_id, sign, magnitude in triples:
+        protein_node_id = protein_of_gene.get(node_id, node_id)
+        if protein_node_id not in seen:
+            seen.add(protein_node_id)
+            result.append([protein_node_id, sign, magnitude])
+    return result
+
+
 DEFAULT_LABEL_GRADES: tuple[str, ...] = ("A", "B")  # grades that count as positive labels; grade C (human association) and lower are soft evidence, not labels
 SOFT_PRIOR_ONLY_GRADES: tuple[str, ...] = ("D", "E")  # literature grades: soft priors by design (section 4.2), never labels and never evaluation positives
 
@@ -218,6 +242,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     edges = pd.read_parquet(graph_directory / "edges.parquet")
     relation_types = json.loads((graph_directory / "relation_types.json").read_text())
+    protein_of_gene = read_protein_of_gene(graph_directory)
     node_ids = list(nodes.node_id)
     node_index = {node_id: index for index, node_id in enumerate(node_ids)}
     relation_index = {name: index for index, name in enumerate(relation_types)}
@@ -248,6 +273,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     has_date_source_column = "evidence_date_source" in evidence.columns
     evidence_date_is_publication = np.zeros(outcomes.shape, dtype=bool)
     labels, types, groups, seeds, signs, magnitudes, metabolic = {}, {}, {}, {}, {}, {}, {}
+    group_seeds = {}  # the seeds the leakage groups are built from: the evidence's own gene nodes, also on a split graph
     for row in evidence.itertuples(index=False):
         position = perturbation_position[row.perturbation_id]
         outcomes[position, symptom_index[row.symptom]] = 1.0
@@ -265,10 +291,13 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         groups[row.perturbation_id] = getattr(row, group_column)
         metabolic[row.perturbation_id] = bool(row.in_metabolic_layer)
         if row.perturbation_id not in seeds:
-            triples = json.loads(row.perturbation_nodes)
-            seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples if node_id in node_index], dtype=int)
-            signs[row.perturbation_id] = np.array([sign for node_id, sign, _ in triples if node_id in node_index])
-            magnitudes[row.perturbation_id] = np.array([magnitude for node_id, _, magnitude in triples if node_id in node_index])
+            triples = [triple for triple in json.loads(row.perturbation_nodes) if triple[0] in node_index]
+            group_seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples], dtype=int)
+            if protein_of_gene and row.perturbation_type == "drug":  # split graph: a knockout seeds its gene, a drug its targets' proteins
+                triples = drug_seeds_on_proteins(triples, protein_of_gene)
+            seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples], dtype=int)
+            signs[row.perturbation_id] = np.array([sign for _, sign, _ in triples])
+            magnitudes[row.perturbation_id] = np.array([magnitude for _, _, magnitude in triples])
     label_mask, label_selection_summary = None, None
     if label_selection is not None:
         selection = pd.read_parquet(label_selection)
@@ -303,7 +332,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             label_selection_summary["masked_negative_pairs"] = masked_negatives
     group_ids = [groups[p] for p in perturbation_ids]
     if group_by == "disease_cluster_and_targets":
-        group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [seeds[p] for p in perturbation_ids], node_ids)
+        group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [group_seeds[p] for p in perturbation_ids], node_ids)
     return ExperimentData(
         node_ids=node_ids,
         node_index=node_index,

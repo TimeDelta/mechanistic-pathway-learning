@@ -41,7 +41,7 @@ def rewired_gene_reaction_rules(nodes: pd.DataFrame, edges_before: np.ndarray, e
 
     nodes: the graph's nodes table in node-index order (node_id, node_type, ensembl_gene_id, gene_reaction_rule);
     edges_before and edges_after: [2, E] node indices; catalysis: boolean per edge, the catalyzed_by edges."""
-    ensembl = nodes.ensembl_gene_id.where(nodes.node_type == "gene").to_numpy()
+    ensembl = nodes.ensembl_gene_id.where(nodes.node_type.isin(("gene", "protein"))).to_numpy()  # protein: the catalyst on a split graph
     node_ids = nodes.node_id.to_numpy()
 
     def token(node: int) -> str:

@@ -273,11 +273,16 @@ def main() -> None:
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIRECTORY)
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/twin_comparisons.md"))
     parser.add_argument("--json-output", type=Path, default=Path("runs/twin_comparisons.json"))
+    parser.add_argument("--run-root", type=Path, action="append", default=None,
+                        help="read run directories from this root instead of the slice or full-graph defaults (repeatable, searched in order); "
+                             "give a --cache-dir of its own when a run name also exists under the default roots")
     arguments = parser.parse_args()
 
     global RUN_DIRECTORY_SUFFIX, RUN_ROOTS
     RUN_DIRECTORY_SUFFIX = f"_{arguments.group_by}" + ("_development" if arguments.lockbox is not None else "")
     RUN_ROOTS = FULL_GRAPH_RUN_ROOTS if arguments.graph_dir.name.startswith("graph_full") else SLICE_RUN_ROOTS
+    if arguments.run_root:
+        RUN_ROOTS = tuple(arguments.run_root)
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
     if arguments.lockbox is not None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
@@ -302,7 +307,7 @@ def main() -> None:
              f"{NUM_FOLDS} finished disease-cluster folds. A carries the change. Three readings of A minus B in macro AUPRC: paired per fold "
              f"with a t interval ({NUM_FOLDS - 1} degrees of freedom); pooled out-of-fold with a paired bootstrap over perturbations "
              f"({arguments.num_bootstrap} resamples); and pooled after ranking each score inside one degree stratum of one test fold "
-             f"(metabolic-graph degrees, {len(np.unique(degree_strata(data.perturbation_degrees)))} strata), which gives no credit for ordering "
+             f"(degrees in {arguments.graph_dir.name}, {len(np.unique(degree_strata(data.perturbation_degrees)))} strata), which gives no credit for ordering "
              "perturbations by degree. ± is the sample standard deviation over folds (n - 1); the aggregation tables of "
              "aggregate_main_model_runs.py divide by n, which reads about 11 percent smaller at five folds. "
              "Pooled macro AUROC is in the JSON output. Intervals are 95 percent and are not corrected for the "

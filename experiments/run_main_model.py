@@ -70,6 +70,7 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
+from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CROSS_RELATION_AGGREGATORS,
@@ -242,12 +243,18 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 # arguments a resumed process may change without changing what the checkpoint was trained for
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
-ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum"}
+ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes"}
 
 
 def array_sha256(values) -> str:
     array = np.ascontiguousarray(np.asarray(values))
     return hashlib.sha256(str(array.dtype).encode() + str(array.shape).encode() + array.tobytes()).hexdigest()
+
+
+def rewiring_fixed_relations(relation_types: list[str], rewire_encodes: bool) -> list[int]:
+    """Relation indices the rewiring leaves as they are: encodes on a split graph unless --rewire-encodes (an open
+    decision of the user, docs/gene_protein_split.md); none on a merged graph."""
+    return [relation_types.index(ENCODES_RELATION)] if ENCODES_RELATION in relation_types and not rewire_encodes else []
 
 
 def configuration_fingerprint(arguments, data, label_mask) -> dict:
@@ -635,6 +642,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="the Ensembl-indexed table the brain descriptors were built from (experiments/write_expression_tables.py)")
     parser.add_argument("--class-expression-table", type=Path, default=Path("data/processed/brain_expression/class_expression_for_weights.parquet"),
                         help="the Ensembl-indexed class nCPM table the cell-class weights were built from (experiments/write_expression_tables.py)")
+    parser.add_argument("--rewire-encodes", action="store_true",
+                        help="with --rewire-swaps-per-edge on a split graph: rewire the encodes relation too (gene -> protein); by default it is held "
+                             "fixed, so a knockout keeps its own protein (docs/gene_protein_split.md)")
     parser.add_argument("--keep-reciprocated-relations-symmetric", action="store_true",
                         help="with --rewire-swaps-per-edge: a relation stored in both directions (binds) is rewired as undirected edges, so it stays symmetric "
                              "(negative_controls.reciprocated_relations, fast_degree_preserving_rewiring); off by default, which reproduces earlier rewired runs")
@@ -796,13 +806,16 @@ def main() -> None:
     if arguments.rewire_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])
         undirected_relations = reciprocated_relations(original_edges, data.edge_relation) if arguments.keep_reciprocated_relations_symmetric else []
+        fixed_relations = rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False))
         rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewire_swaps_per_edge, random_seed=arguments.seed,
-                                                  undirected_relations=undirected_relations)
+                                                  undirected_relations=undirected_relations, fixed_relations=fixed_relations)
         rewiring_summary = {"swaps_per_edge": arguments.rewire_swaps_per_edge, "seed": arguments.seed, "num_edges": int(rewired.shape[1]),
                             "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
                             "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
         if arguments.keep_reciprocated_relations_symmetric:  # only then, so the split signature of earlier rewired runs is unchanged
             rewiring_summary["undirected_relations"] = [data.relation_types[relation] for relation in undirected_relations]
+        if fixed_relations:  # split graphs only (docs/gene_protein_split.md), so the summary of earlier rewired runs is unchanged
+            rewiring_summary["fixed_relations"] = [data.relation_types[relation] for relation in fixed_relations]
         if arguments.recompute_reaction_expression_on_rewired_graph:  # only then, so the split signature of earlier rewired runs is unchanged
             rewiring_summary["reaction_expression_recomputed"] = recompute_reaction_expression(data, original_edges, rewired, arguments)
         data.edge_source, data.edge_target = rewired[0], rewired[1]  # before the encoder and the adjacencies are built

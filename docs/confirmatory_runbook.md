@@ -18,7 +18,10 @@ is the one tested: two models, the noisy-OR head of each encoder (the user dropp
    docs/module_health.md, which was written before the runs. When it ends, report the reading for each encoder to the
    user. The leak start is applied (the user, 8 October 2026); apply nothing more to a confirmatory_v2 configuration
    before the user decides. Further candidates, if needed, go
-   through the same rule. When the user has decided, write runs/full/v2_development.go, move
+   through the same rule. The job split_slice (runs/module_fix/split_slice.sh) starts when module_fix_slice ends and
+   runs the gene and protein split arms on the slice (docs/gene_protein_split.md); report its readings with the module
+   fix, since the user may move the confirmatory configurations to the split before v2_development resumes. When the
+   user has decided, write runs/full/v2_development.go, move
    runs/jobs/paused/v2_development.job back to runs/jobs/ and resume it (step 1c).
 1. confirmatory_pilots (first family, registered 8 October 2026): fold 0, seed 0 development pilots of the four confirmatory
    configurations (runs/full/confirmatory_*_disease_cluster_and_targets_development/fold0_seed0), then the development

@@ -35,6 +35,14 @@ FULL_GRAPH_ARGUMENTS_V2 = ["--graph-dir", "data/processed/graph_full_neuronal", 
                            "--label-selection", "data/processed/label_selection/better_v2_full_v2.parquet"]
 CONFIRMATORY_VALIDATION_V2 = [*CONFIRMATORY_VALIDATION, "--validation-draw", "rotated_stratified"]
 
+# the module-fix arms of the slice (docs/module_health.md), the base of the split arms below
+SLICE_MODULE_FIX_MESSAGE_PASSING = ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate",
+                                    "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002",
+                                    "--gate-learning-rate", "0.05", "--start-at-weighted-optimum"]
+SLICE_MODULE_FIX_LINEAR_RESPONSE = ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
+                                    "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
+                                    "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05", "--start-at-weighted-optimum"]
+
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
     "b6_absolute_mean": ["--head", "noisy_or", "--field", "absolute", "--pooling", "mean"],
@@ -102,6 +110,23 @@ CONFIGURATIONS: dict[str, list[str]] = {
                                                                      "--cofactor-relations", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5",
                                                                      "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05",
                                                                      "--start-at-weighted-optimum"],
+    # the gene and protein split (docs/gene_protein_split.md; not decided for the confirmatory family): each module-fix
+    # arm with the slice descriptors on the merged slice graph (the twin) and on its split copy, where message passing
+    # gets one more layer (a knockout reaches the protein layer one hop later), and the split message-passing arm with
+    # seed masking (the user: seed masking may not be needed once the genes carry no descriptors)
+    "b6_mechanistic_gate_time_scales_weighted_start_descriptors": SLICE_MODULE_FIX_MESSAGE_PASSING + [
+        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
+    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_split": SLICE_MODULE_FIX_MESSAGE_PASSING + [
+        "--graph-dir", "data/processed/graph_split", "--num-layers", "3",
+        "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet"],
+    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_split_seed_masked": SLICE_MODULE_FIX_MESSAGE_PASSING + [
+        "--graph-dir", "data/processed/graph_split", "--num-layers", "3",
+        "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet", "--descriptor-treatment", "seed_masked"],
+    "b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors": SLICE_MODULE_FIX_LINEAR_RESPONSE + [
+        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
+    "b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors_split": SLICE_MODULE_FIX_LINEAR_RESPONSE + [
+        "--graph-dir", "data/processed/graph_split",
+        "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet"],
     "b6_linear_response_gate_time_scales_cofactors_log": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations", "--response-scale", "signed_log",
                                                           "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
     # fixed node descriptors (experiments/build_node_descriptors.py) and the controls that credit propagation only with what it adds

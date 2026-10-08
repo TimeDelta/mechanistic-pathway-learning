@@ -1,6 +1,7 @@
 # Gene and protein nodes: the split and the gene-to-protein mapping
 
-Written on 8 October 2026. Nothing here is built or registered. No graph directory was regenerated; the measurements
+Written on 8 October 2026. The split is built into new directories (section "Built"); no existing graph directory was
+regenerated, and no confirmatory configuration uses the split. The measurements
 read graph_full_neuronal, evidence_full_v2 with better_v2 and the pinned reviewed UniProt table (20,431 entries). The
 degree rankers below read development outcomes only (the 317 lockbox perturbations are left out); lockbox counts are
 membership counts.
@@ -69,7 +70,8 @@ It is not fixed under the running jobs; the split build fixes it.
    classes) is mRNA measured per gene. The default reading of "pseudo-gene descriptors": this block moves to the protein
    node as gene-derived descriptors, a proxy for protein abundance (liu2016dependency: "transcript levels by themselves
    are not sufficient to predict protein levels in many scenarios").
-   - A shared protein takes the sum of its genes' values before the log.
+   - A shared protein takes the largest of its genes' values, as a reaction does over isozymes (an earlier draft said
+     the sum; the two differ by at most log 2 before standardisation, on 15 nodes of the full graph).
    - A complex, if complexes get descriptors, takes the minimum over its members, as reactions do now under "and" rules
      (machado2014systematic).
    - The documents will not use the term "pseudogene", which names a non-functional gene copy (UniProt lists RPL9P7 to
@@ -141,3 +143,79 @@ Consequences of the user's decision:
   refit_pilots read them.
 - The confirmatory_v2 configurations still name graph_full_neuronal. Moving them to the split graph is the user's
   decision, after the slice check of item 6.
+
+## Built (8 October 2026, new directories only)
+
+experiments/build_gene_protein_split.py (library: mechanistic_pathway_learning/graph/gene_protein_split.py) wrote:
+- data/processed/graph_split, from the slice graph:
+  - 2,848 gene nodes and 2,839 protein nodes;
+  - every gene node has degree 1, because the slice has no transcription edges, so on the slice all knockouts share one
+    degree stratum.
+- data/processed/graph_full_neuronal_split:
+  - 12,810 gene nodes and 12,790 protein nodes;
+  - 15 shared protein nodes for 35 genes (H3-3A/H3-3B, SMN1/SMN2, CKMT1A/CKMT1B, the USP17L cluster and others);
+  - 279,766 edges (266,966 before, plus 12,810 encodes edges, minus 10 merged onto shared nodes);
+  - 6,596 gene nodes of degree 1.
+- The descriptor tables and cell-class weight tables of both, under data/processed/node_descriptors/*_split_* and
+  data/processed/cell_class_weights/*_split_*:
+  - gene rows carry no descriptor (0 nonzero rows);
+  - on the full graph, 12,658 protein nodes carry protein descriptors, against 12,643 gene nodes before (the shared-entry
+    defect is fixed);
+  - gene nodes keep their cell-class weights, and protein nodes take their gene's.
+
+Code changes, all inactive on a merged graph:
+- **Loader.** experiment_data.load_experiment_data seeds a drug's target proteins when the graph directory holds
+  gene_to_protein.parquet, and builds leakage groups from the evidence's own gene nodes. On the slice and on
+  graph_full_neuronal with evidence_full_v2 and better_v2, the edited loader returns the same seeds, signs, magnitudes,
+  outcomes, masks and groups as before.
+- **Checks on graph_full_neuronal_split.**
+  - The groups are identical to the merged graph's.
+  - lockbox_v2 reads (317 perturbations).
+  - Every drug seed is a protein node, and every knockout seed a gene node.
+  - The degree strata are those tabulated above.
+- **Rewiring.** encodes is held fixed unless --rewire-encodes (an open decision of the user). It comes last in index
+  order, so the other relations' random stream is unchanged.
+- **Rewired runs.** The rewired reaction rules read a protein catalyst's Ensembl id. On the split slice, 0 rule genes were
+  replaced by a catalyst without expression.
+- **Tests and smoke runs.**
+  - tests/test_gene_protein_split.py; the full suite passes (308 tests).
+  - Two-epoch smoke runs of both encoders on the split slice, and a one-epoch rewired run, trained without error.
+
+Not done: the 113 gene nodes without a reviewed protein (ChEBI compounds, unreviewed accessions, outdated symbols) are
+split like the others; retyping and remapping them is item 3 above.
+
+## Slice runs (job split_slice, after module_fix_slice)
+
+Five disease-cluster folds, seed 0, each arm with --start-at-weighted-optimum and the slice brain expression descriptors
+(experiments/run_main_model_batch.py):
+- message passing on the merged slice (2 layers) against the split slice (3 layers, so knockouts reach as far into the
+  protein layer);
+- message passing on the split slice with and without seed masking (the user's statement that seed masking may not be
+  needed once the genes carry no descriptors);
+- linear response on the merged slice against the split slice.
+
+The readings, fixed before the runs, are paired five-fold differences in macro and micro AUPRC
+(experiments/compare_twin_runs.py) and the module-health readings of docs/module_health.md
+(experiments/module_health.py). The slice is metabolic: its knockouts reach reactions through one encodes edge and no
+protein interactions, so it tests the descriptor placement and the extra hop, not the protein layer of the full graph.
+They are development readings and go to the user, who decides whether the confirmatory configurations move to the split.
+
+The merged and split arms differ in three arguments (graph, layer count and descriptor table), so their difference
+reads the split as a whole, not one change. The within-degree-strata reading is taken twice, with strata from the split
+slice (the user's decision for the registered strata) and from the merged slice, each with its own cache, because
+compare_twin_runs.py keys its cache by run names only:
+
+    pairs="b6_mechanistic_gate_time_scales_weighted_start_descriptors_split:b6_mechanistic_gate_time_scales_weighted_start_descriptors \
+      b6_mechanistic_gate_time_scales_weighted_start_descriptors_split_seed_masked:b6_mechanistic_gate_time_scales_weighted_start_descriptors_split \
+      b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors_split:b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors \
+      b6_mechanistic_gate_time_scales_weighted_start_descriptors:b6_mechanistic_gate_time_scales_weighted_start \
+      b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors:b6_linear_response_gate_time_scales_cofactors_weighted_start"
+    OMP_NUM_THREADS=1 PYTHONPATH=. python experiments/compare_twin_runs.py --graph-dir data/processed/graph_split \
+      --run-root runs/module_fix --cache-dir runs/module_fix/twin_comparisons_split_strata --pairs $pairs \
+      --markdown-output docs/split_slice_comparisons.md --json-output runs/module_fix/split_slice_comparisons.json
+    OMP_NUM_THREADS=1 PYTHONPATH=. python experiments/compare_twin_runs.py --graph-dir data/processed/graph \
+      --run-root runs/module_fix --cache-dir runs/module_fix/twin_comparisons_merged_strata --pairs $pairs \
+      --markdown-output docs/split_slice_comparisons_merged_strata.md --json-output runs/module_fix/split_slice_comparisons_merged_strata.json
+
+The last two pairs read the brain expression descriptors on the merged slice under the module fix.
+

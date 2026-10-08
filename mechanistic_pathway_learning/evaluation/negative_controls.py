@@ -107,7 +107,7 @@ def _rewire_undirected_units(unit_first: list[int], unit_second: list[int], occu
 
 
 def fast_degree_preserving_rewiring(edge_index: np.ndarray, edge_relation_type: np.ndarray, num_swaps_per_edge: int = 10, random_seed: int = 0,
-                                    draws_per_batch: int = 1_000_000, undirected_relations=()) -> np.ndarray:
+                                    draws_per_batch: int = 1_000_000, undirected_relations=(), fixed_relations=()) -> np.ndarray:
     """Degree-preserving rewiring within each relation at O(1) per swap, for the full graph. Two edges of one relation
     exchange targets unless that makes a self-loop or repeats an edge already present, as in the randomisation of
     Maslov and Sneppen (Science 2002, doi:10.1126/science.1065103); degree_preserving_rewiring allows the repeat. Edge pairs are drawn as integer positions in batches; num_swaps_per_edge counts attempts,
@@ -119,11 +119,18 @@ def fast_degree_preserving_rewiring(edge_index: np.ndarray, edge_relation_type: 
     relation stays symmetric where the real one is (rewiring the two directions apart leaves 1,664 of the full graph's
     31,118 binds edges with their reverse, from 30,682); its edges without a reverse are rewired as directed edges. Every
     node keeps its in- and out-degree in every relation either way. With none given the output is the one this function
-    has always produced for a seed."""
+    has always produced for a seed.
+
+    fixed_relations: relations left as they are, such as encodes on a split graph (gene -> its own protein; swapping it
+    would join a gene to another gene's protein). The random stream of the other relations is unchanged when the fixed
+    relations come after them in index order, as encodes does (appended last by graph/gene_protein_split.py)."""
     generator = np.random.default_rng(random_seed)
     rewired = edge_index.copy()
     undirected_relations = {int(relation) for relation in undirected_relations}
+    fixed_relations = {int(relation) for relation in fixed_relations}
     for relation_index in np.unique(edge_relation_type):
+        if int(relation_index) in fixed_relations:
+            continue
         edge_positions = np.where(edge_relation_type == relation_index)[0]
         num_edges = len(edge_positions)
         if num_edges < 2:

@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from experiments.run_main_model import (build_argument_parser, build_models, macro_auprc, predict)
+from experiments.run_main_model import (build_argument_parser, build_models, macro_auprc, predict, rewiring_fixed_relations)
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.negative_controls import fast_degree_preserving_rewiring, reciprocated_relations
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import micro_auprc
@@ -124,7 +124,8 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
     original_edges = np.stack([original_source, original_target])
     undirected_relations = reciprocated_relations(original_edges, data.edge_relation) if keep_reciprocated_relations_symmetric else []
     rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=swaps_per_edge, random_seed=rewiring_seed,
-                                              undirected_relations=undirected_relations)
+                                              undirected_relations=undirected_relations,
+                                              fixed_relations=rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False)))
     try:
         data.edge_source, data.edge_target = rewired[0], rewired[1]
         rewired_encoder, rewired_head, rewired_adjacencies = trained_models(data, arguments, checkpoint, device)
