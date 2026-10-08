@@ -46,3 +46,16 @@ def test_with_no_large_group_the_flag_changes_nothing() -> None:
         without_flag = split(data, keep_large_groups_in_training=False, seed=seed)
         with_flag = split(data, keep_large_groups_in_training=True, seed=seed)
         assert all(np.array_equal(a, b) for a, b in zip(without_flag, with_flag))
+
+
+def test_module_hold_out_leaves_group_partners_out_of_training(tmp_path) -> None:
+    from experiments.run_main_model import split_indices
+
+    modules = tmp_path / "modules.csv"
+    modules.write_text("module_id,module_name,genes,monogenic_anchors,pharmacological_anchors\ntoy,Toy,GENEA,,\n")
+    # perturbation 0 writes onto GENEA; perturbation 1 shares its disease cluster; 2 and 3 are unrelated
+    data = SimpleNamespace(perturbation_ids=["P0", "P1", "P2", "P3"], group_ids=["cluster:A", "cluster:A", "cluster:B", "cluster:C"],
+                           perturbation_seeds=[[0], [1], [2], [3]], node_index={"GENE:GENEA": 0, "GENE:GENEB": 1, "GENE:GENEC": 2, "GENE:GENED": 3})
+    arguments = Namespace(time_split_cutoff=None, holdout_module="toy", holdout_subsystem="", curated_modules=modules, validation_fraction=0.0, seed=0)
+    train, validation, test, split_name = split_indices(data, arguments)
+    assert test.tolist() == [0] and train.tolist() == [2, 3] and len(validation) == 0 and split_name == "module_toy_seed0"

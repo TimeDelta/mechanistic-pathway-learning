@@ -100,6 +100,18 @@ def perturbations_anchored_in_module(perturbation_seed_node_indices: Sequence, m
     return [any(int(node_index) in module_node_indices for node_index in seeds) for seeds in perturbation_seed_node_indices]
 
 
+def training_mask_without_group_partners(test_mask: Sequence[bool], group_ids: Sequence[str]) -> list[bool]:
+    """Training rows for a hold-out: every perturbation outside it whose leakage group has no member inside it.
+
+    A grouped fold or the lockbox holds whole groups, so there this is the complement of the test mask. A pathway-wise
+    hold-out selects perturbations by seed gene instead, and a perturbation outside it that shares a disease cluster or
+    a drug target with one inside would carry the held-out labels into training; such partners are neither trained on
+    nor scored.
+    """
+    held_out_groups = {group for group, held_out in zip(group_ids, test_mask) if held_out}
+    return [not held_out and group not in held_out_groups for group, held_out in zip(group_ids, test_mask)]
+
+
 CATCH_ALL_SUBSYSTEMS: frozenset[str] = frozenset({
     "Transport reactions", "Exchange/demand reactions", "Isolated", "Miscellaneous", "Artificial reactions", "Pool reactions",
 })
@@ -145,7 +157,10 @@ def subsystem_holdout_masks(
     outcomes_per_perturbation: Sequence[float],
     min_holdout_positives: int,
 ) -> dict[str, list[bool]]:
-    """Subsystem -> mask of perturbations whose seed nodes include a gene of that primary subsystem, keeping subsystems with enough positives."""
+    """Subsystem -> mask of perturbations whose seed nodes include a gene of that primary subsystem, keeping subsystems with enough positives.
+
+    With a label selection, outcomes_per_perturbation should count the kept positives only (outcomes x label mask): the
+    pairs set aside are not scored, so they cannot make a hold-out scorable."""
     nodes_by_subsystem: dict[str, set[int]] = defaultdict(set)
     for gene_node, subsystem in primary_subsystem.items():
         nodes_by_subsystem[subsystem].add(gene_node)

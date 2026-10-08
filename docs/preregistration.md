@@ -412,6 +412,13 @@ day). Each is a defect against text already in this specification, not a change 
   the five development folds (a check run during the review, development rows only).
 - read_lockbox also refuses data loaded with another --group-by or another evidence table than the lockbox was drawn on
   (it caught only groups straddling the lockbox, which a finer grouping never does).
+- The pathway-wise hold-outs (the secondary subsystem reading, and the curated modules) leave out of each fit the
+  perturbations that share a leakage group with a held-out one; they select perturbations by seed gene, so a held-out
+  gene's disease-cluster or drug-target partner trained with its labels. On the development set five of the six
+  qualifying subsystems have such partners (227 to 343 perturbations, mostly cluster:ABCA3); the lockbox holds whole
+  groups and the grouped folds are drawn by group, so neither changes. The --min-holdout-positives filter counts kept
+  positive pairs (it counted every positive, so hold-outs qualified on pairs that are never scored): on the development
+  set 6 subsystems qualify instead of 21, and no curated module reaches 10 kept positives (the largest has 9).
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

@@ -6,8 +6,9 @@ slurm/train_resumable.sbatch waits for before it stops requeueing. One split per
 folds, seeds and module hold-outs run as array jobs.
 
 Splits: --fold k of the grouped perturbation-wise split (leakage groups by --group-by), or
---holdout-module <module_id> for the pathway-wise split (every perturbation writing onto a gene of
-that curated module is test data). A grouped validation subset of the training perturbations
+--holdout-module <module_id> or --holdout-subsystem <name> for the pathway-wise split (every perturbation writing onto
+a gene of that curated module or primary subsystem is test data, and the perturbations sharing a leakage group with
+one of them are left out of training). A grouped validation subset of the training perturbations
 (--validation-fraction) drives early stopping (--selection-metric, the validation loss by default); the best
 validation state is restored before the test evaluation. With --keep-large-groups-in-training a leakage group larger
 than half the expected validation set never forms that subset (early_stopping_validation). With --refit-on-validation the
@@ -48,6 +49,7 @@ from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_
     perturbations_anchored_in_module,
     primary_subsystem_by_gene_node,
     read_curated_modules,
+    training_mask_without_group_partners,
 )
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
@@ -406,7 +408,14 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
         fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
         test_mask = np.array([fold_by_perturbation[p] == arguments.fold for p in data.perturbation_ids])
         split_name = f"fold{arguments.fold}_seed{arguments.seed}"
-    train_pool = all_indices[~test_mask]
+    if arguments.holdout_module or arguments.holdout_subsystem:  # the hold-out is chosen by seed gene, not by leakage group
+        training_mask = np.array(training_mask_without_group_partners(test_mask, data.group_ids))
+        num_group_partners = int((~test_mask & ~training_mask).sum())
+        if num_group_partners:
+            print(f"pathway-wise hold-out: {num_group_partners} perturbations share a leakage group with the held-out ones and are left out of training")
+        train_pool = all_indices[training_mask]
+    else:  # whole groups: the lockbox (read_lockbox refuses a straddling group) and grouped folds
+        train_pool = all_indices[~test_mask]
     validation = np.array([], dtype=int)
     if arguments.validation_fraction > 0 and len(train_pool) >= 20:
         train_pool, validation = early_stopping_validation(data, train_pool, arguments)

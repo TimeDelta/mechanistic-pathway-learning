@@ -95,3 +95,34 @@ def test_primary_subsystem_routes_catch_all_bins_to_pathways_and_holdout_masks()
     assert masks["Porphyrin metabolism"] == [False, False, True, True]
     assert perturbations_anchored_in_module(seeds, {1}) == [False, True, False, False]
     assert "Transport reactions" not in subsystem_holdout_masks(seeds, {0: "Transport reactions", 1: "Transport reactions", 2: "Transport reactions"}, positives, 1)
+
+
+def test_pathway_wise_training_mask_leaves_out_group_partners() -> None:
+    from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import training_mask_without_group_partners
+
+    group_ids = ["cluster:A", "cluster:A", "cluster:B", "cluster:C", "cluster:B"]
+    # perturbation 0 is held out; 1 shares its disease cluster and must not train; 2 to 4 train
+    assert training_mask_without_group_partners([True, False, False, False, False], group_ids) == [False, False, True, True, True]
+    # a hold-out of whole groups trains on the complement
+    assert training_mask_without_group_partners([False, False, True, False, True], group_ids) == [True, True, False, True, False]
+
+
+def test_baseline_pathway_hold_out_fits_without_group_partners() -> None:
+    import importlib.util
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    spec = importlib.util.spec_from_file_location("run_baselines_module", Path(__file__).resolve().parents[1] / "experiments" / "run_baselines.py")
+    run_baselines = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_baselines)
+    # popularity predicts the training base rate, so a held-out row's prediction shows which rows were fitted
+    outcomes = np.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
+    data = SimpleNamespace(perturbation_degrees=np.ones(4), group_ids=["g0", "g0", "g1", "g2"])
+    test = np.array([True, False, False, False])
+    without_groups, _, per_fold, _ = run_baselines.run_split(data, outcomes, [test], "popularity", 0.3, None, min_fold_size_for_macro=100)
+    with_groups, _, per_fold_grouped, _ = run_baselines.run_split(data, outcomes, [test], "popularity", 0.3, None, min_fold_size_for_macro=100, group_ids=data.group_ids)
+    np.testing.assert_allclose(without_groups[0], [1 / 3, 2 / 3])  # rows 1 to 3 fitted, row 1 is the held-out row's partner
+    np.testing.assert_allclose(with_groups[0], [0.0, 1.0])  # rows 2 and 3 only
+    assert per_fold[0]["num_group_partners_left_out"] == 0 and per_fold_grouped[0]["num_group_partners_left_out"] == 1

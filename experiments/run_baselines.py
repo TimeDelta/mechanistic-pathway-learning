@@ -17,8 +17,10 @@ Pathway-wise splits. Two definitions of a pathway are held out in turn: the cura
 design section 3.2 (docs/curated_pathway_modules.csv) and the reconstruction subsystems of
 Human-GEM (every gene whose primary subsystem is S). A held-out set is every perturbation that
 writes onto a gene of the pathway (the gene itself, or a drug targeting it); pathways with fewer
-than --min-holdout-positives positive pairs are skipped. Predictions are pooled over the held-out
-sets. Held-out sets are small and symptom profiles inside a pathway are homogeneous, so per-symptom
+than --min-holdout-positives positive pairs (kept pairs only, under a label selection) are skipped.
+Perturbations outside a held-out set that share a leakage group with one inside it are left out of
+that fit, since a shared disease cluster or drug target carries the held-out labels. Predictions are
+pooled over the held-out sets. Held-out sets are small and symptom profiles inside a pathway are homogeneous, so per-symptom
 AUPRC inside one held-out set is not meaningful: per-split macro metrics are only computed for sets
 of at least --min-fold-size-for-macro perturbations, per-split MRR and hits-at-3 are always reported,
 and the pooled metrics are compared with the same split run on permuted labels.
@@ -63,6 +65,7 @@ from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_
     primary_subsystem_by_gene_node,
     read_curated_modules,
     subsystem_holdout_masks,
+    training_mask_without_group_partners,
 )
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     rank_normalise_within_groups,
@@ -126,18 +129,19 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, label_mask: np.n
 
 def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_name: str, restart_probability: float, normalized_adjacency,
               min_fold_size_for_macro: int = 20, split_labels: list[str] | None = None, label_mask: np.ndarray | None = None,
-              random_seed: int = 0) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
+              random_seed: int = 0, group_ids: list[str] | None = None) -> tuple[np.ndarray, np.ndarray, list[dict], np.ndarray]:
     """Fit on the complement of each test mask, predict the mask; return pooled predictions, the scored-row mask and per-fold scores.
 
     With a label mask, pairs set aside are not training positives (the fit sees them as unlabelled) and are left out
-    of every score."""
+    of every score. With group_ids (the pathway-wise hold-outs, which select perturbations by seed gene), perturbations
+    sharing a leakage group with a held-out one are left out of that fit as well."""
     training_outcomes = outcomes if label_mask is None else outcomes * label_mask
     predictions = np.zeros_like(outcomes)
     scored = np.zeros(outcomes.shape[0], dtype=bool)
     fold_of_row = np.full(outcomes.shape[0], -1, dtype=int)
     per_fold = []
     for fold_index, test in enumerate(test_masks):
-        train = ~test
+        train = ~test if group_ids is None else np.array(training_mask_without_group_partners(test, group_ids))
         if test.sum() == 0 or train.sum() == 0:
             continue
         predictions[test] = fit_and_predict(data, training_outcomes, train, test, model_name, restart_probability, normalized_adjacency, random_seed, label_mask)
@@ -146,6 +150,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
         test_label_mask = None if label_mask is None else label_mask[test]
         macro_auprc, macro_auroc = macro_scores(predictions[test], outcomes[test], test_label_mask) if test.sum() >= min_fold_size_for_macro else (float("nan"), float("nan"))
         per_fold.append({"fold": fold_index, "label": split_labels[fold_index] if split_labels else str(fold_index), "num_test": int(test.sum()), "num_positive_pairs": int(training_outcomes[test].sum()),
+                         "num_group_partners_left_out": int((~test & ~train).sum()),
                          "macro_auprc": macro_auprc, "macro_auroc": macro_auroc,
                          "micro_auprc": micro_auprc(predictions[test], outcomes[test], test_label_mask) if test.sum() >= min_fold_size_for_macro else float("nan"),
                          "mean_reciprocal_rank": mean_reciprocal_rank(predictions[test], outcomes[test], test_label_mask), "hits_at_3": hits_at_k(predictions[test], outcomes[test], 3, test_label_mask)})
@@ -200,12 +205,17 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
     }
 
 
+def kept_positives(data) -> np.ndarray:
+    """Positive pairs that are scored: all of them, or with a label selection only the kept ones."""
+    return data.outcomes if data.label_mask is None else data.outcomes * data.label_mask
+
+
 def pathway_wise_test_masks(data, curated_modules_path: Path, min_holdout_positives: int) -> tuple[list[np.ndarray], list[str]]:
     masks, module_ids = [], []
     for module_id, gene_symbols in read_curated_modules(curated_modules_path).items():
         module_nodes = {data.node_index[f"GENE:{symbol}"] for symbol in gene_symbols if f"GENE:{symbol}" in data.node_index}
         mask = np.array(perturbations_anchored_in_module(data.perturbation_seeds, module_nodes))
-        if mask.sum() == 0 or data.outcomes[mask].sum() < min_holdout_positives:
+        if mask.sum() == 0 or kept_positives(data)[mask].sum() < min_holdout_positives:
             continue
         masks.append(mask)
         module_ids.append(module_id)
@@ -216,7 +226,7 @@ def subsystem_test_masks(data, min_holdout_positives: int) -> tuple[list[np.ndar
     if data.node_subsystem is None:
         return [], []
     primary = primary_subsystem_by_gene_node(data.node_subsystem, data.edge_source, data.edge_target, data.edge_relation, data.relation_types.index("catalyzed_by"))
-    masks_by_subsystem = subsystem_holdout_masks(data.perturbation_seeds, primary, data.outcomes.sum(axis=1), min_holdout_positives)
+    masks_by_subsystem = subsystem_holdout_masks(data.perturbation_seeds, primary, kept_positives(data).sum(axis=1), min_holdout_positives)
     return [np.array(mask) for mask in masks_by_subsystem.values()], list(masks_by_subsystem)
 
 
@@ -227,8 +237,8 @@ def holdout_section(title: str, description: str, entries: dict, control_entries
         return (f"| {name} | {entry['macro_auprc']:.3f} | {entry.get('macro_auprc_rank_normalised', float('nan')):.3f} | {entry['macro_auroc']:.3f} | {entry.get('macro_auroc_rank_normalised', float('nan')):.3f} | {entry.get('macro_auroc_stratified', float('nan')):.3f} | {entry['mean_reciprocal_rank']:.3f} | {entry['hits_at_3']:.3f} | "
                 f"{entry['per_fold_mrr_mean']:.3f} | {entry['per_fold_hits_at_3_mean']:.3f} | {entry['num_scored_perturbations']} |")
 
-    lines = [f"## {title}", "", description, " Raw pooled scores across hold-outs with different base rates carry the artifact of section 6.2 (review v0.4, finding 1); the rank-within-hold-out columns replace each score by its tie-averaged rank over (n + 1) inside its hold-out before pooling, and the stratified AUROC forms positive-negative pairs inside hold-outs only. The pathway-wise endpoint is defined on the rank-within-hold-out macro AUPRC.", "",
-             "Held out (perturbations, positive pairs): " + "; ".join(f"{label} ({int(mask.sum())}, {int(outcomes[mask].sum())})" for label, mask in zip(labels, masks)) + ".", ""]
+    lines = [f"## {title}", "", description, " Raw pooled scores across hold-outs with different base rates carry the artifact of section 6.2 (review v0.4, finding 1); the rank-within-hold-out columns replace each score by its tie-averaged rank over (n + 1) inside its hold-out before pooling, and the stratified AUROC forms positive-negative pairs inside hold-outs only. The pathway-wise endpoint is defined on the rank-within-hold-out macro AUPRC. Perturbations sharing a leakage group with a held-out one are left out of that hold-out's fit.", "",
+             "Held out (perturbations, scored positive pairs): " + "; ".join(f"{label} ({int(mask.sum())}, {int(outcomes[mask].sum())})" for label, mask in zip(labels, masks)) + ".", ""]
     lines += header + [row(name, entry) for name, entry in entries.items()] + [""]
     if control_entries:
         lines += ["Same split with labels permuted within degree strata:", ""] + header + [row(name, entry) for name, entry in control_entries.items()] + [""]
@@ -372,9 +382,9 @@ def main() -> None:
         "lockbox": lockbox_summary, "seed": arguments.seed,
         "kg_embedding_settings": KG_EMBEDDING_SETTINGS if arguments.with_kg_embedding else None,
         "pathway_wise_modules": pathway_module_ids, "pathway_wise_holdout_sizes": [int(mask.sum()) for mask in pathway_masks],
-        "pathway_wise_positives": [int(data.outcomes[mask].sum()) for mask in pathway_masks],
+        "pathway_wise_positives": [int(kept_positives(data)[mask].sum()) for mask in pathway_masks],
         "subsystem_wise_subsystems": subsystem_labels, "subsystem_wise_holdout_sizes": [int(mask.sum()) for mask in subsystem_masks],
-        "subsystem_wise_positives": [int(data.outcomes[mask].sum()) for mask in subsystem_masks],
+        "subsystem_wise_positives": [int(kept_positives(data)[mask].sum()) for mask in subsystem_masks],
         "splits": {primary_split: {}, "pathway_wise": {}, "subsystem_wise": {}, f"{primary_split}_label_permutation": {}, "pathway_wise_label_permutation": {}, "subsystem_wise_label_permutation": {},
                    f"{primary_split}_rewired_graph": {}},
     }
@@ -402,15 +412,16 @@ def main() -> None:
                 continue
             if model_name == KG_EMBEDDING_NAME and split_name != primary_split and not arguments.kg_embedding_all_splits:
                 continue
+            partner_groups = None if split_name == primary_split else data.group_ids  # pathway-wise hold-outs are chosen by seed gene
             predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                 label_mask=label_mask, random_seed=arguments.seed)
+                                                                 label_mask=label_mask, random_seed=arguments.seed, group_ids=partner_groups)
             results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
             arguments.output_dir.mkdir(parents=True, exist_ok=True)
             np.save(arguments.output_dir / f"predictions_{split_name}_{model_name}.npy", predictions)  # pooled out-of-split predictions for paired comparisons
             np.save(arguments.output_dir / f"scored_rows_{split_name}.npy", rows)
             if not arguments.skip_permutation_control:
                 predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
-                                                                     label_mask=permuted_label_mask, random_seed=arguments.seed)
+                                                                     label_mask=permuted_label_mask, random_seed=arguments.seed, group_ids=partner_groups)
                 results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask)
                 np.save(arguments.output_dir / f"predictions_{split_name}_label_permutation_{model_name}.npy", predictions)
         for split_name, entries in results["splits"].items():
@@ -456,11 +467,11 @@ def main() -> None:
     if results["splits"]["pathway_wise"]:
         lines += holdout_section("Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)",
                                  "Per-symptom AUPRC inside one held-out module is not meaningful (sets of 4 to 8 genes with homogeneous symptom profiles), so only pooled per-symptom metrics and per-hold-out ranking metrics are shown.",
-                                 results["splits"]["pathway_wise"], results["splits"]["pathway_wise_label_permutation"], pathway_module_ids, pathway_masks, data.outcomes)
+                                 results["splits"]["pathway_wise"], results["splits"]["pathway_wise_label_permutation"], pathway_module_ids, pathway_masks, kept_positives(data))
     if results["splits"]["subsystem_wise"]:
         lines += holdout_section("Pathway-wise split, Human-GEM subsystems (every gene whose primary subsystem is the held-out one)",
                                  "Subsystems are the reconstruction's own pathway partition; they cover many more annotated genes than the curated modules and are the candidate definition of the pre-registered pathway-wise split.",
-                                 results["splits"]["subsystem_wise"], results["splits"]["subsystem_wise_label_permutation"], subsystem_labels, subsystem_masks, data.outcomes)
+                                 results["splits"]["subsystem_wise"], results["splits"]["subsystem_wise_label_permutation"], subsystem_labels, subsystem_masks, kept_positives(data))
     split_title = "lockbox" if arguments.score_lockbox else "grouped split"
     if results["splits"][f"{primary_split}_label_permutation"]:
         lines += [f"## Negative control: labels permuted within degree strata ({split_title})", ""] + header + [summary_row(name, entry) for name, entry in results["splits"][f"{primary_split}_label_permutation"].items()] + [""]
