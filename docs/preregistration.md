@@ -310,6 +310,37 @@ docs/graph_reliance.md and docs/descriptor_treatments.md, chosen or not: selecti
 estimate of the chosen arm optimistic, which does not reach the lockbox, since the lockbox is scored once by a model
 fixed before it is opened.
 
+Readings of the treatment rule (8 October 2026, descriptor_treatments_message_passing and _linear_response ended; graph
+reliance from docs/graph_reliance.md as the mean of macro and micro reliance, the six differences against the plain arm
+from docs/descriptor_treatments.md). Not applied: it waits for the user's confirmation (docs/confirmatory_runbook.md,
+step 2b).
+
+| encoder | arm | graph reliance | mean of six differences | qualifies |
+|---|---|---|---|---|
+| message passing | plain (b3_typed_nodes_descriptors_brain) | +0.0045 | | |
+| message passing | seed_masked | +0.0149 | +0.0032 | yes |
+| message passing | zero_init_slow | +0.0092 | +0.0087 | yes |
+| message passing | without_gene | +0.0165 | -0.0003 | yes |
+| message passing | without_gene_derived | +0.0150 | -0.0016 | yes |
+| message passing | without_protein | +0.0168 | +0.0247 | yes; the rule picks it |
+| linear response | plain (b3_linear_response_cofactors_descriptors_brain) | -0.0007 | | |
+| linear response | seed_masked | +0.0019 | -0.0095 | yes |
+| linear response | zero_init_slow | +0.0072 | +0.0084 | yes |
+| linear response | without_gene | +0.0093 | -0.0063 | yes |
+| linear response | without_gene_derived | +0.0157 | -0.0047 | yes; the rule picks it |
+| linear response | without_protein | -0.0030 | +0.0047 | no (reliance below plain) |
+
+What the readings support. Every arm moves graph reliance by 0.01 to 0.02, against standard deviations over folds of
+about 0.02 (docs/graph_reliance.md, one rewiring seed), so the order among arms is not resolved. In the message-passing
+encoder without_protein leads without_gene by 0.0003 in reliance, a tie; it is also the only arm with a clear AUPRC
+gain over the plain arm (micro +0.043 pooled, 95 percent interval +0.021 to +0.063; macro +0.018, -0.002 to +0.036),
+and against b3_typed_nodes without descriptors it gains +0.021 macro pooled (+0.005 to +0.039). In the linear-response
+encoder without_gene_derived leads without_gene by 0.006 in reliance and costs -0.005 on the six-difference mean. The
+slice holds gene seeds only, so a block's effect on drug perturbations is not measured. If applied, the
+message-passing configurations would add --drop-descriptor-blocks protein and the linear-response configurations
+--drop-descriptor-blocks protein gene_brain reaction_brain; the latter takes the reaction_brain block out, so for
+linear response the rewired reaction expression of H2 would recompute only the reactions' cell-class weights.
+
 Amendment, 8 October 2026, before any lockbox run (the user's decisions): the test, the micro floor, a no-descriptor
 branch and graph paring.
 - Test. Each of the four models is a candidate and is tested on its own at one-sided 0.025: H1 first, and H2 only if
