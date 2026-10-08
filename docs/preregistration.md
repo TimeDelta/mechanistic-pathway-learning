@@ -788,7 +788,10 @@ decisions, after the precision estimate they asked for).
   change rule; 23,410 rule genes are replaced, 347 of them by a catalyst without expression of its own; 8 rule genes
   without a catalyzed_by edge stay. reaction_brain_gtex_brain_max correlates 0.24 between the real and the rewired
   graph and changes on 56 percent of reaction rows; every other descriptor column is unchanged.
-- Still open: --bce-in-log-space, the per-type popularity baselines and the secondary contrasts. The second family's
+- Still open: --bce-in-log-space, the per-type popularity baselines, the secondary contrasts and --start-at-weighted-optimum
+  (docs/best_epoch_zero.md: on the first family's pilots the noisy-OR leaks stayed at the raw base rate, 0.061, against a
+  loss-optimal constant of 0.204, and the modules supplied the difference; the sigmoid head reached the constant within
+  the first epoch; no pilot's best validation loss fell below that of a constant per-symptom prediction). The second family's
   development runs (its four configurations on the five grouped development folds of lockbox_v2 with seed 0, and the
   development baselines; runs/full/v2_development.sh) start when the first family's pilots end; experiments/choose_heads.py
   reads them. On that development set every fold's early-stopping validation set (92 to 128 perturbations) holds drug

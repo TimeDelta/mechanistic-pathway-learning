@@ -82,7 +82,7 @@ from mechanistic_pathway_learning.models.linear_response_encoder import (
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
-from mechanistic_pathway_learning.models.soft_constraint_losses import evidence_weighted_binary_cross_entropy
+from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, evidence_weighted_binary_cross_entropy
 
 CHECKPOINT_REQUESTED = False
 MINIMUM_POSITIVES_TO_SCORE = 5
@@ -241,6 +241,8 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 
 # arguments a resumed process may change without changing what the checkpoint was trained for
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
+# flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
+ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum"}
 
 
 def array_sha256(values) -> str:
@@ -251,7 +253,8 @@ def array_sha256(values) -> str:
 def configuration_fingerprint(arguments, data, label_mask) -> dict:
     """The training arguments and digests of the inputs as loaded, recorded in the checkpoint so that a resume under
     other arguments or rebuilt inputs is reported (the split signature covers only the split and the controls)."""
-    fingerprint = {f"argument:{name}": str(value) for name, value in sorted(vars(arguments).items()) if name not in RESUME_CONTROL_ARGUMENTS}
+    fingerprint = {f"argument:{name}": str(value) for name, value in sorted(vars(arguments).items())
+                   if name not in RESUME_CONTROL_ARGUMENTS and not (name in ARGUMENTS_RECORDED_ONLY_WHEN_SET and not value)}
     fingerprint.update({
         "input:outcomes": array_sha256(data.outcomes), "input:weights": array_sha256(data.weights),
         "input:label_mask": None if label_mask is None else array_sha256(label_mask),
@@ -418,6 +421,43 @@ def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_
     else:  # over the labelled pairs only
         base_rates = (data.outcomes[fit_indices] * label_mask[fit_indices]).sum(axis=0) / np.maximum(label_mask[fit_indices].sum(axis=0), 1)
     head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
+
+
+def weighted_constant_optimum(data, fit_indices: np.ndarray, label_mask, arguments) -> np.ndarray:
+    """Per symptom, the constant probability that minimises the training loss over fit_indices: the weighted mean of the
+    loss's targets, sum(w t) / sum(w), with the loss's weights (a positive at its evidence weight, a negative at
+    --negative-weight, a pair set aside by the selection at zero) and targets (--positive-target, or the frequency under
+    --positive-target-from-frequency). With negatives at 0.2 it is about three times the raw base rate (0.204 against
+    0.064 on the full-graph development pool, docs/best_epoch_zero.md)."""
+    outcomes = data.outcomes[fit_indices]
+    positive = outcomes > 0
+    if arguments.positive_target_from_frequency:
+        frequencies = data.frequencies[fit_indices]
+        targets = np.where(positive, np.where(np.isnan(frequencies), arguments.positive_target, np.maximum(frequencies, arguments.minimum_frequency_target)), 0.0)
+        weights = np.where(positive, 1.0, arguments.negative_weight)
+    else:
+        targets = np.where(positive, arguments.positive_target, 0.0)
+        weights = np.where(positive, np.maximum(data.weights[fit_indices], 1e-3), arguments.negative_weight)
+    if label_mask is not None:
+        weights = weights * label_mask[fit_indices]
+    return (weights * targets).sum(axis=0) / np.maximum(weights.sum(axis=0), 1e-12)
+
+
+def initialise_rates_at_weighted_optimum(head, data, fit_indices: np.ndarray, label_mask, arguments, device) -> None:
+    """--start-at-weighted-optimum: start each symptom's noisy-OR leak (in place of the raw base rate of
+    --init-leak-from-base-rate) or the sigmoid head's output bias at the loss-optimal constant of weighted_constant_optimum,
+    so that the first epochs are not spent on calibration. Measured on the full-graph pilots (docs/best_epoch_zero.md): a
+    leak started at the raw base rate stays there at --leak-learning-rate 0.0002, and the modules make up the gap to the
+    optimum; a sigmoid head starts at P = 0.5 and reaches the optimum within the first epoch, which is then the best one."""
+    if not getattr(arguments, "start_at_weighted_optimum", False):
+        return
+    optimum = torch.as_tensor(weighted_constant_optimum(data, fit_indices, label_mask, arguments), dtype=torch.float32, device=device)
+    if arguments.head == "noisy_or":
+        head.initialize_leak_from_base_rates(optimum)
+        return
+    clamped = optimum.clamp(PROBABILITY_EPSILON, 1.0 - PROBABILITY_EPSILON)
+    with torch.no_grad():
+        head.readout[-1].bias.copy_(torch.log(clamped) - torch.log1p(-clamped))
 
 
 def early_stopping_validation(data, pool: np.ndarray, arguments) -> tuple[np.ndarray, np.ndarray]:
@@ -675,6 +715,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sigmoid-hidden-dim", type=int, default=64)
     parser.add_argument("--gate-initial-log-alpha", type=float, default=-1.0)
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
+    parser.add_argument("--start-at-weighted-optimum", action="store_true",
+                        help="start the noisy-OR leaks (in place of --init-leak-from-base-rate) or the sigmoid head's output biases at each symptom's "
+                             "loss-optimal constant over the fitted perturbations, the weighted mean of the loss's targets (docs/best_epoch_zero.md)")
     parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
     parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
     parser.add_argument("--link-learning-rate", type=float, default=0.0,
@@ -788,6 +831,7 @@ def main() -> None:
         split_name += "_rewired"
     encoder, head = build_models(data, arguments, device)
     initialise_leaks_from_base_rates(head, data, train_indices, label_mask, arguments, device)
+    initialise_rates_at_weighted_optimum(head, data, train_indices, label_mask, arguments, device)
     adjacencies = None  # the linear-response encoder builds its signed adjacency from the edges at construction
     if arguments.encoder == "message_passing":
         adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
@@ -1013,6 +1057,7 @@ def main() -> None:
         torch.manual_seed(arguments.seed)
         encoder, head = build_models(data, arguments, device)
         initialise_leaks_from_base_rates(head, data, refit_indices, label_mask, arguments, device)
+        initialise_rates_at_weighted_optimum(head, data, refit_indices, label_mask, arguments, device)
         optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
         refit_state = {"epoch": 0, "next_batch_start": 0, "epoch_sums": [0.0, 0.0, 0.0], "history": [], "epochs": state["best_epoch"] + 1,
                        "num_perturbations": int(len(refit_indices)), "code_provenance": []}
