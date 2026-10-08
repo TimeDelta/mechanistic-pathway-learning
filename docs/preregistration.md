@@ -353,6 +353,13 @@ fold prevalence could be shown not to interfere).
   and 27 percent. On development fold 0 the split is identical (no group in that pool exceeds 73), so the four pilots
   stand for the amended configurations. Other runs keep the earlier split; on the slice the largest group (27
   perturbations) is about half of each validation set but holds 14 percent of the positives.
+- Precision unchanged. The lockbox is unchanged (configs/lockbox_v1.json, 317 perturbations); what shrank is the
+  validation set, which is drawn from the development perturbations and scored for no hypothesis. The precision
+  statement's five 20 percent folds were drawn over all 1,539 perturbations, and its fold 0 holds the group of 232 (548
+  kept positive pairs and 20 scorable symptoms, the most of any fold). The lockbox cannot hold that group, since the
+  group lies wholly in the development data, so the four folds without it are the closer match: their medians are 0.040
+  macro (range 0.021 to 0.063) and 0.027 micro (0.018 to 0.038) over twelve baseline-pair readings, against 0.041 and
+  0.028 over all fifteen. The floors stay at 0.041 and 0.028.
 - The stopping metric stays the validation loss. Validation macro AUPRC was considered and not adopted. (i) Not needed:
   the message-passing sigmoid pilot, which the loss stopped at epoch 0, scores macro 0.142 and micro 0.233 on its
   development test at its last state (epoch 8), against 0.131 and 0.257 at the selected state. (ii) Too noisy to choose
