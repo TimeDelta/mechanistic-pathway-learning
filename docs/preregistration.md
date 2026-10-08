@@ -341,6 +341,20 @@ message-passing configurations would add --drop-descriptor-blocks protein and th
 --drop-descriptor-blocks protein gene_brain reaction_brain; the latter takes the reaction_brain block out, so for
 linear response the rewired reaction expression of H2 would recompute only the reactions' cell-class weights.
 
+The user's decision, 8 October 2026: no arm that drops the protein block ("Which means don't drop proteins", after "the
+point of this project is [not] just to predict the symptoms from a pathways graph. It's to be able to use the graph to
+determine what the pathways for symptoms are"). Every block arm drops the protein block, so neither rule pick is applied.
+The protein block is the 65 columns derived from ESM-2 embeddings that the gene nodes carry (12,643 of 12,810 gene nodes
+of graph_full_neuronal; the 1,681 protein_entity nodes carry no descriptor). No arm removes a node or an edge, so under
+every arm the modules can name the same genes. Restricted to the arms that keep every block (plain, seed_masked,
+zero_init_slow), the rule picks seed_masked for message passing (reliance +0.0149, mean of six differences +0.0032) and
+zero_init_slow for linear response (+0.0072, +0.0084). seed_masked hides the descriptors only at each perturbation's
+seed nodes, which are gene nodes for gene and drug perturbations alike (evidence_full_v2); every other gene keeps its
+protein block. Against the unrestricted message-passing pick, seed_masked keeps most of the reliance (0.0149 against
+0.0168, inside one fold standard deviation) and gives up the AUPRC gain (six-difference mean +0.0032 against +0.0247).
+Not applied: the restricted picks wait for the user's confirmation; until then the confirmatory_v2 configurations keep
+the plain treatment.
+
 Amendment, 8 October 2026, before any lockbox run (the user's decisions): the test, the micro floor, a no-descriptor
 branch and graph paring.
 - Test. Each of the four models is a candidate and is tested on its own at one-sided 0.025: H1 first, and H2 only if
