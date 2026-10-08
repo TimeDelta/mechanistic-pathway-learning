@@ -110,6 +110,12 @@ def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "Expe
     for name in PER_PERTURBATION_ARRAYS:
         value = getattr(data, name)
         changes[name] = None if value is None else value[positions]
+    if data.label_selection_summary is not None and changes["label_mask"] is not None:
+        # the summary's counts are over all perturbations; these are over the rows kept (development, without the lockbox)
+        positive, kept = changes["outcomes"] > 0, np.asarray(changes["label_mask"], dtype=bool)
+        changes["label_selection_summary"] = {**data.label_selection_summary, "after_restriction": {
+            "perturbations": int(len(positions)), "positive_pairs": int(positive.sum()), "masked_pairs": int((positive & ~kept).sum()),
+            "kept_positive_pairs": int((positive & kept).sum())}}
     return dataclasses.replace(data, **changes)
 
 
