@@ -649,7 +649,8 @@ pilots of the first family stay as they are and are reported as checks that each
   configuration run on the five grouped development folds with seed 0, and so do the development baselines. Per fold,
   the four H1 readings are computed as the scorer computes them on the lockbox, each against the best baseline of that
   reading (the highest five-fold mean, chosen without reference to any model). A head's margin is the smallest of: the
-  mean macro difference minus 0.041, the mean micro difference minus 0.028 and the two mean within-strata differences.
+  mean macro difference minus the macro floor, the mean micro difference minus the micro floor (0.032 and 0.043, the
+  amendment below) and the two mean within-strata differences.
   The head with the larger margin is tested; margins within 0.001 choose noisy-OR. The other two configurations and
   the four without descriptors stay development readings. With two models tested at one-sided 0.025 each, the chance
   that at least one passes by luck is at most 2 x 0.025 = 0.05 whatever the dependence between the two tests (0.049 if
@@ -693,24 +694,33 @@ decisions, after the precision estimate they asked for).
   more and smaller groups (266 groups, 245 of them single, against 237 and 210), was expected to come out between 11
   percent narrower and 10 percent wider than lockbox_v1. A lockbox_v1-shaped hold-out cannot be drawn from the
   development data, so the comparison is a projection.
-- Floors. H1 needs a macro difference of at least 0.053 and a micro difference of at least 0.042 (the user's values):
-  the projected 95 percent half-width under the group bootstrap, which now decides, plus 0.005. The projection is the
-  precision folds' medians (0.041 and 0.028) times the ratio of group to perturbation half-widths on the three
-  pseudo-lockboxes shaped like the lockbox (largest group at most 16): 1.18 and 1.31, giving 0.048 and 0.037. A floor
-  equal to the projected half-width binds only when the realised interval comes out narrower than projected; with the
-  0.005 the floors bind when it comes out as projected, so a difference must also reach a fixed size, not only exclude
-  zero. Three caveats.
-  - The projection is uncertain. The precision folds used symptoms chosen again per fold, micro AUPRC over all columns
-    and fifteen baseline pairs, among them the random walk and TransE; the ratios come from three pseudo-lockboxes and
-    three baseline pairs. Measured directly under the scorer's statistics on those three pseudo-lockboxes, the group
-    half-widths have medians 0.027 macro (range 0.015 to 0.095) and 0.038 micro (0.025 to 0.053) over nine readings. If
-    the lockbox's realised macro half-width is near 0.027, the macro floor, not the test, decides H1's macro condition.
-  - Power. At the projected widths (standard errors 0.048 / 1.96 = 0.024 macro and 0.037 / 1.96 = 0.019 micro), a model
+- Floors. H1 needs a macro difference of at least 0.032 and a micro difference of at least 0.043 (the user's values):
+  the median 95 percent half-width of a difference under the group bootstrap, which now decides, plus 0.005. The
+  medians are measured under the scorer's statistics (macro symptoms fixed per hold-out, micro over the scored
+  symptoms) on the three development pseudo-lockboxes shaped like the lockbox (largest group at most 16; the group
+  bootstrap check above): 0.027 macro (range 0.015 to 0.095) and 0.038 micro (0.025 to 0.053) over nine readings, three
+  baseline pairs each (popularity, degree_popularity and the random walk). The first version of this bullet, the same
+  day, set 0.053 and 0.042 from a projection, the precision folds' medians (0.041 and 0.028) times the ratio of group to
+  perturbation half-widths on those pseudo-lockboxes (1.18 and 1.31). The user asked why the macro floor was not the
+  measured median plus 0.005, and it should be: the precision folds' macro bootstrap chooses the scored symptoms again
+  in every resample (ranking_and_calibration_metrics.paired_bootstrap_macro_difference skips symptoms with fewer than
+  five positives in a resample), so symptoms near the threshold drop in and out and widen the interval, while the
+  scorer fixes the macro symptoms in the lockbox file. That earlier projection also stated wrongly that the precision
+  folds included TransE; their fifteen readings are the same three pairs over five folds. The precision statement's
+  0.041 shares this inflation. With a floor 0.005 above the median width, the floor binds whenever the realised interval
+  is no wider than the median, so a difference must also reach a fixed size, not only exclude zero. Three caveats.
+  - Nine readings from three pseudo-lockboxes, with a wide range for macro: the median is itself uncertain. If the
+    lockbox's realised macro width is larger, the significance test, not the floor, decides H1's macro condition.
+    lockbox_v2 averages 16 macro symptoms against 12 or 13 on the pseudo-lockboxes, which should narrow its macro
+    interval somewhat. The pairs are baseline against baseline; a model and a baseline may co-vary less, which widens
+    the interval.
+  - Power. At the median widths (standard errors 0.027 / 1.96 = 0.014 macro and 0.038 / 1.96 = 0.019 micro), a model
     whose true differences equal the floors reaches each floor half the time; reaching a floor with probability 0.8
-    needs a true difference near 0.053 + 0.84 x 0.024 = 0.074 macro and 0.042 + 0.84 x 0.019 = 0.058 micro, each on its
-    own, and H1 also needs both within-strata readings above zero.
+    needs a true difference near 0.032 + 0.84 x 0.014 = 0.044 macro and 0.043 + 0.84 x 0.019 = 0.059 micro, against
+    0.039 and 0.054 for the significance test alone (2.80 standard errors), each on its own; H1 also needs both
+    within-strata readings above zero.
   - The scores of the first family's fold-0 development pilots were visible when the floors moved. The floors follow
-    from the precision projection by a fixed rule (plus 0.005), not from those scores.
+    from the measured widths by a fixed rule (plus 0.005), not from those scores, and no second-family run had started.
   experiments/score_confirmatory.py now defaults to lockbox_v2, better_v2_full_v2, the two configurations in
   configs/head_choice.json (refusing a choice made on another lockbox's development set), the floors above and baselines
   under runs/full/lockbox_v2_baselines (refusing baselines that scored another lockbox). experiments/choose_heads.py

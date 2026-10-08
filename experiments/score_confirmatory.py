@@ -39,8 +39,9 @@ run the scorer stops before writing anything, so the run can be resumed; with --
 model is not confirmed. No correction is made across the models, so the chance that at least one of the two models is
 confirmed by luck is above --alpha: at most 2 x alpha = 0.05 whatever the dependence between the two tests (1 - (1 -
 alpha)^2, about 0.049, if they were independent); the output states this beside the results.
-Floors (the user's decision of 8 October 2026): the projected 95 percent half-width of a difference under the group
-bootstrap on lockbox_v2 plus 0.005, 0.053 macro and 0.042 micro (docs/preregistration.md).
+Floors (the user's decision of 8 October 2026): the median 95 percent half-width of a difference under the group
+bootstrap plus 0.005, 0.032 macro and 0.043 micro (the median over three lockbox-like development pseudo-lockboxes;
+docs/preregistration.md).
 
 The lockbox is scored once. A SCORED marker records when; a second scoring needs --rescore and is listed in the output.
 
@@ -236,10 +237,10 @@ def main() -> None:
     parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
                         help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
-    parser.add_argument("--minimum-macro-difference", type=float, default=0.053,
-                        help="smallest macro AUPRC difference that counts: the projected 95 percent group-bootstrap half-width of a macro difference on lockbox_v2 plus 0.005")
-    parser.add_argument("--minimum-micro-difference", type=float, default=0.042,
-                        help="smallest micro AUPRC difference that counts: the projected 95 percent group-bootstrap half-width of a micro difference on lockbox_v2 plus 0.005")
+    parser.add_argument("--minimum-macro-difference", type=float, default=0.032,
+                        help="smallest macro AUPRC difference that counts: the median 95 percent group-bootstrap half-width of a macro difference on lockbox-like hold-outs plus 0.005")
+    parser.add_argument("--minimum-micro-difference", type=float, default=0.043,
+                        help="smallest micro AUPRC difference that counts: the median 95 percent group-bootstrap half-width of a micro difference on lockbox-like hold-outs plus 0.005")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
