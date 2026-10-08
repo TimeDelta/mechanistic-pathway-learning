@@ -1,7 +1,9 @@
 """Score the lockbox once: the confirmatory test of docs/preregistration.md (specification of 8 October 2026).
 
-Inputs, all trained on the development set and scored on configs/lockbox_v1.json:
-- the four confirmatory models (run_main_model_batch.py --lockbox ... --score-lockbox), each with five seeds and, per
+Inputs, all trained on the development set and scored on configs/lockbox_v2.json (the user's decision of 8 October 2026):
+- the two tested models, one head per encoder of the second confirmatory family (confirmatory_v2_*), chosen on the
+  development set by experiments/choose_heads.py and read from configs/head_choice.json unless --models names others
+  (run_main_model_batch.py --lockbox ... --score-lockbox), each with five seeds and, per
   seed, a run on the real labels (lockbox_seed<k>), one on labels permuted within degree strata (lockbox_seed<k>_permuted)
   and one on a degree-preserving rewiring of the graph (lockbox_seed<k>_rewired); a run counts only if it was refitted
   after early stopping with the large leakage groups in training (amendments of 8 October 2026), its predictions are
@@ -34,9 +36,11 @@ p-values, outside both hypotheses.
 Each model is tested on its own at one-sided --alpha (the user's decision of 8 October 2026: every model is a
 candidate with the full level): H1 first and, only if H1 is confirmed, H2 at the same level. With a missing or refused
 run the scorer stops before writing anything, so the run can be resumed; with --allow-incomplete it scores and that
-model is not confirmed. No correction is made across the models, so the chance that at least one of four models is
-confirmed by luck is above --alpha (at most 1 - (1 - alpha)^4, about 0.096 at 0.025, if the four were independent; less,
-since they share the data and the baselines); the output states this beside the results.
+model is not confirmed. No correction is made across the models, so the chance that at least one of the two models is
+confirmed by luck is above --alpha: at most 2 x alpha = 0.05 whatever the dependence between the two tests (1 - (1 -
+alpha)^2, about 0.049, if they were independent); the output states this beside the results.
+Floors (the user's decision of 8 October 2026): the projected 95 percent half-width of a difference under the group
+bootstrap on lockbox_v2 plus 0.005, 0.053 macro and 0.042 micro (docs/preregistration.md).
 
 The lockbox is scored once. A SCORED marker records when; a second scoring needs --rescore and is listed in the output.
 
@@ -60,8 +64,6 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 from run_main_model import RESUME_CONTROL_ARGUMENTS, array_sha256, build_argument_parser
 from run_main_model_batch import CONFIGURATIONS
 
-CONFIRMATORY_MODELS = ("confirmatory_message_passing_noisy_or", "confirmatory_message_passing_sigmoid",
-                       "confirmatory_linear_response_noisy_or", "confirmatory_linear_response_sigmoid")
 BASELINES = ("popularity", "degree_popularity", "random_walk_with_restart", "knowledge_graph_embedding_transe")
 VARIANT_SUFFIXES = {"real": "", "permuted": "_permuted", "rewired": "_rewired"}
 MINIMUM_POSITIVES_TO_SCORE = 5
@@ -141,6 +143,16 @@ def recorded_arguments(namespace: argparse.Namespace) -> dict:
     return {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(namespace).items()}
 
 
+def chosen_models(head_choice: Path, lockbox: Path) -> list[str]:
+    """The configurations experiments/choose_heads.py chose, one per encoder, after checking they were chosen on lockbox's development set."""
+    if not head_choice.exists():
+        raise SystemExit(f"{head_choice} is missing: run experiments/choose_heads.py on the development set first, or name the models with --models")
+    record = json.loads(head_choice.read_text())
+    if Path(record["lockbox"]) != lockbox:
+        raise SystemExit(f"{head_choice} chose heads on the development set of {record['lockbox']}, not of {lockbox}")
+    return list(record["chosen"].values())
+
+
 def expected_run_arguments(model: str, seed: int, group_by: str, lockbox: Path) -> dict:
     """The trainer arguments of a lockbox run of model as runs/full/confirmatory_lockbox.sh launches it
     (run_main_model_batch.py --configuration model --score-lockbox), without the resume controls and the variant."""
@@ -205,12 +217,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph_full_neuronal"))
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence_full_v2"))
-    parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v1_full_v2.parquet"))
+    parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v2_full_v2.parquet"))
     parser.add_argument("--group-by", default="disease_cluster_and_targets")
-    parser.add_argument("--lockbox", type=Path, default=Path("configs/lockbox_v1.json"))
+    parser.add_argument("--lockbox", type=Path, default=Path("configs/lockbox_v2.json"))
     parser.add_argument("--run-root", type=Path, default=Path("runs/full"), help="holds <model>_<group-by>_confirmatory for every model")
-    parser.add_argument("--models", nargs="*", default=list(CONFIRMATORY_MODELS))
-    parser.add_argument("--baseline-root", type=Path, default=Path("runs/full/lockbox_baselines"), help="holds seed<k> from run_baselines.py --score-lockbox --seed <k>")
+    parser.add_argument("--models", nargs="*", default=None, help="the tested models; default: the configurations chosen in --head-choice")
+    parser.add_argument("--head-choice", type=Path, default=Path("configs/head_choice.json"), help="experiments/choose_heads.py output; its lockbox must be --lockbox")
+    parser.add_argument("--baseline-root", type=Path, default=Path("runs/full/lockbox_v2_baselines"), help="holds seed<k> from run_baselines.py --score-lockbox --seed <k>")
     parser.add_argument("--baselines", nargs="*", default=list(BASELINES))
     parser.add_argument("--seeds", type=int, nargs="*", default=[0, 1, 2, 3, 4])
     parser.add_argument("--num-bootstrap", type=int, default=4000)
@@ -223,10 +236,10 @@ def main() -> None:
     parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
                         help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
-    parser.add_argument("--minimum-macro-difference", type=float, default=0.041,
-                        help="smallest macro AUPRC difference that counts: the projected 95 percent half-width of a macro difference on a 20 percent hold-out")
-    parser.add_argument("--minimum-micro-difference", type=float, default=0.028,
-                        help="smallest micro AUPRC difference that counts: the projected 95 percent half-width of a micro difference on a 20 percent hold-out")
+    parser.add_argument("--minimum-macro-difference", type=float, default=0.053,
+                        help="smallest macro AUPRC difference that counts: the projected 95 percent group-bootstrap half-width of a macro difference on lockbox_v2 plus 0.005")
+    parser.add_argument("--minimum-micro-difference", type=float, default=0.042,
+                        help="smallest micro AUPRC difference that counts: the projected 95 percent group-bootstrap half-width of a micro difference on lockbox_v2 plus 0.005")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
@@ -243,6 +256,8 @@ def main() -> None:
     if previous_scorings and not arguments.rescore:
         raise SystemExit(f"the lockbox was scored already ({previous_scorings}); pass --rescore to score it again, which the output will list")
 
+    if arguments.models is None:
+        arguments.models = chosen_models(arguments.head_choice, arguments.lockbox)
     label_selection = None if str(arguments.label_selection) in ("", "none") else arguments.label_selection  # none: the slice, for tests of this script
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=label_selection)
     in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
@@ -278,6 +293,9 @@ def main() -> None:
                 directory = arguments.baseline_root / f"seed{seed}"
                 if json.loads((directory / "perturbation_ids.json").read_text()) != data.perturbation_ids:
                     raise SystemExit(f"{directory} holds other perturbations")
+                baseline_lockbox = (json.loads((directory / "results.json").read_text()).get("lockbox") or {}).get("path")
+                if baseline_lockbox is None or Path(baseline_lockbox) != arguments.lockbox:
+                    raise SystemExit(f"{directory} scored lockbox {baseline_lockbox}, not {arguments.lockbox}")
                 baseline_predictions[labelling][name][seed] = np.load(directory / f"predictions_{infix}_{name}.npy")[rows]
 
     model_predictions: dict[str, dict[str, dict[int, np.ndarray]]] = {}
@@ -412,8 +430,8 @@ def main() -> None:
              f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox {'leakage groups (' + str(len(members_of_group)) + ')' if arguments.bootstrap_unit == 'group' else 'perturbations'}; "
              f"each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
              f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. With {len(entries)} models "
-             f"and no correction across them, the chance that at least one is confirmed by luck is at most {1 - (1 - arguments.alpha) ** len(entries):.3f} if they were "
-             f"independent, and less since they share the data and baselines. Scorings: {len(previous_scorings) + 1}.", "",
+             f"and no correction across them, the chance that at least one is confirmed by luck is at most {len(entries) * arguments.alpha:.3f} whatever their dependence "
+             f"({1 - (1 - arguments.alpha) ** len(entries):.3f} if they were independent). Scorings: {len(previous_scorings) + 1}.", "",
              "Best baseline per reading (the highest seed-mean lockbox score on real labels; no model score enters the choice): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
              "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",

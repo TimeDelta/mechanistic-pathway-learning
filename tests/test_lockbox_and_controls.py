@@ -309,3 +309,27 @@ def test_type_popularity_fits_each_perturbation_type_on_its_own_and_falls_back_w
     only_genes_in_training = np.array([False, False, True, True, False, False])
     fallback = fit_and_predict(data, outcomes, only_genes_in_training, np.array([False, False, False, False, True, False]), "type_popularity", 0.3, None)
     assert np.allclose(fallback, [[0.0, 0.5]])  # no training drug: every training perturbation's base rate
+
+
+def test_scorer_tests_the_heads_chosen_on_the_same_lockbox_and_refuses_another(tmp_path) -> None:
+    from score_confirmatory import chosen_models
+    choice = tmp_path / "head_choice.json"
+    choice.write_text(json.dumps({"lockbox": "configs/lockbox_v2.json", "chosen": {"pair_a": "confirmatory_v2_message_passing_noisy_or",
+                                                                                     "pair_b": "confirmatory_v2_linear_response_sigmoid"}}))
+    assert chosen_models(choice, Path("configs/lockbox_v2.json")) == ["confirmatory_v2_message_passing_noisy_or", "confirmatory_v2_linear_response_sigmoid"]
+    with pytest.raises(SystemExit):
+        chosen_models(choice, Path("configs/lockbox_v1.json"))
+    with pytest.raises(SystemExit):
+        chosen_models(tmp_path / "missing.json", Path("configs/lockbox_v2.json"))
+
+
+def test_lockbox_v2_moves_whole_groups_in_the_seeded_order() -> None:
+    from rebalance_lockbox import groups_entering_lockbox, groups_returned_to_development
+    drugs_in_group = {"d1": 3, "d2": 2, "d3": 1, "d4": 4}
+    returned = groups_returned_to_development(list(drugs_in_group), drugs_in_group, lockbox_drugs=10, minimum_drugs=5, seed=0)
+    assert 10 - sum(drugs_in_group[group] for group in returned) >= 5
+    assert all(10 - sum(drugs_in_group[g] for g in returned) - drugs_in_group[group] < 5 for group in set(drugs_in_group) - set(returned))
+    assert returned == groups_returned_to_development(list(drugs_in_group), drugs_in_group, lockbox_drugs=10, minimum_drugs=5, seed=0)
+    sizes = {"g1": 2, "g2": 1, "g3": 3}
+    entering = groups_entering_lockbox(list(sizes), sizes, current_size=5, target_size=7, seed=0)
+    assert 5 + sum(sizes[group] for group in entering) >= 7 and 5 + sum(sizes[group] for group in entering[:-1]) < 7

@@ -537,7 +537,7 @@ day). Each is a defect against text already in this specification, not a change 
     (assemble_evidence_table.pharmacological_label_frequency). Post-marketing and rare reports (midpoint 0.0005) lower
     the mean, so 6 development drug pairs are set aside although one of their reports is at least 1 percent. The
     selection entry above does not define the frequency; this is the definition the selection file was built with.
-- Open, for the user's decision: the lockbox draw over-samples drugs (experiments/draw_lockbox.py draw_groups). Each
+- Decided by the user on 8 October 2026 (second amendment below, lockbox_v2): the lockbox draw over-samples drugs (experiments/draw_lockbox.py draw_groups). Each
   stratum's target is 20 percent of the sizes of all its groups, including cluster:ABCA3 (232 perturbations), which stays
   in development for its size. In the stratum of groups holding a drug with a kept positive, the drawable groups summed
   to less than that target, so all of them went into the lockbox. The lockbox therefore holds 64 of the 142 drugs (45
@@ -660,6 +660,70 @@ pilots of the first family stay as they are and are reported as checks that each
   in is kept outside the repository and registers nothing), --bce-in-log-space, the per-type popularity baselines and
   the secondary contrasts. The second family's development runs wait for the lockbox decision, because the lockbox
   decides which perturbations are development.
+
+Amendment, 8 October 2026, later the same day, before any lockbox run: the lockbox and the floors (the user's
+decisions, after the precision estimate they asked for).
+- Lockbox. The confirmatory test scores configs/lockbox_v2.json, derived from lockbox_v1 by experiments/rebalance_lockbox.py
+  (its docstring states the rule, written before it was run; seed 20261009). Step 1: lockbox groups holding a drug, in a
+  seeded order, return to development while the lockbox keeps at least round(0.2 x 142) = 28 drugs. Step 2: development
+  groups with no drug and no perturbation in the fold-0 test or early-stopping validation set of the development pilots
+  or in the slice evidence (396 eligible groups, 435 perturbations), in a seeded order, enter until the lockbox holds 317
+  perturbations again. Nine groups returned (CHEMBL2023, CHEMBL2094253, CHEMBL2094268, CHEMBL2095181, CHEMBL264 and the
+  clusters of ABAT, ALDH5A1, SLC18A2 and SLC6A3) and 38 gene groups entered. lockbox_v2: 317 perturbations (289 genes, 28
+  drugs, 11 of them with a kept positive), 266 leakage groups (245 single perturbations, largest 11), 397 kept positive
+  pairs, 16 symptoms in the macro average. Development: 1,222 perturbations, 114 drugs, 50 of them with a kept positive
+  (before: 78 and 34, all 34 in cluster:ABCA3), 1,814 kept positive pairs. No leakage group straddles the two sides and
+  no lockbox perturbation shares a seed node with a development perturbation (checked on the file). The script
+  reproduces the file exactly apart from its time stamp.
+- What was known when it was derived. Membership, perturbation types and group sizes; the label counts the file records
+  (they fix the macro symptoms, as in draw_lockbox.py), which the user saw with the precision estimate before deciding.
+  No model output on a perturbation that enters the lockbox entered any decision: the entering genes were outside the
+  fold-0 test and validation sets of the development pilots and outside the slice. They were training perturbations of
+  the fold-0 development pilots (fitted, not scored) and rows of baseline-only readings: the pre-lockbox precision
+  folds (drawn over all 1,539 perturbations, as were lockbox_v1's members), the pseudo-lockboxes of the group bootstrap
+  check and those of the perturbation-type check. 85 perturbations of lockbox_v1 that stay are slice perturbations, as
+  before. The drug groups that return were never read by a model either. The first family's development pilots trained
+  on the entering genes, so they are not readings of the second family; the second family's development runs start
+  fresh on the new development set.
+- Precision estimate given to the user before the decision. Scaling the precision folds' half-widths (perturbation
+  bootstrap) by the square root of the kept positive pairs gives 0.041 macro and 0.028 micro for lockbox_v2 (397) and
+  about 0.037 and 0.026 for lockbox_v1 (481). The precision fold whose count is closest to lockbox_v1's (479) gives
+  0.028 and 0.022 (3 readings of one fold), the three with 382 to 402 (like lockbox_v2) 0.042 and 0.029 (medians); the
+  spread between folds is wider than the counts explain. Under the group bootstrap lockbox_v2, with
+  more and smaller groups (266 groups, 245 of them single, against 237 and 210), was expected to come out between 11
+  percent narrower and 10 percent wider than lockbox_v1. A lockbox_v1-shaped hold-out cannot be drawn from the
+  development data, so the comparison is a projection.
+- Floors. H1 needs a macro difference of at least 0.053 and a micro difference of at least 0.042 (the user's values):
+  the projected 95 percent half-width under the group bootstrap, which now decides, plus 0.005. The projection is the
+  precision folds' medians (0.041 and 0.028) times the ratio of group to perturbation half-widths on the three
+  pseudo-lockboxes shaped like the lockbox (largest group at most 16): 1.18 and 1.31, giving 0.048 and 0.037. A floor
+  equal to the projected half-width binds only when the realised interval comes out narrower than projected; with the
+  0.005 the floors bind when it comes out as projected, so a difference must also reach a fixed size, not only exclude
+  zero. Three caveats.
+  - The projection is uncertain. The precision folds used symptoms chosen again per fold, micro AUPRC over all columns
+    and fifteen baseline pairs, among them the random walk and TransE; the ratios come from three pseudo-lockboxes and
+    three baseline pairs. Measured directly under the scorer's statistics on those three pseudo-lockboxes, the group
+    half-widths have medians 0.027 macro (range 0.015 to 0.095) and 0.038 micro (0.025 to 0.053) over nine readings. If
+    the lockbox's realised macro half-width is near 0.027, the macro floor, not the test, decides H1's macro condition.
+  - Power. At the projected widths (standard errors 0.048 / 1.96 = 0.024 macro and 0.037 / 1.96 = 0.019 micro), a model
+    whose true differences equal the floors reaches each floor half the time; reaching a floor with probability 0.8
+    needs a true difference near 0.053 + 0.84 x 0.024 = 0.074 macro and 0.042 + 0.84 x 0.019 = 0.058 micro, each on its
+    own, and H1 also needs both within-strata readings above zero.
+  - The scores of the first family's fold-0 development pilots were visible when the floors moved. The floors follow
+    from the precision projection by a fixed rule (plus 0.005), not from those scores.
+  experiments/score_confirmatory.py now defaults to lockbox_v2, better_v2_full_v2, the two configurations in
+  configs/head_choice.json (refusing a choice made on another lockbox's development set), the floors above and baselines
+  under runs/full/lockbox_v2_baselines (refusing baselines that scored another lockbox). experiments/choose_heads.py
+  takes the same floors. The scorer's statement of the chance that a model passes by luck is now the bound that holds
+  whatever the dependence (2 x 0.025 = 0.05 for two models).
+- Rewired reaction expression on the full graph (timing check, 50 symmetric swaps per edge, seed 0, on the loaded
+  4-core machine): 40 s for the rewiring and 708 s for the recomputation. 7,748 of the 7,759 reactions with a rule
+  change rule; 23,410 rule genes are replaced, 347 of them by a catalyst without expression of its own; 8 rule genes
+  without a catalyzed_by edge stay. reaction_brain_gtex_brain_max correlates 0.24 between the real and the rewired
+  graph and changes on 56 percent of reaction rows; every other descriptor column is unchanged.
+- Still open: --bce-in-log-space, the per-type popularity baselines and the secondary contrasts. The second family's
+  development runs (its four configurations on the five grouped development folds of lockbox_v2 with seed 0, and the
+  development baselines) start now; experiments/choose_heads.py reads them.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
