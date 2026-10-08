@@ -401,6 +401,8 @@ def early_stopping_validation(data, pool: np.ndarray, arguments) -> tuple[np.nda
     groups larger than half the expected validation set (--validation-fraction x pool size / 2) stay in training and the
     folds are drawn over the remaining groups; when no group is that large the split is the one without the flag."""
     num_validation_folds = max(2, int(round(1.0 / arguments.validation_fraction)))
+    if getattr(arguments, "validation_draw", "fold0") == "rotated_stratified":
+        return rotated_stratified_validation(data, pool, arguments, num_validation_folds)
     eligible = pool
     if getattr(arguments, "keep_large_groups_in_training", False):
         group_size_limit = arguments.validation_fraction * len(pool) / 2
@@ -415,6 +417,41 @@ def early_stopping_validation(data, pool: np.ndarray, arguments) -> tuple[np.nda
     validation_fold = assign_grouped_folds([data.perturbation_ids[i] for i in eligible], [data.group_ids[i] for i in eligible], num_validation_folds, arguments.seed + 1000)
     validation = np.array([i for i in eligible if validation_fold[data.perturbation_ids[i]] == 0], dtype=int)
     in_validation = set(validation.tolist())
+    return np.array([i for i in pool if i not in in_validation], dtype=int), validation
+
+
+VALIDATION_PARTITION_SEED = 1000
+VALIDATION_GROUP_SIZE_DIVISOR = 4
+
+
+def rotated_stratified_validation(data, pool: np.ndarray, arguments, num_validation_folds: int) -> tuple[np.ndarray, np.ndarray]:
+    """--validation-draw rotated_stratified (the user's decisions of 8 October 2026): the pool's groups are split once into
+    num_validation_folds grouped folds, separately for groups holding a drug and the rest, so each fold has about the pool's
+    share of each; the validation set is fold (seed mod num_validation_folds), so seeds 0 to 4 stop on five disjoint
+    validation sets instead of one. Groups larger than a quarter of the expected validation set (--validation-fraction x
+    pool size / 4) stay in training, so no one leakage group is more than about a quarter of a validation set; the fold-0
+    draw allowed half, and its validation set was 41 percent one disease cluster (cluster:ARNT2, 58 of 142). The
+    partition uses a fixed seed (VALIDATION_PARTITION_SEED), not the run's seed, so that the folds and hence the five
+    validation sets are disjoint."""
+    group_size_limit = arguments.validation_fraction * len(pool) / VALIDATION_GROUP_SIZE_DIVISOR
+    group_sizes = Counter(data.group_ids[i] for i in pool)
+    eligible = [i for i in pool if group_sizes[data.group_ids[i]] <= group_size_limit]
+    if not eligible:
+        raise ValueError("every leakage group is larger than a quarter of the expected validation set; lower --validation-fraction")
+    holds_a_drug = {data.group_ids[i] for i in eligible if data.perturbation_types[i] == "drug"}
+    fold_of: dict[str, int] = {}
+    for offset, stratum in enumerate((True, False)):  # the offset keeps the largest group of each stratum out of one shared fold
+        members = [i for i in eligible if (data.group_ids[i] in holds_a_drug) == stratum]
+        if members:
+            stratum_folds = assign_grouped_folds([data.perturbation_ids[i] for i in members], [data.group_ids[i] for i in members],
+                                                 num_validation_folds, VALIDATION_PARTITION_SEED)
+            fold_of.update({perturbation_id: (fold + offset) % num_validation_folds for perturbation_id, fold in stratum_folds.items()})
+    validation_fold = arguments.seed % num_validation_folds
+    validation = np.array([i for i in eligible if fold_of[data.perturbation_ids[i]] == validation_fold], dtype=int)
+    in_validation = set(validation.tolist())
+    kept = sorted(size for size in group_sizes.values() if size > group_size_limit)
+    print(f"early-stopping validation: fold {validation_fold} of {num_validation_folds} (seed {arguments.seed}), drawn per stratum (groups with a drug, the rest); "
+          f"{len(kept)} group(s) larger than {group_size_limit:.0f} perturbations kept in training" + (f" (largest {kept[-1]})" if kept else ""))
     return np.array([i for i in pool if i not in in_validation], dtype=int), validation
 
 
@@ -536,6 +573,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keep-large-groups-in-training", action="store_true",
                         help="leakage groups larger than half the expected validation set stay in training and never form the early-stopping validation set "
                              "(without it the largest group goes there first; see early_stopping_validation)")
+    parser.add_argument("--validation-draw", choices=["fold0", "rotated_stratified"], default="fold0",
+                        help="fold0: the early-stopping validation set is fold 0 of the grouped split of the pool (the same set for every seed); "
+                             "rotated_stratified: fold seed mod 7 of a split drawn per stratum (groups with a drug, the rest), groups above a quarter of the "
+                             "expected validation set kept in training (rotated_stratified_validation)")
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--selection-metric", choices=["loss", "auprc"], default="loss",
                         help="early stopping on the validation evidence-weighted BCE (smooth on small validation sets) or on validation macro AUPRC")

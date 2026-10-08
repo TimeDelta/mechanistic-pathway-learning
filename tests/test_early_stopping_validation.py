@@ -59,3 +59,23 @@ def test_module_hold_out_leaves_group_partners_out_of_training(tmp_path) -> None
     arguments = Namespace(time_split_cutoff=None, holdout_module="toy", holdout_subsystem="", curated_modules=modules, validation_fraction=0.0, seed=0)
     train, validation, test, split_name = split_indices(data, arguments)
     assert test.tolist() == [0] and train.tolist() == [2, 3] and len(validation) == 0 and split_name == "module_toy_seed0"
+
+
+def test_rotated_stratified_validation_gives_each_seed_its_own_fold_with_whole_groups_and_both_strata() -> None:
+    data = toy_data([60, 20] + [3] * 40 + [1] * 160)  # 360 perturbations; a quarter of the expected validation set is 360 x 0.15 / 4 = 13.5
+    data.perturbation_types = ["drug" if data.group_ids[i] in {f"group{g}" for g in range(2, 30)} else "gene" for i in range(len(data.perturbation_ids))]
+    pool = np.arange(len(data.perturbation_ids))
+    validation_sets = []
+    for seed in range(7):
+        arguments = Namespace(validation_fraction=0.15, seed=seed, keep_large_groups_in_training=True, validation_draw="rotated_stratified")
+        training, validation = early_stopping_validation(data, pool, arguments)
+        groups_in_validation = {data.group_ids[i] for i in validation}
+        assert not groups_in_validation & {data.group_ids[i] for i in training}
+        assert sorted(np.concatenate([training, validation]).tolist()) == pool.tolist()
+        assert not groups_in_validation & {"group0", "group1"}  # above a quarter of the expected validation set
+        assert any(data.perturbation_types[i] == "drug" for i in validation) and any(data.perturbation_types[i] == "gene" for i in validation)
+        validation_sets.append(set(validation.tolist()))
+    assert all(not (first & second) for index, first in enumerate(validation_sets) for second in validation_sets[index + 1:])
+    assert set().union(*validation_sets) == set(range(80, 360))  # the seven folds cover every eligible perturbation
+    arguments = Namespace(validation_fraction=0.15, seed=7, keep_large_groups_in_training=True, validation_draw="rotated_stratified")
+    assert set(early_stopping_validation(data, pool, arguments)[1].tolist()) == validation_sets[0]  # seed 7 is fold 0 again
