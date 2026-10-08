@@ -2,10 +2,11 @@
 
   1. model_pipeline: perturbation, graph layers, linear-response propagation, output gate, pooling, head and labels;
   2. cell_class_channels: the cell-class channels of LinearResponseEncoder on a six-node chain, computed by the encoder;
-  3. label_selection: the better_v1 label selection per symptom and the reasons pairs were set aside;
+  3. label_selection: the better_v2 label selection per symptom and the reasons pairs were set aside;
   4. dopaminergic_class: marker genes in the dopaminergic class against the highest Human Protein Atlas cluster type;
   5. slice_twin_comparisons: the one-change twin comparisons of the slice pilot (runs/twin_comparisons.json);
-  6. slice_baselines_and_models: per-fold macro AUPRC of the slice baselines and model configurations.
+  6. slice_baselines_and_models: per-fold macro AUPRC of the slice baselines and model configurations;
+  7. gene_protein_split: gene and protein nodes of graph_full_neuronal_split, with its counts.
 
 Figures whose inputs are missing are skipped with a message. Writes PNG files to docs/figures/. Idempotent.
 
@@ -33,7 +34,10 @@ from mechanistic_pathway_learning.models.linear_response_encoder import LinearRe
 
 OUTPUT_DIRECTORY = Path("docs/figures")
 FULL_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal")
-LABEL_SELECTION_SUMMARY = Path("data/processed/label_selection/better_v1_full.summary.json")
+SPLIT_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal_split")
+LABEL_SELECTION_SUMMARY = Path("data/processed/label_selection/better_v2_full_v2.summary.json")
+CELL_CLASS_WEIGHTS = Path("data/processed/cell_class_weights/full_neuronal_cell_class_weights.parquet")
+MINIMUM_POSITIVES_FOR_MACRO = 5
 DOPAMINERGIC_SUMMARY = Path("data/processed/brain_expression/dopaminergic_siletti_cluster395.summary.json")
 TWIN_COMPARISONS = Path("runs/twin_comparisons.json")
 SLICE_BASELINES = Path("runs/baselines_disease_cluster/results.json")
@@ -74,39 +78,54 @@ def draw_arrow(axis, start: tuple[float, float], end: tuple[float, float]) -> No
 
 def figure_model_pipeline() -> None:
     counts = graph_layer_counts(FULL_GRAPH_DIRECTORY)
+    split_summary = json.loads((SPLIT_GRAPH_DIRECTORY / "split_summary.json").read_text())
+    label_summary = json.loads(LABEL_SELECTION_SUMMARY.read_text())
+    cell_classes = [column for column in pd.read_parquet(CELL_CLASS_WEIGHTS).columns if column != "all_cells"]
     layer_lines = "\n".join(f"{layer}: {number:,} edges" for layer, number in sorted(counts["edges_by_layer"].items(), key=lambda item: -item[1]))
     node_lines = ", ".join(f"{number:,} {node_type.replace('_', ' ')}" for node_type, number in counts["node_types"].items() if number > 1)
-    figure, axis = plt.subplots(figsize=(14, 7.2))
+    figure, axis = plt.subplots(figsize=(15, 8.4))
     axis.set_xlim(0, 1)
     axis.set_ylim(0, 1)
     axis.axis("off")
-    top_row, bottom_row, height = 0.73, 0.27, 0.38
+    top_row, bottom_row, height = 0.755, 0.245, 0.44
     draw_box(axis, 0.105, top_row, 0.19, height, "1. Perturbation",
              "monogenic: loss or gain of function\nat one gene (sign, magnitude)\n\ndrug: signed effect at its\nprotein targets (ChEMBL mechanisms)\n\n"
-             "entered as a sustained input u\nat the perturbed nodes", BOX_COLOURS["input"])
-    draw_box(axis, 0.42, top_row, 0.38, height, "2. Graph (graph_full_neuronal)",
+             "entered as a sustained input u\nat the perturbed nodes\n\non the split graph (figure 7):\nknockouts seed gene nodes,\ndrugs seed protein nodes",
+             BOX_COLOURS["input"])
+    draw_box(axis, 0.415, top_row, 0.38, height, "2. Graph (graph_full_neuronal)",
              f"{counts['nodes']:,} nodes, {counts['edges']:,} edges, {counts['relations']} relations\n{node_lines}\n\n{layer_lines}\n\n"
-             "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1", BOX_COLOURS["graph"])
-    draw_box(axis, 0.81, top_row, 0.34, height, "3. Linear-response propagation",
-             "h(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n\nS_r: signed adjacency of relation r, normalised\n"
-             "g_r: learned gain per relation and channel\n8 steps; the field is the change from baseline\n\n"
-             "w_k: node weight in cell class k (11 classes and\nall cells; implemented, not yet run)", BOX_COLOURS["propagation"])
-    draw_box(axis, 0.2, bottom_row, 0.36, height, "4. Readout field and output gate",
-             "field = (h W) * sigmoid(node properties W_g + b)\n\nnode properties (fixed, per node type):\nprotein (ESM-2 embeddings), metabolite and\n"
-             "reaction (EC) descriptors; brain region and\ncell-class expression, dopaminergic class included\n\n"
-             "properties change where the response is read,\nnot how it propagates", BOX_COLOURS["readout"])
+             "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1\n\n"
+             f"gene and protein split (figure 7): {split_summary['gene_nodes'] + split_summary['protein_nodes']:,} gene and protein\n"
+             f"nodes, {split_summary['edges_after']:,} edges; slice runs only, the tested\nconfigurations do not use it",
+             BOX_COLOURS["graph"])
+    draw_box(axis, 0.815, top_row, 0.35, height, "3. Encoder (one per tested model)",
+             "message passing: node states from structural\nfeatures and descriptors, 2 layers of typed\nmessages (mean per relation)\n\n"
+             "linear response, 8 steps:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
+             "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
+             f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
+             "both read the difference field:\nperturbed minus unperturbed", BOX_COLOURS["propagation"])
+    draw_box(axis, 0.2, bottom_row, 0.36, height, "4. Node properties",
+             "fixed, per node type: protein (ESM-2 embeddings),\nmetabolite and reaction (EC) descriptors; brain\n"
+             "region and cell-class expression, with the\ndopaminergic class\n\n"
+             "message passing: in the node's starting state\nlinear response: in the output gate,\n"
+             "field = (h W) * sigmoid(node properties W_g + b),\nwhich changes where the response is read,\nnot how it propagates\n\n"
+             "treatments that keep the graph in charge (seed\nmasking, zero-initialised slow descriptor map):\nslice arms only, not applied", BOX_COLOURS["readout"])
     draw_box(axis, 0.52, bottom_row, 0.2, height, "5. Pooling and head",
-             "sum over nodes\n\nB3: sigmoid head\n(one logit per symptom)\n\nB6: noisy-OR over\npathway modules (gated\nnode supports and links)", BOX_COLOURS["readout"])
+             "sum over nodes\n\nnoisy-OR over pathway\nmodules (gated node\nsupports and links); each\nleak starts at its\nloss-optimal constant\n\n"
+             "sigmoid head (one logit\nper symptom): slice\ncomparisons only, dropped\nfrom the tested models\non 8 October", BOX_COLOURS["readout"])
     draw_box(axis, 0.82, bottom_row, 0.32, height, "6. Symptoms and labels",
-             "11 psychiatric symptoms\n\nlabels: HPO annotations (genes), SIDER and\nOnSIDES drug labels (drugs)\n"
-             "better_v1: low-frequency positives masked,\nneither positive nor negative\nunobserved pairs stay unlabelled\n\n"
-             "disease-cluster grouped folds", BOX_COLOURS["output"])
-    draw_arrow(axis, (0.2, top_row), (0.231, top_row))
-    draw_arrow(axis, (0.61, top_row), (0.641, top_row))
+             f"{len(label_summary['all_by_symptom'])} psychiatric symptoms in the evidence\n\nlabels: HPO annotations (genes), SIDER and\n"
+             "OnSIDES drug labels (drugs)\nbetter_v2: low-frequency positives and pairs\nwhose only evidence is grade C are masked,\n"
+             "neither positive nor negative;\nunobserved pairs stay unlabelled\n\n"
+             "folds grouped by disease cluster and drug\ntargets; lockbox_v2 held out; early-stopping\nvalidation rotated per seed; refit on\n"
+             "training and validation together", BOX_COLOURS["output"])
+    draw_arrow(axis, (0.2, top_row), (0.225, top_row))
+    draw_arrow(axis, (0.605, top_row), (0.64, top_row))
     draw_arrow(axis, (0.81, top_row - height / 2), (0.2, bottom_row + height / 2))
     draw_arrow(axis, (0.38, bottom_row), (0.42, bottom_row))
     draw_arrow(axis, (0.62, bottom_row), (0.66, bottom_row))
-    axis.set_title("The model, from a perturbation to symptom probabilities", fontsize=12, fontweight="bold")
+    axis.set_title("The two tested models (confirmatory_v2, noisy-OR head on each encoder), from a perturbation to symptom probabilities",
+                   fontsize=12, fontweight="bold")
     save(figure, "model_pipeline")
 
 
@@ -195,7 +214,7 @@ def figure_label_selection() -> None:
     symptom_axis.barh(labels, set_aside, left=kept, color="#bcd3e8", label="set aside (masked)")
     for row, (kept_count, set_aside_count) in enumerate(zip(kept, set_aside)):
         symptom_axis.text(kept_count + set_aside_count + 5, row, f"{kept_count} of {kept_count + set_aside_count}", va="center", fontsize=8)
-    symptom_axis.set_xlabel("positive (perturbation, symptom) pairs, full evidence")
+    symptom_axis.set_xlabel("positive (perturbation, symptom) pairs, full evidence (evidence_full_v2)")
     symptom_axis.set_xlim(0, max(kept + set_aside) * 1.2)
     symptom_axis.legend(loc="lower right", fontsize=8)
     symptom_axis.set_title(f"{summary['kept_pairs']:,} of {summary['positive_pairs']:,} positive pairs kept", fontsize=10)
@@ -209,12 +228,15 @@ def figure_label_selection() -> None:
     reason_axis.tick_params(axis="y", labelsize=8)
     reason_axis.set_xlabel("positive pairs set aside")
     reason_axis.set_title("Why pairs were set aside", fontsize=10)
-    figure.suptitle("Better (not more) training examples: selection better_v1, fixed on 7 October 2026 before any full-graph model was scored",
+    too_few = [f"{symptom.replace('_', ' ')} ({summary['kept_by_symptom'].get(symptom, 0)})" for symptom in symptoms
+               if summary["kept_by_symptom"].get(symptom, 0) < MINIMUM_POSITIVES_FOR_MACRO]
+    figure.suptitle("Better (not more) training examples: selection better_v2 of the tested models (the user's decisions of 7 and 8 October 2026)",
                     fontsize=11, fontweight="bold")
-    figure.text(0.5, -0.06, f"Kept: gene pairs at HPO frequency {summary['gene_minimum_frequency']:.2f} or more (Frequent and above); drug pairs at label "
+    figure.text(0.5, -0.09, f"Kept: gene pairs at HPO frequency {summary['gene_minimum_frequency']:.2f} or more (Frequent and above); drug pairs at label "
                 f"frequency {summary['drug_minimum_frequency']:.0%} or more, or listed by both SIDER and OnSIDES. A pair set aside stays out of the loss "
-                "and every metric;\nit is not a negative. Psychomotor retardation keeps 1 pair and leaves the macro average (5 positives are needed).",
-                ha="center", fontsize=8)
+                f"and every metric;\nit is not a negative. Also masked: {summary['masked_negative_pairs']:,} pairs whose only evidence is grade C (a human "
+                f"association), which were negatives before. Too few kept pairs for the macro average ({MINIMUM_POSITIVES_FOR_MACRO} needed): "
+                f"{', '.join(too_few)}.", ha="center", fontsize=8)
     save(figure, "label_selection")
 
 
@@ -278,12 +300,23 @@ def figure_slice_twin_comparisons() -> None:
     save(figure, "slice_twin_comparisons")
 
 
+def configuration_label(aggregate_name: str) -> str:
+    """The aggregate names a run by its directory, with the path when two directories share a name: runs/encoder/ holds
+    the reruns under the current code."""
+    name = aggregate_name.removesuffix("_disease_cluster")
+    if name.startswith("runs/encoder/"):
+        return name.removeprefix("runs/encoder/") + " (current code)"
+    if name.startswith("runs/"):
+        return name.removeprefix("runs/") + " (earlier code)"
+    return name
+
+
 def figure_slice_baselines_and_models() -> None:
     baselines = json.loads(SLICE_BASELINES.read_text())["splits"]["grouped"]
     runs = json.loads(SLICE_AGGREGATE.read_text())["runs"]
     rows = [(name.replace("_", " ") + " (baseline)", entry["per_fold_macro_auprc_mean"], entry["per_fold_macro_auprc_sd"], True)
             for name, entry in baselines.items()]
-    rows += [(name.removesuffix("_disease_cluster"), entry["per_fold_macro_auprc_mean"], entry["per_fold_macro_auprc_sd"], False)
+    rows += [(configuration_label(name), entry["per_fold_macro_auprc_mean"], entry["per_fold_macro_auprc_sd"], False)
              for name, entry in runs.items() if entry.get("num_splits") == 5]
     rows.sort(key=lambda row: row[1])
     figure, axis = plt.subplots(figsize=(10, 0.27 * len(rows) + 1.6))
@@ -296,17 +329,85 @@ def figure_slice_baselines_and_models() -> None:
     axis.set_yticks(positions, [row[0] for row in rows], fontsize=6.5)
     axis.set_xlim(0.15, max(row[1] + row[2] for row in rows) + 0.02)
     axis.set_xlabel("macro AUPRC per disease-cluster fold, mean ± standard deviation over 5 folds (n divisor)")
-    axis.set_title("Slice pilot (451 genes, metabolic layer): no trained configuration beats the random walk", fontsize=10.5, fontweight="bold")
+    configurations = [row for row in rows if not row[3]]
+    above_random_walk = sum(1 for row in configurations if row[1] > random_walk)
+    axis.set_title(f"Slice pilot: {len(configurations)} five-fold configurations, {above_random_walk} with a mean above the random walk",
+                   fontsize=10.5, fontweight="bold")
     save(figure, "slice_baselines_and_models")
 
 
+def draw_node_link_diagram(axis, nodes: dict, edges: list) -> None:
+    """nodes: name -> (x, y, label, colour); edges: (source, target, label). Arrows are clipped to the text boxes."""
+    text_of_node = {}
+    for name, (x, y, label, colour) in nodes.items():
+        text_of_node[name] = axis.text(x, y, label, ha="center", va="center", fontsize=7.8,
+                                       bbox={"boxstyle": "round,pad=0.35", "facecolor": colour, "edgecolor": "#333333"})
+    axis.figure.canvas.draw()  # the text boxes need a size before arrows can be clipped to them
+    for source, target, label in edges:
+        axis.annotate("", xy=(0.5, 0.5), xycoords=text_of_node[target], xytext=(0.5, 0.5), textcoords=text_of_node[source],
+                      arrowprops={"arrowstyle": "-|>", "color": "#555555", "patchA": text_of_node[source].get_bbox_patch(),
+                                  "patchB": text_of_node[target].get_bbox_patch(), "shrinkA": 2, "shrinkB": 2})
+        if label:
+            source_x, source_y = nodes[source][:2]
+            target_x, target_y = nodes[target][:2]
+            axis.text((source_x + target_x) / 2 + 0.01, (source_y + target_y) / 2, label, fontsize=7, color="#555555", ha="left", va="center")
+
+
+def figure_gene_protein_split() -> None:
+    summary = json.loads((SPLIT_GRAPH_DIRECTORY / "split_summary.json").read_text())
+    gene_to_protein = pd.read_parquet(SPLIT_GRAPH_DIRECTORY / "gene_to_protein.parquet")
+    entries_of_protein = gene_to_protein.drop_duplicates("protein_node_id").set_index("protein_node_id").uniprot_entry
+    calca_nodes = sorted(gene_to_protein.loc[gene_to_protein.gene_node_id == "GENE:CALCA", "protein_node_id"])
+    gene_colour, protein_colour, seed_colour = "#dbe9f6", "#e3f1df", "#fdebd3"
+    figure, axis = plt.subplots(figsize=(14, 5.6))
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.axis("off")
+    nodes = {
+        "knockout": (0.06, 0.88, "knockout", seed_colour),
+        "transcription_factor": (0.06, 0.45, "transcription factor\n(protein node)", protein_colour),
+        "gene_calca": (0.2, 0.67, "GENE:CALCA", gene_colour),
+        "calcitonin": (0.36, 0.84, f"{calca_nodes[0]}\ncalcitonin", protein_colour),
+        "cgrp": (0.36, 0.5, f"{calca_nodes[1]}\nCGRP", protein_colour),
+        "drug": (0.52, 0.5, "drug whose ChEMBL\ntarget names CGRP", seed_colour),
+        "gene_cdkn2a": (0.66, 0.84, "GENE:CDKN2A", gene_colour),
+        "protein_cdkn2a": (0.66, 0.5, f"PROTEIN:CDKN2A\n{entries_of_protein['PROTEIN:CDKN2A']}", protein_colour),
+        "gene_h33a": (0.84, 0.84, "GENE:H3-3A", gene_colour),
+        "gene_h33b": (0.96, 0.84, "GENE:H3-3B", gene_colour),
+        "protein_h33": (0.9, 0.5, f"PROTEIN:H3-3A\n{entries_of_protein['PROTEIN:H3-3A']} (H3.3)", protein_colour),
+    }
+    edges = [("knockout", "gene_calca", ""), ("transcription_factor", "gene_calca", "regulates_\ntranscription_of"),
+             ("gene_calca", "calcitonin", "encodes"), ("gene_calca", "cgrp", "encodes"), ("drug", "cgrp", ""),
+             ("gene_cdkn2a", "protein_cdkn2a", "encodes"), ("gene_h33a", "protein_h33", ""), ("gene_h33b", "protein_h33", "")]
+    draw_node_link_diagram(axis, nodes, edges)
+    captions = [(0.2, 0.3, "Entries the data tell apart: one protein\nnode each. The only such gene on the\nfull graph: a ChEMBL target names CGRP."),
+                (0.66, 0.3, "Entries the data do not tell apart: one\nnode for all of them. OmniPath copies\nCDKN2A's rows to both entries."),
+                (0.9, 0.3, "One entry from several genes: a shared\nnode, so a knockout of one gene\nleaves the other's route.")]
+    for x, y, caption in captions:
+        axis.text(x, y, caption, ha="center", va="top", fontsize=8)
+    edge_ends = summary["edge_ends_at_genes_with_several_proteins"]
+    axis.text(0.5, 0.02,
+              f"{summary['gene_nodes']:,} gene nodes and {summary['protein_nodes']:,} protein nodes joined by {summary['encodes_edges']:,} encodes edges; "
+              f"{summary['protein_nodes_of_several_entries']} protein nodes hold several entries, {summary['shared_protein_nodes']} are shared by "
+              f"{summary['genes_on_a_shared_protein_node']} genes, {summary['genes_with_several_protein_nodes']} gene has several protein nodes and "
+              f"{summary['gene_nodes_without_a_protein_node']} gene nodes have none.\n"
+              f"Edges {summary['edges_before']:,} before, {summary['edges_after']:,} after. Edge ends at the split gene: {edge_ends['named_subset']} name one "
+              f"entry, {edge_ends['named_all']} name both. Gene nodes carry the brain expression columns, protein nodes the protein descriptors.",
+              ha="center", va="bottom", fontsize=8)
+    axis.set_title("Gene and protein nodes (graph_full_neuronal_split): a gene's entries are split only where the data tell them apart",
+                   fontsize=11, fontweight="bold")
+    save(figure, "gene_protein_split")
+
+
 FIGURES = {
-    "model_pipeline": (figure_model_pipeline, [FULL_GRAPH_DIRECTORY / "edges.parquet"]),
+    "model_pipeline": (figure_model_pipeline, [FULL_GRAPH_DIRECTORY / "edges.parquet", SPLIT_GRAPH_DIRECTORY / "split_summary.json",
+                                               LABEL_SELECTION_SUMMARY, CELL_CLASS_WEIGHTS]),
     "cell_class_channels": (figure_cell_class_channels, []),
     "label_selection": (figure_label_selection, [LABEL_SELECTION_SUMMARY]),
     "dopaminergic_class": (figure_dopaminergic_class, [DOPAMINERGIC_SUMMARY]),
     "slice_twin_comparisons": (figure_slice_twin_comparisons, [TWIN_COMPARISONS]),
     "slice_baselines_and_models": (figure_slice_baselines_and_models, [SLICE_BASELINES, SLICE_AGGREGATE]),
+    "gene_protein_split": (figure_gene_protein_split, [SPLIT_GRAPH_DIRECTORY / "split_summary.json", SPLIT_GRAPH_DIRECTORY / "gene_to_protein.parquet"]),
 }
 
 
