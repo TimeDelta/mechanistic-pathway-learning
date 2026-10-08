@@ -1,3 +1,2 @@
 drug_name,pubchem_cid,chembl_ids,base_metabolite_ids,note
-gamma-aminobutyric acid,119,CHEMBL96,MAM00970,4-aminobutyrate (GABA); SIDER CID 119 is also Human-GEM's PubChem id for it
 tryptophan,,CHEMBL54976,MAM03089,tryptophan (ChEBI 16828)

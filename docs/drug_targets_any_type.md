@@ -47,6 +47,8 @@ RxNorm, UNII or name.
   it under two CIDs: lithium carbonate (CID 11125), which carries IMPA1 and GSK3 inhibition in ChEMBL and fails the
   single-target rule, and the lithium ion (CID 28486), which carries no mechanism. Listing the ion would have let one
   drug both enter and be excluded.
+- GABA is not listed either (section "GABA").
+- `--max-drug-targets` on both builders sets the target cap; 0 lifts it (section "Lifting the single-target rule").
 
 ## Rebuilds
 
@@ -57,15 +59,15 @@ OMP_NUM_THREADS=1 PYTHONPATH=. python experiments/build_label_selection.py --evi
 ```
 
 The v2 tables rebuild byte-identically from the code before this change, so every difference below comes from it.
-SHA-256 (first 16 hex): onsides_reports 177557ed28a85c12, evidence_records 3b16a40740d0eb79, evidence_reports
-1a96d6814e6c98c3, better_v2_full_v3 2aebe4f7e677adbc.
+SHA-256 (first 16 hex): onsides_reports 177557ed28a85c12, evidence_records d4e81f7ca1f1b087, evidence_reports
+35992a4155bb4429, better_v2_full_v3 2aebe4f7e677adbc.
 
 | | v2 | v3 |
 |---|---|---|
-| observation rows | 5,269 | 5,605 |
+| observation rows | 5,269 | 5,604 |
 | gene rows | 4,090 | 4,090, identical (weights identical; the reliability posterior moves by at most 8.5e-7 because the fit sees more drug reports) |
-| drug rows | 1,179 | 1,515 |
-| drugs | 142 | 155 |
+| drug rows | 1,179 | 1,514 |
+| drugs | 142 | 154 |
 | qualified SIDER-label pairs | 738 | 1,279 |
 | OnSIDES qualifying reports | 1,578 | 1,578 (125 non-qualifying rows of non-nervous-system enzyme drugs now carry metabolite seeds) |
 | OnSIDES later-slice candidates | 136 | 136 |
@@ -96,7 +98,6 @@ Drugs that enter or leave (group = leakage group under disease_cluster_and_targe
 | benztropine | bridge parent CHEMBL1201203 | CHEMBL216 muscarinic M1, antagonist | CHRM1 | CHEMBL216 |
 | scopolamine | bridge parent CHEMBL569713 | CHEMBL216 muscarinic M1, antagonist | CHRM1 | CHEMBL216 |
 | etomidate | bridge parent CHEMBL681 | CHEMBL2093872 GABA-A receptor, positive modulator | 13 GABA-A subunits | cluster:ABCA3 |
-| gamma-aminobutyric acid | graph compound | none in ChEMBL; MAM00970 (GABA), +1 | five compartment copies | not loaded: its one pair is an indication, which the selection does not hold |
 | doxepin (leaves) | salt-form index | gains CHEMBL222 (noradrenaline transporter) from its hydrochloride beside CHEMBL231 (H1) | | was a lockbox_v2 drug; now fails the single-target rule |
 
 No drug enters through a nucleic-acid or a metabolite target. The drugs with such targets are absent from the qualifying
@@ -114,8 +115,30 @@ mechanism target. 17 have no human mechanism target in ChEMBL: amobarbital, chlo
 CID; the carbonate CID has two targets), lormetazepam, mianserin, nefopam, nitrazepam, nitrous oxide, paraldehyde,
 phenobarbital, pizotifen, propericiazine, salicylate, stiripentol and zuclopenthixol. The mechanism table holds no row
 for their ChEMBL ids, under either key. Amobarbital has no ChEMBL id from either route, and chloroquine's only row is
-for a Plasmodium falciparum target. None of the 17 is a listed graph compound (GABA and tryptophan are). Nitrous oxide
-and salicylate are not in Human-GEM. Every target of a qualifying drug has a graph node.
+for a Plasmodium falciparum target. None of the 17 is a listed graph compound (tryptophan is the only one). Nitrous
+oxide and salicylate are not in Human-GEM. Every target of a qualifying drug has a graph node.
+
+## GABA
+
+GABA has no usable label. SIDER files one drug under GABA's PubChem id (CID 119, name "gamma-aminobutyric", ATC
+N03AG03 and L03AA03), but its rows describe an immune globulin:
+- side effects: anaphylactic shock, angioedema, urticaria, pain, injection-site pain and tenderness;
+- indications: agammaglobulinemia, hypogammaglobulinemia, common variable immunodeficiency, hepatitis A and B, measles,
+  rubella, varicella;
+- one "Sleeplessness" indication, the single row a GABA seed would have learned from.
+
+An earlier draft of this change admitted that row; it is removed. GABA is not an ingredient in OnSIDES 3.1.1, so no
+current label lists it either.
+
+The literature is no substitute:
+- PubTator3 holds 1,578 machine-extracted relations between GABA (MeSH D005680) and a crosswalk symptom descriptor:
+  849 "associate", 492 "treat" and 237 "cause". A relation does not record whether GABA was given or measured, and
+  "associate" carries no direction.
+- CTD holds no curated GABA relation to these symptoms, only 26 inferred through genes.
+
+The literature tables are not part of the evidence table in any case. Drugs that raise GABA signalling already carry
+labels through their protein targets: benzodiazepines, zolpidem and barbiturates (GABA-A), tiagabine (SLC6A1),
+vigabatrin (ABAT) and sodium oxybate (GABA-B).
 
 ## Caveats
 
@@ -123,7 +146,8 @@ and salicylate are not in Human-GEM. Every target of a qualifying drug has a gra
   CHEMBL100116, ChEMBL's PENTAZOCINE) and no opioid-receptor mechanism. It joins gabapentin, pregabalin and brivaracetam,
   which the preregistration lists as zero-sign drugs; the trainer warns about them.
 - Metabolite seeds are placed on graph_full, as the v2 gene seeds were (preregistration, "evidence_full_v2 placed drug
-  seeds on graph_full"). graph_full_neuronal adds a vesicle copy of GABA (MAM00970v) that a GABA seed would miss.
+  seeds on graph_full"). A metabolite seed misses any compartment copy that only graph_full_neuronal holds (it adds a
+  vesicle copy of GABA, MAM00970v, for example).
 - Scopolamine and benztropine are seeded on CHRM1 alone because ChEMBL lists only M1. Both act on other muscarinic
   subtypes too.
 
@@ -139,3 +163,50 @@ configs/lockbox_v2.json records the SHA-256 of evidence_full_v2's records and of
 Adopting v3 would need a lockbox file derived from the same groups on v3, and the development runs would need to be
 repeated on v3. Both are the user's decision; nothing here changes configs/lockbox_v2.json, the confirmatory_v2
 configurations or the scorer.
+
+## Lifting the single-target rule
+
+`--max-drug-targets N` on experiments/build_onsides_reports.py and on assemble_evidence_table caps the number of
+mechanism targets a drug may have; 0 lifts the cap. A drug still needs at least one mechanism target with a graph
+node, a nervous-system ATC code and a single-ingredient label. Each target is seeded with its own sign and a magnitude
+of 1 spread over its nodes, so a drug with k targets carries total magnitude k. Its rows are grade B like any label
+row; its group_id lists its targets. Pass the same N to both builders. The variants were built with the commands above
+plus `--max-drug-targets N`, into directories with the suffix `_max2_targets`, `_max3_targets` or `_no_target_cap`.
+
+| | cap 1 (v3) | cap 2 | cap 3 | no cap |
+|---|---|---|---|---|
+| observation rows (drug rows) | 5,604 (1,514) | 6,106 (2,016) | 6,370 (2,280) | 6,443 (2,353) |
+| drugs | 154 | 200 | 222 | 230 |
+| OnSIDES qualifying reports (perturbations) | 1,578 (124) | 2,085 (163) | 2,473 (184) | 2,544 (192) |
+| OnSIDES later-slice candidates | 136 | 180 | 207 | 218 |
+| better_v2 positive pairs / kept pairs | 4,744 / 2,515 | 5,221 / 2,749 | 5,463 / 2,873 | 5,534 / 2,909 |
+| kept drug pairs (drugs with one) | 722 (106) | 956 (141) | 1,080 (156) | 1,116 (163) |
+| largest leakage group: perturbations (share; drugs in it) | 235 (0.152; 66 of 154) | 240 (0.150; 71 of 200) | 240 (0.148; 71 of 222) | 422 (0.259; 194 of 230) |
+| v2 development perturbations pulled into a lockbox_v2 group | 0 | 34 | 86 | 325 |
+
+Leakage groups are those of disease_cluster_and_targets on graph_full_neuronal. Gene rows are identical in every
+variant. SHA-256 of evidence_records (first 16 hex): cap 2 f4281820c04e9920, cap 3 46afe7aabddd71d0, no cap
+5f1d7415fc147cbe.
+
+Readings:
+- The rule costs labels. Lifting it raises the kept drug pairs from 722 to 1,116 (+55 percent) and the kept pairs
+  overall from 2,515 to 2,909 (+16 percent). 76 drugs enter: 45 with two targets, 23 with three and 8 with four to
+  seven. Those with the most are the four volatile anaesthetics (7 each), topiramate (6), trimipramine (6),
+  orphenadrine and nefazodone (4).
+- Most of that gain comes at a cap of 3: 1,080 of the 1,116 kept drug pairs, with the largest leakage group no larger
+  than under cap 1.
+- With no cap, the drugs with four to seven targets join the target-sharing components into one leakage group of 422
+  perturbations holding 194 of the 230 drugs. A grouped five-fold split then puts 84 percent of the drugs in one test
+  fold, and the other folds train on almost no drug.
+- Any cap above 1 merges lockbox_v2 groups with v2 development perturbations (34 at cap 2). lockbox_v2 cannot be kept
+  under a relaxed cap; a new lockbox would have to be drawn under the preregistered rule.
+- 17 of the 76 new drugs carry seeds of both signs (an agonist at one target and an antagonist at another, for
+  example). Total input magnitude grows with the number of targets (up to 7). A model can then learn "large input,
+  many symptoms" from target count alone, since drugs with many targets also carry many label events. Normalising
+  magnitudes per drug, or adding target count as a baseline feature, would separate the two.
+- ChEMBL lists a drug's therapeutic mechanisms, not its off-target binding. A side effect from an unlisted off-target
+  is therefore unexplained under any cap. Amitriptyline, for example, carries only its serotonin and noradrenaline
+transporter mechanisms (both inhibitor), not the muscarinic antagonism behind its anticholinergic effects.
+
+Which cap the confirmatory experiment uses is the user's decision. The preregistered rule is cap 1, and any other cap
+needs a dated amendment, a new lockbox and new development runs.

@@ -114,6 +114,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/onsides"))
     parser.add_argument("--non-protein-targets", type=Path, default=NON_PROTEIN_TARGETS_PATH, help="ChEMBL non-protein targets -> Human-GEM metabolites (docs/drug_targets_any_type.md)")
     parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH, help="drugs with no mechanism target that are themselves a graph metabolite")
+    parser.add_argument("--max-drug-targets", type=int, default=1, help="most mechanism targets a qualifying ingredient may have; 0 lifts the single-target rule")
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/onsides_label_slice.md"))
     arguments = parser.parse_args()
 
@@ -127,7 +128,7 @@ def main() -> None:
     node_lookup = GraphNodeLookup.from_nodes(pd.read_parquet(arguments.graph_dir / "nodes.parquet"), arguments.non_protein_targets)
     _, compounds_by_chembl_id = load_drugs_acting_as_graph_compounds(arguments.drugs_acting_as_graph_compounds)
     check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, mechanisms_by_molecule)
-    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id)
+    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id, arguments.max_drug_targets or None)
 
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     reports.to_parquet(arguments.output_dir / "onsides_reports.parquet", index=False)

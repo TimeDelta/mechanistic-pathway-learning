@@ -13,9 +13,10 @@ Every ChEMBL target type is placed where the graph has a node for it
 - metals, small molecules, lipids and oligosaccharides: the Human-GEM metabolites of
   configs/non_protein_drug_targets.csv, every compartment of each;
 - a drug with no mechanism target under any of its ChEMBL forms whose active compound is itself a graph metabolite
-  (GABA, tryptophan; configs/drugs_acting_as_graph_compounds.csv): that metabolite, raised (EXOGENOUS SUPPLY). Lithium is
+  (tryptophan; configs/drugs_acting_as_graph_compounds.csv): that metabolite, raised (EXOGENOUS SUPPLY). Lithium is
   not listed: ChEMBL records IMPA1 and GSK3 inhibition on lithium carbonate and lithium citrate, so it falls under the
-  single-target rule like any drug with protein targets (check_graph_compounds_have_no_mechanism enforces this).
+  single-target rule like any drug with protein targets (check_graph_compounds_have_no_mechanism enforces this). GABA is
+  not listed: the only label rows under its PubChem id (SIDER CID 119) are an immune globulin's.
 Targets in another organism stay out (human_only), and DNA, RNA, antibodies and unnamed classes have no node.
 
 Inputs are the caches written by experiments/fetch_chembl_drug_targets.py.
@@ -139,13 +140,15 @@ def drug_targets_for_pubchem_cid(pubchem_cid: int, caches: ChemblCaches, human_o
     return mechanism_targets(chembl_ids, caches.mechanisms_by_molecule, caches.targets, human_only=human_only)
 
 
-def has_dominant_target(drug_targets: list[DrugTarget], max_targets: int = 1) -> bool:
+def has_dominant_target(drug_targets: list[DrugTarget], max_targets: int | None = 1) -> bool:
     """Version 1 dominant-target rule: at most max_targets distinct ChEMBL targets with a mechanism.
 
     Affinity margins are not yet used; a ChEMBL protein-family target (for example the GABA-A
-    receptor) counts as one target even though it maps to many gene nodes.
+    receptor) counts as one target even though it maps to many gene nodes. max_targets None or 0 lifts the cap: any
+    drug with at least one mechanism target passes, and each of its targets is seeded with magnitude 1 spread over
+    that target's nodes (docs/drug_targets_any_type.md, "Lifting the single-target rule").
     """
-    return 0 < len(drug_targets) <= max_targets
+    return len(drug_targets) > 0 and (not max_targets or len(drug_targets) <= max_targets)
 
 
 def load_drugs_acting_as_graph_compounds(path: Path = DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH) -> tuple[dict[int, list[str]], dict[str, list[str]]]:

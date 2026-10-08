@@ -177,3 +177,15 @@ def test_a_listed_graph_compound_with_a_chembl_mechanism_is_refused() -> None:
         assert "CHEMBL1200826" in str(error)
     else:
         raise AssertionError("a graph compound with a mechanism was accepted")
+
+
+def test_the_single_target_rule_can_be_lifted() -> None:
+    from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import passes_single_target_rule
+
+    two_targets = [DrugTarget("CHEMBL1786", "INHIBITOR", ["IMPA1"]), DrugTarget("CHEMBL2095188", "INHIBITOR", ["GSK3A", "GSK3B"])]
+    assert not has_dominant_target(two_targets) and not passes_single_target_rule(two_targets)
+    assert has_dominant_target(two_targets, max_targets=0) and has_dominant_target(two_targets, max_targets=None)
+    assert passes_single_target_rule(two_targets, max_targets=None) and has_dominant_target(two_targets, max_targets=2)
+    assert not has_dominant_target([], max_targets=None)  # a drug with no mechanism target still has no entry point
+    lookup = GraphNodeLookup({"IMPA1": "GENE:IMPA1", "GSK3A": "GENE:GSK3A", "GSK3B": "GENE:GSK3B"}, {}, {})
+    assert sorted(map(tuple, lookup.perturbation_nodes(two_targets))) == [("GENE:GSK3A", -1.0, 0.5), ("GENE:GSK3B", -1.0, 0.5), ("GENE:IMPA1", -1.0, 1.0)]

@@ -519,7 +519,7 @@ def assemble(
     graph_directory: Path,
     sider_directory: Path | None,
     chembl_directory: Path | None,
-    max_drug_targets: int = 1,
+    max_drug_targets: int | None = 1,
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
     phenotype_hpoa_path: Path | None = None,
     reference_publication_dates_path: Path | None = None,
@@ -681,7 +681,7 @@ def main() -> None:
     parser.add_argument("--graph-dir", type=Path, default=Path("data/processed/graph"))
     parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"))
     parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"))
-    parser.add_argument("--max-drug-targets", type=int, default=1)
+    parser.add_argument("--max-drug-targets", type=int, default=1, help="most mechanism targets a qualifying SIDER drug may have; 0 lifts the single-target rule (pass the same value to build_onsides_reports.py)")
     parser.add_argument("--grade-a-policy", choices=GRADE_A_POLICIES, default=DEFAULT_GRADE_A_POLICY)
     parser.add_argument("--disease-cluster-max-genes", type=int, default=DEFAULT_DISEASE_CLUSTER_MAX_GENES,
                         help="disease entries annotated to this many genes or more (group-level Orphanet entries) do not link disease clusters; 0 disables the cap")
@@ -697,7 +697,7 @@ def main() -> None:
     arguments = parser.parse_args()
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
-                         arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
+                         arguments.max_drug_targets or None, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
                          arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale,
                          extra_report_paths=list(arguments.extra_reports), onsides_bridge_path=arguments.onsides_bridge,
                          non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds)

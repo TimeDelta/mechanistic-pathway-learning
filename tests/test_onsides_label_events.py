@@ -104,3 +104,15 @@ def test_reports_apply_the_sider_rule_to_atc_codes_and_name_missing_target_recor
     assert not unrecorded.qualifies.any() and unrecorded_counts["disqualified"] == {"target_record_missing": single_ingredient_statements, "combination_label_only": 1}  # a missing target record is not a missing graph gene
     unmapped, unmapped_counts = onsides_reports(statements, {"36437": sertraline_bridge()}, MECHANISMS, TARGETS, {})
     assert unmapped_counts["disqualified"] == {"no_graph_node": single_ingredient_statements, "combination_label_only": 1}
+
+
+def test_a_two_target_ingredient_qualifies_only_when_the_target_cap_is_lifted() -> None:
+    statements = aggregate_label_statements(toy_tables(), CROSSWALK)
+    two_mechanisms = {"CHEMBL809": MECHANISMS["CHEMBL809"] + [{"molecule_chembl_id": "CHEMBL809", "target_chembl_id": "CHEMBL238", "action_type": "INHIBITOR"}]}
+    two_targets = TARGETS | {"CHEMBL238": {"organism": "Homo sapiens", "gene_symbols": ["SLC6A3"], "target_type": "SINGLE PROTEIN", "pref_name": "Dopamine transporter"}}
+    nodes = NODES | {"SLC6A3": "GENE:SLC6A3"}
+    capped, capped_counts = onsides_reports(statements, {"36437": sertraline_bridge()}, two_mechanisms, two_targets, nodes)
+    assert not capped.qualifies.any() and "no_single_mechanism_target" in capped_counts["disqualified"]
+    lifted, _ = onsides_reports(statements, {"36437": sertraline_bridge()}, two_mechanisms, two_targets, nodes, max_drug_targets=None)
+    qualifying = lifted[lifted.qualifies]
+    assert len(qualifying) and all(sorted(node for node, _, _ in json.loads(seeds)) == ["GENE:SLC6A3", "GENE:SLC6A4"] for seeds in qualifying.perturbation_nodes)

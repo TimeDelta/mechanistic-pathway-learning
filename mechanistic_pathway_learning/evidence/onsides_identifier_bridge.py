@@ -233,9 +233,10 @@ def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecu
     return mechanism_targets([chembl_parent], mechanisms_by_molecule, targets, human_only=human_only, missing_target_ids=missing_target_ids)
 
 
-def passes_single_target_rule(drug_targets: list[DrugTarget]) -> bool:
-    """The version 1 pharmacological bar on targets, the same rule SIDER drugs pass (has_dominant_target with one target)."""
-    return has_dominant_target(drug_targets, max_targets=1)
+def passes_single_target_rule(drug_targets: list[DrugTarget], max_targets: int | None = 1) -> bool:
+    """The version 1 pharmacological bar on targets, the same rule SIDER drugs pass (has_dominant_target with one
+    target by default; max_targets None or 0 lifts the cap)."""
+    return has_dominant_target(drug_targets, max_targets=max_targets)
 
 
 def passes_nervous_system_rule(bridge: IngredientBridge) -> bool:

@@ -147,7 +147,7 @@ class OnsidesQualification:
 
 
 def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping[str, list[dict]], targets: Mapping[str, dict],
-                       compounds_by_chembl_id: Mapping[str, list[str]] | None = None) -> OnsidesQualification:
+                       compounds_by_chembl_id: Mapping[str, list[str]] | None = None, max_drug_targets: int | None = 1) -> OnsidesQualification:
     """The E2 qualification of section 4.2 for one ingredient, the rule SIDER rows pass: a single mechanism target and an ATC N code.
 
     An ingredient with no mechanism target at all whose parent is listed in configs/drugs_acting_as_graph_compounds.csv
@@ -162,7 +162,7 @@ def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping
     missing = sorted(missing_target_ids)
     if bridge.chembl_parent is None:
         return OnsidesQualification(False, "no_chembl_parent", drug_targets, atc_known, missing)
-    if not passes_single_target_rule(drug_targets):
+    if not passes_single_target_rule(drug_targets, max_drug_targets):
         return OnsidesQualification(False, "no_single_mechanism_target", drug_targets, atc_known, missing)
     if not atc_known:
         return OnsidesQualification(False, "no_atc_code", drug_targets, atc_known, missing)
@@ -202,11 +202,12 @@ def onsides_reports(
     targets: Mapping[str, dict],
     node_lookup: GraphNodeLookup | Mapping[str, str],
     compounds_by_chembl_id: Mapping[str, list[str]] | None = None,
+    max_drug_targets: int | None = 1,
 ) -> tuple[pd.DataFrame, dict]:
     """Report rows (REPORT_COLUMNS first, then ONSIDES_EXTRA_COLUMNS) for every statement; qualifies marks the rows that enter the evidence table.
 
     node_lookup places each target on the graph (GraphNodeLookup); a gene symbol -> node id mapping places protein
-    targets only."""
+    targets only. max_drug_targets None or 0 lifts the single-target rule."""
     if not isinstance(node_lookup, GraphNodeLookup):
         node_lookup = GraphNodeLookup(dict(node_lookup), {}, {})
     scored = statements.max_pred1.where(statements.match_methods.astype(str).str.contains("PMB"))
@@ -219,7 +220,7 @@ def onsides_reports(
         if bridge is None:
             counts["ingredients_without_bridge"] += 1
             continue
-        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id)
+        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id, max_drug_targets)
         qualifications[bridge.ingredient_id] = qualification
         perturbation_nodes = node_lookup.perturbation_nodes(qualification.drug_targets)
         combination_only = int(statement.single_ingredient_label_count) == 0
