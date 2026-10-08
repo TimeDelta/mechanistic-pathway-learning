@@ -606,6 +606,8 @@ day). Each is a defect against text already in this specification, not a change 
     or as secondary readings;
   - keep the baselines and state the offset as a limitation.
   The first is cheap and leaves the models untouched; it changes the decision rule, so it is the user's decision.
+  run_baselines.py --with-type-popularity fits the two predictors (off by default, so no run so far and none registered
+  changes); the scorer uses them only when its --baselines names them.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

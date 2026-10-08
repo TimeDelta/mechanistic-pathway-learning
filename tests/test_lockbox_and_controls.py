@@ -262,3 +262,21 @@ def test_walk_graph_rewiring_keeps_the_neighbour_count_the_walk_sees() -> None:
     np.testing.assert_array_equal(np.diff(real.tocsc().indptr), np.diff(rewired.tocsc().indptr))  # neighbours per node
     assert real.nnz == rewired.nnz and (real != rewired).nnz > 0
     assert not np.isin(rewired_edges, excluded).any()
+
+
+def test_type_popularity_fits_each_perturbation_type_on_its_own_and_falls_back_when_a_type_is_missing() -> None:
+    from types import SimpleNamespace
+
+    from run_baselines import fit_and_predict
+
+    data = SimpleNamespace(perturbation_types=["drug", "drug", "gene", "gene", "drug", "gene"], perturbation_degrees=np.array([1.0, 1.0, 1.0, 1.0, np.e - 1, 1.0]))
+    outcomes = np.array([[1, 0], [1, 1], [0, 0], [0, 1], [0, 0], [0, 0]], dtype=float)
+    train = np.array([True, True, True, True, False, False])
+    test = ~train
+    typed = fit_and_predict(data, outcomes, train, test, "type_popularity", 0.3, None)
+    assert np.allclose(typed, [[1.0, 0.5], [0.0, 0.5]])  # the test drug gets the drugs' base rates, the test gene the genes'
+    scaled = fit_and_predict(data, outcomes, train, test, "type_degree_popularity", 0.3, None)
+    assert np.allclose(scaled, [[1.0, 0.5], [0.0, 0.5 * np.log(2.0)]])  # times log(1 + degree)
+    only_genes_in_training = np.array([False, False, True, True, False, False])
+    fallback = fit_and_predict(data, outcomes, only_genes_in_training, np.array([False, False, False, False, True, False]), "type_popularity", 0.3, None)
+    assert np.allclose(fallback, [[0.0, 0.5]])  # no training drug: every training perturbation's base rate

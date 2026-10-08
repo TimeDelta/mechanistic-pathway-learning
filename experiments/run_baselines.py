@@ -1,6 +1,7 @@
 """Phase 2: baselines B0 (popularity, degree-scaled popularity), B1 (random walk with restart) and,
 with --with-kg-embedding, B2 (TransE knowledge-graph embedding over the graph plus training evidence
-triples) under the grouped perturbation-wise split and the pathway-wise splits (design sections 5.6
+triples) and, with --with-type-popularity, popularity and degree_popularity fitted per perturbation type
+(type_popularity, type_degree_popularity; docs/perturbation_type_offset.md) under the grouped perturbation-wise split and the pathway-wise splits (design sections 5.6
 and 6.1), with the label-permutation negative control (section 6.3). B2 is trained once per split
 (seconds to a minute on CPU) and, unless --kg-embedding-all-splits is given, only for the grouped
 split, its permutation control and the time split.
@@ -90,6 +91,7 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
 
 BASELINE_NAMES = ("popularity", "degree_popularity", "random_walk_with_restart")
 KG_EMBEDDING_NAME = "knowledge_graph_embedding_transe"
+TYPE_POPULARITY_NAMES = ("type_popularity", "type_degree_popularity")
 KG_EMBEDDING_SETTINGS = {"model_name": "TransE", "embedding_dim": 64, "num_epochs": 30, "batch_size": 4096, "learning_rate": 0.01, "margin": 1.0, "negatives_per_positive": 4}
 MINIMUM_POSITIVES_TO_SCORE = 5
 
@@ -102,6 +104,17 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
     if model_name in ("popularity", "degree_popularity"):
         model = PopularityBaseline(scale_by_degree=model_name == "degree_popularity").fit(outcomes[train], training_label_mask=None if label_mask is None else label_mask[train])
         return model.predict(int(test.sum()), degrees[test])
+    if model_name in TYPE_POPULARITY_NAMES:  # popularity or degree_popularity fitted on the training perturbations of the test perturbation's type
+        kinds = np.asarray(data.perturbation_types)
+        predictions = np.zeros((int(test.sum()), outcomes.shape[1]))
+        for kind in np.unique(kinds[test]):
+            training_rows = train & (kinds == kind)
+            if not training_rows.any():  # no training perturbation of this type: fall back to every training perturbation
+                training_rows = train
+            model = PopularityBaseline(scale_by_degree=model_name == "type_degree_popularity").fit(outcomes[training_rows], training_label_mask=None if label_mask is None else label_mask[training_rows])
+            test_rows_of_kind = kinds[test] == kind
+            predictions[test_rows_of_kind] = model.predict(int(test_rows_of_kind.sum()), degrees[test][test_rows_of_kind])
+        return predictions
     if model_name == "random_walk_with_restart":
         model = RandomWalkWithRestartBaseline(restart_probability=restart_probability).fit(
             normalized_adjacency, [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
@@ -339,6 +352,9 @@ def main() -> None:
     parser.add_argument("--score-lockbox", action="store_true", help="with --lockbox: fit on the development set and score the lockbox once")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=date(2015, 12, 31), help="monogenic time split: pairs dated on or before this day train")
     parser.add_argument("--with-kg-embedding", action="store_true", help="also run baseline B2 (TransE over graph plus training evidence triples)")
+    parser.add_argument("--with-type-popularity", action="store_true",
+                        help="also run popularity and degree_popularity fitted per perturbation type (drug or gene), the graph-free reading of the type offset "
+                             "(docs/perturbation_type_offset.md); off by default, so the confirmatory baseline set is unchanged unless the scorer is given these names")
     parser.add_argument("--kg-embedding-all-splits", action="store_true", help="run B2 on the pathway hold-outs too (many fits)")
     parser.add_argument("--metabolic-layer-only", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/baselines"))
@@ -382,7 +398,7 @@ def main() -> None:
         "num_perturbations": len(data.perturbation_ids), "num_genes": num_genes, "num_drugs": num_drugs, "num_symptoms": len(data.symptoms), "symptoms": data.symptoms,
         "group_by": arguments.group_by, "num_groups": len(set(data.group_ids)), "num_folds": 1 if arguments.score_lockbox else arguments.num_folds, "label_selection": data.label_selection_summary,
         "lockbox": lockbox_summary, "seed": arguments.seed,
-        "kg_embedding_settings": KG_EMBEDDING_SETTINGS if arguments.with_kg_embedding else None,
+        "kg_embedding_settings": KG_EMBEDDING_SETTINGS if arguments.with_kg_embedding else None, "type_popularity": arguments.with_type_popularity,
         "pathway_wise_modules": pathway_module_ids, "pathway_wise_holdout_sizes": [int(mask.sum()) for mask in pathway_masks],
         "pathway_wise_positives": [int(kept_positives(data)[mask].sum()) for mask in pathway_masks],
         "subsystem_wise_subsystems": subsystem_labels, "subsystem_wise_holdout_sizes": [int(mask.sum()) for mask in subsystem_masks],
@@ -415,7 +431,7 @@ def main() -> None:
         entry = results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"]
         print(f"{primary_split + '_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
     split_plan = [(primary_split, grouped_masks, grouped_labels), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
-    model_names = list(BASELINE_NAMES) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else [])
+    model_names = list(BASELINE_NAMES) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else []) + (list(TYPE_POPULARITY_NAMES) if arguments.with_type_popularity else [])
     for model_name in model_names:
         for split_name, masks, labels in split_plan:
             if not masks:
