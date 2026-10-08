@@ -50,7 +50,9 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scorable_symptom,
 )
 
-RUN_ROOTS = (Path("runs/encoder"), Path("runs/full"), Path("runs"))
+SLICE_RUN_ROOTS = (Path("runs/encoder"), Path("runs"))
+FULL_GRAPH_RUN_ROOTS = (Path("runs/full"),)
+RUN_ROOTS = SLICE_RUN_ROOTS  # main() switches to FULL_GRAPH_RUN_ROOTS for a full graph: the paused full-graph b3_typed_nodes shares its slice name
 MINIMUM_POSITIVES_TO_SCORE = 5
 NUM_FOLDS = 5
 LABEL_REPRODUCTION_TOLERANCE = 1e-6
@@ -273,8 +275,9 @@ def main() -> None:
     parser.add_argument("--json-output", type=Path, default=Path("runs/twin_comparisons.json"))
     arguments = parser.parse_args()
 
-    global RUN_DIRECTORY_SUFFIX
+    global RUN_DIRECTORY_SUFFIX, RUN_ROOTS
     RUN_DIRECTORY_SUFFIX = f"_{arguments.group_by}" + ("_development" if arguments.lockbox is not None else "")
+    RUN_ROOTS = FULL_GRAPH_RUN_ROOTS if arguments.graph_dir.name.startswith("graph_full") else SLICE_RUN_ROOTS
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
     if arguments.lockbox is not None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data))

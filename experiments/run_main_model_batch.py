@@ -87,6 +87,10 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # fixed node descriptors (experiments/build_node_descriptors.py) and the controls that credit propagation only with what it adds
     "b3_typed_nodes_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
                                    "--node-descriptors", "data/processed/graph/node_descriptors.parquet"],
+    # brain region and brain cell-class expression appended to the node descriptors, as the confirmatory message-passing
+    # configurations read them on the full graph; the only change from b3_typed_nodes_descriptors
+    "b3_typed_nodes_descriptors_brain": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed",
+                                         "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
     "b3_descriptors_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors",
                             "--node-descriptors", "data/processed/graph/node_descriptors.parquet"],
     "b3_local_structural": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "local_descriptors"],
