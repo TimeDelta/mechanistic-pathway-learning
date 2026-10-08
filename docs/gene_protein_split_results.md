@@ -31,19 +31,26 @@ Micro AUPRC, the same three readings:
 
 | encoder | per fold, t | pooled, bootstrap | within degree strata |
 |---|---|---|---|
-| message passing (seed masked) | −0.016 [−0.038, +0.005] | −0.013 [−0.030, +0.002] | −0.015 [−0.034, +0.001] |
-| linear response (cofactors) | −0.012 [−0.023, −0.002] | −0.005 [−0.016, +0.007] | −0.007 [−0.025, +0.005] |
+| message passing (seed masked) | −0.016 [−0.038, +0.005] | −0.013 [−0.030, +0.002] | −0.015 [−0.029, −0.004] |
+| linear response (cofactors) | −0.012 [−0.023, −0.002] | −0.005 [−0.016, +0.007] | −0.007 [−0.025, +0.010] |
 
 The degree strata above come from the merged slice (`data/processed/graph`), the registered strata. Recomputing them
-from the split graph moves the within-strata readings to −0.012 [−0.028, +0.003] and −0.007 [−0.025, +0.005]; see
-"Degrees collapse" below for why that reading carries no information on the split graph.
+from the split graph gives:
 
-Reading: the split does not raise either encoder's symptom ranking on the slice. Every macro interval covers zero.
-The two intervals that exclude zero both point against the split and both are small: the message-passing
-within-strata macro difference (−0.015, upper bound −0.001) and the linear-response per-fold micro difference (−0.012,
-upper bound −0.002). Each arm is one of four comparisons here, so at 95 percent about 0.4 of these intervals would
-exclude zero by chance. The split costs about 0.01 AUPRC or nothing; it does not pay for itself in accuracy on the
-slice.
+| encoder | macro within split-graph strata | micro within split-graph strata |
+|---|---|---|
+| message passing (seed masked) | −0.012 [−0.028, +0.003] | −0.012 [−0.024, −0.001] |
+| linear response (cofactors) | −0.007 [−0.025, +0.005] | −0.010 [−0.024, +0.001] |
+
+See "Degrees collapse" below for why that second reading carries no information on the split graph.
+
+Reading: the split does not raise either encoder's symptom ranking on the slice. Every pooled interval covers zero,
+in both metrics and for both encoders. Three of the twelve intervals exclude zero, and all three point against the
+split: the message-passing within-strata difference in macro AUPRC (−0.015, upper bound −0.001) and in micro AUPRC
+(−0.015, upper bound −0.004), and the linear-response per-fold micro difference (−0.012, upper bound −0.002). At 95
+percent about 0.6 of twelve intervals would exclude zero by chance, so three is more than chance alone would give,
+and the direction is consistent. The split costs about 0.01 AUPRC or nothing; it does not pay for itself in accuracy
+on the slice.
 
 ## Degrees collapse on the split graph
 
