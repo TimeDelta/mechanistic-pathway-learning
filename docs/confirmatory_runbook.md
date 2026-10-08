@@ -32,12 +32,13 @@ is the one tested: two models, the noisy-OR head of each encoder (the user dropp
    the baseline document shows pooled scores and per-fold means only): that fold holds the leakage group
    of 232 perturbations and is atypical (amendment of 8 October on the early-stopping validation set). The confirmatory
    configurations carry --keep-large-groups-in-training; on fold 0 it leaves the split unchanged, so pilots that ran
-   before it was added stand.
+   before it was added stand. Ended 8 October 2026; all four trained (docs/confirmatory_pilots_development.md).
 1b. refit_pilots (registered 8 October 2026, after confirmatory_pilots): the four pilots refitted on their training and
    validation perturbations together for best epoch + 1 epochs (--refit-on-validation, amendment of 8 October on the
    refit). When it ends, check each refit trained (falling training loss, no NaN) and report its fold-0 development
    macro and micro AUPRC against the development baselines beside the early-stopped scores
-   (results_early_stopped.json and the refit entry of results.json).
+   (results_early_stopped.json and the refit entry of results.json). Ended 8 October 2026; all four refits ran
+   (docs/confirmatory_pilots_development.md).
 1c. v2_development (second family; registered 8 October 2026, stopped before it trained anything and paused the same
    day, runs/jobs/paused/; it refuses to start without runs/full/v2_development.go): the development baselines of
    lockbox_v2 (runs/full/baselines_lockbox_v2_development, docs/phase2_baselines_lockbox_v2_development.md), then the two

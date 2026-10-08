@@ -307,7 +307,7 @@ def main() -> None:
              f"{NUM_FOLDS} finished disease-cluster folds. A carries the change. Three readings of A minus B in macro AUPRC: paired per fold "
              f"with a t interval ({NUM_FOLDS - 1} degrees of freedom); pooled out-of-fold with a paired bootstrap over perturbations "
              f"({arguments.num_bootstrap} resamples); and pooled after ranking each score inside one degree stratum of one test fold "
-             f"(degrees in {arguments.graph_dir.name}, {len(np.unique(degree_strata(data.perturbation_degrees)))} strata), which gives no credit for ordering "
+             f"(degrees in {arguments.graph_dir}, {len(np.unique(degree_strata(data.perturbation_degrees)))} strata), which gives no credit for ordering "
              "perturbations by degree. ± is the sample standard deviation over folds (n - 1); the aggregation tables of "
              "aggregate_main_model_runs.py divide by n, which reads about 11 percent smaller at five folds. "
              "Pooled macro AUROC is in the JSON output. Intervals are 95 percent and are not corrected for the "
