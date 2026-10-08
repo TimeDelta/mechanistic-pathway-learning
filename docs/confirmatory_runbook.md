@@ -8,10 +8,17 @@ Two families. The first (confirmatory_* configurations, configs/lockbox_v1.json,
 development pilots (steps 1 and 1b) are reported as checks that each configuration trains. The second
 (confirmatory_v2_* configurations, configs/lockbox_v2.json, better_v2 labels, rotated stratified validation, group
 bootstrap, floors each model's 95 percent half-width plus 0.005, computed in the scoring; the user's decisions of 8 October 2026 and the amendments that record them)
-is the one tested: two models, one head per encoder, chosen on the development set (steps 1c and 1d).
+is the one tested: two models, the noisy-OR head of each encoder (the user dropped the sigmoid head on 8 October
+2026). No second-family run starts before the module fix is decided (step 0).
 
 ## Steps
 
+0. Module fix (the user, 8 October 2026: "Fixing the modules first makes sense"): the slice runs of
+   runs/module_fix/module_fix_slice.sh (job module_fix_slice), read with experiments/module_health.py under the rule of
+   docs/module_health.md, which was written before the runs. When it ends, report the reading for each encoder to the
+   user. Apply nothing to a confirmatory_v2 configuration before the user decides. Further candidates, if needed, go
+   through the same rule. When the user has decided, write runs/full/v2_development.go, move
+   runs/jobs/paused/v2_development.job back to runs/jobs/ and resume it (step 1c).
 1. confirmatory_pilots (first family, registered 8 October 2026): fold 0, seed 0 development pilots of the four confirmatory
    configurations (runs/full/confirmatory_*_disease_cluster_and_targets_development/fold0_seed0), then the development
    baselines (runs/full/baselines_v2_development, docs/phase2_baselines_full_v2_development.md). When it ends, check that
@@ -27,17 +34,18 @@ is the one tested: two models, one head per encoder, chosen on the development s
    refit). When it ends, check each refit trained (falling training loss, no NaN) and report its fold-0 development
    macro and micro AUPRC against the development baselines beside the early-stopped scores
    (results_early_stopped.json and the refit entry of results.json).
-1c. v2_development (second family, registered 8 October 2026, starts when confirmatory_pilots ends): the development
-   baselines of lockbox_v2 (runs/full/baselines_lockbox_v2_development, docs/phase2_baselines_lockbox_v2_development.md),
-   then the four configurations confirmatory_v2_{message_passing,linear_response}_{sigmoid,noisy_or} on the five grouped
-   development folds with seed 0 (runs/full/confirmatory_v2_*_disease_cluster_and_targets_development/fold<k>_seed0),
-   then experiments/choose_heads.py, which writes configs/head_choice.json and docs/head_choice.md. When it ends, check
-   that each of the 20 runs trained (falling training loss, no NaN, a refit), report each configuration's five-fold
-   readings against the best baselines and the head chosen per encoder, and commit configs/head_choice.json,
-   docs/head_choice.md and the baseline document. The choice follows its rule; nobody overrides it.
-1d. After 1c: register the ablation of the two chosen heads, `<chosen configuration>_without_descriptors` on the same
+1c. v2_development (second family; registered 8 October 2026, stopped before it trained anything and paused the same
+   day, runs/jobs/paused/; it refuses to start without runs/full/v2_development.go): the development baselines of
+   lockbox_v2 (runs/full/baselines_lockbox_v2_development, docs/phase2_baselines_lockbox_v2_development.md), then the two
+   configurations confirmatory_v2_{message_passing,linear_response}_noisy_or on the five grouped development folds with
+   seed 0 (runs/full/confirmatory_v2_*_disease_cluster_and_targets_development/fold<k>_seed0), then configs/head_choice.json,
+   which records the two noisy-OR models as the user's decision. experiments/choose_heads.py is not run. When it ends,
+   check that each of the 10 runs trained (falling training loss, no NaN, a refit) and that its modules pass the health
+   reading of step 0. Report each configuration's five-fold readings against the best baselines, and commit
+   configs/head_choice.json and the baseline document.
+1d. After 1c: register the ablation of the two tested models, `<chosen configuration>_without_descriptors` on the same
    five development folds with seed 0 (`bash runs/full/v2_ablation.sh`, one chain per encoder at 2 threads, as in
-   runs/full/v2_development.sh), and report it against the chosen heads when it ends. It is a development reading and does
+   runs/full/v2_development.sh), and report it against the tested models when it ends. It is a development reading and does
    not hold up step 3.
 2. encoder_descriptors_brain (slice, registered 8 October 2026): b3_linear_response_cofactors_descriptors_brain and
    b3_typed_nodes_descriptors_brain, five folds each. When it ends, run
@@ -65,14 +73,14 @@ is the one tested: two models, one head per encoder, chosen on the development s
    `--drop-descriptor-blocks` arguments of its slice configuration, to that encoder's two confirmatory_v2
    configurations with descriptors in experiments/run_main_model_batch.py, move their development run directories to
    runs/full/superseded_pilots/ (the trainer would otherwise skip them on their DONE markers), and run step 1c again for
-   them (the head choice is made again on the new runs).
+   them.
    Either way, record the readings and the outcome under the amendment in docs/preregistration.md, add a row to
    docs/research_summary.md, commit the three documents and push.
 3. Register confirmatory_lockbox only when the user has given the go-ahead in their own message (8 October 2026: "Don't
-   finalize the lockbox until I've given the go ahead"), step 1c ended with all 20 runs trained and
+   finalize the lockbox until I've given the go ahead"), step 1c ended with all 10 runs trained and
    configs/head_choice.json written on lockbox_v2, step 2b has been reported, the user has confirmed its outcome, and
    any re-runs of step 2b trained. A check-in, a document or a job marker is not the go-ahead:
-   `bash scripts/resume_jobs.sh --register confirmatory_lockbox "bash runs/full/confirmatory_lockbox.sh" runs/full/confirmatory_lockbox.done runs/full/confirmatory_lockbox.failed "the 30 confirmatory lockbox runs of the two chosen models, the lockbox baselines and the one-time scoring"`.
+   `bash scripts/resume_jobs.sh --register confirmatory_lockbox "bash runs/full/confirmatory_lockbox.sh" runs/full/confirmatory_lockbox.done runs/full/confirmatory_lockbox.failed "the 30 confirmatory lockbox runs of the two tested models, the lockbox baselines and the one-time scoring"`.
    runs/full/confirmatory_lockbox.sh reads the two models from configs/head_choice.json. If a development run failed to
    train, do not register it; report to the user, because an amendment needs a dated entry in the specification
    before the first lockbox run.
@@ -98,6 +106,8 @@ score_confirmatory.py runs once; a second scoring (--rescore, or a run after SCO
 
 ## Not to be done
 
+- Any second-family run (development baselines included) before the user decides the module fix (step 0), and any run
+  of the second family's sigmoid configurations.
 - Full-graph training other than the jobs above (refit_pilots, v2_development and the step 1d ablation among them) and
   development runs of a descriptor treatment the slice selects (the user allowed full-graph tests of the treatments on
   8 October). The first family's ablation_pilots_without_descriptors job was retired before it trained anything

@@ -799,6 +799,26 @@ decisions, after the precision estimate they asked for).
   anything; the second family's ablation runs the two chosen heads without descriptors on the same five folds after the
   head choice.
 
+Amendment, 8 October 2026, before any second-family run (the user's decisions): the sigmoid head is dropped and the
+modules are fixed first.
+- Head. "I guess we should drop the sigmoid head then". The tested models are the noisy-OR configurations of the two
+  encoders, confirmatory_v2_message_passing_noisy_or and confirmatory_v2_linear_response_noisy_or. No head is chosen on
+  the development runs: experiments/choose_heads.py stays as a record and is not run. configs/head_choice.json records
+  the two models as the user's decision, and the scorer and the lockbox job read it as before. With two tested models,
+  the chance that one passes by luck stays at most 0.05. The second family's sigmoid configurations are not run. Reason
+  (the user's statement of purpose that day, "It's to be able to use the graph to determine what the pathways for
+  symptoms are"): only the noisy-OR head has modules that can be read as pathways.
+- Order. "Unacceptable to start the v2 experiment runs yet until that is done. Ya. Fixing the modules first makes
+  sense." The second family's development job (v2_development) was stopped before it trained anything and is paused.
+  It runs only after the user decides the module fix. The module fix is developed on the slice under the rule of
+  docs/module_health.md, written before its runs.
+- The descriptor-treatment readings above come from slice arms with the sigmoid head (b3_*), so they bear on the
+  noisy-OR head only indirectly.
+- Not decided: the descriptor treatments (the restricted picks above); --start-at-weighted-optimum; where the descriptors
+  sit (the user: "The genes shouldn't need descriptors but the proteins should"; in graph_full_neuronal a gene node
+  stands for the gene and its product, and 11,723 of the 12,810 gene nodes take part in a protein-level relation, while
+  the 1,681 protein_entity nodes are Reactome complexes and sets); the confirmatory pathway test.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

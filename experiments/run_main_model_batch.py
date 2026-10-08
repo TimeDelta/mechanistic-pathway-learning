@@ -93,6 +93,15 @@ CONFIGURATIONS: dict[str, list[str]] = {
                                         "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
     "b6_linear_response_gate_time_scales_cofactors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                                       "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
+    # the module fix (user, 8 October 2026: fix the modules before any second-family run; docs/best_epoch_zero.md): each
+    # twin above plus --start-at-weighted-optimum, the leak started at the loss-optimal constant instead of the raw base rate
+    "b6_mechanistic_gate_time_scales_weighted_start": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate",
+                                                       "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002",
+                                                       "--gate-learning-rate", "0.05", "--start-at-weighted-optimum"],
+    "b6_linear_response_gate_time_scales_cofactors_weighted_start": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response",
+                                                                     "--cofactor-relations", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5",
+                                                                     "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05",
+                                                                     "--start-at-weighted-optimum"],
     "b6_linear_response_gate_time_scales_cofactors_log": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations", "--response-scale", "signed_log",
                                                           "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"],
     # fixed node descriptors (experiments/build_node_descriptors.py) and the controls that credit propagation only with what it adds
