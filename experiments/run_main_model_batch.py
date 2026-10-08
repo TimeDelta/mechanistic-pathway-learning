@@ -28,6 +28,12 @@ LINEAR_RESPONSE_ENCODER = ["--encoder", "linear_response", "--cofactor-relations
 # validation set, and after early stopping a fresh model is fitted on the training and validation perturbations together
 # for the chosen number of epochs, so the models fit on the same perturbations as the baselines
 CONFIRMATORY_VALIDATION = ["--keep-large-groups-in-training", "--refit-on-validation"]
+# the second confirmatory family (the user's decisions of 8 October 2026, docs/preregistration.md): grade C pairs masked
+# (better_v2), the early-stopping validation set rotated with the seed and drawn per drug stratum, one head per encoder
+# chosen on the development folds (experiments/choose_heads.py). The lockbox file is passed by the job (--lockbox).
+FULL_GRAPH_ARGUMENTS_V2 = ["--graph-dir", "data/processed/graph_full_neuronal", "--evidence-dir", "data/processed/evidence_full_v2",
+                           "--label-selection", "data/processed/label_selection/better_v2_full_v2.parquet"]
+CONFIRMATORY_VALIDATION_V2 = [*CONFIRMATORY_VALIDATION, "--validation-draw", "rotated_stratified"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
@@ -183,6 +189,22 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "confirmatory_linear_response_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
                                                                   *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION],
     "confirmatory_linear_response_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER, *FULL_GRAPH_ARGUMENTS, *CONFIRMATORY_VALIDATION],
+    "confirmatory_v2_message_passing_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                                 *FULL_GRAPH_ARGUMENTS_V2, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_message_passing_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                                *FULL_GRAPH_ARGUMENTS_V2, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_linear_response_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                                 *FULL_GRAPH_ARGUMENTS_V2, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_linear_response_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                                *FULL_GRAPH_ARGUMENTS_V2, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_message_passing_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                                                     *FULL_GRAPH_ARGUMENTS_V2, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_message_passing_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
+                                                                    *FULL_GRAPH_ARGUMENTS_V2, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_linear_response_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                                                     *FULL_GRAPH_ARGUMENTS_V2, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION_V2],
+    "confirmatory_v2_linear_response_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
+                                                                    *FULL_GRAPH_ARGUMENTS_V2, *CONFIRMATORY_VALIDATION_V2],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],
