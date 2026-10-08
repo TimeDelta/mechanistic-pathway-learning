@@ -434,6 +434,16 @@ day). Each is a defect against text already in this specification, not a change 
   resumed under the old code keep their results; their test scores are what that run trained to, not what a run from
   scratch would give (the two finished development sigmoid pilots resumed at end-of-epoch checkpoints, their optimizer
   step counts show no batch trained twice).
+- A checkpoint now records the training arguments and digests of the loaded inputs (labels, weights, label mask,
+  edges, seeds, and the descriptor, cell-class and laboratory files). A resume under other arguments or inputs prints a
+  warning and lists the changes in the run's code provenance. A resume does not refuse such a checkpoint, because the
+  refit and a longer --max-epochs are legitimate changes on resume and are left out of the comparison. A resume also
+  warns when the message-passing node features restored from the checkpoint differ from those built from the current
+  files. Before, the split signature covered only the split and the controls. On the toy graph an uninterrupted run
+  gives the predictions of the code before the change, and checkpoints written before it resume without a warning.
+- With --positive-target-from-frequency (the slice configuration b6_frequency_target only), the early-stopping
+  validation loss now uses the frequency targets of the training loss. Before, it scored every positive against 0.99
+  under the frequency mode's weights. No confirmatory configuration uses the flag.
 - experiments/score_confirmatory.py refuses a run whose predictions are not finite or not one row per lockbox
   perturbation and one column per symptom, whose symptom list differs from the data's, or (rewired variant) whose
   rewiring used another number of swaps per edge than 50; before, a NaN score ranked as the lowest. If a run is missing

@@ -38,3 +38,24 @@ def test_optimizer_groups_give_links_and_leaks_their_own_time_scales() -> None:
     assert len(rates_by_parameter) == len(list(encoder.parameters())) + len(list(head.parameters()))
     single_group = training_script.optimizer_parameter_groups(encoder, head, Namespace(link_learning_rate=0.0, leak_learning_rate=0.0, module_bias_learning_rate=0.0))
     assert len(single_group) == 1
+
+
+def test_configuration_fingerprint_ignores_resume_controls_and_reports_changed_arguments_and_inputs() -> None:
+    from argparse import Namespace
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    training_script = load_training_script()
+    data = SimpleNamespace(outcomes=np.eye(3), weights=np.ones((3, 3)), edge_source=np.array([0, 1]), edge_target=np.array([1, 2]), edge_relation=np.array([0, 0]),
+                           perturbation_seeds=[np.array([0]), np.array([1]), np.array([2])], perturbation_signs=[np.array([-1.0])] * 3,
+                           perturbation_magnitudes=[np.array([1.0])] * 3)
+    arguments = Namespace(learning_rate=0.002, seed=0, max_epochs=60, resume=True, run_dir="runs/a", refit_on_validation=False, node_descriptors=None)
+    reference = training_script.configuration_fingerprint(arguments, data, None)
+    resumed_with_controls_changed = Namespace(**{**vars(arguments), "max_epochs": 80, "run_dir": "runs/b", "refit_on_validation": True})
+    assert training_script.configuration_fingerprint(resumed_with_controls_changed, data, None) == reference
+    other_rate = training_script.configuration_fingerprint(Namespace(**{**vars(arguments), "learning_rate": 0.01}), data, None)
+    assert [key for key in reference if reference[key] != other_rate[key]] == ["argument:learning_rate"]
+    data.outcomes = np.eye(3)[::-1].copy()
+    other_labels = training_script.configuration_fingerprint(arguments, data, None)
+    assert [key for key in reference if reference[key] != other_labels[key]] == ["input:outcomes"]

@@ -209,6 +209,31 @@ def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tenso
     return weights, pool_nodes, shared_classes
 
 
+# arguments a resumed process may change without changing what the checkpoint was trained for
+RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
+
+
+def array_sha256(values) -> str:
+    array = np.ascontiguousarray(np.asarray(values))
+    return hashlib.sha256(str(array.dtype).encode() + str(array.shape).encode() + array.tobytes()).hexdigest()
+
+
+def configuration_fingerprint(arguments, data, label_mask) -> dict:
+    """The training arguments and digests of the inputs as loaded, recorded in the checkpoint so that a resume under
+    other arguments or rebuilt inputs is reported (the split signature covers only the split and the controls)."""
+    fingerprint = {f"argument:{name}": str(value) for name, value in sorted(vars(arguments).items()) if name not in RESUME_CONTROL_ARGUMENTS}
+    fingerprint.update({
+        "input:outcomes": array_sha256(data.outcomes), "input:weights": array_sha256(data.weights),
+        "input:label_mask": None if label_mask is None else array_sha256(label_mask),
+        "input:edges": array_sha256(np.stack([np.asarray(data.edge_source), np.asarray(data.edge_target), np.asarray(data.edge_relation)])),
+        "input:seeds": hashlib.sha256(repr([(list(map(int, seeds)), list(map(float, signs)), list(map(float, magnitudes)))
+                                            for seeds, signs, magnitudes in zip(data.perturbation_seeds, data.perturbation_signs, data.perturbation_magnitudes)]).encode()).hexdigest()})
+    for name in ("node_descriptors", "cell_class_weights", "laboratory_labels"):
+        value = getattr(arguments, name, None)
+        fingerprint[f"file:{name}"] = file_sha256(value) if value and Path(value).is_file() else None
+    return fingerprint
+
+
 def file_sha256(path) -> str | None:
     if not path:
         return None
@@ -713,9 +738,17 @@ def main() -> None:
     checkpoint_path = split_directory / "checkpoint.pt"
     state = {"epoch": 0, "history": [], "best_validation_auprc": float("-inf"), "best_validation_loss": float("inf"), "best_epoch": -1, "epochs_without_improvement": 0, "best_encoder": None, "best_head": None, "code_provenance": []}
     checkpoint_torch_rng_state = None
+    fingerprint = configuration_fingerprint(arguments, data, label_mask)
+    configuration_changes = []
     if arguments.resume and checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        # a persistent buffer (the message-passing node features) comes back from the checkpoint, not from the current inputs
+        buffers_from_current_inputs = {name: buffer.detach().clone() for name, buffer in encoder.named_buffers() if name in checkpoint["encoder"]}
         encoder.load_state_dict(checkpoint["encoder"])
+        for name, buffer in encoder.named_buffers():
+            if name in buffers_from_current_inputs and (buffer.shape != buffers_from_current_inputs[name].shape or not torch.equal(buffer, buffers_from_current_inputs[name])):
+                print(f"warning: the checkpoint's encoder buffer {name} differs from the one built from the current inputs; "
+                      "the run continues with the checkpoint's values, while results.json records the current files' hashes")
         head.load_state_dict(checkpoint["head"])
         if laboratory_readout is not None and "laboratory_readout" in checkpoint:
             laboratory_readout.load_state_dict(checkpoint["laboratory_readout"])
@@ -724,6 +757,11 @@ def main() -> None:
         checkpoint_torch_rng_state = checkpoint.get("torch_rng_state")  # absent in checkpoints written before 8 October 2026
         if state.get("split_signature", split_signature) != split_signature:
             raise SystemExit(f"{checkpoint_path} was written for another split (signature {state['split_signature']}); use another --run-dir")
+        previous_fingerprint = state.get("configuration_fingerprint")  # absent in checkpoints written before 8 October 2026
+        if previous_fingerprint is not None:
+            configuration_changes = sorted(key for key in set(previous_fingerprint) | set(fingerprint) if previous_fingerprint.get(key) != fingerprint.get(key))
+            if configuration_changes:
+                print(f"warning: {checkpoint_path} was written under other arguments or inputs; resuming anyway. Changed: {configuration_changes}")
         if refit_after_done:
             state.update(training_finished=True, stopped_early=bool(finished.get("stopped_early")))
         print(f"resumed at epoch {state['epoch']}")
@@ -733,7 +771,8 @@ def main() -> None:
     if provenance["tracked_changes"]:
         print(f"warning: tracked files differ from commit {provenance['commit']}: {provenance['tracked_changes']}")
     state["split_signature"] = split_signature
-    state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance})  # one entry per process, so a resumed run lists every commit it ran under
+    state["configuration_fingerprint"] = fingerprint
+    state["code_provenance"].append({"started_at_epoch": state["epoch"], **provenance, **({"configuration_changes": configuration_changes} if configuration_changes else {})})  # one entry per process, so a resumed run lists every commit it ran under
 
     def save_checkpoint() -> None:
         atomic_torch_save({"encoder": encoder.state_dict(), "head": head.state_dict(), "optimizer": optimizer.state_dict(), "state": state,
@@ -832,8 +871,12 @@ def main() -> None:
             else:
                 validation_predictions = predict(encoder, head, data, validation_indices, adjacencies, arguments, device)
             entry["validation_macro_auprc"] = macro_auprc(validation_predictions, data.outcomes[validation_indices], None if label_mask is None else label_mask[validation_indices])
-            entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), outcomes[validation_indices], weights[validation_indices],
-                                                                                    positive_target=arguments.positive_target, **validation_log_parts))
+            # the validation loss takes the training loss's targets: with --positive-target-from-frequency each positive's
+            # target is its frequency (it took 0.99 for every positive before 8 October, with the frequency mode's weights)
+            validation_targets, validation_positive_target = ((positive_targets[validation_indices], 1.0) if positive_targets is not None
+                                                              else (outcomes[validation_indices], arguments.positive_target))
+            entry["validation_loss"] = float(evidence_weighted_binary_cross_entropy(torch.as_tensor(validation_predictions, dtype=torch.float32), validation_targets, weights[validation_indices],
+                                                                                    positive_target=validation_positive_target, **validation_log_parts))
             improved = (entry["validation_loss"] < state["best_validation_loss"] - 1e-5) if arguments.selection_metric == "loss" else (entry["validation_macro_auprc"] > state["best_validation_auprc"] + 1e-4)
             if improved:
                 state.update(best_validation_auprc=entry["validation_macro_auprc"], best_validation_loss=entry["validation_loss"], best_epoch=epoch, epochs_without_improvement=0,
