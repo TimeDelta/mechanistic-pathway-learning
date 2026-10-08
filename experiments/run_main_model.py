@@ -153,7 +153,7 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
     structural = data.structural_node_features()
     if not getattr(arguments, "node_descriptors", None):
         return structural
-    descriptors = pd.read_parquet(arguments.node_descriptors)
+    descriptors = data.node_descriptor_table if getattr(data, "node_descriptor_table", None) is not None else pd.read_parquet(arguments.node_descriptors)
     missing = set(data.node_ids) - set(descriptors.index)
     if missing:
         raise ValueError(f"{len(missing)} graph nodes have no row in {arguments.node_descriptors}")
@@ -196,7 +196,7 @@ def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tenso
         if getattr(arguments, "extracellular_coupling", False):
             raise ValueError("--extracellular-coupling needs --cell-class-weights")
         return None, None, None
-    table = pd.read_parquet(arguments.cell_class_weights)
+    table = data.cell_class_weight_table if getattr(data, "cell_class_weight_table", None) is not None else pd.read_parquet(arguments.cell_class_weights)
     missing = set(data.node_ids) - set(table.index)
     if missing:
         raise ValueError(f"{len(missing)} graph nodes have no row in {arguments.cell_class_weights}")
@@ -207,6 +207,36 @@ def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tenso
     pool_nodes = torch.as_tensor((data.node_types == "metabolite") & (np.asarray(compartments, dtype=object) == EXTRACELLULAR_COMPARTMENT))
     shared_classes = torch.as_tensor([column != ALL_CELLS_CLASS for column in table.columns])
     return weights, pool_nodes, shared_classes
+
+
+def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: np.ndarray, arguments) -> dict:
+    """--recompute-reaction-expression-on-rewired-graph: rewrite each reaction's gene rule onto its rewired catalysts and
+    recompute the reaction_brain descriptor block and the reactions' cell-class weights from the rewritten rules
+    (graph/rewired_expression_features.py), so a rewired run's node inputs follow its wiring (the user's decision of
+    8 October 2026). Gene, metabolite and protein-entity rows and the intrinsic blocks stay as they are."""
+    from mechanistic_pathway_learning.graph.rewired_expression_features import (
+        rewired_gene_reaction_rules, rewired_reaction_brain_block, rewired_reaction_cell_class_weights)
+    nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
+    if list(nodes.node_id) != list(data.node_ids):
+        raise ValueError(f"{arguments.graph_dir}/nodes.parquet is not in the node order of the loaded graph")
+    catalysis = np.asarray(data.edge_relation) == data.relation_types.index("catalyzed_by")
+    rules, counts = rewired_gene_reaction_rules(nodes, edges_before, edges_after, catalysis)
+    record = {**counts, "gene_expression_table_sha256": file_sha256(arguments.gene_expression_table), "class_expression_table_sha256": None}
+    if getattr(arguments, "node_descriptors", None):
+        descriptors = pd.read_parquet(arguments.node_descriptors).copy()
+        block = rewired_reaction_brain_block(nodes, rules, pd.read_parquet(arguments.gene_expression_table))
+        missing = [column for column in block.columns if column not in descriptors.columns]
+        if missing:
+            raise ValueError(f"{arguments.node_descriptors} has no column {missing[0]}; it was not built with the brain expression blocks")
+        descriptors.loc[block.index, block.columns] = block.to_numpy()
+        data.node_descriptor_table = descriptors
+    if getattr(arguments, "cell_class_weights", None):
+        weights = pd.read_parquet(arguments.cell_class_weights).copy()
+        recomputed = rewired_reaction_cell_class_weights(nodes, rules, pd.read_parquet(arguments.class_expression_table), include_all_cells_class=ALL_CELLS_CLASS in weights.columns)
+        weights.loc[recomputed.index, weights.columns] = recomputed[weights.columns].to_numpy()
+        data.cell_class_weight_table = weights
+        record["class_expression_table_sha256"] = file_sha256(arguments.class_expression_table)
+    return record
 
 
 # arguments a resumed process may change without changing what the checkpoint was trained for
@@ -557,6 +587,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="with --lockbox: train on every development perturbation (validation drawn from them) and score the lockbox once; the confirmatory runs (docs/preregistration.md)")
     parser.add_argument("--rewire-swaps-per-edge", type=int, default=0,
                         help="negative control: degree-preserving rewiring of the graph within each relation before the model is built (attempted swaps per edge; 0 = the real graph); seeded by --seed")
+    parser.add_argument("--recompute-reaction-expression-on-rewired-graph", action="store_true",
+                        help="with --rewire-swaps-per-edge: rewrite each reaction's gene rule onto its rewired catalysts and recompute the reaction_brain "
+                             "descriptor block and the reactions' cell-class weights from it (recompute_reaction_expression); off by default, which keeps "
+                             "the real graph's reaction expression as every rewired run so far did")
+    parser.add_argument("--gene-expression-table", type=Path, default=Path("data/processed/brain_expression/gene_expression_for_descriptors.parquet"),
+                        help="the Ensembl-indexed table the brain descriptors were built from (experiments/write_expression_tables.py)")
+    parser.add_argument("--class-expression-table", type=Path, default=Path("data/processed/brain_expression/class_expression_for_weights.parquet"),
+                        help="the Ensembl-indexed class nCPM table the cell-class weights were built from (experiments/write_expression_tables.py)")
     parser.add_argument("--keep-reciprocated-relations-symmetric", action="store_true",
                         help="with --rewire-swaps-per-edge: a relation stored in both directions (binds) is rewired as undirected edges, so it stays symmetric "
                              "(negative_controls.reciprocated_relations, fast_degree_preserving_rewiring); off by default, which reproduces earlier rewired runs")
@@ -722,8 +760,12 @@ def main() -> None:
                             "duplicate_edges_before": duplicate_edge_count(original_edges, data.edge_relation), "duplicate_edges_after": duplicate_edge_count(rewired, data.edge_relation)}
         if arguments.keep_reciprocated_relations_symmetric:  # only then, so the split signature of earlier rewired runs is unchanged
             rewiring_summary["undirected_relations"] = [data.relation_types[relation] for relation in undirected_relations]
+        if arguments.recompute_reaction_expression_on_rewired_graph:  # only then, so the split signature of earlier rewired runs is unchanged
+            rewiring_summary["reaction_expression_recomputed"] = recompute_reaction_expression(data, original_edges, rewired, arguments)
         data.edge_source, data.edge_target = rewired[0], rewired[1]  # before the encoder and the adjacencies are built
         print(f"rewired graph: {rewiring_summary}")
+    elif arguments.recompute_reaction_expression_on_rewired_graph:
+        raise ValueError("--recompute-reaction-expression-on-rewired-graph needs --rewire-swaps-per-edge")
     time_split = None
     if arguments.time_split_cutoff is not None:
         if data.evidence_dates is None or (data.evidence_dates > 0).sum() == 0:

@@ -133,7 +133,7 @@ def file_sha256(path) -> str | None:
 
 
 # set by the variant (checked separately) or checked by content (the lockbox's hash)
-VARIANT_AND_CONTENT_ARGUMENTS = {"permute_labels", "rewire_swaps_per_edge", "keep_reciprocated_relations_symmetric", "lockbox"}
+VARIANT_AND_CONTENT_ARGUMENTS = {"permute_labels", "rewire_swaps_per_edge", "keep_reciprocated_relations_symmetric", "recompute_reaction_expression_on_rewired_graph", "lockbox"}
 
 
 def recorded_arguments(namespace: argparse.Namespace) -> dict:
@@ -151,7 +151,8 @@ def expected_run_arguments(model: str, seed: int, group_by: str, lockbox: Path) 
 def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256: str, selection_sha256: str, variant: str,
                    require_refit: bool = True, symptoms: list[str] | None = None, rewiring_swaps_per_edge: int | None = None,
                    expected_arguments: dict | None = None, input_hashes: dict | None = None,
-                   permutation_sha256: str | None = None, require_symmetric_rewiring: bool = False) -> tuple[np.ndarray | None, str]:
+                   permutation_sha256: str | None = None, require_symmetric_rewiring: bool = False,
+                   require_rewired_reaction_expression: bool = False) -> tuple[np.ndarray | None, str]:
     """Lockbox predictions of one finished run, or None with the reason it cannot be used. With require_refit (the
     amendments of 8 October 2026) a run counts only if it kept the large leakage groups in training and was refitted on
     its training and validation perturbations, so it fitted on the same perturbations as the baselines. A run whose
@@ -179,6 +180,8 @@ def read_model_run(split_directory: Path, lockbox_ids: list[str], lockbox_sha256
         return None, f"its rewiring did not use {rewiring_swaps_per_edge} swaps per edge"
     if variant == "rewired" and require_symmetric_rewiring and not (results.get("rewiring") or {}).get("undirected_relations"):
         return None, "its rewiring did not keep the relations stored in both directions symmetric (--keep-reciprocated-relations-symmetric)"
+    if variant == "rewired" and require_rewired_reaction_expression and not (results.get("rewiring") or {}).get("reaction_expression_recomputed"):
+        return None, "its reactions kept the real graph's expression (--recompute-reaction-expression-on-rewired-graph)"
     if expected_arguments is not None:
         recorded = results.get("arguments") or {}
         differing = sorted(key for key, value in expected_arguments.items() if recorded.get(key, value) != value)
@@ -215,6 +218,8 @@ def main() -> None:
     parser.add_argument("--bootstrap-unit", choices=["group", "perturbation"], default="group",
                         help="what the paired bootstrap resamples for the p-values and intervals that decide: whole leakage groups of the lockbox (the "
                              "user's decision of 8 October 2026) or single perturbations; the other is reported beside it as a sensitivity reading")
+    parser.add_argument("--allow-real-reaction-expression-in-rewired-runs", action="store_true",
+                        help="accept rewired runs without --recompute-reaction-expression-on-rewired-graph (tests on older runs only; the user's decision of 8 October 2026)")
     parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
                         help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
@@ -294,7 +299,8 @@ def main() -> None:
                                                      rewiring_swaps_per_edge=arguments.rewiring_swaps_per_edge,
                                                      expected_arguments=expected_run_arguments(model, seed, arguments.group_by, arguments.lockbox),
                                                      input_hashes=input_hashes, permutation_sha256=permutation_sha256_by_seed.get(seed),
-                                                     require_symmetric_rewiring=not arguments.allow_asymmetric_rewiring)
+                                                     require_symmetric_rewiring=not arguments.allow_asymmetric_rewiring,
+                                                     require_rewired_reaction_expression=not arguments.allow_real_reaction_expression_in_rewired_runs)
                 if predictions is None:
                     missing_runs[model].append(f"{split_directory}: {reason}")
                 else:

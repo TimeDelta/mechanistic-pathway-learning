@@ -56,6 +56,8 @@ class ExperimentData:
     node_display_name: np.ndarray | None = None
     label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
     label_selection_summary: dict | None = None
+    node_descriptor_table: pd.DataFrame | None = None  # set by a rewired run whose reaction expression follows the rewiring; None: read --node-descriptors
+    cell_class_weight_table: pd.DataFrame | None = None  # the same for --cell-class-weights
 
     def structural_node_features(self) -> np.ndarray:
         """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
