@@ -11,12 +11,22 @@ encodes edge (gene -> protein):
   oxidatively_modifies, produces_oxidant and the rest) touches its protein instead;
 - genes listed by one entry (H3-3A and H3-3B, both encoding histone H3.3) share its protein node, with an encodes edge
   from each gene; edges that become identical once rerouted onto the shared node are kept once;
-- a gene listed by several entries (CDKN2A: p16INK4a and p14ARF) gets one protein node per entry. An edge end at such a
-  gene goes to the entries its source names (OmniPath and CollecTRI give the accession of each row, a Reactome entity
-  its member accessions); where the source names none of the gene's entries, or does not resolve entries at all
-  (Human-GEM gene rules, curated tables), the end goes to every protein node of the gene, since which product is meant
-  is not known. Isoforms inside one entry are not represented: no source resolves them;
-- a gene with no reviewed entry keeps one protein node, named after the gene, without protein descriptors.
+- a gene listed by several entries is split only where data tell its entries apart (the user, 8 October 2026: "only
+  split apart the ones that can actually be differentiated from each other by data"). An entry is told apart by a
+  record that names it and not all of the gene's entries: an edge end whose source resolves entries (a Reactome entity's
+  member accessions, an OmniPath or CollecTRI row naming one accession) or a ChEMBL drug target. Entries named by the
+  same records form one group; a gene with at least two such groups gets one protein node per group (CDKN2A: p16INK4a
+  and p14ARF; CALCA: calcitonin and CGRP), and its entries no record names are left out, since nothing in the data gives
+  them an edge of their own. Every other gene with several entries keeps one protein node for all of them (DDIT3 with
+  its upstream ORF peptide, the four GNAS products). OmniPath and CollecTRI repeat each interaction for every accession
+  of a gene with identical references, which names all entries and tells none apart. An edge end at a split gene goes
+  to the groups its source names; where the source names none of them, or does not resolve entries at all (Human-GEM
+  gene rules, curated tables), it goes to every protein node of the gene, since which product is meant is not known.
+  Isoforms inside one entry are not represented: no source resolves them;
+- a gene symbol no reviewed entry lists is resolved to the entry it names when it is an accession, or to the entries of
+  the current HGNC symbol it previously was (FUT10 is POFUT3); a gene node that still has no reviewed entry (ChEBI
+  identifiers OmniPath placed as genes, viral and unreviewed proteins) gets no protein node and keeps its edges, as in
+  the merged graph.
 
 Degree is recomputed on the split graph (the user: "the registered degree strata SHOULD change to the new split"). The
 per-node expression columns of nodes.parquet and the gene brain expression descriptor block stay on the gene nodes; the
@@ -39,6 +49,7 @@ PROTEIN_DESCRIPTOR_PREFIX = "protein_"
 PROTEIN_DESCRIPTOR_FLAG = "protein_has_protein_descriptors"
 UNIPROT_ENTRY_COLUMN = "Entry"
 UNIPROT_GENE_NAMES_COLUMN = "Gene Names (primary)"
+ENTRY_SEPARATOR = "; "  # joins the entries of a protein node that stands for several
 
 
 def entries_of_gene_symbol(uniprot_entries: pd.DataFrame) -> dict[str, list[str]]:
@@ -87,45 +98,98 @@ def entries_named_by_interaction_rows(rows, evidence_source: str, entries_of_sym
     return dict(named)
 
 
-def protein_node_assignment(nodes: pd.DataFrame, uniprot_entries: pd.DataFrame | None = None,
-                            drug_target_entries: dict[str, set[str]] | None = None) -> pd.DataFrame:
-    """One row per (gene node, protein node) pair: gene_node_id, protein_node_id, protein_display_name, uniprot_entry
-    (None for a gene without a reviewed entry), shared (the protein node has several genes), several_proteins (the gene
-    has several protein nodes) and drug_target (a drug acting on the gene seeds this protein node).
+def resolve_entries_of_gene_symbols(symbols, uniprot_entries: pd.DataFrame, hgnc_table: pd.DataFrame | None = None
+                                    ) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """symbol -> reviewed entries for each gene symbol, and how a symbol no entry lists was resolved. A symbol listed
+    by entries takes them. Otherwise it takes itself when it is a reviewed accession (OmniPath names some nodes by
+    accession), or the entries of the one current HGNC symbol whose previous symbols include it (FUT10 is POFUT3); a
+    previous symbol of several current symbols is left unresolved. Aliases are not used: they are not unique."""
+    entries_of_symbol = entries_of_gene_symbol(uniprot_entries)
+    reviewed = set(uniprot_entries[UNIPROT_ENTRY_COLUMN])
+    current_of_previous: dict[str, set[str]] = defaultdict(set)
+    if hgnc_table is not None:
+        for current, previous in zip(hgnc_table.symbol.astype(str), hgnc_table.prev_symbol.fillna("").astype(str)):
+            for symbol in filter(None, (part.strip() for part in previous.split("|"))):
+                current_of_previous[symbol].add(current)
+    entries, how = {}, {}
+    for symbol in symbols:
+        if entries_of_symbol.get(symbol):
+            entries[symbol] = list(entries_of_symbol[symbol])
+        elif symbol in reviewed:
+            entries[symbol], how[symbol] = [symbol], "reviewed accession"
+        elif len(current_of_previous.get(symbol, ())) == 1 and entries_of_symbol.get(next(iter(current_of_previous[symbol]))):
+            current = next(iter(current_of_previous[symbol]))
+            entries[symbol], how[symbol] = list(entries_of_symbol[current]), f"previous HGNC symbol of {current}"
+        else:
+            entries[symbol] = []
+    return entries, how
 
-    A protein node is named after the smallest gene node id among its genes, with ":<accession>" added when one of its
-    genes has several entries. drug_target_entries maps a gene symbol to the accessions drug targets name for it
-    (ChEMBL target components); a gene with several entries has its drugs seed the named ones, or all of them when no
-    drug target names one."""
+
+def entry_groups_of_gene(entries: list[str], records_of_entry: dict[str, set] | None = None) -> tuple[list[list[str]], list[str]]:
+    """The protein nodes of one gene, as lists of its entries, and the entries left out. records_of_entry maps an
+    accession to the records that name it and not all of its gene's entries (edge ends, drug targets). Entries named by
+    the same records form a group; with at least two groups each gets a node and the entries no record names are left
+    out, otherwise all entries share one node."""
+    records_of_entry = records_of_entry or {}
+    if len(entries) < 2:
+        return ([list(entries)] if entries else []), []
+    groups: dict[frozenset, list[str]] = defaultdict(list)
+    for entry in entries:
+        groups[frozenset(records_of_entry.get(entry, ()))].append(entry)
+    named = [group for records, group in groups.items() if records]
+    if len(named) < 2:
+        return [list(entries)], []
+    return named, groups.get(frozenset(), [])
+
+
+def protein_node_assignment(nodes: pd.DataFrame, uniprot_entries: pd.DataFrame | None = None,
+                            drug_target_entries: dict[str, set[str]] | None = None, records_of_entry: dict[str, set] | None = None,
+                            hgnc_table: pd.DataFrame | None = None) -> pd.DataFrame:
+    """One row per (gene node, protein node) pair: gene_node_id, protein_node_id, protein_display_name, uniprot_entry
+    (the node's entries joined by ENTRY_SEPARATOR), shared (the protein node has several genes), several_proteins (the
+    gene has several protein nodes) and drug_target (a drug acting on the gene seeds this protein node). A gene without a
+    reviewed entry has no row: it keeps its edges.
+
+    A protein node is named after the smallest gene node id among its genes, with ":<first accession>" added when one of
+    its genes has several protein nodes. records_of_entry tells a gene's entries apart (entry_groups_of_gene); without
+    it every gene has one protein node. drug_target_entries maps a gene symbol to the accessions drug targets name for
+    it (ChEMBL target components); a gene with several protein nodes has its drugs seed the ones holding a named entry,
+    or all of them when no drug target names one."""
     genes = nodes[nodes.node_type == "gene"]
     symbol_of_node = dict(zip(genes.node_id, genes.gene_symbol.astype(str)))
-    entries = entries_of_gene_symbol(uniprot_entries) if uniprot_entries is not None else {}
-    entries_of_gene = {node_id: entries.get(symbol, []) for node_id, symbol in symbol_of_node.items()}
-    genes_of_entry: dict[str, list[str]] = defaultdict(list)
-    for node_id in sorted(entries_of_gene):
-        for entry in entries_of_gene[node_id]:
-            genes_of_entry[entry].append(node_id)
+    if uniprot_entries is not None:
+        entries_of_symbol, _ = resolve_entries_of_gene_symbols(set(symbol_of_node.values()), uniprot_entries, hgnc_table)
+    else:
+        entries_of_symbol = {}
+    order = {entry: position for position, entry in enumerate(uniprot_entries[UNIPROT_ENTRY_COLUMN])} if uniprot_entries is not None else {}
+    groups_of_gene = {node_id: entry_groups_of_gene(entries_of_symbol.get(symbol, []), records_of_entry)[0] for node_id, symbol in symbol_of_node.items()}
+    genes_of_group: dict[tuple[str, ...], list[str]] = defaultdict(list)
+    for node_id in sorted(groups_of_gene):
+        for group in groups_of_gene[node_id]:
+            genes_of_group[tuple(sorted(group, key=lambda entry: order.get(entry, len(order))))].append(node_id)
+    node_of_entry: dict[str, tuple[str, ...]] = {}
+    for group in genes_of_group:
+        for entry in group:
+            if node_of_entry.setdefault(entry, group) != group:
+                raise ValueError(f"entry {entry} would sit on two protein nodes ({node_of_entry[entry]} and {group})")
 
     rows = []
-    for node_id in sorted(entries_of_gene):
-        if not entries_of_gene[node_id]:
-            rows.append({"gene_node_id": node_id, "protein_node_id": PROTEIN_NODE_PREFIX + symbol_of_node[node_id],
-                         "protein_display_name": symbol_of_node[node_id], "uniprot_entry": None})
-    for entry, gene_ids in genes_of_entry.items():
-        with_suffix = any(len(entries_of_gene[gene]) > 1 for gene in gene_ids)
-        protein_node_id = PROTEIN_NODE_PREFIX + symbol_of_node[gene_ids[0]] + (f":{entry}" if with_suffix else "")
-        display_name = "/".join(symbol_of_node[gene] for gene in gene_ids) + (f" ({entry})" if with_suffix else "")
+    for group, gene_ids in genes_of_group.items():
+        with_suffix = any(len(groups_of_gene[gene]) > 1 for gene in gene_ids)
+        protein_node_id = PROTEIN_NODE_PREFIX + symbol_of_node[gene_ids[0]] + (f":{group[0]}" if with_suffix else "")
+        display_name = "/".join(symbol_of_node[gene] for gene in gene_ids) + (f" ({ENTRY_SEPARATOR.join(group)})" if with_suffix else "")
         for gene in gene_ids:
-            rows.append({"gene_node_id": gene, "protein_node_id": protein_node_id, "protein_display_name": display_name, "uniprot_entry": entry})
+            rows.append({"gene_node_id": gene, "protein_node_id": protein_node_id, "protein_display_name": display_name,
+                         "uniprot_entry": ENTRY_SEPARATOR.join(group)})
     assignment = pd.DataFrame(rows, columns=["gene_node_id", "protein_node_id", "protein_display_name", "uniprot_entry"])
     if assignment.groupby("protein_node_id").uniprot_entry.nunique(dropna=False).max() > 1:
-        raise ValueError("two entries were given one protein node id")
+        raise ValueError("two entry groups were given one protein node id")
     assignment["shared"] = assignment.groupby("protein_node_id").gene_node_id.transform("size") > 1
     assignment["several_proteins"] = assignment.groupby("gene_node_id").protein_node_id.transform("size") > 1
     drug_target_entries = drug_target_entries or {}
-    named_for_gene = [set(drug_target_entries.get(symbol_of_node[gene], set())) & set(entries_of_gene[gene]) for gene in assignment.gene_node_id]
-    assignment["drug_target"] = [not several or not named or entry in named
-                                 for several, named, entry in zip(assignment.several_proteins, named_for_gene, assignment.uniprot_entry)]
+    named_for_gene = [set(drug_target_entries.get(symbol_of_node[gene], set())) & set(entries_of_symbol.get(symbol_of_node[gene], [])) for gene in assignment.gene_node_id]
+    assignment["drug_target"] = [not several or not named or bool(named & set(entries.split(ENTRY_SEPARATOR)))
+                                 for several, named, entries in zip(assignment.several_proteins, named_for_gene, assignment.uniprot_entry)]
     return assignment.sort_values(["gene_node_id", "protein_node_id"]).reset_index(drop=True)
 
 
@@ -143,7 +207,7 @@ def split_graph(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[s
     named_entries = named_entries or {}
     genes = nodes[nodes.node_type == "gene"].set_index("node_id")
     proteins_of_gene = assignment.groupby("gene_node_id").protein_node_id.agg(list).to_dict()
-    entry_of_protein = dict(zip(assignment.protein_node_id, assignment.uniprot_entry))
+    entries_of_protein = {protein: set(str(entries).split(ENTRY_SEPARATOR)) for protein, entries in zip(assignment.protein_node_id, assignment.uniprot_entry)}
 
     protein_rows = []
     for protein_node_id, group in assignment.groupby("protein_node_id", sort=True):
@@ -172,7 +236,7 @@ def split_graph(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[s
             end_counts["single"] += 1
             return proteins
         named = named_entries.get((*key, end), set())
-        chosen = [protein for protein in proteins if entry_of_protein[protein] in named]
+        chosen = [protein for protein in proteins if entries_of_protein[protein] & named]
         if not chosen:
             end_counts["unresolved_all"] += 1
             return proteins
@@ -201,8 +265,10 @@ def split_graph(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[s
     degree = pd.concat([split_edges.source_id, split_edges.target_id]).value_counts()
     split_nodes["degree"] = split_nodes.node_id.map(degree).fillna(0).astype(int)
     several = assignment[assignment.several_proteins]
+    gene_ids = nodes.node_id[nodes.node_type == "gene"]
     summary = {"gene_nodes": int((nodes.node_type == "gene").sum()), "protein_nodes": len(protein_rows),
-               "protein_nodes_without_a_reviewed_entry": int(assignment[assignment.uniprot_entry.isna()].protein_node_id.nunique()),
+               "gene_nodes_without_a_protein_node": int((~gene_ids.isin(assignment.gene_node_id)).sum()),
+               "protein_nodes_of_several_entries": int(assignment.drop_duplicates("protein_node_id").uniprot_entry.str.contains(ENTRY_SEPARATOR, regex=False).sum()),
                "shared_protein_nodes": int(assignment[assignment.shared].protein_node_id.nunique()),
                "genes_on_a_shared_protein_node": int(assignment[assignment.shared].gene_node_id.nunique()),
                "genes_with_several_protein_nodes": int(several.gene_node_id.nunique()),
@@ -217,9 +283,11 @@ def split_graph(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[s
 def place_descriptors_on_split(table: pd.DataFrame, split_nodes: pd.DataFrame, assignment: pd.DataFrame,
                                protein_descriptors_per_entry: pd.DataFrame | None = None) -> pd.DataFrame:
     """A node_id-indexed descriptor table for the split graph. The protein block (columns protein_*) leaves the gene
-    nodes and sits on the protein nodes: each protein node takes its entry's row of protein_descriptors_per_entry
-    (indexed by accession, columns without the protein_ prefix), and a protein node without an entry gets zeros and the
-    flag at 0. Without the per-entry table a protein node takes the largest value over its genes' rows. Every other
+    nodes and sits on the protein nodes: each protein node takes the mean of its entries' rows of
+    protein_descriptors_per_entry (indexed by accession, columns without the protein_ prefix), which for a node holding
+    all of a gene's entries is the gene's row (experiments/build_protein_descriptors.py averages a gene's entries); a
+    protein node none of whose entries has a row gets zeros and the flag at 0. Without the per-entry table a protein
+    node takes the largest value over its genes' rows. Every other
     block keeps its rows (the gene brain expression block stays on the genes, the user's decision), and the protein
     nodes get zeros in it."""
     protein_columns = [column for column in table.columns if column.startswith(PROTEIN_DESCRIPTOR_PREFIX)]
@@ -235,15 +303,36 @@ def place_descriptors_on_split(table: pd.DataFrame, split_nodes: pd.DataFrame, a
         result.loc[protein_ids, protein_columns] = per_protein.reindex(protein_ids).fillna(0.0).to_numpy()
     else:
         source_columns = [column[len(PROTEIN_DESCRIPTOR_PREFIX):] for column in value_columns]
-        entry_of_protein = assignment.drop_duplicates("protein_node_id").set_index("protein_node_id").uniprot_entry.reindex(protein_ids)
-        known = entry_of_protein.isin(protein_descriptors_per_entry.index).to_numpy()
+        entries_of_protein = assignment.drop_duplicates("protein_node_id").set_index("protein_node_id").uniprot_entry.reindex(protein_ids)
         values = np.zeros((len(protein_ids), len(value_columns)))
-        values[known] = protein_descriptors_per_entry.loc[entry_of_protein[known], source_columns].to_numpy(dtype=float)
+        known = np.zeros(len(protein_ids), dtype=bool)
+        for position, entries in enumerate(entries_of_protein):
+            with_rows = [entry for entry in str(entries).split(ENTRY_SEPARATOR) if entry in protein_descriptors_per_entry.index]
+            if with_rows:
+                values[position] = protein_descriptors_per_entry.loc[with_rows, source_columns].to_numpy(dtype=float).mean(axis=0)
+                known[position] = True
         result.loc[protein_ids, value_columns] = values
         if PROTEIN_DESCRIPTOR_FLAG in protein_columns:
             result.loc[protein_ids, PROTEIN_DESCRIPTOR_FLAG] = known.astype(float)
     result.loc[gene_ids, protein_columns] = 0.0
     return result
+
+
+def resolved_protein_descriptors_on_merged(table: pd.DataFrame, assignment: pd.DataFrame, placed_on_split: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """A merged-graph copy of a descriptor table in which each gene node that had no protein descriptors and has one
+    protein node with them on the split takes that node's protein block (genes whose symbol the split resolved through
+    HGNC or an accession), so a merged twin carries the same descriptor information as the split. Returns the table and
+    the gene nodes filled."""
+    if PROTEIN_DESCRIPTOR_FLAG not in table.columns:
+        return table.copy(), []
+    protein_columns = [column for column in table.columns if column.startswith(PROTEIN_DESCRIPTOR_PREFIX)]
+    single = assignment[~assignment.several_proteins & assignment.gene_node_id.isin(table.index)]
+    missing = table.loc[single.gene_node_id, PROTEIN_DESCRIPTOR_FLAG].to_numpy() == 0
+    available = placed_on_split.loc[single.protein_node_id, PROTEIN_DESCRIPTOR_FLAG].to_numpy() == 1
+    filled = single[missing & available]
+    result = table.copy()
+    result.loc[filled.gene_node_id, protein_columns] = placed_on_split.loc[filled.protein_node_id, protein_columns].to_numpy()
+    return result, filled.gene_node_id.tolist()
 
 
 def cell_class_weights_for_split(weights: pd.DataFrame, split_nodes: pd.DataFrame, assignment: pd.DataFrame) -> pd.DataFrame:

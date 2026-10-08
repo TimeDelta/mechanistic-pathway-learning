@@ -42,6 +42,10 @@ SLICE_MODULE_FIX_MESSAGE_PASSING = ["--head", "noisy_or", "--field", "difference
 SLICE_MODULE_FIX_LINEAR_RESPONSE = ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations",
                                     "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
                                     "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05", "--start-at-weighted-optimum"]
+# the module-fix twins without the weighted start, which emptied the modules of both encoders on the slice
+# (docs/module_health_results.md): the base of the gene and protein split arms
+SLICE_GATE_TIME_SCALES_MESSAGE_PASSING = [argument for argument in SLICE_MODULE_FIX_MESSAGE_PASSING if argument != "--start-at-weighted-optimum"]
+SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE = [argument for argument in SLICE_MODULE_FIX_LINEAR_RESPONSE if argument != "--start-at-weighted-optimum"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
@@ -110,19 +114,24 @@ CONFIGURATIONS: dict[str, list[str]] = {
                                                                      "--cofactor-relations", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5",
                                                                      "--link-learning-rate", "0.02", "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05",
                                                                      "--start-at-weighted-optimum"],
-    # the gene and protein split (docs/gene_protein_split.md; not decided for the confirmatory family): each module-fix
-    # arm with the slice descriptors on the merged slice graph (the twin) and on its split copy, where message passing
-    # gets one more layer (a knockout reaches the protein layer one hop later), and the split message-passing arm with
-    # seed masking (the user: seed masking may not be needed once the genes carry no descriptors)
-    # gene and protein split (docs/gene_protein_split.md): seed masking on both message-passing arms (the user, 8 October 2026)
-    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_seed_masked": SLICE_MODULE_FIX_MESSAGE_PASSING + [
-        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet", "--descriptor-treatment", "seed_masked"],
-    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_split_seed_masked": SLICE_MODULE_FIX_MESSAGE_PASSING + [
+    # the next module-fix candidate (docs/module_health.md): each twin with the leaks at the main learning rate instead of
+    # 0.0002, so a leak started at the raw base rate can move during training
+    "b6_mechanistic_gate_time_scales_fast_leak": [argument if argument != "0.0002" else "0.002" for argument in SLICE_GATE_TIME_SCALES_MESSAGE_PASSING],
+    "b6_linear_response_gate_time_scales_cofactors_fast_leak": [argument if argument != "0.0002" else "0.002" for argument in SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE],
+    # the gene and protein split (docs/gene_protein_split.md; not decided for the confirmatory family): each twin with the
+    # slice descriptors on the merged slice graph and on its split copy, where message passing gets one more layer (a
+    # knockout reaches the protein layer one hop later). The merged arms read the descriptor copy with the protein
+    # descriptors of the genes the split resolves (renamed symbols, genes sharing one entry), so both arms carry the same
+    # descriptors. Seed masking on both message-passing arms (the user, 8 October 2026); the linear-response treatment
+    # is the user's to decide, so those arms have none.
+    "b6_mechanistic_gate_time_scales_descriptors_resolved_seed_masked": SLICE_GATE_TIME_SCALES_MESSAGE_PASSING + [
+        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression_resolved.parquet", "--descriptor-treatment", "seed_masked"],
+    "b6_mechanistic_gate_time_scales_descriptors_split_seed_masked": SLICE_GATE_TIME_SCALES_MESSAGE_PASSING + [
         "--graph-dir", "data/processed/graph_split", "--num-layers", "3",
         "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet", "--descriptor-treatment", "seed_masked"],
-    "b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors": SLICE_MODULE_FIX_LINEAR_RESPONSE + [
-        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
-    "b6_linear_response_gate_time_scales_cofactors_weighted_start_descriptors_split": SLICE_MODULE_FIX_LINEAR_RESPONSE + [
+    "b6_linear_response_gate_time_scales_cofactors_descriptors_resolved": SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE + [
+        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression_resolved.parquet"],
+    "b6_linear_response_gate_time_scales_cofactors_descriptors_split": SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE + [
         "--graph-dir", "data/processed/graph_split",
         "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet"],
     "b6_linear_response_gate_time_scales_cofactors_log": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--encoder", "linear_response", "--cofactor-relations", "--response-scale", "signed_log",

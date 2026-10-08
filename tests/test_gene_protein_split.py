@@ -1,6 +1,8 @@
 """Tests: the gene and protein split (graph/gene_protein_split.py, docs/gene_protein_split.md) reroutes every relation
 onto the protein nodes except the target end of transcription, gives genes of one shared UniProt entry one protein node
-and a gene with several entries one protein node per entry (edge ends going to the entries their source names), keeps
+and a gene with several entries one protein node per group of entries the data tell apart (edge ends going to the
+groups their source names) or one node for all of them, resolves renamed symbols, leaves genes without an entry as they
+were, keeps
 the gene brain expression block and expression columns on the genes and puts the protein block on the protein nodes,
 makes the loader seed a drug's proteins and a knockout's gene with the leakage groups of the merged graph, widens seed
 masking to the encodes partners and leaves encodes out of the rewiring."""
@@ -20,8 +22,11 @@ from mechanistic_pathway_learning.graph.gene_protein_split import (
     cell_class_weights_for_split,
     entries_named_by_interaction_rows,
     entries_of_gene_symbol,
+    entry_groups_of_gene,
     place_descriptors_on_split,
     protein_node_assignment,
+    resolve_entries_of_gene_symbols,
+    resolved_protein_descriptors_on_merged,
     split_graph,
 )
 from mechanistic_pathway_learning.models.descriptor_treatments import seed_unit_mask
@@ -33,6 +38,7 @@ UNIPROT_ENTRIES = pd.DataFrame({"Entry": ["PTF", "PBC", "PD", "PM1", "PM2", "POT
                                 "Gene Names (primary)": ["TF", "B; C", "D", "M", "M", "OTHER"]})
 NAMED_ENTRIES = {("GENE:M", "GENE:D", "activates", "OmniPath", "source"): {"PM1"}}  # the M -> D rows name only PM1
 DRUG_TARGET_ENTRIES = {"M": {"PM2"}}  # drug targets name PM2 for M
+RECORDS_OF_ENTRY = {"PM1": {("edge end", "GENE:M", "GENE:D", "activates", "OmniPath", "source")}, "PM2": {("ChEMBL target", "CHEMBL1")}}  # the data tell M's entries apart
 
 
 def toy_graph() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -54,9 +60,9 @@ def toy_graph() -> tuple[pd.DataFrame, pd.DataFrame]:
     return nodes, edges
 
 
-def split_toy_graph():
+def split_toy_graph(records_of_entry=RECORDS_OF_ENTRY):
     nodes, edges = toy_graph()
-    assignment = protein_node_assignment(nodes, UNIPROT_ENTRIES, DRUG_TARGET_ENTRIES)
+    assignment = protein_node_assignment(nodes, UNIPROT_ENTRIES, DRUG_TARGET_ENTRIES, records_of_entry)
     return nodes, edges, assignment, *split_graph(nodes, edges, RELATIONS, assignment, NAMED_ENTRIES)
 
 
@@ -88,6 +94,51 @@ def test_split_reroutes_relations_shares_one_entry_and_gives_several_entries_the
     assert by_node.loc["PROTEIN:M:PM2"].display_name == "M (PM2)"
     assert pd.isna(protein.brain_median_tpm_max) and not bool(protein.brain_expressed)  # expression stays on the genes (the user)
     assert by_node.loc["GENE:B"].brain_median_tpm_max == 2.0 and by_node.loc["R1"].brain_median_tpm_max == 3.0
+
+
+def test_entries_the_data_do_not_tell_apart_share_one_protein_node() -> None:
+    for records in (None, {"PM1": RECORDS_OF_ENTRY["PM1"]}):  # no record, or one entry named and the other never
+        nodes, edges, assignment, split_nodes, split_edges, _, summary = split_toy_graph(records)
+        assert sorted(zip(assignment.gene_node_id, assignment.protein_node_id))[-2:] == [("GENE:M", "PROTEIN:M"), ("GENE:TF", "PROTEIN:TF")]
+        protein = assignment.set_index("protein_node_id").loc["PROTEIN:M"]
+        assert protein.uniprot_entry == "PM1; PM2" and not protein.several_proteins and protein.drug_target
+        triples = set(zip(split_edges.source_id, split_edges.target_id, split_edges.relation_type))
+        assert {("PROTEIN:TF", "PROTEIN:M", "activates"), ("PROTEIN:M", "PROTEIN:D", "activates"), ("GENE:M", "PROTEIN:M", ENCODES_RELATION)} <= triples
+        assert summary["genes_with_several_protein_nodes"] == 0 and summary["protein_nodes_of_several_entries"] == 1
+        table = pd.DataFrame({"protein_rrr_1": [0.0] * 7, "protein_has_protein_descriptors": [0.0] * 7}, index=pd.Index(NODE_IDS, name="node_id"))
+        per_entry = pd.DataFrame({"rrr_1": [0.5, 2.5, -1.0, 3.0, -2.0]}, index=pd.Index(["PTF", "PBC", "PD", "PM1", "PM2"], name="accession"))
+        placed = place_descriptors_on_split(table, split_nodes, assignment, per_entry)
+        assert placed.loc["PROTEIN:M", "protein_rrr_1"] == 0.5 and placed.loc["PROTEIN:M", "protein_has_protein_descriptors"] == 1.0  # the mean of its entries, the gene's row
+
+
+def test_entry_groups_leave_out_entries_no_record_names_and_symbols_resolve_through_hgnc() -> None:
+    records = {"A": {("edge end", 1)}, "B": {("edge end", 2), ("ChEMBL target", "T")}, "D": {("edge end", 2), ("ChEMBL target", "T")}}
+    assert entry_groups_of_gene(["A", "B", "C", "D"], records) == ([["A"], ["B", "D"]], ["C"])  # B and D are named by the same records
+    assert entry_groups_of_gene(["A", "C"], records) == ([["A", "C"]], [])  # one named group: no split
+    assert entry_groups_of_gene([], records) == ([], [])
+    uniprot = pd.DataFrame({"Entry": ["PNEW", "PACC", "PX"], "Gene Names (primary)": ["NEW", "ACC", "X"]})
+    hgnc = pd.DataFrame({"symbol": ["NEW", "X", "Y"], "prev_symbol": ["OLD", "TWICE", "TWICE"]})
+    entries, how = resolve_entries_of_gene_symbols(["NEW", "OLD", "PACC", "TWICE", "CHEBI:1"], uniprot, hgnc)
+    assert entries == {"NEW": ["PNEW"], "OLD": ["PNEW"], "PACC": ["PACC"], "TWICE": [], "CHEBI:1": []}
+    assert how == {"OLD": "previous HGNC symbol of NEW", "PACC": "reviewed accession"}
+    nodes = pd.DataFrame({"node_id": ["GENE:NEW", "GENE:OLD", "GENE:CHEBI:1", "GENE:Z"], "node_type": ["gene"] * 4, "gene_symbol": ["NEW", "OLD", "CHEBI:1", "Z"],
+                          "is_currency": [False] * 4, "degree": [0] * 4})
+    edges = pd.DataFrame({"source_id": ["GENE:CHEBI:1", "GENE:OLD"], "target_id": ["GENE:Z", "GENE:CHEBI:1"], "relation_type": ["activates", "binds"],
+                          "sign": [1.0, 1.0], "evidence_source": ["OmniPath", "OmniPath"]})
+    uniprot = pd.concat([uniprot, pd.DataFrame({"Entry": ["PZ"], "Gene Names (primary)": ["Z"]})], ignore_index=True)
+    assignment = protein_node_assignment(nodes, uniprot, hgnc_table=hgnc)
+    assert sorted(zip(assignment.gene_node_id, assignment.protein_node_id)) == [("GENE:NEW", "PROTEIN:NEW"), ("GENE:OLD", "PROTEIN:NEW"), ("GENE:Z", "PROTEIN:Z")]
+    _, split_edges, _, summary = split_graph(nodes, edges, RELATIONS, assignment)
+    triples = set(zip(split_edges.source_id, split_edges.target_id, split_edges.relation_type))
+    assert {("GENE:CHEBI:1", "PROTEIN:Z", "activates"), ("PROTEIN:NEW", "GENE:CHEBI:1", "binds")} <= triples  # the node without an entry keeps its edges
+    assert summary["gene_nodes_without_a_protein_node"] == 1
+    split_nodes = split_graph(nodes, edges, RELATIONS, assignment)[0]
+    table = pd.DataFrame({"protein_rrr_1": [0.0, 0.0, 0.0, 4.0], "protein_has_protein_descriptors": [0.0, 0.0, 0.0, 1.0], "gene_brain_x": [1.0, 2.0, 3.0, 4.0]},
+                         index=pd.Index(["GENE:NEW", "GENE:OLD", "GENE:CHEBI:1", "GENE:Z"], name="node_id"))
+    per_entry = pd.DataFrame({"rrr_1": [7.0, 4.0]}, index=pd.Index(["PNEW", "PZ"], name="accession"))
+    merged, filled = resolved_protein_descriptors_on_merged(table, assignment, place_descriptors_on_split(table, split_nodes, assignment, per_entry))
+    assert filled == ["GENE:NEW", "GENE:OLD"] and merged.loc["GENE:OLD", "protein_rrr_1"] == 7.0 and merged.loc["GENE:Z", "protein_rrr_1"] == 4.0
+    assert merged.loc["GENE:CHEBI:1", "protein_has_protein_descriptors"] == 0.0 and merged.gene_brain_x.tolist() == [1.0, 2.0, 3.0, 4.0]
 
 
 def test_protein_block_sits_on_protein_nodes_one_row_per_entry_and_expression_stays_on_genes() -> None:
