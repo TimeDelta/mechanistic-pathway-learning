@@ -1,0 +1,40 @@
+target_chembl_id,target_pref_name,target_type,base_metabolite_ids,note
+CHEMBL2363058,Iron,METAL,MAM01821;MAM01822,Fe2+ and Fe3+
+CHEMBL2363057,Copper,METAL,MAM01624,Cu2+; Human-GEM has no Cu+
+CHEMBL2363056,Zinc,METAL,MAM03157,
+CHEMBL3545434,Potassium,METAL,MAM02200,K+
+CHEMBL2366381,Aluminium,METAL,,not in Human-GEM
+CHEMBL2364029,Lead,METAL,,not in Human-GEM
+CHEMBL2363053,Heavy metals,METAL,,no single metal named
+CHEMBL2366037,Radioactive metals,METAL,,no single metal named
+CHEMBL2364184,Phosphate,SMALL MOLECULE,MAM02751,Pi
+CHEMBL3545435,Pyrophosphate,SMALL MOLECULE,MAM02759,PPi
+CHEMBL2366048,ATP,SMALL MOLECULE,MAM01371,
+CHEMBL2364706,Asparagine,SMALL MOLECULE,MAM01369,
+CHEMBL2366039,Glutamine,SMALL MOLECULE,MAM01975,
+CHEMBL4296171,Phenylalanine,SMALL MOLECULE,MAM02724,
+CHEMBL2364039,Cystine,SMALL MOLECULE,MAM01629,
+CHEMBL2364183,Uric acid,SMALL MOLECULE,MAM03120,urate
+CHEMBL2364176,Glucocerebroside,SMALL MOLECULE,MAM01972,glucosylceramide pool
+CHEMBL2366040,Globotriosylceramide,SMALL MOLECULE,MAM01960,
+CHEMBL2364175,Bile acids,SMALL MOLECULE,MAM01445;MAM01988;MAM02963;MAM01987;MAM02962;MAM02402,cholate with its glycine and taurine conjugates; the chenodeoxycholate conjugates; lithocholate (Human-GEM has no free chenodeoxycholate or deoxycholate)
+CHEMBL3390823,Disialoganglioside GD2,SMALL MOLECULE,MAM01946,
+CHEMBL4632347,Cyanide,SMALL MOLECULE,MAM02145,hydrogen-cyanide
+CHEMBL3559388,Cholesterol ester,LIPID,MAM01451,cholesterol-ester pool
+CHEMBL3559389,Triglyceride,LIPID,MAM02958,TAG-LD pool (lipid-droplet triacylglycerol)
+CHEMBL4662969,Glycogen,OLIGOSACCHARIDE,MAM03161,
+CHEMBL4495554,Hyaluronic acid,OLIGOSACCHARIDE,MAM02141,hyaluronate
+CHEMBL2364677,Heparan sulfate,OLIGOSACCHARIDE,MAM02054,heparan sulfate proteoglycan
+CHEMBL2364179,Dermatan sulfate,OLIGOSACCHARIDE,MAM01525,chondroitin sulfate B - dermatan sulfate proteoglycan
+CHEMBL3140342,Chondroitin-6-sulfate,OLIGOSACCHARIDE,MAM01533,chondroitin sulfate C (GalNAc6S-GlcA) proteoglycan
+CHEMBL3140341,Keratan sulfate,OLIGOSACCHARIDE,,Human-GEM holds keratan sulfate biosynthesis intermediates but no pool or proteoglycan node
+CHEMBL3991481,Glycosaminoglycans,OLIGOSACCHARIDE,,no single glycosaminoglycan named
+CHEMBL4495553,High mannose oligosaccharides,OLIGOSACCHARIDE,,no single oligosaccharide named
+CHEMBL2364182,Sucrose,SMALL MOLECULE,,"the enzyme acts on dietary sucrose in the gut lumen, which the graph does not model"
+CHEMBL2364180,Starch,OLIGOSACCHARIDE,,"the enzyme acts on dietary starch in the gut lumen, which the graph does not model"
+CHEMBL4495556,Apixaban,SMALL MOLECULE,,a drug (andexanet alfa sequesters it); not a graph node
+CHEMBL4495555,Rivaroxaban,SMALL MOLECULE,,a drug (andexanet alfa sequesters it); not a graph node
+CHEMBL2364710,Methotrexate,SMALL MOLECULE,,a drug (glucarpidase degrades it); not a graph node
+CHEMBL4630661,Antibodies,MACROMOLECULE,,no node for immunoglobulins
+CHEMBL2363054,Glycoproteins,MACROMOLECULE,,no single glycoprotein named
+CHEMBL2364682,Slowly adapting pulmonary stretch receptor,UNKNOWN,,a sensory structure; no node

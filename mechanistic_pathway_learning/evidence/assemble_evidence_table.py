@@ -84,9 +84,15 @@ from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations 
     read_crosswalk_hpo_terms,
 )
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
+    DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
+    NON_PROTEIN_TARGETS_PATH,
+    GraphNodeLookup,
+    check_graph_compounds_have_no_mechanism,
     drug_targets_for_pubchem_cid,
+    graph_compound_targets,
     has_dominant_target,
     load_chembl_caches,
+    load_drugs_acting_as_graph_compounds,
 )
 
 
@@ -473,6 +479,35 @@ def summarize_reports(reports: pd.DataFrame, fit: ReportReliabilityFit, defaults
     }
 
 
+def bridge_chembl_parents_by_sider_cid(onsides_bridge_path: Path | None) -> dict[int, list[str]]:
+    """SIDER PubChem CID -> the ChEMBL parents the OnSIDES bridge unified with it (empty without a bridge file).
+
+    The SIDER route reaches ChEMBL through UniChem; for a CID UniChem leaves without a usable ChEMBL id, the parent
+    the bridge found for the same drug by RxNorm, UNII or name is the fallback (docs/drug_targets_any_type.md).
+    """
+    if onsides_bridge_path is None or not Path(onsides_bridge_path).exists():
+        return {}
+    from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import load_ingredient_identifier_bridge
+
+    parents_by_cid: dict[int, set[str]] = {}
+    for bridge in load_ingredient_identifier_bridge(onsides_bridge_path).values():
+        if bridge.unified_with_sider and bridge.sider_pubchem_cid is not None and bridge.chembl_parent:
+            parents_by_cid.setdefault(int(bridge.sider_pubchem_cid), set()).add(bridge.chembl_parent)
+    return {cid: sorted(parents) for cid, parents in parents_by_cid.items()}
+
+
+def sider_drug_targets(pubchem_cid: int, caches, bridge_parents_by_cid: dict[int, list[str]], compounds_by_pubchem_cid: dict[int, list[str]],
+                       compounds_by_chembl_id: dict[str, list[str]]) -> list:
+    """Mechanism targets of a SIDER drug: the UniChem route, then the bridge parents when it finds no target, then the
+    graph-compound fallback for a drug that is itself a graph metabolite."""
+    drug_targets = drug_targets_for_pubchem_cid(pubchem_cid, caches)
+    bridge_parents = bridge_parents_by_cid.get(int(pubchem_cid), [])
+    if not drug_targets and bridge_parents:
+        drug_targets = drug_targets_for_pubchem_cid(pubchem_cid, caches, extra_chembl_ids=bridge_parents)
+    chembl_ids = list(caches.pubchem_to_chembl.get(str(pubchem_cid), [])) + bridge_parents
+    return graph_compound_targets(drug_targets, int(pubchem_cid), chembl_ids, compounds_by_pubchem_cid, compounds_by_chembl_id)
+
+
 def drug_target_description(drug_targets) -> str:
     return ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in sorted(drug_targets, key=lambda target: target.target_chembl_id))
 
@@ -495,6 +530,9 @@ def assemble(
     rubric_weight_defaults: RubricWeightDefaults | None = None,
     reliability_global_scale: float = 1.0,
     extra_report_paths: list[Path] | None = None,
+    onsides_bridge_path: Path | None = None,
+    non_protein_targets_path: Path | None = NON_PROTEIN_TARGETS_PATH,
+    drugs_acting_as_graph_compounds_path: Path | None = DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations."""
     if weighting not in WEIGHTINGS:
@@ -503,8 +541,10 @@ def assemble(
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     node_by_symbol = gene_node_lookup(nodes)
     metabolic_genes = nodes[(nodes.node_type == "gene") & (nodes.get("in_metabolic_layer", False) == True)]  # noqa: E712
-    metabolic_node_ids = set(metabolic_genes.node_id)
+    metabolite_node_ids = set(nodes[nodes.node_type == "metabolite"].node_id)
+    metabolic_node_ids = set(metabolic_genes.node_id) | metabolite_node_ids  # a drug seeded on metabolites acts in the metabolic layer
     metabolic_symbols = set(metabolic_genes.gene_symbol.dropna())
+    node_lookup = GraphNodeLookup.from_nodes(nodes, non_protein_targets_path)
     crosswalk_terms = read_crosswalk_hpo_terms(crosswalk_path)
     symptom_to_hpo = {symptom: roots for symptom, (roots, _) in crosswalk_terms.items()}
     symptom_to_excluded = {symptom: excluded for symptom, (_, excluded) in crosswalk_terms.items()}
@@ -529,14 +569,14 @@ def assemble(
     drug_targets_by_perturbation: dict[str, str] = {}
     if sider_directory is not None and chembl_directory is not None and (chembl_directory / "targets.json").exists():
         caches = load_chembl_caches(chembl_directory)
+        bridge_parents_by_cid = bridge_chembl_parents_by_sider_cid(onsides_bridge_path)
+        compounds_by_pubchem_cid, compounds_by_chembl_id = load_drugs_acting_as_graph_compounds(drugs_acting_as_graph_compounds_path) if drugs_acting_as_graph_compounds_path else ({}, {})
+        check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, caches.mechanisms_by_molecule)
         for event in load_sider_events(sider_directory, crosswalk_path):
-            drug_targets = drug_targets_for_pubchem_cid(event.pubchem_cid, caches)
+            drug_targets = sider_drug_targets(event.pubchem_cid, caches, bridge_parents_by_cid, compounds_by_pubchem_cid, compounds_by_chembl_id)
             if not (has_dominant_target(drug_targets, max_drug_targets) and is_nervous_system_atc(event.atc_codes)):
                 continue
-            perturbation_nodes = []
-            for target in drug_targets:
-                mapped = [node_by_symbol[symbol] for symbol in target.gene_symbols if symbol in node_by_symbol]
-                perturbation_nodes.extend([node, target.sign, 1.0 / len(mapped)] for node in mapped)
+            perturbation_nodes = node_lookup.perturbation_nodes(drug_targets)
             targets = drug_target_description(drug_targets)
             if not perturbation_nodes:
                 record = EvidenceRecord(event.stitch_flat_id, event.target_symptom, event.relation, "pharmacological", source=event.source,
@@ -651,12 +691,16 @@ def main() -> None:
     parser.add_argument("--reliability-global-scale", type=float, default=1.0, help="multiplier on the posterior under --weighting reliability")
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/evidence"))
     parser.add_argument("--extra-reports", type=Path, nargs="*", default=[], help="report tables produced outside the assembler (OnSIDES label statements, literature reports) appended to the report table and the reliability fit")
+    parser.add_argument("--onsides-bridge", type=Path, default=None, help="OnSIDES ingredient identifier bridge; its ChEMBL parents are the fallback for SIDER CIDs UniChem leaves without a mechanism")
+    parser.add_argument("--non-protein-targets", type=Path, default=NON_PROTEIN_TARGETS_PATH, help="ChEMBL non-protein targets -> Human-GEM metabolites (docs/drug_targets_any_type.md)")
+    parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH, help="drugs with no mechanism target that are themselves a graph metabolite")
     arguments = parser.parse_args()
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
                          arguments.max_drug_targets, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
                          arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale,
-                         extra_report_paths=list(arguments.extra_reports))
+                         extra_report_paths=list(arguments.extra_reports), onsides_bridge_path=arguments.onsides_bridge,
+                         non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)

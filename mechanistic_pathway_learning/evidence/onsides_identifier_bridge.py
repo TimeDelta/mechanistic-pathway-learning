@@ -39,7 +39,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc
-from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import DrugTarget, has_dominant_target
+from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (  # noqa: F401 (mechanisms_by_parent_and_molecule is re-exported)
+    DrugTarget,
+    has_dominant_target,
+    mechanism_targets,
+    mechanisms_by_parent_and_molecule,
+)
 
 BRIDGE_METHOD_UNII_UNICHEM = "unii_unichem"
 BRIDGE_METHOD_NAME_PREF_NAME = "name_pref_name"
@@ -216,20 +221,6 @@ def unify_with_sider(ingredient_id: str, chembl_parent: str | None, cids_by_pare
     return stitch_flat_id_from_pubchem_cid(chosen_cid), chosen_cid, list(candidate_cids[1:]), unification_method
 
 
-def mechanisms_by_parent_and_molecule(mechanisms: list[dict]) -> dict[str, list[dict]]:
-    """ChEMBL molecule id -> its mechanisms, keyed by molecule_chembl_id and by parent_molecule_chembl_id.
-
-    ChEMBL records many mechanisms on a salt or prodrug form with the parent in parent_molecule_chembl_id, so a
-    table keyed by molecule_chembl_id alone misses them for the parent; the bridge fetch, the missing-target
-    fetch and the report builder all key the table through this function so they apply one rule.
-    """
-    by_molecule: dict[str, list[dict]] = {}
-    for mechanism in mechanisms:
-        for key in sorted({mechanism.get("molecule_chembl_id"), mechanism.get("parent_molecule_chembl_id")} - {None, ""}):
-            by_molecule.setdefault(key, []).append(mechanism)
-    return by_molecule
-
-
 def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecule: dict[str, list[dict]], targets: dict[str, dict], human_only: bool = True, missing_target_ids: set[str] | None = None) -> list[DrugTarget]:
     """Mechanism targets of a parent molecule, one entry per ChEMBL target, as drug_targets_for_pubchem_cid builds them for SIDER.
 
@@ -239,20 +230,7 @@ def mechanism_targets_for_parent(chembl_parent: str | None, mechanisms_by_molecu
     """
     if chembl_parent is None:
         return []
-    targets_by_id: dict[str, DrugTarget] = {}
-    for mechanism in mechanisms_by_molecule.get(chembl_parent, []):
-        target_id = mechanism.get("target_chembl_id")
-        if not target_id:
-            continue
-        record = targets.get(target_id)
-        if record is None:
-            if missing_target_ids is not None:
-                missing_target_ids.add(target_id)
-            record = {}
-        if human_only and record.get("organism") not in (None, "Homo sapiens"):
-            continue
-        targets_by_id[target_id] = DrugTarget(target_id, mechanism.get("action_type"), record.get("gene_symbols", []), record.get("target_type"), record.get("pref_name"))
-    return list(targets_by_id.values())
+    return mechanism_targets([chembl_parent], mechanisms_by_molecule, targets, human_only=human_only, missing_target_ids=missing_target_ids)
 
 
 def passes_single_target_rule(drug_targets: list[DrugTarget]) -> bool:

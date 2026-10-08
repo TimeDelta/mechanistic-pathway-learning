@@ -23,6 +23,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import mechanisms_by_parent_and_molecule
+
 CHEMBL_API = "https://www.ebi.ac.uk/chembl/api/data"
 UNICHEM_API = "https://www.ebi.ac.uk/unichem/api/v1/compounds"
 UNICHEM_PUBCHEM_SOURCE_ID = 22
@@ -132,9 +134,7 @@ def resolve_parent_molecules(mapping: dict[str, list[str]], mechanisms: list[dic
 def fetch_targets(resolved: dict[str, list[str]], mechanisms: list[dict], chembl_directory: Path) -> dict[str, dict]:
     targets_path = chembl_directory / "targets.json"
     targets = load_or_empty(targets_path)
-    mechanisms_by_molecule: dict[str, list[dict]] = {}
-    for mechanism in mechanisms:
-        mechanisms_by_molecule.setdefault(mechanism["molecule_chembl_id"], []).append(mechanism)
+    mechanisms_by_molecule = mechanisms_by_parent_and_molecule(mechanisms)  # salt-form mechanisms count for their parent
     hit_targets = sorted({mechanism["target_chembl_id"] for chembl_ids in resolved.values() for chembl_id in chembl_ids for mechanism in mechanisms_by_molecule.get(chembl_id, []) if mechanism.get("target_chembl_id")})
     to_fetch = [target_id for target_id in hit_targets if target_id not in targets]
     for start in range(0, len(to_fetch), 50):

@@ -8,11 +8,20 @@ from mechanistic_pathway_learning.evidence.load_drug_label_events import (
     load_sider_events,
     pubchem_cid_from_stitch_flat,
 )
+import pandas as pd
+
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
+    ChemblCaches,
+    DrugTarget,
+    check_graph_compounds_have_no_mechanism,
+    GraphNodeLookup,
     drug_targets_for_pubchem_cid,
+    graph_compound_targets,
     has_dominant_target,
     load_chembl_caches,
-    perturbation_from_drug_targets,
+    load_drugs_acting_as_graph_compounds,
+    mechanism_targets,
+    mechanisms_by_parent_and_molecule,
 )
 
 
@@ -68,6 +77,103 @@ def test_drug_target_mapping_sign_and_dominance(tmp_path: Path) -> None:
     drug_targets = drug_targets_for_pubchem_cid(3016, caches)
     assert len(drug_targets) == 1 and has_dominant_target(drug_targets)
     assert drug_targets[0].sign == 0.5
-    triples = perturbation_from_drug_targets(drug_targets, {"GABRA1": 0, "GABRA2": 1, "HMBS": 2})
-    assert sorted(triples) == [(0, 0.5, 0.5), (1, 0.5, 0.5)]
+    triples = GraphNodeLookup({"GABRA1": "GENE:GABRA1", "GABRA2": "GENE:GABRA2", "HMBS": "GENE:HMBS"}, {}, {}).perturbation_nodes(drug_targets)
+    assert sorted(map(tuple, triples)) == [("GENE:GABRA1", 0.5, 0.5), ("GENE:GABRA2", 0.5, 0.5)]
     assert drug_targets_for_pubchem_cid(999999, caches) == []
+
+
+def synthetic_graph_nodes() -> pd.DataFrame:
+    """Two genes and the compartment copies of two Human-GEM metabolites, in the columns of nodes.parquet."""
+    return pd.DataFrame([
+        {"node_id": "GENE:TTR", "node_type": "gene", "gene_symbol": "TTR", "ensembl_gene_id": "ENSG00000118271", "base_metabolite_id": None},
+        {"node_id": "GENE:GABRA1", "node_type": "gene", "gene_symbol": "GABRA1", "ensembl_gene_id": "ENSG00000022355", "base_metabolite_id": None},
+        {"node_id": "MAM01821c", "node_type": "metabolite", "gene_symbol": None, "ensembl_gene_id": None, "base_metabolite_id": "MAM01821"},
+        {"node_id": "MAM01821m", "node_type": "metabolite", "gene_symbol": None, "ensembl_gene_id": None, "base_metabolite_id": "MAM01821"},
+        {"node_id": "MAM01821s", "node_type": "metabolite", "gene_symbol": None, "ensembl_gene_id": None, "base_metabolite_id": "MAM01821"},
+        {"node_id": "MAM02382c", "node_type": "metabolite", "gene_symbol": None, "ensembl_gene_id": None, "base_metabolite_id": "MAM02382"},
+        {"node_id": "MAM02382e", "node_type": "metabolite", "gene_symbol": None, "ensembl_gene_id": None, "base_metabolite_id": "MAM02382"},
+    ])
+
+
+def test_mechanisms_recorded_on_a_salt_form_are_found_through_the_parent() -> None:
+    mechanisms = [{"molecule_chembl_id": "CHEMBL1200964", "parent_molecule_chembl_id": "CHEMBL629", "target_chembl_id": "CHEMBL222", "action_type": "INHIBITOR"}]
+    targets = {"CHEMBL222": {"pref_name": "Norepinephrine transporter", "target_type": "SINGLE PROTEIN", "organism": "Homo sapiens", "gene_symbols": ["SLC6A2"], "accessions": ["P23975"]}}
+    by_molecule = mechanisms_by_parent_and_molecule(mechanisms)
+    assert [target.target_chembl_id for target in mechanism_targets(["CHEMBL629"], by_molecule, targets)] == ["CHEMBL222"]  # the parent
+    assert [target.target_chembl_id for target in mechanism_targets(["CHEMBL1200964"], by_molecule, targets)] == ["CHEMBL222"]  # the salt itself
+    caches = ChemblCaches({"2160": ["CHEMBL629"]}, by_molecule, targets)
+    assert [target.gene_symbols for target in drug_targets_for_pubchem_cid(2160, caches)] == [["SLC6A2"]]
+
+
+def test_extra_chembl_ids_supply_targets_when_unichem_gives_none() -> None:
+    mechanisms = [{"molecule_chembl_id": "CHEMBL1201", "parent_molecule_chembl_id": "CHEMBL1201", "target_chembl_id": "CHEMBL222", "action_type": "INHIBITOR"}]
+    targets = {"CHEMBL222": {"pref_name": "Norepinephrine transporter", "target_type": "SINGLE PROTEIN", "organism": "Homo sapiens", "gene_symbols": ["SLC6A2"], "accessions": []}}
+    caches = ChemblCaches({}, mechanisms_by_parent_and_molecule(mechanisms), targets)
+    assert drug_targets_for_pubchem_cid(5000, caches) == []
+    assert [target.target_chembl_id for target in drug_targets_for_pubchem_cid(5000, caches, extra_chembl_ids=["CHEMBL1201"])] == ["CHEMBL222"]
+
+
+def test_nucleic_acid_target_maps_to_its_gene_by_ensembl_id() -> None:
+    lookup = GraphNodeLookup.from_nodes(synthetic_graph_nodes(), None)
+    transthyretin_mrna = DrugTarget("CHEMBL3885585", "RNAI INHIBITOR", [], "NUCLEIC-ACID", "Transthyretin mRNA", ["ENSG00000118271"])
+    assert lookup.perturbation_nodes([transthyretin_mrna]) == [["GENE:TTR", -1.0, 1.0]]
+    generic_dna = DrugTarget("CHEMBL2311221", "CROSS-LINKING AGENT", [], "NUCLEIC-ACID", "DNA", [])
+    assert lookup.perturbation_nodes([generic_dna]) == []
+
+
+def test_metal_target_seeds_every_compartment_copy_from_the_curated_table(tmp_path: Path) -> None:
+    table_path = tmp_path / "non_protein_drug_targets.csv"
+    table_path.write_text("target_chembl_id,target_pref_name,target_type,base_metabolite_ids,note\nCHEMBL2363058,Iron,METAL,MAM01821,\nCHEMBL2366381,Aluminium,METAL,,not in Human-GEM\n")
+    lookup = GraphNodeLookup.from_nodes(synthetic_graph_nodes(), table_path)
+    iron = DrugTarget("CHEMBL2363058", "CHELATING AGENT", [], "METAL", "Iron", [])
+    triples = lookup.perturbation_nodes([iron])
+    assert sorted(node_id for node_id, _, _ in triples) == ["MAM01821c", "MAM01821m", "MAM01821s"]
+    assert all(sign == -1.0 and abs(magnitude - 1 / 3) < 1e-12 for _, sign, magnitude in triples)
+    assert lookup.perturbation_nodes([DrugTarget("CHEMBL2366381", "CHELATING AGENT", [], "METAL", "Aluminium", [])]) == []
+
+
+def test_drug_that_is_a_graph_compound_raises_that_metabolite_only_without_a_mechanism(tmp_path: Path) -> None:
+    table_path = tmp_path / "drugs_acting_as_graph_compounds.csv"
+    table_path.write_text("drug_name,pubchem_cid,chembl_ids,base_metabolite_ids,note\nlithium,28486,CHEMBL1200826,MAM02382,Li+\n")
+    by_pubchem_cid, by_chembl_id = load_drugs_acting_as_graph_compounds(table_path)
+    lookup = GraphNodeLookup.from_nodes(synthetic_graph_nodes(), None)
+    by_cid = graph_compound_targets([], 28486, [], by_pubchem_cid, by_chembl_id)
+    by_chembl = graph_compound_targets([], None, ["CHEMBL1200826"], by_pubchem_cid, by_chembl_id)
+    assert len(by_cid) == 1 and has_dominant_target(by_cid) and by_cid[0].sign == 1.0
+    assert sorted(map(tuple, lookup.perturbation_nodes(by_chembl))) == [("MAM02382c", 1.0, 0.5), ("MAM02382e", 1.0, 0.5)]
+    receptor = DrugTarget("CHEMBL2093872", "AGONIST", ["GABRA1"], "PROTEIN COMPLEX GROUP")
+    assert graph_compound_targets([receptor], 28486, [], by_pubchem_cid, by_chembl_id) == [receptor]  # a mechanism target wins
+    assert graph_compound_targets([], 1, ["CHEMBL1"], by_pubchem_cid, by_chembl_id) == []
+
+
+def test_sider_route_falls_back_to_the_bridge_parent_then_to_the_graph_compound(tmp_path: Path) -> None:
+    from mechanistic_pathway_learning.evidence.assemble_evidence_table import bridge_chembl_parents_by_sider_cid, sider_drug_targets
+
+    bridge_path = tmp_path / "ingredient_identifier_bridge.json"
+    bridge_path.write_text(json.dumps({"ingredients": {
+        "100": {"ingredient_id": "100", "ingredient_name": "drug without unichem", "identifier_system": "RXCUI", "bridge_method": "unii", "chembl_parent": "CHEMBL1201",
+                "unified_with_sider": True, "sider_pubchem_cid": 5000, "perturbation_id": "CID000005000"},
+        "200": {"ingredient_id": "200", "ingredient_name": "not unified", "identifier_system": "RXCUI", "bridge_method": "unii", "chembl_parent": "CHEMBL9999",
+                "unified_with_sider": False, "sider_pubchem_cid": None, "perturbation_id": "ONSIDES:200"},
+    }}))
+    parents_by_cid = bridge_chembl_parents_by_sider_cid(bridge_path)
+    assert parents_by_cid == {5000: ["CHEMBL1201"]}
+    mechanisms = [{"molecule_chembl_id": "CHEMBL1201", "parent_molecule_chembl_id": "CHEMBL1201", "target_chembl_id": "CHEMBL222", "action_type": "INHIBITOR"}]
+    targets = {"CHEMBL222": {"pref_name": "Norepinephrine transporter", "target_type": "SINGLE PROTEIN", "organism": "Homo sapiens", "gene_symbols": ["SLC6A2"], "accessions": []}}
+    caches = ChemblCaches({"28486": ["CHEMBL1200826"]}, mechanisms_by_parent_and_molecule(mechanisms), targets)
+    assert [target.target_chembl_id for target in sider_drug_targets(5000, caches, parents_by_cid, {}, {})] == ["CHEMBL222"]
+    lithium = sider_drug_targets(28486, caches, parents_by_cid, {}, {"CHEMBL1200826": ["MAM02382"]})
+    assert [(target.target_chembl_id, target.action_type) for target in lithium] == [("COMPOUND:MAM02382", "EXOGENOUS SUPPLY")]
+    assert bridge_chembl_parents_by_sider_cid(None) == {}
+
+
+def test_a_listed_graph_compound_with_a_chembl_mechanism_is_refused() -> None:
+    mechanisms = [{"molecule_chembl_id": "CHEMBL1200826", "parent_molecule_chembl_id": "CHEMBL1200826", "target_chembl_id": "CHEMBL1786", "action_type": "INHIBITOR"}]
+    by_molecule = mechanisms_by_parent_and_molecule(mechanisms)
+    check_graph_compounds_have_no_mechanism({"CHEMBL96": ["MAM00970"]}, by_molecule)
+    try:
+        check_graph_compounds_have_no_mechanism({"CHEMBL1200826": ["MAM02382"]}, by_molecule)
+    except ValueError as error:
+        assert "CHEMBL1200826" in str(error)
+    else:
+        raise AssertionError("a graph compound with a mechanism was accepted")

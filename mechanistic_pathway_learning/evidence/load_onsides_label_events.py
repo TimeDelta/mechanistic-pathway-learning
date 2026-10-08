@@ -44,6 +44,7 @@ import pandas as pd
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc
 from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import IngredientBridge, mechanism_targets_for_parent, passes_single_target_rule
+from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import GraphNodeLookup, graph_compound_targets
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import DrugTarget
 
 ONSIDES_RELEASE = "v3.1.1"
@@ -145,14 +146,18 @@ class OnsidesQualification:
     missing_target_ids: list[str] = field(default_factory=list)  # mechanism targets without a record in targets.json
 
 
-def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping[str, list[dict]], targets: Mapping[str, dict]) -> OnsidesQualification:
+def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping[str, list[dict]], targets: Mapping[str, dict],
+                       compounds_by_chembl_id: Mapping[str, list[str]] | None = None) -> OnsidesQualification:
     """The E2 qualification of section 4.2 for one ingredient, the rule SIDER rows pass: a single mechanism target and an ATC N code.
 
+    An ingredient with no mechanism target at all whose parent is listed in configs/drugs_acting_as_graph_compounds.csv
+    (compounds_by_chembl_id) takes that graph compound as its one target, as a SIDER drug does.
     An ingredient with no ATC code at all fails with no_atc_code, as a SIDER drug without one does; atc_known
     is kept on the result for the rubric_atc_known feature.
     """
     missing_target_ids: set[str] = set()
     drug_targets = mechanism_targets_for_parent(bridge.chembl_parent, mechanisms_by_molecule, targets, missing_target_ids=missing_target_ids)
+    drug_targets = graph_compound_targets(drug_targets, None, [bridge.chembl_parent] if bridge.chembl_parent else [], {}, compounds_by_chembl_id or {})
     atc_known = bool(bridge.atc_codes)
     missing = sorted(missing_target_ids)
     if bridge.chembl_parent is None:
@@ -195,9 +200,15 @@ def onsides_reports(
     bridges: Mapping[str, IngredientBridge],
     mechanisms_by_molecule: Mapping[str, list[dict]],
     targets: Mapping[str, dict],
-    node_by_symbol: Mapping[str, str],
+    node_lookup: GraphNodeLookup | Mapping[str, str],
+    compounds_by_chembl_id: Mapping[str, list[str]] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
-    """Report rows (REPORT_COLUMNS first, then ONSIDES_EXTRA_COLUMNS) for every statement; qualifies marks the rows that enter the evidence table."""
+    """Report rows (REPORT_COLUMNS first, then ONSIDES_EXTRA_COLUMNS) for every statement; qualifies marks the rows that enter the evidence table.
+
+    node_lookup places each target on the graph (GraphNodeLookup); a gene symbol -> node id mapping places protein
+    targets only."""
+    if not isinstance(node_lookup, GraphNodeLookup):
+        node_lookup = GraphNodeLookup(dict(node_lookup), {}, {})
     scored = statements.max_pred1.where(statements.match_methods.astype(str).str.contains("PMB"))
     score_low, score_high = float(scored.min()) if scored.notna().any() else 0.0, float(scored.max()) if scored.notna().any() else 1.0
     counts = {"statements": int(len(statements)), "ingredients_without_bridge": 0, "disqualified": {}, "qualifying_reports": 0}
@@ -208,12 +219,9 @@ def onsides_reports(
         if bridge is None:
             counts["ingredients_without_bridge"] += 1
             continue
-        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets)
+        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id)
         qualifications[bridge.ingredient_id] = qualification
-        perturbation_nodes = []
-        for target in qualification.drug_targets:
-            mapped = [node_by_symbol[symbol] for symbol in target.gene_symbols if symbol in node_by_symbol]
-            perturbation_nodes.extend([node, target.sign, 1.0 / len(mapped)] for node in mapped)
+        perturbation_nodes = node_lookup.perturbation_nodes(qualification.drug_targets)
         combination_only = int(statement.single_ingredient_label_count) == 0
         qualifies = qualification.qualifies and not combination_only and bool(perturbation_nodes)
         if qualification.reason:

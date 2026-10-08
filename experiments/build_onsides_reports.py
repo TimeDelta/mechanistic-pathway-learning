@@ -33,6 +33,13 @@ from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import (
     mechanisms_by_parent_and_molecule,
     stitch_flat_id_from_pubchem_cid,
 )
+from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
+    DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
+    NON_PROTEIN_TARGETS_PATH,
+    GraphNodeLookup,
+    check_graph_compounds_have_no_mechanism,
+    load_drugs_acting_as_graph_compounds,
+)
 
 SIDER_LABEL_SOURCE = "SIDER-label"
 
@@ -105,6 +112,8 @@ def main() -> None:
     parser.add_argument("--crosswalk", type=Path, default=Path("docs/symptom_crosswalk.csv"))
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence_full"), help="assembled table whose SIDER-label pairs define the qualified overlap")
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/onsides"))
+    parser.add_argument("--non-protein-targets", type=Path, default=NON_PROTEIN_TARGETS_PATH, help="ChEMBL non-protein targets -> Human-GEM metabolites (docs/drug_targets_any_type.md)")
+    parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH, help="drugs with no mechanism target that are themselves a graph metabolite")
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/onsides_label_slice.md"))
     arguments = parser.parse_args()
 
@@ -115,10 +124,10 @@ def main() -> None:
     bridges = load_ingredient_identifier_bridge(arguments.bridge)
     mechanisms_by_molecule = mechanisms_by_parent_and_molecule(json.loads((arguments.chembl_dir / "mechanisms.json").read_text()))
     targets = json.loads((arguments.chembl_dir / "targets.json").read_text())
-    nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
-    genes = nodes[nodes.node_type == "gene"]
-    node_by_symbol = {symbol: node_id for symbol, node_id in zip(genes.gene_symbol, genes.node_id) if isinstance(symbol, str) and symbol}
-    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_by_symbol)
+    node_lookup = GraphNodeLookup.from_nodes(pd.read_parquet(arguments.graph_dir / "nodes.parquet"), arguments.non_protein_targets)
+    _, compounds_by_chembl_id = load_drugs_acting_as_graph_compounds(arguments.drugs_acting_as_graph_compounds)
+    check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, mechanisms_by_molecule)
+    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id)
 
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     reports.to_parquet(arguments.output_dir / "onsides_reports.parquet", index=False)
