@@ -40,7 +40,7 @@ import math
 import torch
 from torch import Tensor, nn
 
-from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_node_mask
+from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_unit_mask
 
 PERTURBATION_FEATURE_DIM = 2  # (sign, magnitude)
 
@@ -55,8 +55,10 @@ class RelationalMessagePassingEncoder(nn.Module):
         node_features: Tensor | None = None,
         num_descriptor_columns: int = 0,
         descriptor_treatment: str = "plain",
+        seed_mask_partner_index: Tensor | None = None,
     ) -> None:
         super().__init__()
+        self.register_buffer("seed_mask_partner_index", None if seed_mask_partner_index is None else seed_mask_partner_index.long(), persistent=False)
         self.num_graph_nodes = num_graph_nodes
         self.num_relation_types = num_relation_types
         self.node_state_dim = node_state_dim
@@ -119,7 +121,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         base_state = self.base_state()
         node_state_field = base_state[None, :, :].expand(batch_size, -1, -1).clone()
         if self.descriptor_treatment == "seed_masked":
-            seed_rows = seed_node_mask(perturbation_node_index, self.num_graph_nodes)
+            seed_rows = seed_unit_mask(perturbation_node_index, self.num_graph_nodes, self.seed_mask_partner_index)
             node_state_field = torch.where(seed_rows[:, :, None], self.base_state(without_descriptors=True)[None, :, :], node_state_field)
         if not inject:
             return node_state_field

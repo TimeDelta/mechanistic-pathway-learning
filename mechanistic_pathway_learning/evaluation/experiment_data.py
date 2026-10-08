@@ -197,24 +197,29 @@ def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_typ
 GENE_TO_PROTEIN_FILE = "gene_to_protein.parquet"  # written by experiments/build_gene_protein_split.py; absent from merged graphs
 
 
-def read_protein_of_gene(graph_directory: Path) -> dict[str, str]:
-    """gene node id -> protein node id of a split graph (docs/gene_protein_split.md); empty for a merged graph."""
+def read_protein_of_gene(graph_directory: Path) -> dict[str, list[str]]:
+    """gene node id -> the protein node ids a drug acting on the gene seeds, on a split graph (docs/gene_protein_split.md):
+    its one protein node, or for a gene with several the ones drug targets name (the drug_target column); empty for a
+    merged graph."""
     path = Path(graph_directory) / GENE_TO_PROTEIN_FILE
     if not path.exists():
         return {}
     table = pd.read_parquet(path)
-    return dict(zip(table.gene_node_id, table.protein_node_id))
+    if "drug_target" in table.columns:
+        table = table[table.drug_target]
+    return table.groupby("gene_node_id", sort=False).protein_node_id.agg(list).to_dict()
 
 
-def drug_seeds_on_proteins(triples: list, protein_of_gene: dict[str, str]) -> list:
-    """A drug acts on proteins: each target gene node is replaced by its protein node. When two target genes encode one
-    shared protein node, the first triple is kept, so the node is seeded once."""
+def drug_seeds_on_proteins(triples: list, protein_of_gene: dict[str, list[str]]) -> list:
+    """A drug acts on proteins: each target gene node is replaced by its protein nodes, with the target's sign and
+    magnitude. When two target genes encode one shared protein node, the first triple is kept, so the node is seeded
+    once."""
     seen, result = set(), []
     for node_id, sign, magnitude in triples:
-        protein_node_id = protein_of_gene.get(node_id, node_id)
-        if protein_node_id not in seen:
-            seen.add(protein_node_id)
-            result.append([protein_node_id, sign, magnitude])
+        for protein_node_id in protein_of_gene.get(node_id, [node_id]):
+            if protein_node_id not in seen:
+                seen.add(protein_node_id)
+                result.append([protein_node_id, sign, magnitude])
     return result
 
 

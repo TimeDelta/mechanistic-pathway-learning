@@ -825,11 +825,17 @@ modules are fixed first.
   decisions it needs: docs/pathway_test_options.md).
 - The user, the same day, on the gene and protein split (docs/gene_protein_split.md): "The rest of that suggested split
   between the genes and proteins makes sense I think except the registered degree strata SHOULD change to the new split",
-  and "the brain expression is still provided via pseudo-gene descriptors". Not built and not applied. Measured: the
-  mapping is not one to one (57 gene nodes share a reviewed entry with another gene, 37 have several entries, and
-  isoforms are not resolved by any source), and on the split 140 of 142 drugs fall in the top degree stratum. Open:
-  where the expression block sits, the encodes relation in the H2 rewiring, and whether the confirmatory_v2
-  configurations move to the split graph.
+  and "the brain expression is still provided via pseudo-gene descriptors". Then: "It's just that the descriptors would
+  be limited to only the brain expression columns. Also, the several genes [to one] protein change is fine but I would
+  also require an equivalent several proteins from one gene. Seed [masking] would then be included." Built into new
+  graph directories, not applied to any confirmatory configuration: gene nodes carry the brain expression columns
+  only, protein nodes the protein descriptors, one protein node per reviewed entry (37 genes have several), seed
+  masking on the slice message-passing arms. Measured: the mapping is not one to one (57 gene nodes share a reviewed
+  entry with another gene, 37 have several entries, and isoforms are not resolved by any source), the sources copy
+  most edges of a gene onto all its entries (1,082 of 1,395 edge ends), and on the split 140 of 142 drugs fall in the
+  top degree stratum. Open: edge ends that name no entry (sent to every entry by default), seed masking over encodes
+  partners (on by default on a split graph), the encodes relation in the H2 rewiring, the 110 nodes without a reviewed
+  entry, and whether the confirmatory_v2 configurations move to the split graph.
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

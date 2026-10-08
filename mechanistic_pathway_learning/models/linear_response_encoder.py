@@ -86,7 +86,7 @@ import math
 import torch
 from torch import Tensor, nn
 
-from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_node_mask
+from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_unit_mask
 
 SUBSTRATE_RELATION = "substrate_of"
 PRODUCT_RELATION = "product_of"
@@ -339,8 +339,10 @@ class LinearResponseEncoder(nn.Module):
         shared_pool_classes: Tensor | None = None,
         num_descriptor_columns: int = 0,
         descriptor_treatment: str = "plain",
+        seed_mask_partner_index: Tensor | None = None,
     ) -> None:
         super().__init__()
+        self.register_buffer("seed_mask_partner_index", None if seed_mask_partner_index is None else seed_mask_partner_index.long(), persistent=False)
         if node_features.shape[0] != num_graph_nodes:
             raise ValueError("node_features must have one row per graph node")
         check_descriptor_treatment(descriptor_treatment, num_descriptor_columns, node_features.shape[1])
@@ -591,7 +593,7 @@ class LinearResponseEncoder(nn.Module):
         if self.descriptor_treatment != "seed_masked":
             return gate
         gate_without_descriptors = torch.sigmoid(self.output_gate(self.node_features_without_descriptors))[None, :, :]
-        seed_rows = seed_node_mask(perturbation_node_index, self.num_graph_nodes)
+        seed_rows = seed_unit_mask(perturbation_node_index, self.num_graph_nodes, self.seed_mask_partner_index)
         return torch.where(seed_rows[:, :, None], gate_without_descriptors, gate)
 
     def perturbation_difference_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002

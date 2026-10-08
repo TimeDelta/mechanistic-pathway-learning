@@ -186,7 +186,13 @@ def descriptor_treatment_inputs(data, arguments) -> dict:
         raise ValueError("--descriptor-learning-rate is defined for --descriptor-treatment zero_init_slow only")
     num_structural_columns = data.structural_node_features().shape[1]
     num_descriptor_columns = node_feature_matrix(data, arguments).shape[1] - num_structural_columns
-    return {"descriptor_treatment": treatment, "num_descriptor_columns": num_descriptor_columns}
+    inputs = {"descriptor_treatment": treatment, "num_descriptor_columns": num_descriptor_columns}
+    if treatment == "seed_masked" and ENCODES_RELATION in data.relation_types:  # a split graph: the mask covers each seed's encodes partners
+        encodes = np.asarray(data.edge_relation) == data.relation_types.index(ENCODES_RELATION)
+        genes, proteins = np.asarray(data.edge_source)[encodes], np.asarray(data.edge_target)[encodes]
+        inputs["seed_mask_partner_index"] = torch.as_tensor(np.stack([np.concatenate([genes, proteins]), np.concatenate([proteins, genes])]), dtype=torch.long)
+        print(f"seed masking covers each seed's encodes partners ({int(encodes.sum())} encodes edges)")
+    return inputs
 
 
 def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:

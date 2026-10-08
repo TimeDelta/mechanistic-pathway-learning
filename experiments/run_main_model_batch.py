@@ -114,11 +114,9 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # arm with the slice descriptors on the merged slice graph (the twin) and on its split copy, where message passing
     # gets one more layer (a knockout reaches the protein layer one hop later), and the split message-passing arm with
     # seed masking (the user: seed masking may not be needed once the genes carry no descriptors)
-    "b6_mechanistic_gate_time_scales_weighted_start_descriptors": SLICE_MODULE_FIX_MESSAGE_PASSING + [
-        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet"],
-    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_split": SLICE_MODULE_FIX_MESSAGE_PASSING + [
-        "--graph-dir", "data/processed/graph_split", "--num-layers", "3",
-        "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet"],
+    # gene and protein split (docs/gene_protein_split.md): seed masking on both message-passing arms (the user, 8 October 2026)
+    "b6_mechanistic_gate_time_scales_weighted_start_descriptors_seed_masked": SLICE_MODULE_FIX_MESSAGE_PASSING + [
+        "--node-descriptors", "data/processed/node_descriptors/slice_descriptors_brain_expression.parquet", "--descriptor-treatment", "seed_masked"],
     "b6_mechanistic_gate_time_scales_weighted_start_descriptors_split_seed_masked": SLICE_MODULE_FIX_MESSAGE_PASSING + [
         "--graph-dir", "data/processed/graph_split", "--num-layers", "3",
         "--node-descriptors", "data/processed/node_descriptors/slice_split_descriptors_brain_expression.parquet", "--descriptor-treatment", "seed_masked"],

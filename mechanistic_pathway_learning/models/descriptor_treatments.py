@@ -12,7 +12,10 @@ The node features are the structural columns followed by num_descriptor_columns 
   using data that possesses no information on which gene interacts with which").
 - seed_masked: the perturbed nodes of each perturbation see their structural columns only (descriptor columns set to
   zero, the mean of their node type, since each block is standardised within its type); every other node keeps its
-  descriptors. What a perturbation's own protein is reaches the readout only through the nodes around it.
+  descriptors. What a perturbation's own protein is reaches the readout only through the nodes around it. On a graph
+  split into gene and protein nodes (docs/gene_protein_split.md) the mask also covers the nodes joined to a seed by an
+  encodes edge: a knockout seeds the gene and a drug the protein, and without it the knocked-out gene's protein
+  descriptors, or the drug target's gene expression, would sit one hop from the seed, where the merged graph hid them.
 - zero_init_slow: the descriptor columns get their own linear map, initialised at zero and trained at their own
   learning rate (--descriptor-learning-rate). Adam moves a parameter by about one learning rate per step, so the
   descriptors can change a node's state by at most about that rate per step, and the runs stop early (best epochs 2 to
@@ -55,3 +58,13 @@ def seed_node_mask(perturbation_node_index: Tensor, num_graph_nodes: int) -> Ten
     valid = (perturbation_node_index >= 0).to(torch.float32)
     counts = torch.zeros(perturbation_node_index.shape[0], num_graph_nodes, device=perturbation_node_index.device)
     return counts.scatter_add(1, perturbation_node_index.clamp_min(0), valid) > 0
+
+
+def seed_unit_mask(perturbation_node_index: Tensor, num_graph_nodes: int, partner_index: Tensor | None = None) -> Tensor:
+    """seed_node_mask, widened to the partners of each seed: partner_index is [2, num_pairs] of (node, partner) pairs,
+    both directions given (the encodes edges of a split graph). None, or no pairs, gives seed_node_mask unchanged."""
+    seeds = seed_node_mask(perturbation_node_index, num_graph_nodes)
+    if partner_index is None or partner_index.numel() == 0:
+        return seeds
+    reached = torch.zeros(seeds.shape, device=seeds.device).index_add_(1, partner_index[1], seeds[:, partner_index[0]].to(torch.float32))
+    return seeds | (reached > 0)

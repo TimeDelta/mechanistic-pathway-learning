@@ -13,8 +13,14 @@ Steps:
 Outputs: data/processed/node_descriptors/protein_descriptors.parquet (rrr_1 ... rrr_k),
 protein_descriptors_ica.parquet (ica_1 ... ica_k), protein_descriptor_fit.json and docs/protein_descriptor_report.md.
 
+With --per-entry-only it refits once at the ridge penalty and rank recorded in protein_descriptor_fit.json, writes the
+descriptors of each reviewed entry (indexed by accession) to protein_descriptors_per_entry.parquet, for the split graph's
+protein nodes (docs/gene_protein_split.md), checks that their mean per gene reproduces protein_descriptors.parquet and
+writes nothing else.
+
 Usage:
   OMP_NUM_THREADS=2 python experiments/build_protein_descriptors.py
+  OMP_NUM_THREADS=2 python experiments/build_protein_descriptors.py --per-entry-only
 """
 from __future__ import annotations
 
@@ -53,6 +59,45 @@ def load_embeddings(embedding_directory: Path) -> pd.DataFrame:
     return pd.concat(frames)
 
 
+PER_ENTRY_FILE = "protein_descriptors_per_entry.parquet"
+PER_GENE_REPRODUCTION_TOLERANCE = 1e-6
+
+
+def write_per_entry_descriptors(arguments: argparse.Namespace) -> None:
+    """The descriptors of every reviewed entry, from one fit at the recorded penalty and rank. The fit inputs are the
+    ones main() builds, so the per-gene mean must reproduce the per-gene table up to the sign of each column; the
+    function stops if it does not. The sign of a reduced-rank direction is not fixed by the fit (a refit with another
+    thread count flipped 29 of 64 on 8 October 2026), so each column takes the sign of the stored table's."""
+    destination = arguments.output_dir / PER_ENTRY_FILE
+    if destination.exists():
+        raise SystemExit(f"{destination} exists")
+    recorded = json.loads((arguments.output_dir / "protein_descriptor_fit.json").read_text())
+    uniprot = pd.read_csv(arguments.uniprot_table, sep="\t")
+    embeddings = load_embeddings(arguments.embedding_dir)
+    uniprot = uniprot[uniprot.Entry.isin(embeddings.index)].reset_index(drop=True)
+    targets, block_columns, observed = annotation_target_matrix(uniprot, go_annotations(arguments.gaf, read_go_ancestors(arguments.go_obo)))
+    target_values = weighted_standardised_targets(targets, block_columns, observed)
+    fit_rows = (observed["go_function"] | observed["go_component"]).to_numpy()
+    if int(fit_rows.sum()) != recorded["proteins_in_fit"] or targets.shape[1] != recorded["targets"]:
+        raise SystemExit("the fit inputs differ from the recorded fit")
+    model = fit_reduced_rank_regression(embeddings.loc[uniprot.Entry[fit_rows]].to_numpy(dtype=np.float64), target_values[fit_rows],
+                                        recorded["rank"], recorded["relative_alpha"])
+    descriptors = pd.DataFrame(model.transform(embeddings.loc[uniprot.Entry].to_numpy(dtype=np.float64)), index=pd.Index(uniprot.Entry, name="accession"),
+                               columns=[f"rrr_{index + 1}" for index in range(recorded["rank"])])
+    gene_of = uniprot.set_index("Entry")["Gene Names (primary)"]
+    per_gene = descriptors.groupby(gene_of.reindex(descriptors.index).to_numpy()).mean()
+    stored = pd.read_parquet(arguments.output_dir / "protein_descriptors.parquet")
+    aligned = per_gene.reindex(stored.index)[stored.columns]
+    column_signs = np.sign([np.corrcoef(aligned[column], stored[column])[0, 1] for column in stored.columns])
+    descriptors = descriptors[stored.columns] * column_signs
+    difference = float((aligned * column_signs - stored).abs().to_numpy().max())
+    if difference > PER_GENE_REPRODUCTION_TOLERANCE:
+        raise SystemExit(f"the per-gene mean differs from protein_descriptors.parquet by up to {difference:.3g}; nothing written")
+    descriptors.to_parquet(destination)
+    print(f"wrote {destination}: {len(descriptors):,} entries x {descriptors.shape[1]} (per-gene mean reproduces the stored table to {difference:.2g}; "
+          f"{int((column_signs < 0).sum())} columns took the stored sign)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--uniprot-table", type=Path, default=Path("data/raw/uniprot/uniprot_human_reviewed.tsv.gz"))
@@ -63,8 +108,13 @@ def main() -> None:
     parser.add_argument("--full-nodes", type=Path, default=Path("data/processed/graph_full/nodes.parquet"))
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/node_descriptors"))
     parser.add_argument("--report", type=Path, default=Path("docs/protein_descriptor_report.md"))
+    parser.add_argument("--per-entry-only", action="store_true",
+                        help="write only the per-entry descriptors, refitted at the recorded penalty and rank (the other outputs are left as they are)")
     arguments = parser.parse_args()
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
+    if arguments.per_entry_only:
+        write_per_entry_descriptors(arguments)
+        return
 
     uniprot = pd.read_csv(arguments.uniprot_table, sep="\t")
     embeddings = load_embeddings(arguments.embedding_dir)
