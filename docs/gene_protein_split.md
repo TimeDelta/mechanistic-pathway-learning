@@ -251,3 +251,15 @@ compare_twin_runs.py keys its cache by run names only:
 
 The last two pairs read the brain expression descriptors (with seed masking for message passing) on the merged slice
 under the module fix.
+
+## Correction of 8 October 2026 (late): complex accessions
+
+OmniPath sorts a complex's accessions but not its gene symbols: the CDKN2A–MDM2 complex reads `CDKN2A_MDM2` with
+`COMPLEX:Q00987_Q8N726`, MDM2's accession first. The split paired them by position, so CDKN2A took MDM2's accession
+from that row and only P42771 (p16INK4a) from its twin row `COMPLEX:P42771_Q00987`. That one record was the only thing
+telling CDKN2A's entries apart. OmniPath copies every CDKN2A row, the CDK4 and CDK6 complex rows included, to both
+P42771 and Q8N726. interaction_members now gives each symbol the row's accessions that are its own entries.
+
+Rebuilt graph_full_neuronal_split: CDKN2A collapses to one protein node; CALCA (P01258 calcitonin, P06881 CGRP) is the
+only gene with several protein nodes. 12,709 protein nodes, 279,757 edges, 36 protein nodes of several entries.
+graph_split and its tables come out identical, so split_slice was not touched.

@@ -66,12 +66,18 @@ def entries_of_gene_symbol(uniprot_entries: pd.DataFrame) -> dict[str, list[str]
     return dict(entries)
 
 
-def interaction_members(symbol_field: str, accession_field: str) -> list[tuple[str, str | None]]:
-    """(symbol, accession) of each member of an OmniPath row end; complexes are A_B with accessions COMPLEX:P1_P2. When the
-    two lists do not line up the accessions are not used."""
+def interaction_members(symbol_field: str, accession_field: str, entries_of_symbol: dict[str, list[str]]) -> list[tuple[str, str | None]]:
+    """(symbol, accession) of each member of an OmniPath row end; complexes are A_B with accessions COMPLEX:P1_P2. A symbol
+    takes the row's accessions that are its own entries, not the accession in its position: OmniPath sorts a complex's
+    accessions but not its symbols (CDKN2A_MDM2 is COMPLEX:Q00987_Q8N726, MDM2 first). A symbol none of whose entries
+    the row names gets None."""
     symbols = [member for member in symbol_field.split("_") if member]
     accessions = [member for member in accession_field.replace("COMPLEX:", "").split("_") if member]
-    return list(zip(symbols, accessions)) if len(symbols) == len(accessions) else [(symbol, None) for symbol in symbols]
+    members: list[tuple[str, str | None]] = []
+    for symbol in symbols:
+        own = [accession for accession in accessions if accession in set(entries_of_symbol.get(symbol, []))]
+        members.extend([(symbol, accession) for accession in own] or [(symbol, None)])
+    return members
 
 
 def entries_named_by_interaction_rows(rows, evidence_source: str, entries_of_symbol: dict[str, list[str]], relation_of_row,
@@ -82,8 +88,8 @@ def entries_named_by_interaction_rows(rows, evidence_source: str, entries_of_sym
     named: dict[tuple[str, str, str, str, str], set[str]] = defaultdict(set)
     for row in rows:
         relation = relation_of_row(row)
-        for source, source_accession in interaction_members(row["source_genesymbol"], row["source"]):
-            for target, target_accession in interaction_members(row["target_genesymbol"], row["target"]):
+        for source, source_accession in interaction_members(row["source_genesymbol"], row["source"], entries_of_symbol):
+            for target, target_accession in interaction_members(row["target_genesymbol"], row["target"], entries_of_symbol):
                 if source == target:
                     continue
                 directions = [(source, source_accession, target, target_accession)]

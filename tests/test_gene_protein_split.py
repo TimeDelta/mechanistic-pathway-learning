@@ -170,11 +170,14 @@ def test_interaction_rows_name_the_entry_of_each_end_and_both_directions_of_bind
     entries = entries_of_gene_symbol(UNIPROT_ENTRIES)
     assert entries["M"] == ["PM1", "PM2"] and entries["B"] == ["PBC"] and entries["C"] == ["PBC"] and entries["B; C"] == ["PBC"]
     rows = [{"source": "PM1", "target": "PD", "source_genesymbol": "M", "target_genesymbol": "D", "relation": "activates"},
-            {"source": "COMPLEX:PM2_PTF", "target": "PD", "source_genesymbol": "M_TF", "target_genesymbol": "D", "relation": "binds"}]
+            {"source": "COMPLEX:PM2_PTF", "target": "PD", "source_genesymbol": "M_TF", "target_genesymbol": "D", "relation": "binds"},
+            # OmniPath sorts a complex's accessions but not its symbols: M takes PM1 here, not PTF in its position
+            {"source": "PD", "target": "COMPLEX:PM1_PTF", "source_genesymbol": "D", "target_genesymbol": "TF_M", "relation": "inhibits"}]
     named = entries_named_by_interaction_rows(rows, "OmniPath", entries, lambda row: row["relation"])
     assert named == {("GENE:M", "GENE:D", "activates", "OmniPath", "source"): {"PM1"},
                      ("GENE:M", "GENE:D", "binds", "OmniPath", "source"): {"PM2"},
-                     ("GENE:D", "GENE:M", "binds", "OmniPath", "target"): {"PM2"}}
+                     ("GENE:D", "GENE:M", "binds", "OmniPath", "target"): {"PM2"},
+                     ("GENE:D", "GENE:M", "inhibits", "OmniPath", "target"): {"PM1"}}
 
 
 def write_graph(directory: Path, nodes: pd.DataFrame, edges: pd.DataFrame, relations: list[str], assignment: pd.DataFrame | None = None) -> None:
