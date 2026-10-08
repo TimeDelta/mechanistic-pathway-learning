@@ -124,7 +124,7 @@ def main() -> None:
         else:
             shared_predictions[comparator] = pooled
     pathway_strata = pathway_split_strata(data, arguments.num_folds, arguments.seed)
-    degrees = np.asarray(data.perturbation_degrees, dtype=float)
+    degrees = np.asarray(data.perturbation_degrees_for_strata, dtype=float)
     positives_per_gene = outcomes.sum(axis=1)
 
     lines = [

@@ -83,7 +83,7 @@ def main() -> None:
 
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
     in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
-    strata_all = degree_strata(data.perturbation_degrees)
+    strata_all = degree_strata(data.perturbation_degrees_for_strata)
     development = restrict_to_perturbations(data, ~in_lockbox)
     strata = strata_all[~in_lockbox]
     mask = development.label_mask if development.label_mask is not None else np.ones_like(development.outcomes, dtype=bool)

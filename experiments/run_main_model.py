@@ -138,7 +138,7 @@ def perturbation_covariate(data) -> np.ndarray:
     """Standardised log1p of the summed degree of each perturbation's nodes: the hub signal that popularity and the
     random walk exploit, given to the heads explicitly under --degree-offset. It is a property of the input graph, not
     of the labels, so standardising over every perturbation leaks nothing."""
-    log_degree = np.log1p(data.perturbation_degrees)
+    log_degree = np.log1p(data.perturbation_degrees_for_strata)
     return ((log_degree - log_degree.mean()) / max(log_degree.std(), 1e-8)).astype(np.float32)
 
 
@@ -818,7 +818,7 @@ def main() -> None:
             in_lockbox = None
     permutation_source_rows_sha256 = None
     if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
-        source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=arguments.seed, partition=in_lockbox)
+        source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=arguments.seed, partition=in_lockbox)
         permutation_source_rows_sha256 = array_sha256(source_row)  # experiments/score_confirmatory.py checks it against its own draw
         data.outcomes, data.weights = data.outcomes[source_row], data.weights[source_row]
         if data.frequencies is not None:

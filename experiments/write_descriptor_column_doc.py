@@ -21,16 +21,18 @@ import pandas as pd
 
 from mechanistic_pathway_learning.graph.node_descriptors import descriptor_blocks
 
-DOCUMENT_VERSION = 2
+DOCUMENT_VERSION = 3
 CHANGES = [
     (1, "2026-10-08", "First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables."),
     (2, "2026-10-08", "Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); "
                       "a name for each of the 64 protein components from the annotations it correlates with most."),
+    (3, "2026-10-08", "The final table is the split one (the user's decision): the full neuronal graph with genes and proteins as "
+                      "separate nodes, so the protein components sit on the protein nodes."),
 ]
 # The final descriptor table, the graph directory whose nodes it describes, and where it is used.
-FINAL_TABLE = "data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet"
-FINAL_GRAPH_DIR = "data/processed/graph_full_neuronal"
-FINAL_TABLE_USE = "the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py)"
+FINAL_TABLE = "data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet"
+FINAL_GRAPH_DIR = "data/processed/graph_full_neuronal_split"
+FINAL_TABLE_USE = "the full graph with genes and proteins split (docs/gene_protein_split.md)"
 COMPONENT_NAMES = Path("data/processed/node_descriptors/protein_rrr_component_names.json")  # experiments/name_protein_descriptor_components.py
 EC_CLASS_NAMES = {1: "oxidoreductases", 2: "transferases", 3: "hydrolases", 4: "lyases", 5: "isomerases", 6: "ligases", 7: "translocases"}
 METABOLITE_MEANINGS = {
@@ -179,8 +181,9 @@ def main() -> None:
         f"Version {DOCUMENT_VERSION}, generated {date.today().isoformat()} by experiments/write_descriptor_column_doc.py from the code at commit {commit}. "
         "Rerun the script after any change to the table; it reads the column names and their placement from the table.", "",
         f"This document covers the final descriptor table only: `{FINAL_TABLE}` (graph `{FINAL_GRAPH_DIR}`, the full graph with the "
-        f"neuronal variant), used by {FINAL_TABLE_USE}. It holds every block: protein components, brain expression by GTEx tissue, Human "
-        "Protein Atlas region and cell class (with the dopaminergic neuron class), metabolite properties and reaction EC classes. "
+        f"neuronal variant and with genes and proteins as separate nodes), used by {FINAL_TABLE_USE}. It holds every block: protein "
+        "components on the protein nodes, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the "
+        "dopaminergic neuron class) on the gene and reaction nodes, metabolite properties and reaction EC classes. "
         f"{table.shape[1]} columns; SHA-256 `{file_sha256(Path(FINAL_TABLE))[:16]}`.", "",
         "Every node gets the same descriptor columns. Each node type fills its own block and is 0 in the others, so the "
         "encoder's input layer acts as one linear map per node type and nothing is learned per node "

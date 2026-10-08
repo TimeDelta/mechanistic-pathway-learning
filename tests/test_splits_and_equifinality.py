@@ -119,7 +119,7 @@ def test_baseline_pathway_hold_out_fits_without_group_partners() -> None:
     spec.loader.exec_module(run_baselines)
     # popularity predicts the training base rate, so a held-out row's prediction shows which rows were fitted
     outcomes = np.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
-    data = SimpleNamespace(perturbation_degrees=np.ones(4), group_ids=["g0", "g0", "g1", "g2"])
+    data = SimpleNamespace(perturbation_degrees=np.ones(4), perturbation_degrees_for_strata=np.ones(4), group_ids=["g0", "g0", "g1", "g2"])
     test = np.array([True, False, False, False])
     without_groups, _, per_fold, _ = run_baselines.run_split(data, outcomes, [test], "popularity", 0.3, None, min_fold_size_for_macro=100)
     with_groups, _, per_fold_grouped, _ = run_baselines.run_split(data, outcomes, [test], "popularity", 0.3, None, min_fold_size_for_macro=100, group_ids=data.group_ids)

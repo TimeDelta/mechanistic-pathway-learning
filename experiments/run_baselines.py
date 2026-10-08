@@ -105,7 +105,7 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
                     random_seed: int = 0, label_mask: np.ndarray | None = None) -> np.ndarray:
     """Fit one baseline on the training rows and predict the test rows; random_seed sets the TransE initialisation and
     negative sampling, and label_mask (a label selection) keeps set-aside pairs out of the popularity base rates."""
-    degrees = data.perturbation_degrees
+    degrees = data.perturbation_degrees_for_strata
     if model_name in ("popularity", "degree_popularity"):
         model = PopularityBaseline(scale_by_degree=model_name == "degree_popularity").fit(outcomes[train], training_label_mask=None if label_mask is None else label_mask[train])
         return model.predict(int(test.sum()), degrees[test])
@@ -205,7 +205,7 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
 
 def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray, per_fold: list[dict], num_bootstrap: int, fold_of_row: np.ndarray | None = None,
           label_mask: np.ndarray | None = None) -> dict:
-    degrees = data.perturbation_degrees[rows]
+    degrees = data.perturbation_degrees_for_strata[rows]
     fold_of_scored_row = fold_of_row[rows] if fold_of_row is not None else None
     predictions, outcomes = predictions[rows], outcomes[rows]
     mask = None if label_mask is None else label_mask[rows]
@@ -424,7 +424,7 @@ def main() -> None:
         subsystem_masks, subsystem_labels = subsystem_test_masks(data, arguments.min_holdout_positives)
     normalized_adjacency = build_normalized_adjacency(len(data.node_ids), data.edge_source, data.edge_target, np.where(data.is_currency)[0])
     # rows move whole, so a pair keeps its label-mask entry; within the lockbox and the development set apart under --score-lockbox
-    permutation_source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=arguments.seed, partition=in_lockbox)
+    permutation_source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=arguments.seed, partition=in_lockbox)
     permuted_outcomes = data.outcomes[permutation_source_row]
     permuted_label_mask = None if label_mask is None else label_mask[permutation_source_row]
 

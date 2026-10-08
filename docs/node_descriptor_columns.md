@@ -1,14 +1,61 @@
 # Node descriptor columns
 
-Version 2, generated 2026-10-08 by experiments/write_descriptor_column_doc.py from the code at commit 5c2bc80. Rerun the script after any change to the table; it reads the column names and their placement from the table.
+Version 3, generated 2026-10-08 by experiments/write_descriptor_column_doc.py from the code at commit bdc0f89. Rerun the script after any change to the table; it reads the column names and their placement from the table.
 
-This document covers the final descriptor table only: `data/processed/node_descriptors/full_neuronal_descriptors_brain_expression.parquet` (graph `data/processed/graph_full_neuronal`, the full graph with the neuronal variant), used by the confirmatory configurations (FULL_GRAPH_NODE_PROPERTIES in experiments/run_main_model_batch.py). It holds every block: protein components, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the dopaminergic neuron class), metabolite properties and reaction EC classes. 137 columns; SHA-256 `14033cb35ad97098`.
+This document covers the final descriptor table only: `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet` (graph `data/processed/graph_full_neuronal_split`, the full graph with the neuronal variant and with genes and proteins as separate nodes), used by the full graph with genes and proteins split (docs/gene_protein_split.md). It holds every block: protein components on the protein nodes, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the dopaminergic neuron class) on the gene and reaction nodes, metabolite properties and reaction EC classes. 137 columns; SHA-256 `27ed5e89ccb369d9`.
 
 Every node gets the same descriptor columns. Each node type fills its own block and is 0 in the others, so the encoder's input layer acts as one linear map per node type and nothing is learned per node (mechanistic_pathway_learning/graph/node_descriptors.py). A column is listed under a node type below when at least one node of that type has a non-zero value in it.
 
 ## Columns per node type
 
-### gene (92 columns)
+### gene (27 columns)
+
+- `gene_brain_gtex_brain_max`: largest GTEx v10 median TPM over the 13 brain tissues, log1p, standardised
+- `gene_brain_gtex_other_max`: largest GTEx v10 median TPM over every other tissue, log1p, standardised
+- `gene_brain_region_amygdala`: Human Protein Atlas consensus nTPM in the amygdala, log1p, standardised
+- `gene_brain_region_basal_ganglia`: Human Protein Atlas consensus nTPM in the basal ganglia, log1p, standardised
+- `gene_brain_region_cerebellum`: Human Protein Atlas consensus nTPM in the cerebellum, log1p, standardised
+- `gene_brain_region_cerebral_cortex`: Human Protein Atlas consensus nTPM in the cerebral cortex, log1p, standardised
+- `gene_brain_region_choroid_plexus`: Human Protein Atlas consensus nTPM in the choroid plexus, log1p, standardised
+- `gene_brain_region_hippocampal_formation`: Human Protein Atlas consensus nTPM in the hippocampal formation, log1p, standardised
+- `gene_brain_region_hypothalamus`: Human Protein Atlas consensus nTPM in the hypothalamus, log1p, standardised
+- `gene_brain_region_medulla_oblongata`: Human Protein Atlas consensus nTPM in the medulla oblongata, log1p, standardised
+- `gene_brain_region_midbrain`: Human Protein Atlas consensus nTPM in the midbrain, log1p, standardised
+- `gene_brain_region_pons`: Human Protein Atlas consensus nTPM in the pons, log1p, standardised
+- `gene_brain_region_spinal_cord`: Human Protein Atlas consensus nTPM in the spinal cord, log1p, standardised
+- `gene_brain_region_thalamus`: Human Protein Atlas consensus nTPM in the thalamus, log1p, standardised
+- `gene_brain_region_white_matter`: Human Protein Atlas consensus nTPM in the white matter, log1p, standardised
+- `gene_brain_class_astrocyte`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class astrocyte, log1p, standardised
+- `gene_brain_class_cortical_interneuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class cortical interneuron, log1p, standardised
+- `gene_brain_class_ependymal_choroid`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class ependymal choroid, log1p, standardised
+- `gene_brain_class_excitatory_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class excitatory neuron, log1p, standardised
+- `gene_brain_class_immune`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class immune, log1p, standardised
+- `gene_brain_class_medium_spiny_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class medium spiny neuron, log1p, standardised
+- `gene_brain_class_oligodendrocyte_lineage`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class oligodendrocyte lineage, log1p, standardised
+- `gene_brain_class_other_inhibitory_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class other inhibitory neuron, log1p, standardised
+- `gene_brain_class_other_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class other neuron, log1p, standardised
+- `gene_brain_class_vascular`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class vascular, log1p, standardised
+- `gene_brain_class_dopaminergic_neuron`: dopaminergic cluster 395 of Siletti et al. 2023 (CELLxGENE counts put on the HPA nCPM scale), log1p, standardised
+- `gene_brain_has_expression`: 1 when the gene (for a reaction: a gene in its rule) is in the Human Protein Atlas region table
+
+### membrane_potential (0 columns)
+
+No descriptor column; all 0.
+
+### metabolite (10 columns)
+
+- `metabolite_log_molecular_weight`: log molecular weight (RDKit MolWt), standardised
+- `metabolite_logp`: Crippen logP, standardised
+- `metabolite_net_charge`: net charge in Human-GEM (SBML fbc:charge, near pH 7.3), standardised; known for every metabolite
+- `metabolite_log_polar_surface_area`: log(1 + topological polar surface area), standardised
+- `metabolite_log_hydrogen_bond_donors`: log(1 + hydrogen-bond donors), standardised
+- `metabolite_log_hydrogen_bond_acceptors`: log(1 + hydrogen-bond acceptors), standardised
+- `metabolite_log_rotatable_bonds`: log(1 + rotatable bonds), standardised
+- `metabolite_log_rings`: log(1 + rings), standardised
+- `metabolite_has_structure`: 1 when a complete SMILES gave the properties above; 0 leaves them at the mean
+- `metabolite_partial_structure`: 1 when the SMILES has R-group atoms (*), e.g. the acyl chain of an acyl-CoA
+
+### protein (65 columns)
 
 - `protein_rrr_1`: high: DNA-binding transcription factor activity; low: purine ribonucleoside triphosphate binding (see Protein components)
 - `protein_rrr_2`: high: nucleus; low: multi-pass membrane protein (see Protein components)
@@ -75,50 +122,6 @@ Every node gets the same descriptor columns. Each node type fills its own block 
 - `protein_rrr_63`: high: Sugar (and other) transporter (PF00083); low: Immunoglobulin V-set domain (PF07686) (see Protein components)
 - `protein_rrr_64`: high: Ankyrin repeats (3 copies) (PF12796); low: Sugar (and other) transporter (PF00083) (see Protein components)
 - `protein_has_protein_descriptors`: 1 when the node's protein has an ESM-2 embedding; 0 leaves the components at 0
-- `gene_brain_gtex_brain_max`: largest GTEx v10 median TPM over the 13 brain tissues, log1p, standardised
-- `gene_brain_gtex_other_max`: largest GTEx v10 median TPM over every other tissue, log1p, standardised
-- `gene_brain_region_amygdala`: Human Protein Atlas consensus nTPM in the amygdala, log1p, standardised
-- `gene_brain_region_basal_ganglia`: Human Protein Atlas consensus nTPM in the basal ganglia, log1p, standardised
-- `gene_brain_region_cerebellum`: Human Protein Atlas consensus nTPM in the cerebellum, log1p, standardised
-- `gene_brain_region_cerebral_cortex`: Human Protein Atlas consensus nTPM in the cerebral cortex, log1p, standardised
-- `gene_brain_region_choroid_plexus`: Human Protein Atlas consensus nTPM in the choroid plexus, log1p, standardised
-- `gene_brain_region_hippocampal_formation`: Human Protein Atlas consensus nTPM in the hippocampal formation, log1p, standardised
-- `gene_brain_region_hypothalamus`: Human Protein Atlas consensus nTPM in the hypothalamus, log1p, standardised
-- `gene_brain_region_medulla_oblongata`: Human Protein Atlas consensus nTPM in the medulla oblongata, log1p, standardised
-- `gene_brain_region_midbrain`: Human Protein Atlas consensus nTPM in the midbrain, log1p, standardised
-- `gene_brain_region_pons`: Human Protein Atlas consensus nTPM in the pons, log1p, standardised
-- `gene_brain_region_spinal_cord`: Human Protein Atlas consensus nTPM in the spinal cord, log1p, standardised
-- `gene_brain_region_thalamus`: Human Protein Atlas consensus nTPM in the thalamus, log1p, standardised
-- `gene_brain_region_white_matter`: Human Protein Atlas consensus nTPM in the white matter, log1p, standardised
-- `gene_brain_class_astrocyte`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class astrocyte, log1p, standardised
-- `gene_brain_class_cortical_interneuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class cortical interneuron, log1p, standardised
-- `gene_brain_class_ependymal_choroid`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class ependymal choroid, log1p, standardised
-- `gene_brain_class_excitatory_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class excitatory neuron, log1p, standardised
-- `gene_brain_class_immune`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class immune, log1p, standardised
-- `gene_brain_class_medium_spiny_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class medium spiny neuron, log1p, standardised
-- `gene_brain_class_oligodendrocyte_lineage`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class oligodendrocyte lineage, log1p, standardised
-- `gene_brain_class_other_inhibitory_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class other inhibitory neuron, log1p, standardised
-- `gene_brain_class_other_neuron`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class other neuron, log1p, standardised
-- `gene_brain_class_vascular`: Human Protein Atlas single-nucleus nCPM, largest over the cluster types of the class vascular, log1p, standardised
-- `gene_brain_class_dopaminergic_neuron`: dopaminergic cluster 395 of Siletti et al. 2023 (CELLxGENE counts put on the HPA nCPM scale), log1p, standardised
-- `gene_brain_has_expression`: 1 when the gene (for a reaction: a gene in its rule) is in the Human Protein Atlas region table
-
-### membrane_potential (0 columns)
-
-No descriptor column; all 0.
-
-### metabolite (10 columns)
-
-- `metabolite_log_molecular_weight`: log molecular weight (RDKit MolWt), standardised
-- `metabolite_logp`: Crippen logP, standardised
-- `metabolite_net_charge`: net charge in Human-GEM (SBML fbc:charge, near pH 7.3), standardised; known for every metabolite
-- `metabolite_log_polar_surface_area`: log(1 + topological polar surface area), standardised
-- `metabolite_log_hydrogen_bond_donors`: log(1 + hydrogen-bond donors), standardised
-- `metabolite_log_hydrogen_bond_acceptors`: log(1 + hydrogen-bond acceptors), standardised
-- `metabolite_log_rotatable_bonds`: log(1 + rotatable bonds), standardised
-- `metabolite_log_rings`: log(1 + rings), standardised
-- `metabolite_has_structure`: 1 when a complete SMILES gave the properties above; 0 leaves them at the mean
-- `metabolite_partial_structure`: 1 when the SMILES has R-group atoms (*), e.g. the acyl chain of an acyl-CoA
 
 ### protein_entity (0 columns)
 
@@ -240,24 +243,25 @@ The encoders read the descriptors after the structural features of ExperimentDat
 1. `type_gene`
 2. `type_membrane_potential`
 3. `type_metabolite`
-4. `type_protein_entity`
-5. `type_reaction`
-6. `compartment_c`
-7. `compartment_e`
-8. `compartment_g`
-9. `compartment_i`
-10. `compartment_l`
-11. `compartment_m`
-12. `compartment_n`
-13. `compartment_r`
-14. `compartment_v`
-15. `compartment_x`
-16. `log1p_degree`
-17. `is_currency`
-18. `is_transport`
-19. `is_reversible`
-20. `log1p_gtex_brain_median_tpm_max`
-21. `brain_expressed`
+4. `type_protein`
+5. `type_protein_entity`
+6. `type_reaction`
+7. `compartment_c`
+8. `compartment_e`
+9. `compartment_g`
+10. `compartment_i`
+11. `compartment_l`
+12. `compartment_m`
+13. `compartment_n`
+14. `compartment_r`
+15. `compartment_v`
+16. `compartment_x`
+17. `log1p_degree`
+18. `is_currency`
+19. `is_transport`
+20. `is_reversible`
+21. `log1p_gtex_brain_median_tpm_max`
+22. `brain_expressed`
 
 ## Blocks
 
@@ -275,9 +279,10 @@ Cells give how many of a block's columns are non-zero on at least one node of th
 
 | node type | nodes | metabolite | reaction_ec | reaction_brain | protein | gene_brain |
 |---|---|---|---|---|---|---|
-| gene | 12810 |  |  |  | all | all |
+| gene | 12810 |  |  |  |  | all |
 | membrane_potential | 1 |  |  |  |  |  |
 | metabolite | 8580 | all |  |  |  |  |
+| protein | 12709 |  |  |  | all |  |
 | protein_entity | 1681 |  |  |  |  |  |
 | reaction | 13793 |  | all | all |  |  |
 
@@ -287,3 +292,4 @@ Cells give how many of a block's columns are non-zero on at least one node of th
 |---|---|---|
 | 1 | 2026-10-08 | First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables. |
 | 2 | 2026-10-08 | Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); a name for each of the 64 protein components from the annotations it correlates with most. |
+| 3 | 2026-10-08 | The final table is the split one (the user's decision): the full neuronal graph with genes and proteins as separate nodes, so the protein components sit on the protein nodes. |

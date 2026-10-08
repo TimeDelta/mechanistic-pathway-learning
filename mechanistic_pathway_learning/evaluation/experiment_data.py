@@ -93,6 +93,37 @@ class ExperimentData:
     def perturbation_degrees(self) -> np.ndarray:
         return np.array([self.node_degree[seeds].sum() if len(seeds) else 0.0 for seeds in self.perturbation_seeds])
 
+    @property
+    def perturbation_one_hop_degrees(self) -> np.ndarray:
+        """Summed degree of a perturbation's seeds and of every node one edge from a seed.
+
+        For degree strata and degree normalisation only; nothing reads it as an input feature. On a graph where genes
+        and proteins are separate nodes (docs/gene_protein_split.md) a perturbed gene node carries only its encodes
+        edge, so perturbation_degrees is 1 for every perturbation and the degree strata collapse to one stratum. One
+        hop out reaches the protein the gene encodes, which is where that gene's edges went.
+        """
+        neighbours_of_node = [[] for _ in self.node_ids]
+        for source, target in zip(self.edge_source, self.edge_target):
+            neighbours_of_node[source].append(target)
+            neighbours_of_node[target].append(source)
+        degrees = []
+        for seeds in self.perturbation_seeds:
+            reached = {int(seed) for seed in seeds}
+            for seed in seeds:
+                reached.update(neighbours_of_node[int(seed)])
+            degrees.append(self.node_degree[sorted(reached)].sum() if reached else 0.0)
+        return np.array(degrees)
+
+    @property
+    def perturbation_degrees_for_strata(self) -> np.ndarray:
+        """perturbation_degrees, or perturbation_one_hop_degrees on a graph that splits genes from proteins.
+
+        The switch keeps the registered stratification: on the split slice the one-hop degree puts all 451
+        perturbations in the stratum the merged graph's seed degree gives them (docs/gene_protein_split_results.md),
+        while on a merged graph reading one hop out would move three quarters of them.
+        """
+        return self.perturbation_one_hop_degrees if "protein" in set(self.node_types.tolist()) else self.perturbation_degrees
+
 
 GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id", "disease_cluster_and_targets": "disease_cluster_id"}
 

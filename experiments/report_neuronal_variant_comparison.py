@@ -115,7 +115,7 @@ def main() -> None:
 
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster")
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, 5, 0)
-    strata = np.array([fold_by_perturbation[p] for p in data.perturbation_ids]) * 1000 + degree_strata(data.perturbation_degrees)
+    strata = np.array([fold_by_perturbation[p] for p in data.perturbation_ids]) * 1000 + degree_strata(data.perturbation_degrees_for_strata)
     position_of = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
     symptom_position = {symptom: index for index, symptom in enumerate(data.symptoms)}
     base_rates = dict(zip(data.symptoms, data.outcomes.mean(axis=0)))
@@ -124,7 +124,7 @@ def main() -> None:
     lines.append("Per-fold accuracy is each fold's macro AUPRC; the per-fold difference is paired by fold and given a t interval. The pooled "
                  "comparison scores the out-of-fold predictions of both runs on the perturbations both scored, with a paired bootstrap over "
                  "perturbations; the within-strata comparison ranks each score inside one degree stratum of one test fold first "
-                 f"(metabolic-graph degrees, {len(np.unique(degree_strata(data.perturbation_degrees)))} strata). Symptoms with fewer than "
+                 f"(metabolic-graph degrees, {len(np.unique(degree_strata(data.perturbation_degrees_for_strata)))} strata). Symptoms with fewer than "
                  f"{MINIMUM_POSITIVES_TO_SCORE} positives among the rows are not scored.")
     lines.append("")
     lines.append("## Accuracy")

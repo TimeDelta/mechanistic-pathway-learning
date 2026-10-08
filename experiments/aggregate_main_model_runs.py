@@ -137,7 +137,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
         "per_fold_micro_auprc_mean": float(np.mean(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"), "per_fold_micro_auprc_sd": float(np.std(fold_micro_auprcs)) if fold_micro_auprcs else float("nan"),
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes, mask), "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
         "expected_calibration_error": expected_calibration_error(predictions, outcomes, mask=mask),
-        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees[scored], mask=mask),
+        "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees_for_strata[scored], mask=mask),
         "label_selection_sha256": label_selection_sha256,
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
@@ -220,7 +220,7 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
     fold assignment (assign_grouped_folds, same seed), and strata come from all perturbations."""
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_folds, seed)
     fold_of_row = np.array([fold_by_perturbation[p] for p in data.perturbation_ids])
-    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees)
+    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees_for_strata)
     scores, normalised_by_name = {}, {}
     for name, predictions in predictions_by_name.items():
         rows = rows_by_name[name]
@@ -231,7 +231,7 @@ def within_degree_strata(aggregated: dict, predictions_by_name: dict, rows_by_na
         scores[name] = {"macro_auprc_within_degree_strata": float(np.mean([per_symptom_auprc(normalised, outcomes, s, mask) for s in scorable])),
                         "macro_auroc_stratified_by_degree": float(np.nanmean([stratified_auroc(predictions[rows], outcomes, strata[rows], s, mask) for s in scorable])),
                         "micro_auprc_within_degree_strata": micro_auprc(normalised, outcomes, mask),
-                        "num_strata": int(len(np.unique(degree_strata(data.perturbation_degrees))))}
+                        "num_strata": int(len(np.unique(degree_strata(data.perturbation_degrees_for_strata))))}
     comparisons = []
     for run_name in aggregated:
         if run_name not in normalised_by_name:

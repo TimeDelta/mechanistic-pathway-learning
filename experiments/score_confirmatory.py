@@ -291,13 +291,13 @@ def main() -> None:
     recomputed = [column for column in range(len(data.symptoms)) if kept[rows, column].sum() >= MINIMUM_POSITIVES_TO_SCORE]
     if sorted(macro_columns) != recomputed:
         raise SystemExit("the lockbox file's macro symptoms differ from the counts in the data")
-    strata = degree_strata(data.perturbation_degrees)[rows]
+    strata = degree_strata(data.perturbation_degrees_for_strata)[rows]
     outcomes, mask = data.outcomes[rows], label_mask[rows]
 
     labellings = {"real": {seed: (outcomes, mask) for seed in arguments.seeds}, "permuted": {}}
     permutation_sha256_by_seed: dict[int, str] = {}
     for seed in arguments.seeds:
-        source_row = degree_stratified_row_permutation(data.perturbation_degrees, random_seed=seed, partition=in_lockbox)
+        source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=seed, partition=in_lockbox)
         permutation_sha256_by_seed[seed] = array_sha256(source_row)
         baseline_source = arguments.baseline_root / f"seed{seed}" / "permutation_source_rows.npy"
         if not baseline_source.exists() or not np.array_equal(np.load(baseline_source), source_row):

@@ -117,7 +117,7 @@ def main() -> None:
     outcomes = (data.outcomes >= 0.5).astype(float)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
     fold_of_row = np.array([fold_by_perturbation[perturbation] for perturbation in data.perturbation_ids])
-    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees)  # as in experiments/compare_twin_runs.py
+    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees_for_strata)  # as in experiments/compare_twin_runs.py
     num_nodes = len(data.node_ids)
     profile_nodes = (np.asarray(data.node_types) != "gene") & ~np.asarray(data.is_currency, dtype=bool)
 

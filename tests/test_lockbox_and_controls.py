@@ -298,7 +298,9 @@ def test_type_popularity_fits_each_perturbation_type_on_its_own_and_falls_back_w
 
     from run_baselines import fit_and_predict
 
-    data = SimpleNamespace(perturbation_types=["drug", "drug", "gene", "gene", "drug", "gene"], perturbation_degrees=np.array([1.0, 1.0, 1.0, 1.0, np.e - 1, 1.0]))
+    degrees = np.array([1.0, 1.0, 1.0, 1.0, np.e - 1, 1.0])
+    data = SimpleNamespace(perturbation_types=["drug", "drug", "gene", "gene", "drug", "gene"], perturbation_degrees=degrees,
+                           perturbation_degrees_for_strata=degrees)  # the baselines read the strata degree, which a merged graph leaves at the seed degree
     outcomes = np.array([[1, 0], [1, 1], [0, 0], [0, 1], [0, 0], [0, 0]], dtype=float)
     train = np.array([True, True, True, True, False, False])
     test = ~train

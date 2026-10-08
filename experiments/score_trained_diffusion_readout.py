@@ -86,7 +86,7 @@ def main() -> None:
     outcomes = (data.outcomes >= 0.5).astype(float)
     fold_by_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, arguments.num_folds, arguments.seed)
     fold_of_row = np.array([fold_by_perturbation[perturbation] for perturbation in data.perturbation_ids])
-    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees)
+    strata = fold_of_row * 1000 + degree_strata(data.perturbation_degrees_for_strata)
     profile_nodes = (np.asarray(data.node_types) != "gene") & ~np.asarray(data.is_currency, dtype=bool)
 
     walk_predictions = np.load(arguments.baseline_dir / "predictions_grouped_random_walk_with_restart.npy")

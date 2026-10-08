@@ -57,7 +57,7 @@ def pseudo_lockbox_draws(data, strata: np.ndarray, num_draws: int, drugs_per_dra
     kinds = np.asarray(data.perturbation_types)
     outcomes = (data.outcomes > 0.5).astype(float)
     mask = np.asarray(data.label_mask, dtype=bool) if data.label_mask is not None else np.ones_like(outcomes, dtype=bool)
-    degrees = data.perturbation_degrees
+    degrees = data.perturbation_degrees_for_strata
     micro_columns = [column for column in range(outcomes.shape[1]) if (outcomes[:, column] * mask[:, column]).sum() >= MINIMUM_POSITIVES_TO_SCORE]
     drugs, genes = np.flatnonzero(kinds == "drug"), np.flatnonzero(kinds == "gene")
     generator = np.random.default_rng(seed)
@@ -121,7 +121,7 @@ def main() -> None:
     arguments = parser.parse_args()
 
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by=arguments.group_by, label_selection=arguments.label_selection)
-    strata_of_all = degree_strata(data.perturbation_degrees)
+    strata_of_all = degree_strata(data.perturbation_degrees_for_strata)
     in_lockbox = read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir)
     data = restrict_to_perturbations(data, ~in_lockbox)
     strata = strata_of_all[~in_lockbox]
