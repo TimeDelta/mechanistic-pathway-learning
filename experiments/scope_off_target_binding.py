@@ -111,6 +111,33 @@ def measurement_coverage(per_drug: list[dict]) -> dict:
             "drugs_with_pdsp_rows": sum("DrugCentral:PDSP" in entry["measurement_sources"] for entry in per_drug)}
 
 
+def measurement_coverage_table(per_drug: list[dict], data, thresholds: tuple[float, ...]) -> pd.DataFrame:
+    """One row per perturbation saying how well its drug was measured, for stratified scoring.
+
+    A drug that has been screened against a whole panel shows more off-targets than one measured at its mechanism
+    target alone, whatever its pharmacology, so any reading that uses measured off-targets has to be reported inside
+    strata of how much measurement the drug has. A gene perturbation has no drug measurement and is its own stratum; a
+    drug with no row in either source is "unmeasured".
+    """
+    by_position = {entry["position"]: entry for entry in per_drug}
+    rows = []
+    for position, (perturbation_id, kind, label) in enumerate(zip(data.perturbation_ids, data.perturbation_types, data.perturbation_labels)):
+        entry = by_position.get(position)
+        row = {"perturbation_id": perturbation_id, "perturbation_type": kind, "label": label,
+               "genes_with_an_affinity": -1 if entry is None else entry["genes_with_affinity"],
+               "genes_without_an_affinity": -1 if entry is None else entry["genes_without_affinity"],
+               "primary_p_affinity": None if entry is None else entry["primary_p_affinity"],
+               "measurement_sources": "" if entry is None else "|".join(sorted(entry["measurement_sources"])),
+               "has_drug_matrix_rows": False if entry is None else "DrugCentral:DRUG MATRIX" in entry["measurement_sources"],
+               "has_pdsp_rows": False if entry is None else "DrugCentral:PDSP" in entry["measurement_sources"]}
+        for threshold in thresholds:
+            kept = None if entry is None else entry["off_targets"][entry["off_targets"].occupancy >= threshold]
+            row[f"off_targets_at_{threshold}"] = -1 if kept is None else int(len(kept))
+            row[f"off_targets_in_the_graph_at_{threshold}"] = -1 if kept is None else int(kept.graph_node.notna().sum())
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def largest_group(groups: list[str], kept_positive: np.ndarray, perturbation_types: list[str]) -> dict:
     """The largest leakage group by perturbations (as in docs/drug_targets_any_type.md) and the group holding the most
     kept positive pairs, with the share each takes."""
@@ -182,6 +209,8 @@ def main() -> None:
     parser.add_argument("--evidence-dir", type=Path, default=Path("data/processed/evidence_full_v3_max3_targets"))
     parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v2_full_v3_max3_targets.parquet"))
     parser.add_argument("--output", type=Path, default=Path("data/processed/off_target_scoping/summary.json"))
+    parser.add_argument("--coverage-table", type=Path, default=Path("data/processed/off_target_scoping/measurement_coverage.parquet"),
+                        help="per-perturbation measurement coverage, read by the stratified scoring")
     arguments = parser.parse_args()
 
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, group_by="disease_cluster", label_selection=arguments.label_selection)
@@ -278,6 +307,12 @@ def main() -> None:
                                                    "sign": None if pd.isna(row.sign) else int(row.sign), "actions": row.actions} for gene, row in top.iterrows()]}
     summary["examples"] = examples
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
+    coverage = measurement_coverage_table(per_drug, data, OCCUPANCY_THRESHOLDS)
+    arguments.coverage_table.parent.mkdir(parents=True, exist_ok=True)
+    coverage.to_parquet(arguments.coverage_table, index=False)
+    summary["coverage_table"] = {"path": str(arguments.coverage_table), "rows": int(len(coverage)),
+                                 "drug_rows": int((coverage.perturbation_type == "drug").sum()),
+                                 "drug_rows_unmeasured": int(((coverage.perturbation_type == "drug") & (coverage.genes_with_an_affinity < 0)).sum())}
     arguments.output.write_text(json.dumps(summary, indent=2, default=lambda value: None if value is None or (isinstance(value, float) and np.isnan(value)) else str(value)))
     print(json.dumps({key: value for key, value in summary.items() if key != "examples"}, indent=2, default=str))
     print(json.dumps(examples, indent=1, default=str)[:4000])

@@ -122,6 +122,28 @@ def expected_calibration_error(predictions: np.ndarray, outcomes: np.ndarray, nu
     return float(error)
 
 
+def macro_auprc_by_stratum(predictions: np.ndarray, outcomes: np.ndarray, stratum_of_row: list[str], minimum_positives: int = 5,
+                           mask: np.ndarray | None = None) -> dict[str, float]:
+    """Macro AUPRC over symptoms inside each stratum of the rows, keyed by the stratum label.
+
+    A symptom is scored inside a stratum when it has at least minimum_positives positives and one negative there, so a
+    stratum where no symptom qualifies reads NaN rather than being dropped silently.
+    """
+    stratum_of_row = list(stratum_of_row)
+    result: dict[str, float] = {}
+    for label in dict.fromkeys(stratum_of_row):  # first-seen order, so the caller controls the order of the strata
+        rows = np.array([index for index, value in enumerate(stratum_of_row) if value == label], dtype=int)
+        values = []
+        for symptom_index in range(outcomes.shape[1]):
+            labelled = rows[scored_rows(len(outcomes), symptom_index, mask)[rows]]
+            positives = outcomes[labelled, symptom_index].sum()
+            if positives < minimum_positives or positives == len(labelled):
+                continue
+            values.append(float(average_precision_score(outcomes[labelled, symptom_index], predictions[labelled, symptom_index])))
+        result[label] = float(np.mean(values)) if values else float("nan")
+    return result
+
+
 def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, perturbation_degrees: np.ndarray, num_bins: int = 3, minimum_positives: int = 5,
                               mask: np.ndarray | None = None) -> dict[str, float]:
     """Macro AUPRC over symptoms inside each degree bin of the perturbations (design section 6.2, assumption A9).
@@ -132,20 +154,15 @@ def macro_auprc_by_degree_bin(predictions: np.ndarray, outcomes: np.ndarray, per
     order = np.argsort(perturbation_degrees, kind="stable")  # equal-count bins; ties broken by position so no bin is empty
     bin_of_row = np.empty(len(perturbation_degrees), dtype=int)
     bin_of_row[order] = np.minimum(np.arange(len(perturbation_degrees)) * num_bins // max(1, len(perturbation_degrees)), num_bins - 1)
-    result: dict[str, float] = {}
+    labels = []
     for bin_index in range(num_bins):
         rows = np.where(bin_of_row == bin_index)[0]
-        edges = [perturbation_degrees[rows].min() if len(rows) else float("nan"), perturbation_degrees[rows].max() if len(rows) else float("nan")]
-        values = []
-        for symptom_index in range(outcomes.shape[1]):
-            labelled = rows[scored_rows(len(outcomes), symptom_index, mask)[rows]]
-            positives = outcomes[labelled, symptom_index].sum()
-            if positives < minimum_positives or positives == len(labelled):
-                continue
-            values.append(float(average_precision_score(outcomes[labelled, symptom_index], predictions[labelled, symptom_index])))
-        label = f"degree_bin_{bin_index}_[{edges[0]:.0f},{edges[1]:.0f}]_n{len(rows)}"
-        result[label] = float(np.mean(values)) if values else float("nan")
-    return result
+        lower = perturbation_degrees[rows].min() if len(rows) else float("nan")
+        upper = perturbation_degrees[rows].max() if len(rows) else float("nan")
+        labels.append(f"degree_bin_{bin_index}_[{lower:.0f},{upper:.0f}]_n{len(rows)}")
+    stratum_of_row = [labels[bin_index] for bin_index in bin_of_row]
+    scored = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, minimum_positives=minimum_positives, mask=mask)
+    return {label: scored.get(label, float("nan")) for label in labels}  # an empty bin keeps its place in the result
 
 
 def micro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> float:

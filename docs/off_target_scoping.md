@@ -90,8 +90,47 @@ maximum 68. Only 44 drugs have rows from DrugMatrix (a fixed panel run on every 
 A drug studied more has more measured off-targets, so off-target count partly measures research attention. Equal
 loss shares per drug (`--equal-drug-shares`) stop a drug with many labels from taking a larger share of the gradient,
 and input normalisation (`--normalise-drug-input`) stops a drug with many seeds from carrying a larger input. Neither
-fills in the binding that was never measured. An evaluation stratified by measurement coverage (panel-measured drugs
-against the rest) would show whether this matters.
+fills in the binding that was never measured. The evaluation stratified by measurement coverage, which the user asked
+for, is built: see **Stratified evaluation by measurement coverage** below.
+
+## Stratified evaluation by measurement coverage
+
+The overstudied-drug reading, approved by the user on 8 October 2026. The point is not to correct for measurement
+coverage but to report the metric inside strata of it: if a model's advantage over the baselines sits only among the
+drugs that were screened against a panel, the advantage is a reading of how well the drug was studied.
+
+`experiments/scope_off_target_binding.py --coverage-table` writes one row per perturbation
+(`data/processed/off_target_scoping/measurement_coverage.parquet`): the drug's measured human genes with and without an
+affinity, its primary affinity, which sources it came from, whether it carries DrugMatrix or PDSP rows, and its
+off-target count at each occupancy threshold.
+`mechanistic_pathway_learning/evaluation/measurement_coverage_strata.py` turns that into one stratum per scored row,
+and `macro_auprc_by_stratum` in the metrics module reads macro AUPRC inside each. Both
+`experiments/run_baselines.py` and `experiments/aggregate_main_model_runs.py` take `--measurement-coverage PATH` and
+then carry `macro_auprc_by_measurement_coverage` in their results and a table in their markdown. Without the flag
+nothing changes, and `experiments/score_confirmatory.py` is untouched: this is a development reading, not part of the
+registered confirmatory decision.
+
+Strata on `evidence_full_v3_max3_targets` with the better-label selection (1,619 perturbations, kept positives of the
+label selection):
+
+| stratum | perturbations | kept positive pairs | symptoms with at least 5 positives |
+|---|---|---|---|
+| `gene_perturbation` | 1,397 | 1,793 | 16 |
+| `drug_without_binding_measurements` | 6 | 16 | 0 |
+| `measured_genes_bin_0_[0,3]` | 72 | 273 | 14 |
+| `measured_genes_bin_1_[4,11]` | 72 | 374 | 17 |
+| `measured_genes_bin_2_[11,68]` | 72 | 417 | 16 |
+
+Three readings of the drug terciles are available, so the comparison is not starved of labels. Points to keep in mind:
+
+- A gene perturbation has no drug measurement and a drug with no row in either source has none either, so both are
+  their own strata rather than being pooled with the measured drugs.
+- The terciles are equal-count, ties broken by position, so a count that straddles a boundary (11 here) appears in two
+  bins. The bin label carries its range and size, so this is visible in every table.
+- Kept positives rise with coverage (273, 374, 417). That is the confounding this reading is for: the better-measured
+  drugs also carry more labels, so a model and a popularity baseline both have more to work with there.
+- The strata are drawn from the whole evidence table, not per fold, so the same drug is in the same stratum in every
+  fold and the reading is comparable across runs.
 
 ## Leakage groups
 
@@ -196,6 +235,9 @@ What a build would need:
 5. Input normalisation once off-targets enter: mechanism part only, or none.
 6. Open Targets target-level labels: build them with the requirements above, or not.
 7. Albumin-metabolite binding edges in the graph, or not.
+
+Decided since this document was written: the stratified evaluation by measurement coverage is built (section above),
+and the human-evidence review of the rodent-only curation rows is in docs/rodent_readout_human_evidence.md.
 
 ## References
 

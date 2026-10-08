@@ -26,6 +26,7 @@ from pathlib import Path
 import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
+from mechanistic_pathway_learning.evaluation.measurement_coverage_strata import measurement_coverage_strata, read_measurement_coverage
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
@@ -33,6 +34,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     expected_calibration_error,
     hits_at_k,
     macro_auprc_by_degree_bin,
+    macro_auprc_by_stratum,
     mean_reciprocal_rank,
     micro_auprc,
     paired_bootstrap_macro_difference,
@@ -59,6 +61,16 @@ def file_sha256(path: Path | None) -> str | None:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def coverage_strata_metric(predictions: np.ndarray, outcomes: np.ndarray, data, scored: np.ndarray, coverage, mask: np.ndarray | None) -> dict[str, float]:
+    """Macro AUPRC inside strata of how much binding measurement each drug has, or an empty result without the table."""
+    if coverage is None:
+        return {}
+    scored_ids = [perturbation_id for perturbation_id, keep in zip(data.perturbation_ids, scored) if keep]
+    stratum_of_row, labels = measurement_coverage_strata(scored_ids, coverage)
+    scores = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, mask=mask)
+    return {label: scores.get(label, float("nan")) for label in labels}
+
+
 def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray | None = None) -> tuple[float, float]:
     auprcs, aurocs = [], []
     for symptom_index in range(outcomes.shape[1]):
@@ -69,7 +81,7 @@ def macro_scores(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray
     return (float(np.mean(auprcs)) if auprcs else float("nan"), float(np.mean(aurocs)) if aurocs else float("nan"))
 
 
-def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None = None) -> dict | None:
+def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None = None, coverage=None) -> dict | None:
     split_directories = sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists() and (path / "results.json").exists())
     split_directories = [path for path in split_directories if json.loads((path / "results.json").read_text()).get("time_split") is None]
     if not split_directories:
@@ -138,6 +150,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes, mask), "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
         "expected_calibration_error": expected_calibration_error(predictions, outcomes, mask=mask),
         "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees_for_strata[scored], mask=mask),
+        "macro_auprc_by_measurement_coverage": coverage_strata_metric(predictions, outcomes, data, scored, coverage, mask),
         "label_selection_sha256": label_selection_sha256,
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
@@ -151,7 +164,7 @@ def aggregation_source_digest() -> str:
     return source_digest(*AGGREGATION_SOURCES)
 
 
-def run_entry_key(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None) -> dict:
+def run_entry_key(run_directory: Path, data, num_bootstrap: int, label_selection_sha256: str | None, coverage_digest: str | None = None) -> dict:
     """Every input of aggregate_run_directory: each finished split's results and test predictions, the labels and the code."""
     digest = hashlib.sha256()
     for split_directory in sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists() and (path / "results.json").exists()):
@@ -160,6 +173,7 @@ def run_entry_key(run_directory: Path, data, num_bootstrap: int, label_selection
         if (split_directory / "test_predictions.npy").exists():
             digest.update((split_directory / "test_predictions.npy").read_bytes())
     return {"what": "run entry", "splits": digest.hexdigest(), "num_bootstrap": num_bootstrap, "label_selection_sha256": label_selection_sha256,
+            "measurement_coverage": coverage_digest,
             "labels": array_digest(data.outcomes, data.label_mask), "perturbations": hashlib.sha256(json.dumps(data.perturbation_ids).encode()).hexdigest(),
             "source": aggregation_source_digest()}
 
@@ -299,6 +313,9 @@ def main() -> None:
                         help="the label selection the runs were trained on (experiments/build_label_selection.py); its set-aside pairs are left out of every metric")
     parser.add_argument("--lockbox", type=Path, default=None,
                         help="the lockbox removed before the runs' folds were drawn; pass the baseline results of run_baselines.py --lockbox with it")
+    parser.add_argument("--measurement-coverage", type=Path, default=None,
+                        help="coverage table of experiments/scope_off_target_binding.py --coverage-table; adds macro AUPRC inside strata of how "
+                             "much binding measurement each drug has, the reading that says whether a result rides on the overstudied drugs")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--cache-dir", type=Path, default=Path("runs/aggregate_cache"),
                         help="store of per-run entries and paired bootstraps under a key of all their inputs, so a run killed by a reclaimed container resumes; "
@@ -312,14 +329,16 @@ def main() -> None:
     if arguments.lockbox is not None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     label_selection_sha256 = file_sha256(arguments.label_selection)
+    coverage = None if arguments.measurement_coverage is None else read_measurement_coverage(arguments.measurement_coverage)
+    coverage_digest = file_sha256(arguments.measurement_coverage)
     aggregated = {}
     cache_directory = None if arguments.no_cache else arguments.cache_dir
     for run_directory, name in run_names(arguments.run_dirs).items():
-        compute_entry = partial(aggregate_run_directory, run_directory, data, arguments.num_bootstrap, label_selection_sha256)
+        compute_entry = partial(aggregate_run_directory, run_directory, data, arguments.num_bootstrap, label_selection_sha256, coverage)
         if cache_directory is None:
             entry = compute_entry()
         else:
-            entry = cached_result(cache_directory, run_entry_key(run_directory, data, arguments.num_bootstrap, label_selection_sha256), compute_entry)
+            entry = cached_result(cache_directory, run_entry_key(run_directory, data, arguments.num_bootstrap, label_selection_sha256, coverage_digest), compute_entry)
             if entry is not None and not ((run_directory / "pooled_predictions.npy").exists() and (run_directory / "pooled_scored_rows.npy").exists()):
                 entry = compute_entry()  # the pooled files are written by the computation, so a stored entry without them is recomputed
         if entry is None:
@@ -362,6 +381,15 @@ def main() -> None:
         for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
             bins = entry.get("macro_auprc_by_degree_bin", {})
             lines.append(f"| {name} | " + " | ".join(f"{bins[b]:.3f}" if b in bins else "n/a" for b in degree_bins) + " |")
+        coverage_strata = list(next(iter(aggregated.values())).get("macro_auprc_by_measurement_coverage", {}))
+        if coverage_strata:
+            lines += ["", f"Macro AUPRC inside strata of binding measurement coverage ({arguments.measurement_coverage}). Drugs are cut into terciles by how "
+                      "many human genes carry a measured affinity for them; gene perturbations and drugs with no measurement are their own strata. An "
+                      "advantage that sits only in the most measured stratum is a reading of how well the drug was studied:", "",
+                      "| model | " + " | ".join(coverage_strata) + " |", "|---|" + "---|" * len(coverage_strata)]
+            for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
+                strata = entry.get("macro_auprc_by_measurement_coverage", {})
+                lines.append(f"| {name} | " + " | ".join(f"{strata[stratum]:.3f}" if stratum in strata else "n/a" for stratum in coverage_strata) + " |")
     if comparisons:
         lines += ["", "## Paired bootstrap comparisons (design section 7)", "", "Difference in pooled macro AUPRC and macro AUROC between two models on the rows both scored; 95 percent percentile interval of the paired bootstrap over perturbations. The pre-registered primary endpoint asks for a difference of at least 0.05 with an interval excluding zero.", "",
                   "| A | B | rows | macro AUPRC A - B [95% CI] | resamples favoring A | micro AUPRC A - B [95% CI] | macro AUROC A - B [95% CI] |", "|---|---|---|---|---|---|---|"]

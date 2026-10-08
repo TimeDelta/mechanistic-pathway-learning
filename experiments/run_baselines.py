@@ -60,6 +60,7 @@ from pathlib import Path
 import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
+from mechanistic_pathway_learning.evaluation.measurement_coverage_strata import measurement_coverage_strata, read_measurement_coverage
 from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, rewire_walk_graph
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
@@ -75,6 +76,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     bootstrap_interval,
     hits_at_k,
     macro_auprc_by_degree_bin,
+    macro_auprc_by_stratum,
     mean_reciprocal_rank,
     micro_auprc,
     per_symptom_auprc,
@@ -204,8 +206,9 @@ def run_split(data, outcomes: np.ndarray, test_masks: list[np.ndarray], model_na
 
 
 def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray, per_fold: list[dict], num_bootstrap: int, fold_of_row: np.ndarray | None = None,
-          label_mask: np.ndarray | None = None) -> dict:
+          label_mask: np.ndarray | None = None, coverage=None) -> dict:
     degrees = data.perturbation_degrees_for_strata[rows]
+    scored_perturbation_ids = [perturbation_id for perturbation_id, keep in zip(data.perturbation_ids, rows) if keep] if coverage is not None else []
     fold_of_scored_row = fold_of_row[rows] if fold_of_row is not None else None
     predictions, outcomes = predictions[rows], outcomes[rows]
     mask = None if label_mask is None else label_mask[rows]
@@ -248,7 +251,17 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
         "mean_reciprocal_rank": mean_reciprocal_rank(predictions, outcomes, mask),
         "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
         "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, degrees, mask=mask),
+        "macro_auprc_by_measurement_coverage": macro_auprc_by_measurement_coverage(predictions, outcomes, scored_perturbation_ids, coverage, mask),
     }
+
+
+def macro_auprc_by_measurement_coverage(predictions: np.ndarray, outcomes: np.ndarray, scored_perturbation_ids: list[str], coverage, mask) -> dict[str, float]:
+    """Macro AUPRC inside strata of how much binding measurement each drug has, or an empty result without the table."""
+    if coverage is None:
+        return {}
+    stratum_of_row, labels = measurement_coverage_strata(scored_perturbation_ids, coverage)
+    scores = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, mask=mask)
+    return {label: scores.get(label, float("nan")) for label in labels}
 
 
 def kept_positives(data) -> np.ndarray:
@@ -363,6 +376,9 @@ def main() -> None:
     parser.add_argument("--curated-modules", type=Path, default=Path("docs/curated_pathway_modules.csv"))
     parser.add_argument("--num-folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0, help="seeds the fold assignment, the label permutation, the graph rewiring and the TransE initialisation and negative sampling")
+    parser.add_argument("--measurement-coverage", type=Path, default=None,
+                        help="coverage table of experiments/scope_off_target_binding.py --coverage-table; adds macro AUPRC inside strata of how "
+                             "much binding measurement each drug has, the reading that says whether a result rides on the overstudied drugs")
     parser.add_argument("--num-bootstrap", type=int, default=200)
     parser.add_argument("--restart-probability", type=float, default=0.3)
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
@@ -400,6 +416,7 @@ def main() -> None:
                                 label_selection=arguments.label_selection)
     if data.label_selection_summary is not None:
         print(f"label selection: {data.label_selection_summary}")
+    coverage = None if arguments.measurement_coverage is None else read_measurement_coverage(arguments.measurement_coverage)
     if arguments.score_lockbox and arguments.lockbox is None:
         raise SystemExit("--score-lockbox needs --lockbox")
     in_lockbox, lockbox_summary = None, None
@@ -463,7 +480,7 @@ def main() -> None:
         rewired_adjacency = build_normalized_adjacency(len(data.node_ids), rewired[0], rewired[1], np.where(data.is_currency)[0])
         predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, grouped_masks, "random_walk_with_restart", arguments.restart_probability, rewired_adjacency, arguments.min_fold_size_for_macro,
                                                              grouped_labels, label_mask=label_mask, cache_directory=fold_cache)
-        results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
+        results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask, coverage)
         np.save(arguments.output_dir / f"predictions_{primary_split}_rewired_graph_random_walk_with_restart.npy", predictions)
         entry = results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"]
         print(f"{primary_split + '_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
@@ -478,14 +495,14 @@ def main() -> None:
             partner_groups = None if split_name == primary_split else data.group_ids  # pathway-wise hold-outs are chosen by seed gene
             predictions, rows, per_fold, fold_of_row = run_split(data, data.outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
                                                                  label_mask=label_mask, random_seed=arguments.seed, group_ids=partner_groups, cache_directory=fold_cache)
-            results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask)
+            results["splits"][split_name][model_name] = score(data, predictions, data.outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, label_mask, coverage)
             arguments.output_dir.mkdir(parents=True, exist_ok=True)
             np.save(arguments.output_dir / f"predictions_{split_name}_{model_name}.npy", predictions)  # pooled out-of-split predictions for paired comparisons
             np.save(arguments.output_dir / f"scored_rows_{split_name}.npy", rows)
             if not arguments.skip_permutation_control:
                 predictions, rows, per_fold, fold_of_row = run_split(data, permuted_outcomes, masks, model_name, arguments.restart_probability, normalized_adjacency, arguments.min_fold_size_for_macro, labels,
                                                                      label_mask=permuted_label_mask, random_seed=arguments.seed, group_ids=partner_groups, cache_directory=fold_cache)
-                results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask)
+                results["splits"][f"{split_name}_label_permutation"][model_name] = score(data, predictions, permuted_outcomes, rows, per_fold, arguments.num_bootstrap, fold_of_row, permuted_label_mask, coverage)
                 np.save(arguments.output_dir / f"predictions_{split_name}_label_permutation_{model_name}.npy", predictions)
         for split_name, entries in results["splits"].items():
             if model_name in entries:
@@ -527,6 +544,15 @@ def main() -> None:
     for name, entry in results["splits"][primary_split].items():
         lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_degree_bin'][b]:.3f}" for b in degree_bins) + " |")
     lines.append("")
+    coverage_strata = list(next(iter(results["splits"][primary_split].values()))["macro_auprc_by_measurement_coverage"])
+    if coverage_strata:
+        lines += [f"Macro AUPRC inside strata of binding measurement coverage ({arguments.measurement_coverage}); a stratum where no symptom reaches "
+                  f"{MINIMUM_POSITIVES_TO_SCORE} positives reads nan. A model whose advantage sits only in the most measured stratum is reading how well "
+                  "the drug was studied:", "",
+                  "| model | " + " | ".join(coverage_strata) + " |", "|---|" + "---|" * len(coverage_strata)]
+        for name, entry in results["splits"][primary_split].items():
+            lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_measurement_coverage'][stratum]:.3f}" for stratum in coverage_strata) + " |")
+        lines.append("")
     if results["splits"]["pathway_wise"]:
         lines += holdout_section("Pathway-wise split, curated modules (each module of design section 3.2 held out in turn)",
                                  "Per-symptom AUPRC inside one held-out module is not meaningful (sets of 4 to 8 genes with homogeneous symptom profiles), so only pooled per-symptom metrics and per-hold-out ranking metrics are shown.",
