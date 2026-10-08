@@ -11,7 +11,10 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
    baselines (runs/full/baselines_v2_development, docs/phase2_baselines_full_v2_development.md). When it ends, check that
    each pilot trained: the training loss falls, no NaN, an early-stopping epoch. A low development score is not a failure
    to train. Report each pilot's development macro and micro AUPRC against the development baselines and commit the
-   baseline document.
+   baseline document. Compare on fold 0 (the per-fold rows of the baseline document): that fold holds the leakage group
+   of 232 perturbations and is atypical (amendment of 8 October on the early-stopping validation set). The confirmatory
+   configurations carry --keep-large-groups-in-training; on fold 0 it leaves the split unchanged, so pilots that ran
+   before it was added stand.
 2. encoder_descriptors_brain (slice, registered 8 October 2026): b3_linear_response_cofactors_descriptors_brain and
    b3_typed_nodes_descriptors_brain, five folds each. When it ends, run
 

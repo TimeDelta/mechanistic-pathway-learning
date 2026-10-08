@@ -23,6 +23,9 @@ NOISY_OR_SETTINGS = ["--init-leak-from-base-rate", "--module-bias-init", "-3", "
                      "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05"]
 MESSAGE_PASSING_ENCODER = ["--node-features", "typed"]
 LINEAR_RESPONSE_ENCODER = ["--encoder", "linear_response", "--cofactor-relations", "--cell-class-weights", FULL_GRAPH_CELL_CLASS_WEIGHTS, "--extracellular-coupling"]
+# the confirmatory split (docs/preregistration.md, amendment of 8 October 2026 on the early-stopping validation set): the
+# leakage group of 232 development perturbations stays in training instead of becoming the whole validation set
+CONFIRMATORY_VALIDATION = ["--keep-large-groups-in-training"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
@@ -164,20 +167,20 @@ CONFIGURATIONS: dict[str, list[str]] = {
     # propagates once per cell class (the HPA classes, the dopaminergic class and all cells) with the extracellular
     # metabolites shared between classes. Run with --group-by disease_cluster_and_targets --lockbox configs/lockbox_v1.json.
     "confirmatory_message_passing_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
-                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS],
+                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION],
     "confirmatory_message_passing_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
-                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *CONFIRMATORY_VALIDATION],
     "confirmatory_linear_response_noisy_or": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
-                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS],
+                                              *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION],
     "confirmatory_linear_response_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
-                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES],
+                                             *FULL_GRAPH_ARGUMENTS, "--node-descriptors", FULL_GRAPH_NODE_PROPERTIES, *CONFIRMATORY_VALIDATION],
     # the ablation branch without node descriptors (user, 8 October 2026): each confirmatory configuration less --node-descriptors
     "confirmatory_message_passing_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER,
-                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS],
-    "confirmatory_message_passing_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER, *FULL_GRAPH_ARGUMENTS],
+                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION],
+    "confirmatory_message_passing_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *MESSAGE_PASSING_ENCODER, *FULL_GRAPH_ARGUMENTS, *CONFIRMATORY_VALIDATION],
     "confirmatory_linear_response_noisy_or_without_descriptors": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER,
-                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS],
-    "confirmatory_linear_response_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER, *FULL_GRAPH_ARGUMENTS],
+                                                                  *FULL_GRAPH_ARGUMENTS, *NOISY_OR_SETTINGS, *CONFIRMATORY_VALIDATION],
+    "confirmatory_linear_response_sigmoid_without_descriptors": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", *LINEAR_RESPONSE_ENCODER, *FULL_GRAPH_ARGUMENTS, *CONFIRMATORY_VALIDATION],
     "b3_typed_nodes_degree": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--degree-offset"],
     "b6_mechanistic_degree": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--node-features", "typed", "--init-leak-from-base-rate", "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--degree-offset"],
     "b3_degree_only": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--encoder", "none", "--degree-offset"],

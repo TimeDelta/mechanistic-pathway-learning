@@ -8,8 +8,9 @@ folds, seeds and module hold-outs run as array jobs.
 Splits: --fold k of the grouped perturbation-wise split (leakage groups by --group-by), or
 --holdout-module <module_id> for the pathway-wise split (every perturbation writing onto a gene of
 that curated module is test data). A grouped validation subset of the training perturbations
-(--validation-fraction) drives early stopping on macro AUPRC; the best validation state is restored
-before the test evaluation.
+(--validation-fraction) drives early stopping (--selection-metric, the validation loss by default); the best
+validation state is restored before the test evaluation. With --keep-large-groups-in-training a leakage group larger
+than half the expected validation set never forms that subset (early_stopping_validation).
 
 Encoding: --field difference (default) reads forward(perturbed) - forward(unperturbed), so the head
 sees only what the perturbation changed; --field absolute reads the raw field (base node states
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+from collections import Counter
 import hashlib
 import json
 import signal
@@ -327,6 +329,34 @@ def macro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray 
     return float(np.mean(values)) if values else float("nan")
 
 
+def early_stopping_validation(data, pool: np.ndarray, arguments) -> tuple[np.ndarray, np.ndarray]:
+    """Split a training pool into (training, validation): fold 0 of a grouped split of the pool into
+    round(1 / --validation-fraction) folds, so no leakage group is on both sides.
+
+    assign_grouped_folds places the largest group first, in fold 0, so without --keep-large-groups-in-training a group
+    larger than the expected validation set becomes the whole of it. On the full development data with the lockbox
+    removed that is one group of 232 of 1,222 perturbations holding 27 percent of the positives and 63 drugs, which a
+    lockbox run (whose pool is every development perturbation) would never train on, for every seed. With the flag,
+    groups larger than half the expected validation set (--validation-fraction x pool size / 2) stay in training and the
+    folds are drawn over the remaining groups; when no group is that large the split is the one without the flag."""
+    num_validation_folds = max(2, int(round(1.0 / arguments.validation_fraction)))
+    eligible = pool
+    if getattr(arguments, "keep_large_groups_in_training", False):
+        group_size_limit = arguments.validation_fraction * len(pool) / 2
+        group_sizes = Counter(data.group_ids[i] for i in pool)
+        eligible = np.array([i for i in pool if group_sizes[data.group_ids[i]] <= group_size_limit], dtype=int)
+        kept = {group: size for group, size in group_sizes.items() if size > group_size_limit}
+        if kept:
+            print(f"early-stopping validation: {len(kept)} leakage group(s) larger than {group_size_limit:.0f} perturbations kept in training "
+                  f"({sum(kept.values())} perturbations, largest {max(kept.values())})")
+        if len(eligible) == 0:
+            raise ValueError("every leakage group is larger than half the expected validation set; lower --validation-fraction or drop --keep-large-groups-in-training")
+    validation_fold = assign_grouped_folds([data.perturbation_ids[i] for i in eligible], [data.group_ids[i] for i in eligible], num_validation_folds, arguments.seed + 1000)
+    validation = np.array([i for i in eligible if validation_fold[data.perturbation_ids[i]] == 0], dtype=int)
+    in_validation = set(validation.tolist())
+    return np.array([i for i in pool if i not in in_validation], dtype=int), validation
+
+
 def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
     """Return (train, validation, test) index arrays and a name for the split directory. With in_lockbox (--score-lockbox)
     the test set is the lockbox and training and validation come from the development perturbations."""
@@ -337,10 +367,7 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
         train_pool = all_indices
         validation = np.array([], dtype=int)
         if arguments.validation_fraction > 0:
-            num_validation_folds = max(2, int(round(1.0 / arguments.validation_fraction)))
-            validation_fold = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_validation_folds, arguments.seed + 1000)
-            validation = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] == 0])
-            train_pool = np.array([i for i in all_indices if validation_fold[data.perturbation_ids[i]] != 0])
+            train_pool, validation = early_stopping_validation(data, all_indices, arguments)
         return train_pool, validation, all_indices[test_mask], split_name
     if in_lockbox is not None:
         test_mask = np.asarray(in_lockbox, dtype=bool)
@@ -367,10 +394,7 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
     train_pool = all_indices[~test_mask]
     validation = np.array([], dtype=int)
     if arguments.validation_fraction > 0 and len(train_pool) >= 20:
-        num_validation_folds = max(2, int(round(1.0 / arguments.validation_fraction)))
-        validation_fold = assign_grouped_folds([data.perturbation_ids[i] for i in train_pool], [data.group_ids[i] for i in train_pool], num_validation_folds, arguments.seed + 1000)
-        validation = np.array([i for i in train_pool if validation_fold[data.perturbation_ids[i]] == 0])
-        train_pool = np.array([i for i in train_pool if validation_fold[data.perturbation_ids[i]] != 0])
+        train_pool, validation = early_stopping_validation(data, train_pool, arguments)
     return train_pool, validation, all_indices[test_mask], split_name
 
 
@@ -435,6 +459,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
+    parser.add_argument("--keep-large-groups-in-training", action="store_true",
+                        help="leakage groups larger than half the expected validation set stay in training and never form the early-stopping validation set "
+                             "(without it the largest group goes there first; see early_stopping_validation)")
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--selection-metric", choices=["loss", "auprc"], default="loss",
                         help="early stopping on the validation evidence-weighted BCE (smooth on small validation sets) or on validation macro AUPRC")

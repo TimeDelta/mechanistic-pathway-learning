@@ -332,6 +332,39 @@ branch and graph paring.
   development baselines. After the lockbox has been scored a pared graph can only be an exploratory result, because the
   lockbox is not scored twice.
 
+Amendment, 8 October 2026, before any lockbox run: the early-stopping validation set (a defect found by diagnostics of
+the development pilots; the user allowed a change of the stopping rule the same day, if needed and if differences in
+fold prevalence could be shown not to interfere).
+- Defect. The trainer takes as its early-stopping validation set fold 0 of a grouped split of the training pool into
+  seven folds, and assign_grouped_folds places the largest group first, in fold 0. With the lockbox removed the
+  development data hold one leakage group of 232 of 1,222 perturbations (disease_cluster_and_targets joins 169 genes and
+  63 drugs through shared disease clusters and drug targets). It holds 27 percent of the development positives and 61 to
+  100 percent of the positives of seven symptoms (abnormal dreams, decreased libido, elevated mood or mania, insomnia,
+  psychomotor retardation, somnolence or hypersomnia, suicidality). A lockbox run's training pool is every development
+  perturbation, so for every seed its validation set would have been that group alone and no confirmatory model would
+  have trained on it, while the baselines do. Development folds 1 to 4 do the same. Development fold 0, where the pilots
+  ran, has the group as its test set, so the pilots were not affected; their test fold is atypical for the same reason
+  (rich in drugs and in those seven symptoms), and the development baselines are compared on that fold.
+- Change. The eight configurations of the confirmatory family (the four tested models and the four ablations) add
+  --keep-large-groups-in-training (experiments/run_main_model.py, early_stopping_validation): a group larger than half
+  the expected validation set (0.15 x pool / 2, 92 perturbations in a lockbox run) stays in training and the seven folds
+  are drawn over the other groups. In a lockbox run this gives 1,080 training and 142 validation perturbations, the
+  largest validation group 58 and 15 to 16 percent of the positives in validation (seeds 0 to 4), against 990, 232, 232
+  and 27 percent. On development fold 0 the split is identical (no group in that pool exceeds 73), so the four pilots
+  stand for the amended configurations. Other runs keep the earlier split; on the slice the largest group (27
+  perturbations) is about half of each validation set but holds 14 percent of the positives.
+- The stopping metric stays the validation loss. Validation macro AUPRC was considered and not adopted. (i) Not needed:
+  the message-passing sigmoid pilot, which the loss stopped at epoch 0, scores macro 0.142 and micro 0.233 on its
+  development test at its last state (epoch 8), against 0.131 and 0.257 at the selected state. (ii) Too noisy to choose
+  an epoch: on its 140 validation perturbations the paired 95 percent bootstrap interval of the validation macro AUPRC
+  difference between those two states is [-0.052, +0.047], wider than the range of validation macro AUPRC over all nine
+  epochs (0.036). (iii) Prevalence does interfere. Within a fold every epoch is scored on the same validation
+  perturbations, so a symptom's validation prevalence sets the same chance level for every epoch and cancels from the
+  comparison, and a per-symptom AUPRC depends only on the ranking within the symptom, so learning a base rate does not
+  move it. But prevalence decides which symptoms the validation set can score at all (five positives): 12 on fold 0
+  against 18 on its test set, 10 in common, and 11 or 12 in a lockbox run under the amended split. An AUPRC rule would
+  stop on a symptom set that leaves out about a third of what the test scores; the loss counts every labelled pair.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
