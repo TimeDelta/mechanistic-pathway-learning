@@ -333,3 +333,14 @@ def test_lockbox_v2_moves_whole_groups_in_the_seeded_order() -> None:
     sizes = {"g1": 2, "g2": 1, "g3": 3}
     entering = groups_entering_lockbox(list(sizes), sizes, current_size=5, target_size=7, seed=0)
     assert 5 + sum(sizes[group] for group in entering) >= 7 and 5 + sum(sizes[group] for group in entering[:-1]) < 7
+
+
+def test_realised_floors_are_each_interval_half_width_plus_the_margin() -> None:
+    from score_confirmatory import model_floors
+    readings = {"macro": {"difference": 0.04, "lower_95": 0.01, "upper_95": 0.07}, "micro": {"difference": 0.05, "lower_95": float("nan"), "upper_95": 0.09}}
+    floors = model_floors(readings, "half_width_plus_margin", 0.005, {"macro": 0.032, "micro": 0.043})
+    assert abs(floors["macro"] - 0.035) < 1e-12 and np.isnan(floors["micro"])
+    assert not all(readings[reading]["difference"] >= floors[reading] for reading in ("macro", "micro"))  # an undefined interval meets no floor
+    assert model_floors(readings, "fixed", 0.005, {"macro": 0.032, "micro": 0.043}) == {"macro": 0.032, "micro": 0.043}
+    with pytest.raises(ValueError):
+        model_floors(readings, "other", 0.005, {"macro": 0.032, "micro": 0.043})

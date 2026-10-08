@@ -694,7 +694,19 @@ decisions, after the precision estimate they asked for).
   more and smaller groups (266 groups, 245 of them single, against 237 and 210), was expected to come out between 11
   percent narrower and 10 percent wider than lockbox_v1. A lockbox_v1-shaped hold-out cannot be drawn from the
   development data, so the comparison is a projection.
-- Floors. H1 needs a macro difference of at least 0.032 and a micro difference of at least 0.043 (the user's values):
+- Floors, revised a third time the same day by the user, before any second-family run: each floor is computed in the
+  single scoring from the lockbox itself. For each tested model and for the macro and the micro reading, the floor is
+  the half-width of that difference's 95 percent interval under the deciding (group) bootstrap plus 0.005
+  (experiments/score_confirmatory.py --floor-rule half_width_plus_margin --floor-margin 0.005, the defaults;
+  model_floors). A difference that reaches its floor lies 0.005 above what the lockbox resolves for that comparison.
+  For a symmetric bootstrap distribution this is the condition that the interval's lower end exceeds 0.005, so H1's
+  macro and micro conditions become a test against a margin of 0.005 instead of zero; with a skewed distribution the
+  two differ slightly, and the rule is the half-width form. The floor no longer depends on a projection, and it binds
+  by 0.005 above the significance condition whatever width the lockbox gives. Nothing about the floors is computed
+  before the scoring, so the blinding is unchanged. The projected floors below (0.032 and 0.043) remain the floors of
+  the head choice, where no lockbox interval exists, and the scorer reports them beside the realised floors. Power is
+  as stated below when the realised width equals the projected median.
+- Projected floors. H1 needed a macro difference of at least 0.032 and a micro difference of at least 0.043 (the user's values):
   the median 95 percent half-width of a difference under the group bootstrap, which now decides, plus 0.005. The
   medians are measured under the scorer's statistics (macro symptoms fixed per hold-out, micro over the scored
   symptoms) on the three development pseudo-lockboxes shaped like the lockbox (largest group at most 16; the group

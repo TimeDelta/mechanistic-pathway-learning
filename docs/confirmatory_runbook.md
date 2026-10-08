@@ -7,7 +7,7 @@ job scripts are under runs/full/ (not committed); the check-in prompts point her
 Two families. The first (confirmatory_* configurations, configs/lockbox_v1.json, better_v1 labels) is not tested: its
 development pilots (steps 1 and 1b) are reported as checks that each configuration trains. The second
 (confirmatory_v2_* configurations, configs/lockbox_v2.json, better_v2 labels, rotated stratified validation, group
-bootstrap, floors 0.032 macro and 0.043 micro; the user's decisions of 8 October 2026 and the amendments that record them)
+bootstrap, floors each model's 95 percent half-width plus 0.005, computed in the scoring; the user's decisions of 8 October 2026 and the amendments that record them)
 is the one tested: two models, one head per encoder, chosen on the development set (steps 1c and 1d).
 
 ## Steps
@@ -79,7 +79,7 @@ is the one tested: two models, one head per encoder, chosen on the development s
 4. confirmatory_lockbox: the 30 lockbox runs (two models, seeds 0 to 4, real labels, permuted labels and a symmetric
    rewiring with rewired reaction expression), then the lockbox baselines for seeds 0 to 4
    (runs/full/lockbox_v2_baselines), then experiments/score_confirmatory.py (defaults: lockbox_v2, better_v2, the models
-   of configs/head_choice.json, group bootstrap, floors 0.032 and 0.043), which writes
+   of configs/head_choice.json, group bootstrap, floors each model's half-width plus 0.005), which writes
    runs/confirmatory/SCORED and docs/confirmatory_results.md. When it ends, report docs/confirmatory_results.md as the
    scorer wrote it, commit it and tell the user. If the scorer stops because a run is missing or refused, it writes
    nothing (no output, no SCORED marker) and prints the runs and the reasons; the reasons name no score, so they may be

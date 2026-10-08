@@ -27,9 +27,8 @@ Inference: a paired bootstrap over the lockbox's leakage groups (--bootstrap-uni
 2026: whole groups are drawn with replacement, the same resampled rows for every model, seed, baseline and labelling),
 one-sided p = (1 + #{resampled difference <= 0}) / (B + 1). The bootstrap over single perturbations, which understates
 the variance when perturbations of one group co-vary, is reported beside it as a sensitivity reading. Two hypotheses per model:
-- H1 (prediction): the macro, micro and both within-strata readings exceed zero, the macro difference is at least
-  --minimum-macro-difference and the micro difference at least --minimum-micro-difference. Intersection-union test:
-  p(H1) is the largest of the four p-values.
+- H1 (prediction): the macro, micro and both within-strata readings exceed zero, and the macro and the micro difference
+  each reach their floor. Intersection-union test: p(H1) is the largest of the four p-values.
 - H2 (graph content): H1 and both rewiring readings exceed zero; p(H2) = max(p(H1), the two rewiring p-values).
 The two permutation readings are secondary (the user's decision of 8 October 2026): reported with their intervals and
 p-values, outside both hypotheses.
@@ -39,9 +38,12 @@ run the scorer stops before writing anything, so the run can be resumed; with --
 model is not confirmed. No correction is made across the models, so the chance that at least one of the two models is
 confirmed by luck is above --alpha: at most 2 x alpha = 0.05 whatever the dependence between the two tests (1 - (1 -
 alpha)^2, about 0.049, if they were independent); the output states this beside the results.
-Floors (the user's decision of 8 October 2026): the median 95 percent half-width of a difference under the group
-bootstrap plus 0.005, 0.032 macro and 0.043 micro (the median over three lockbox-like development pseudo-lockboxes;
-docs/preregistration.md).
+Floors (the user's decision of 8 October 2026, --floor-rule half_width_plus_margin): computed in the scoring itself, for
+each model and for the macro and the micro reading, as the half-width of that difference's 95 percent interval under the
+deciding bootstrap plus --floor-margin (0.005). A difference reaching its floor then lies 0.005 above what the lockbox
+resolves for that comparison. --floor-rule fixed uses --minimum-macro-difference and --minimum-micro-difference instead
+(0.032 and 0.043, the half-widths projected from lockbox-like development pseudo-lockboxes plus 0.005, which the head
+choice uses and the output reports beside the realised floors; docs/preregistration.md).
 
 The lockbox is scored once. A SCORED marker records when; a second scoring needs --rescore and is listed in the output.
 
@@ -110,6 +112,17 @@ def fixed_sequence_decisions(complete: bool, p_h1: float, p_h2: float, meets_min
     alpha (the fixed-sequence test, one of the procedures Bretz et al., Statistics in Medicine 28, 586, 2009, write as a graph)."""
     h1_confirmed = bool(complete and meets_minimum_differences and p_h1 <= alpha)
     return {"H1_confirmed": h1_confirmed, "H2_confirmed": bool(h1_confirmed and p_h2 <= alpha)}
+
+
+def model_floors(readings: dict, floor_rule: str, floor_margin: float, projected_floors: dict[str, float]) -> dict[str, float]:
+    """The macro and micro floors of one model. half_width_plus_margin: the half-width of the difference's 95 percent
+    bootstrap interval plus floor_margin (NaN when the interval is undefined, so the floor is not met); fixed: the
+    projected floors."""
+    if floor_rule == "fixed":
+        return {reading: projected_floors[reading] for reading in ("macro", "micro")}
+    if floor_rule == "half_width_plus_margin":
+        return {reading: (readings[reading]["upper_95"] - readings[reading]["lower_95"]) / 2.0 + floor_margin for reading in ("macro", "micro")}
+    raise ValueError(f"unknown floor rule {floor_rule!r}")
 
 
 def bootstrap_rows(unit: str, members_of_group: list[np.ndarray], num_rows: int, generator: np.random.Generator) -> np.ndarray:
@@ -237,10 +250,15 @@ def main() -> None:
     parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
                         help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
     parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
+    parser.add_argument("--floor-rule", choices=["half_width_plus_margin", "fixed"], default="half_width_plus_margin",
+                        help="half_width_plus_margin (the user's decision of 8 October 2026): each model's macro and micro floor is the half-width of that "
+                             "difference's 95 percent interval under the deciding bootstrap plus --floor-margin; fixed: the two values below")
+    parser.add_argument("--floor-margin", type=float, default=0.005)
     parser.add_argument("--minimum-macro-difference", type=float, default=0.032,
-                        help="smallest macro AUPRC difference that counts: the median 95 percent group-bootstrap half-width of a macro difference on lockbox-like hold-outs plus 0.005")
+                        help="projected macro floor (median group-bootstrap half-width on lockbox-like development hold-outs plus 0.005): the floor under "
+                             "--floor-rule fixed, otherwise reported beside the realised floor")
     parser.add_argument("--minimum-micro-difference", type=float, default=0.043,
-                        help="smallest micro AUPRC difference that counts: the median 95 percent group-bootstrap half-width of a micro difference on lockbox-like hold-outs plus 0.005")
+                        help="projected micro floor, as --minimum-macro-difference")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/confirmatory"))
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/confirmatory_results.md"))
     parser.add_argument("--rescore", action="store_true", help="score again although a SCORED marker exists (the output lists every scoring)")
@@ -398,8 +416,9 @@ def main() -> None:
             sensitivity_unit = bootstrap_units[1]
             entry["sensitivity_bootstrap"] = {"unit": sensitivity_unit, "readings": {reading: interval_and_p(resampled_by_unit[sensitivity_unit][model][reading]) for reading in ALL_READINGS}}
             entry["sensitivity_bootstrap"]["p_h1"] = max(entry["sensitivity_bootstrap"]["readings"][reading]["p_one_sided"] for reading in H1_READINGS)
-            entry["meets_minimum_differences"] = bool(readings["macro"]["difference"] >= arguments.minimum_macro_difference
-                                                      and readings["micro"]["difference"] >= arguments.minimum_micro_difference)
+            entry["floors"] = model_floors(readings, arguments.floor_rule, arguments.floor_margin,
+                                           {"macro": arguments.minimum_macro_difference, "micro": arguments.minimum_micro_difference})
+            entry["meets_minimum_differences"] = bool(all(readings[reading]["difference"] >= entry["floors"][reading] for reading in ("macro", "micro")))
             entry["p_h1"] = max(readings[reading]["p_one_sided"] for reading in H1_READINGS)
             entry["p_h2"] = max([entry["p_h1"]] + [readings[reading]["p_one_sided"] for reading in H2_EXTRA_READINGS])
             entry["model_scores"] = {variant: {reading: seed_mean(observed["models"][model][variant], reading) for reading in base_readings} for variant in VARIANT_SUFFIXES}
@@ -416,6 +435,7 @@ def main() -> None:
         "num_lockbox_perturbations": int(len(rows)), "macro_symptoms": [data.symptoms[c] for c in macro_columns], "micro_symptoms": [data.symptoms[c] for c in scored_columns],
         "seeds": arguments.seeds, "num_bootstrap": arguments.num_bootstrap, "bootstrap_unit": arguments.bootstrap_unit, "num_lockbox_groups": len(members_of_group),
         "alpha_one_sided_per_model": arguments.alpha,
+        "floor_rule": arguments.floor_rule, "floor_margin": arguments.floor_margin,
         "minimum_macro_difference": arguments.minimum_macro_difference, "minimum_micro_difference": arguments.minimum_micro_difference, "runs_without_refit_allowed": arguments.allow_runs_without_refit,
         "best_baseline": best_baseline,
         "baseline_scores": {labelling: {name: {reading: seed_mean(by_seed, reading) for reading in base_readings} for name, by_seed in by_name.items()}
@@ -430,20 +450,22 @@ def main() -> None:
              f"Lockbox {arguments.lockbox} ({len(rows)} perturbations, SHA-256 {lockbox_sha256[:12]}); label selection {str(selection_sha256)[:12]}; seeds {arguments.seeds}; "
              f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox {'leakage groups (' + str(len(members_of_group)) + ')' if arguments.bootstrap_unit == 'group' else 'perturbations'}; "
              f"each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
-             f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. With {len(entries)} models "
+             + (f"floors: each model's 95 percent half-width plus {arguments.floor_margin} (projected {arguments.minimum_macro_difference} macro, {arguments.minimum_micro_difference} micro). "
+                if arguments.floor_rule == "half_width_plus_margin" else f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. ")
+             + f"With {len(entries)} models "
              f"and no correction across them, the chance that at least one is confirmed by luck is at most {len(entries) * arguments.alpha:.3f} whatever their dependence "
              f"({1 - (1 - arguments.alpha) ** len(entries):.3f} if they were independent). Scorings: {len(previous_scorings) + 1}.", "",
              "Best baseline per reading (the highest seed-mean lockbox score on real labels; no model score enters the choice): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
-             "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | macro and micro floors | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for model, entry in entries.items():
         if not entry["complete"]:
-            lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 8 + " 1 | no | 1 | no |")
+            lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 9 + " 1 | no | 1 | no |")
             continue
         cells = [f"{entry['readings'][reading]['difference']:+.3f} [{entry['readings'][reading]['lower_95']:+.3f}, {entry['readings'][reading]['upper_95']:+.3f}]"
                  for reading in ALL_READINGS]
-        lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
+        lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['floors']['macro']:.3f}, {entry['floors']['micro']:.3f} | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
     lines += ["", f"Sensitivity reading, resampling {bootstrap_units[1]}s instead: "
               + "; ".join(f"{model} p(H1) {entry['sensitivity_bootstrap']['p_h1']:.4f}" for model, entry in entries.items() if entry["complete"]) + "."]
     lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. H1 takes the first four readings, H2 adds "
