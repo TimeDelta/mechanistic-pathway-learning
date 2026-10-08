@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from experiments.run_main_model import optimizer_parameter_groups
+from mechanistic_pathway_learning.graph.node_descriptors import descriptor_blocks
 from mechanistic_pathway_learning.models.descriptor_treatments import seed_node_mask
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
@@ -132,3 +133,11 @@ def test_descriptor_map_gets_its_own_learning_rate() -> None:
     assert all(parameter is not descriptor_weight for parameter in groups[0]["params"])
     plain_groups = optimizer_parameter_groups(linear_response_encoder("plain"), head, arguments)
     assert len(plain_groups) == 1
+
+
+def test_descriptor_blocks_cover_every_column_once() -> None:
+    columns = ["metabolite_logp", "reaction_ec_class_1", "reaction_has_ec", "reaction_brain_region_pons", "protein_rrr_1", "gene_brain_has_expression"]
+    assert descriptor_blocks(columns) == {"metabolite": ["metabolite_logp"], "reaction_ec": ["reaction_ec_class_1", "reaction_has_ec"],
+                                          "reaction_brain": ["reaction_brain_region_pons"], "protein": ["protein_rrr_1"], "gene_brain": ["gene_brain_has_expression"]}
+    with pytest.raises(ValueError):
+        descriptor_blocks(["unknown_column"])

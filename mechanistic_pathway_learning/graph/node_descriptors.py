@@ -34,6 +34,27 @@ NUMBER_OF_EC_CLASSES = 7
 SPECIES_PATTERN = re.compile(r'<species [^>]*id="M_(MAM\d+)[a-z]+"[^>]*fbc:charge="(-?\d+)"')
 REACTION_PATTERN = re.compile(r'<reaction [^>]*id="R_([^"]+)"')
 EC_PATTERN = re.compile(r"ec-code/(\d)\.")
+# The blocks of an assembled descriptor table (this module, then brain_expression_descriptors.py), by column prefix, so a
+# configuration can leave whole blocks out (experiments/run_main_model.py --drop-descriptor-blocks). reaction_brain is
+# gene expression carried onto the reactions the genes catalyse (the gene rule), so it describes genes too.
+DESCRIPTOR_BLOCK_PREFIXES = {
+    "metabolite": ("metabolite_",),
+    "reaction_ec": ("reaction_ec_", "reaction_has_ec"),
+    "reaction_brain": ("reaction_brain_",),
+    "protein": ("protein_",),
+    "gene_brain": ("gene_brain_",),
+}
+
+
+def descriptor_blocks(columns) -> dict[str, list[str]]:
+    """The columns of each block in DESCRIPTOR_BLOCK_PREFIXES; a column that belongs to no block, or to two, is an error."""
+    blocks = {block: [] for block in DESCRIPTOR_BLOCK_PREFIXES}
+    for column in columns:
+        owners = [block for block, prefixes in DESCRIPTOR_BLOCK_PREFIXES.items() if any(column.startswith(prefix) for prefix in prefixes)]
+        if len(owners) != 1:
+            raise ValueError(f"descriptor column {column!r} belongs to {len(owners)} blocks of DESCRIPTOR_BLOCK_PREFIXES")
+        blocks[owners[0]].append(column)
+    return blocks
 
 
 def metabolite_charges_from_sbml(sbml_text: str) -> dict[str, int]:

@@ -62,6 +62,7 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
+from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CROSS_RELATION_AGGREGATORS,
     EDGE_SIGNS,
@@ -148,6 +149,15 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
     missing = set(data.node_ids) - set(descriptors.index)
     if missing:
         raise ValueError(f"{len(missing)} graph nodes have no row in {arguments.node_descriptors}")
+    dropped_blocks = getattr(arguments, "drop_descriptor_blocks", None) or []
+    if dropped_blocks:
+        blocks = descriptor_blocks(descriptors.columns)
+        empty = [block for block in dropped_blocks if not blocks[block]]
+        if empty:
+            raise ValueError(f"--drop-descriptor-blocks names blocks with no column in {arguments.node_descriptors}: {empty}")
+        descriptors = descriptors.drop(columns=[column for block in dropped_blocks for column in blocks[block]])
+        if descriptors.shape[1] == 0:
+            raise ValueError("--drop-descriptor-blocks leaves no descriptor column; leave out --node-descriptors instead")
     return np.concatenate([structural, descriptors.loc[data.node_ids].to_numpy(dtype=np.float32)], axis=1)
 
 
@@ -442,6 +452,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="label table of experiments/check_laboratory_label_coverage.py --labels-output")
     parser.add_argument("--node-descriptors", type=Path, default=None,
                         help="parquet of fixed node descriptors indexed by node_id (experiments/build_node_descriptors.py), appended to the structural node features")
+    parser.add_argument("--drop-descriptor-blocks", nargs="*", choices=list(DESCRIPTOR_BLOCK_PREFIXES), default=[],
+                        help="with --node-descriptors, leave these blocks out (graph/node_descriptors.py DESCRIPTOR_BLOCK_PREFIXES); the descriptors of gene "
+                             "nodes are protein and gene_brain, and reaction_brain carries gene expression onto reactions")
     parser.add_argument("--descriptor-treatment", choices=list(DESCRIPTOR_TREATMENTS), default="plain",
                         help="with --node-descriptors, how they enter the message passing base state or the linear-response output gate (models/descriptor_treatments.py): "
                              "plain (one map of all the columns), seed_masked (each perturbation's perturbed nodes read their structural columns only) or "

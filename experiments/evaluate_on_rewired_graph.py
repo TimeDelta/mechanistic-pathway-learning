@@ -15,7 +15,8 @@ with the stored test_predictions.npy (the reproduction check in the output). The
 fast_degree_preserving_rewiring within each relation, as --rewire-swaps-per-edge in the trainer. Each fold writes
 rewired_graph_evaluation.json beside its results and is skipped when that file exists for the same swaps and seed.
 Runs on permuted labels, rewired graphs, the time split or the lockbox are refused (the lockbox is blinded until the
-confirmatory scoring).
+confirmatory scoring); the development pilots of the confirmatory configurations (*_development, the lockbox removed
+before the split) are allowed.
 
     OMP_NUM_THREADS=1 PYTHONPATH=. python experiments/evaluate_on_rewired_graph.py \\
       --run-dirs runs/encoder/b3_typed_nodes_descriptors_brain_disease_cluster runs/b3_typed_nodes_disease_cluster \\
@@ -52,7 +53,7 @@ def stored_arguments(results: dict) -> Namespace:
 
 
 def refuse_unsupported(results: dict, arguments: Namespace, fold_directory: Path) -> None:
-    if arguments.score_lockbox or "confirmatory" in fold_directory.parent.name:
+    if arguments.score_lockbox or fold_directory.parent.name.endswith("_confirmatory") or "lockbox" in fold_directory.name:
         raise SystemExit(f"{fold_directory}: lockbox runs are blinded until the confirmatory scoring")
     if results.get("labels_permuted") or results.get("rewiring") or arguments.time_split_cutoff is not None:
         raise SystemExit(f"{fold_directory}: graph reliance is defined for runs on the real labels, the real graph and the grouped split")

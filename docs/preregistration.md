@@ -291,6 +291,23 @@ trained model depends on its edges, not whether the real edges beat degree-match
 of H2 asks that); one rewiring seed; the slice is the metabolic graph only; and under seed_masked a perturbation's
 neighbours still carry descriptors that describe it indirectly (a gene's reactions carry its EC numbers).
 
+Amendment, 8 October 2026, before the arms it names had started: descriptor blocks per node type. The user suggested
+removing the descriptors of some node types, genes first, because a gene's descriptors are largely the graph around it
+(which reactions it catalyses and which proteins it binds), and asked for the search to continue on the slice until it
+is no longer worth it, with full-graph tests where they say more. --drop-descriptor-blocks leaves whole blocks out
+(graph/node_descriptors.py, DESCRIPTOR_BLOCK_PREFIXES: metabolite, reaction_ec, reaction_brain, protein, gene_brain). Three
+slice arms per encoder, each one change from its plain *_descriptors_brain arm: without_gene (protein and gene_brain out,
+the user's suggestion), without_gene_derived (also reaction_brain, the genes' expression carried onto their reactions by
+the gene rule, so a gene seed's own reactions no longer carry its expression pattern) and without_protein (only the
+protein function block out; the genes keep brain expression, which the graph does not encode for the message-passing
+encoder). On the slice every seed is a gene, so without_gene removes what seed_masked removes there and more, at no extra
+compute. These arms join seed_masked and zero_init_slow under the treatment rule of the previous amendment (graph reliance
+above the plain arm's, mean of the six differences against the plain arm at least -0.01, the larger graph reliance among
+those that qualify). Arms the iteration adds later are dated here before they run, and every arm tried is reported in
+docs/graph_reliance.md and docs/descriptor_treatments.md, chosen or not: selecting among slice arms makes the slice
+estimate of the chosen arm optimistic, which does not reach the lockbox, since the lockbox is scored once by a model
+fixed before it is opened.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
