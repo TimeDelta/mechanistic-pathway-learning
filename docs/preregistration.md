@@ -821,7 +821,8 @@ modules are fixed first.
 - Not decided: the descriptor treatments (the restricted picks above); where the descriptors
   sit (the user: "The genes shouldn't need descriptors but the proteins should"; in graph_full_neuronal a gene node
   stands for the gene and its product, and 11,723 of the 12,810 gene nodes take part in a protein-level relation, while
-  the 1,681 protein_entity nodes are Reactome complexes and sets); the confirmatory pathway test.
+  the 1,681 protein_entity nodes are Reactome complexes and sets); the confirmatory pathway test (options and the
+  decisions it needs: docs/pathway_test_options.md).
 
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the

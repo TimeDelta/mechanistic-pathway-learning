@@ -232,7 +232,8 @@
   year = {2021},
   volume = {5},
   pmid = {33859377},
-  note = {Design document reference [21]}
+  note = {Design document reference [21]},
+  doi = {10.1038/s41562-021-01094-9}
 }
 
 @article{ref22_leeuw2015,
@@ -243,7 +244,8 @@
   volume = {11},
   number = {4},
   pmid = {25885710},
-  note = {Design document reference [22]}
+  note = {Design document reference [22]},
+  doi = {10.1371/journal.pcbi.1004219}
 }
 
 @article{ref23_ebrahim2013,
@@ -1043,4 +1045,534 @@
   year    = {2016},
   doi     = {10.1016/j.cell.2016.03.014},
   note    = {"transcript levels by themselves are not sufficient to predict protein levels in many scenarios" (abstract). Why the GTEx brain expression block (mRNA) is a gene-level measure and only a proxy for protein abundance if a gene/protein split moves it onto the protein node (the user's remark of 8 October 2026 that genes should not need descriptors)}
+}
+
+@article{meinshausen2010stability,
+  author  = {Meinshausen, Nicolai and B{\"u}hlmann, Peter},
+  title   = {Stability Selection},
+  journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
+  year    = {2010},
+  doi     = {10.1111/j.1467-9868.2010.00740.x},
+  note    = {"Stability selection provides finite sample control for some error rates of false discoveries and hence a transparent principle to choose a proper amount of regularisation for structure estimation." (abstract, arXiv:0809.2932 version). Why the consensus-module rule of design line 189 can take a selection-frequency threshold with error control instead of an ad hoc cut}
+}
+
+@article{shah2013variable,
+  author  = {Shah, Rajen D. and Samworth, Richard J.},
+  title   = {Variable Selection with Error Control: Another Look at Stability Selection},
+  journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
+  year    = {2013},
+  doi     = {10.1111/j.1467-9868.2011.01034.x},
+  note    = {"These results require no (e.g. exchangeability) assumptions on the underlying model or on the quality of the original selection procedure." (abstract, arXiv:1105.5578 version). Why complementary-pair subsampling suits the resampled-training-set arm of the stability gate}
+}
+
+@article{nogueira2018stability,
+  author  = {Nogueira, Sarah and Sechidis, Konstantinos and Brown, Gavin},
+  title   = {On the Stability of Feature Selection Algorithms},
+  journal = {Journal of Machine Learning Research},
+  year    = {2018},
+  url     = {https://jmlr.org/papers/v18/17-514.html},
+  note    = {"allowing confidence intervals and hypothesis tests on the stability, enabling rigorous experimental comparison of feature selection algorithms" (abstract; JMLR has no DOI). Why a symptom-level gene set can carry a stability estimate with an interval and a test against the permuted-label runs}
+}
+
+@article{kuhn1955hungarian,
+  author  = {Kuhn, H. W.},
+  title   = {The Hungarian method for the assignment problem},
+  journal = {Naval Research Logistics Quarterly},
+  year    = {1955},
+  doi     = {10.1002/nav.3800020109},
+  note    = {"is the quest for an assignment of persons to jobs so that the sum of the n scores so obtained is as large as possible" (abstract). Why supports from two runs are matched one to one by maximal total Jaccard rather than by the greedy best match of analyze_pathway_modules.py}
+}
+
+@inproceedings{greene2014topics,
+  author    = {Greene, Derek and O'Callaghan, Derek and Cunningham, P{\'a}draig},
+  title     = {How Many Topics? Stability Analysis for Topic Models},
+  booktitle = {Machine Learning and Knowledge Discovery in Databases (ECML PKDD 2014), Lecture Notes in Computer Science},
+  year      = {2014},
+  doi       = {10.1007/978-3-662-44848-9_32},
+  note      = {"the idea being that a model with an appropriate number of topics will be more robust to perturbations in the data" (abstract, arXiv:1404.4606 version). Precedent for matched-term stability as a criterion for the number of components, here K = 8 modules}
+}
+
+@article{brunet2004metagenes,
+  author  = {Brunet, Jean-Philippe and Tamayo, Pablo and Golub, Todd R. and Mesirov, Jill P.},
+  title   = {Metagenes and molecular pattern discovery using matrix factorization},
+  journal = {Proceedings of the National Academy of Sciences of the United States of America},
+  year    = {2004},
+  doi     = {10.1073/pnas.0308531101},
+  note    = {"We found it less sensitive to a priori selection of genes or initial conditions" (abstract). Genomics precedent for consensus over random restarts before components are interpreted}
+}
+
+@article{kotliar2019cnmf,
+  author  = {Kotliar, Dylan and others},
+  title   = {Identifying gene expression programs of cell-type identity and cellular activity with single-cell {RNA-Seq}},
+  journal = {eLife},
+  year    = {2019},
+  doi     = {10.7554/eLife.43803},
+  note    = {"We show with simulations that a method we call consensus non-negative matrix factorization (cNMF) accurately infers identity and activity programs" (abstract). Precedent for consensus over replicates and for checking recovery in simulation before interpreting programs}
+}
+
+@inproceedings{locatello2019challenging,
+  author    = {Locatello, Francesco and Bauer, Stefan and Lucic, Mario and R{\"a}tsch, Gunnar and Gelly, Sylvain and Sch{\"o}lkopf, Bernhard and Bachem, Olivier},
+  title     = {Challenging Common Assumptions in the Unsupervised Learning of Disentangled Representations},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning},
+  year      = {2019},
+  doi       = {10.48550/arXiv.1811.12359},
+  note      = {"well-disentangled models seemingly cannot be identified without supervision" (abstract). Why module identity across seeds must be tested, not assumed}
+}
+
+@inproceedings{hooker2019benchmark,
+  author    = {Hooker, Sara and Erhan, Dumitru and Kindermans, Pieter-Jan and Kim, Been},
+  title     = {A Benchmark for Interpretability Methods in Deep Neural Networks},
+  booktitle = {Advances in Neural Information Processing Systems 32},
+  year      = {2019},
+  doi       = {10.48550/arXiv.1806.10758},
+  note      = {"Without retraining, it is unclear whether degradation in performance is due to the introduction of artifacts outside of the original training distribution or because we actually removed information." (Section 3, ROAR). Why support deletion is compared with matched random deletions and why a retrained arm is the stronger form}
+}
+
+@inproceedings{petsiuk2018rise,
+  author    = {Petsiuk, Vitali and Das, Abir and Saenko, Kate},
+  title     = {{RISE}: Randomized Input Sampling for Explanation of Black-box Models},
+  booktitle = {British Machine Vision Conference (BMVC)},
+  year      = {2018},
+  doi       = {10.48550/arXiv.1806.07421},
+  note      = {"using both an automatic deletion/insertion metric and a pointing metric based on human-annotated object segments" (abstract). Source of the deletion and insertion curves that the necessity and keep-only arms adapt to node sets}
+}
+
+@inproceedings{deyoung2020eraser,
+  author    = {DeYoung, Jay and Jain, Sarthak and Rajani, Nazneen Fatema and Lehman, Eric and Xiong, Caiming and Socher, Richard and Wallace, Byron C.},
+  title     = {{ERASER}: A Benchmark to Evaluate Rationalized {NLP} Models},
+  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  year      = {2020},
+  doi       = {10.48550/arXiv.1911.03429},
+  note      = {"how faithful these rationales are (i.e., the degree to which provided rationales influenced the corresponding predictions)" (abstract). Defines faithfulness as separate from agreement with a reference, the split between gate 2 and test 1}
+}
+
+@misc{zheng2024robust,
+  author = {Zheng, Xu and others},
+  title  = {Towards Robust Fidelity for Evaluating Explainability of Graph Neural Networks},
+  year   = {2023},
+  doi    = {10.48550/arXiv.2310.01820},
+  note   = {"The reason is due to potential distribution shifts when subgraphs are removed in computing these fidelity measures." (abstract). The graph-specific form of the ROAR concern for deleting a module's support}
+}
+
+@inproceedings{sanchezlengeling2020evaluating,
+  author    = {Sanchez-Lengeling, Benjamin and others},
+  title     = {Evaluating Attribution for Graph Neural Networks},
+  booktitle = {Advances in Neural Information Processing Systems 33},
+  year      = {2020},
+  url       = {https://papers.nips.cc/paper/2020/hash/417fbbf2e9d5a28a855a11894b2e795a-Abstract.html},
+  note      = {"we adapt commonly-used attribution methods for GNNs and quantitatively evaluate them using computable ground-truths that are objective and challenging to learn" (abstract; no DOI). Precedent for the planted-module recovery check}
+}
+
+@article{agarwal2023evaluating,
+  author  = {Agarwal, Chirag and Queen, Owen and Lakkaraju, Himabindu and Zitnik, Marinka},
+  title   = {Evaluating explainability for graph neural networks},
+  journal = {Scientific Data},
+  year    = {2023},
+  doi     = {10.1038/s41597-023-01974-x},
+  note    = {"existing graph datasets have no or unreliable ground-truth explanations for a given task" (abstract, arXiv:2208.09339 version). Why planted modules on the real graph are needed to validate the method}
+}
+
+@article{choobdar2019assessment,
+  author  = {Choobdar, Sarvenaz and others},
+  title   = {Assessment of network module identification across complex diseases},
+  journal = {Nature Methods},
+  year    = {2019},
+  doi     = {10.1038/s41592-019-0509-5},
+  note    = {"To detect potential overfitting, the collection of 180 GWASs was split into a leaderboard set for scoring the leaderboard submissions and a separate holdout set for scoring the single, final submission of each team." (Results). Template for scoring network modules on held-out GWAS with module-size-aware multiple testing}
+}
+
+@article{lamparter2016pascal,
+  author  = {Lamparter, David and Marbach, Daniel and Rueedi, Rico and Kutalik, Zolt{\'a}n and Bergmann, Sven},
+  title   = {Fast and Rigorous Computation of Gene and Pathway Scores from {SNP}-Based Summary Statistics},
+  journal = {PLoS Computational Biology},
+  year    = {2016},
+  doi     = {10.1371/journal.pcbi.1004714},
+  note    = {"eliminates the problem of arbitrary threshold selection inherent in any binary membership based pathway enrichment approach" (abstract). Alternative to MAGMA, used by DREAM; argues against a top-N cut}
+}
+
+@article{finucane2015partitioning,
+  author  = {Finucane, Hilary K. and others},
+  title   = {Partitioning heritability by functional annotation using genome-wide association summary statistics},
+  journal = {Nature Genetics},
+  year    = {2015},
+  doi     = {10.1038/ng.3404},
+  note    = {"we introduce a new method, stratified LD score regression, for partitioning heritability from GWAS summary statistics while accounting for linked markers" (abstract). Considered and ranked below MAGMA here because supports of 1 to 20 genes give very small annotations}
+}
+
+@article{finucane2018heritability,
+  author  = {Finucane, Hilary K. and others},
+  title   = {Heritability enrichment of specifically expressed genes identifies disease-relevant tissues and cell types},
+  journal = {Nature Genetics},
+  year    = {2018},
+  doi     = {10.1038/s41588-018-0081-4},
+  note    = {"test whether disease heritability is enriched in regions surrounding genes with the highest specific expression in a given tissue" (abstract). The gene-window form of S-LDSC if the module gene sets grow large enough}
+}
+
+@article{deleeuw2016statistical,
+  author  = {de Leeuw, C. A. and others},
+  title   = {The statistical properties of gene-set analysis},
+  journal = {Nature Reviews Genetics},
+  year    = {2016},
+  doi     = {10.1038/nrg.2016.29},
+  note    = {"the statistical properties of gene-set analysis are not well understood, which compromises our ability to interpret its results" (abstract). Why competitive versus self-contained tests and the gene universe must be fixed in advance}
+}
+
+@article{deleeuw2018conditional,
+  author  = {de Leeuw, C. A. and others},
+  title   = {Conditional and interaction gene-set analysis reveals novel functional pathways for blood pressure},
+  journal = {Nature Communications},
+  year    = {2018},
+  doi     = {10.1038/s41467-018-06022-6},
+  note    = {"one property may be statistically associated even if biologically irrelevant to the phenotype, by being correlated with gene properties that are relevant" (abstract). Why the GWAS test conditions on degree, constraint, brain expression and the B1 score}
+}
+
+@article{levi2021domino,
+  author  = {Levi, Hagai and Elkon, Ran and Shamir, Ron},
+  title   = {{DOMINO}: a network-based active module identification algorithm with reduced rate of false calls},
+  journal = {Molecular Systems Biology},
+  year    = {2021},
+  doi     = {10.15252/msb.20209593},
+  note    = {"We observed that GO terms enriched in modules detected on the real data were often also enriched on modules found on randomly permuted data." (abstract). Why permuted-label modules are the null for any enrichment of learned modules}
+}
+
+@article{lazareva2021limits,
+  author  = {Lazareva, Olga and Baumbach, Jan and List, Markus and Blumenthal, David B.},
+  title   = {On the limits of active module identification},
+  journal = {Briefings in Bioinformatics},
+  year    = {2021},
+  doi     = {10.1093/bib/bbab066},
+  note    = {"the tested AMIMs do not produce biologically more meaningful candidate disease modules on widely used PPI networks than on random networks with the same node degrees" (abstract). Why rewired-graph modules must fail the biological tests}
+}
+
+@article{guney2016network,
+  author  = {Guney, Emre and Menche, J{\"o}rg and Vidal, Marc and Bar{\'a}basi, Albert-L{\'a}szl{\'o}},
+  title   = {Network-based in silico drug efficacy screening},
+  journal = {Nature Communications},
+  year    = {2016},
+  doi     = {10.1038/ncomms10331},
+  note    = {"By correcting for the known biases of the interactome, proximity helps us uncover the therapeutic effect of drugs" (abstract). Precedent for degree-matched random node sets as the null}
+}
+
+@article{freund2018phenotype,
+  author  = {Freund, M. K. and others},
+  title   = {Phenotype-Specific Enrichment of {Mendelian} Disorder Genes near {GWAS} Regions across 62 Complex Traits},
+  journal = {American Journal of Human Genetics},
+  year    = {2018},
+  doi     = {10.1016/j.ajhg.2018.08.017},
+  note    = {"We identified a significant enrichment of genes linked to phenotypically matched Mendelian disorders in GWAS gene sets" (abstract). Why HPO training genes must be excluded and B1 conditioned on; also the matched-versus-unmatched design of option 4}
+}
+
+@article{timmons2015multiple,
+  author  = {Timmons, J. A. and Szkop, K. J. and Gallagher, I. J.},
+  title   = {Multiple sources of bias confound functional enrichment analysis of global -omics data},
+  journal = {Genome Biology},
+  year    = {2015},
+  doi     = {10.1186/s13059-015-0761-7},
+  note    = {"Serious and underappreciated sources of bias mean that extreme caution should be applied when using or interpreting functional enrichment analysis" (abstract). Why curated-pathway overlap stays descriptive}
+}
+
+@article{haynes2018gene,
+  author  = {Haynes, W. A. and Tomczak, A. and Khatri, P.},
+  title   = {Gene annotation bias impedes biomedical research},
+  journal = {Scientific Reports},
+  year    = {2018},
+  doi     = {10.1038/s41598-018-19333-x},
+  note    = {"this bias leads biomedical researchers to focus on richly annotated genes instead of those with the strongest molecular data" (abstract). Annotation bias in curated-pathway and literature checks}
+}
+
+@article{stoeger2018large,
+  author  = {Stoeger, T. and Gerlach, M. and Morimoto, R. I. and Nunes Amaral, L. A.},
+  title   = {Large-scale investigation of the reasons why potentially important genes are ignored},
+  journal = {PLoS Biology},
+  year    = {2018},
+  doi     = {10.1371/journal.pbio.2006643},
+  note    = {"these features allow us to accurately predict the number of publications on individual human genes" (abstract). Why the literature time split matches genes on prior publication count}
+}
+
+@article{groza2023impc,
+  author  = {Groza, T. and others},
+  title   = {The International Mouse Phenotyping Consortium: comprehensive knockout phenotyping underpinning the study of human disease},
+  journal = {Nucleic Acids Research},
+  year    = {2023},
+  doi     = {10.1093/nar/gkac972},
+  note    = {"consisting of 85M data points and over 95,000 statistically significant phenotype hits mapped to human diseases" (abstract). The systematic knockout resource of option 4}
+}
+
+@article{meehan2017disease,
+  author  = {Meehan, T. F. and others},
+  title   = {Disease model discovery from 3,328 gene knockouts by The International Mouse Phenotyping Consortium},
+  journal = {Nature Genetics},
+  year    = {2017},
+  doi     = {10.1038/ng.3901},
+  note    = {"90% of our phenotype annotations were novel" (abstract). Why IMPC calls are largely independent of the literature behind HPO}
+}
+
+@article{baldarelli2024mgi,
+  author  = {Baldarelli, R. M. and Smith, C. L. and Ringwald, M. and Richardson, J. E. and Bult, C. J. and {Mouse Genome Informatics Group}},
+  title   = {Mouse Genome Informatics: an integrated knowledgebase system for the laboratory mouse},
+  journal = {Genetics},
+  year    = {2024},
+  doi     = {10.1093/genetics/iyae031},
+  note    = {"phenotype, and human disease models acquired from peer-reviewed publications, author submissions, and major bioinformatics resources" (abstract). MGI phenotypes are literature-curated, so they are secondary to IMPC}
+}
+
+@article{nestler2010animal,
+  author  = {Nestler, E. J. and Hyman, S. E.},
+  title   = {Animal models of neuropsychiatric disorders},
+  journal = {Nature Neuroscience},
+  year    = {2010},
+  doi     = {10.1038/nn.2647},
+  note    = {"Modeling of human neuropsychiatric disorders in animals is extremely challenging given the subjective nature of many symptoms" (abstract). The limit of what mouse behaviour can confirm}
+}
+
+@article{tatonetti2012offsides,
+  author  = {Tatonetti, N. P. and Ye, P. P. and Daneshjou, R. and Altman, R. B.},
+  title   = {Data-driven prediction of drug effects and interactions},
+  journal = {Science Translational Medicine},
+  year    = {2012},
+  doi     = {10.1126/scitranslmed.3003377},
+  note    = {"confounding factors such as concomitant medications, patient demographics, patient medical histories, and reasons for prescribing a drug often are uncharacterized in spontaneous reporting systems" (abstract). OFFSIDES and the confounding that option 6 must handle}
+}
+
+@article{banda2016aeolus,
+  author  = {Banda, J. M. and Evans, L. and Vanguri, R. S. and Tatonetti, N. P. and Ryan, P. B. and Shah, N. H.},
+  title   = {A curated and standardized adverse drug event resource to accelerate drug safety research},
+  journal = {Scientific Data},
+  year    = {2016},
+  doi     = {10.1038/sdata.2016.26},
+  note    = {"The publicly available US Food and Drug Administration (FDA) Adverse Event Reporting System (FAERS) data requires substantial curation before they can be used appropriately" (abstract). Deduplication and vocabulary mapping before FAERS is used}
+}
+
+@article{karczewski2022genebass,
+  author  = {Karczewski, K. J. and others},
+  title   = {Systematic single-variant and gene-based association testing of thousands of phenotypes in 394,841 {UK Biobank} exomes},
+  journal = {Cell Genomics},
+  year    = {2022},
+  doi     = {10.1016/j.xgen.2022.100168},
+  note    = {"systematic association analyses of 4,529 phenotypes using single-variant and gene tests of 394,841 individuals in the UK Biobank with exome-sequence data" (abstract). Human loss-of-function burden, the closest analogue of the model's knockouts}
+}
+
+@article{karczewski2020gnomad,
+  author  = {Karczewski, K. J. and others},
+  title   = {The mutational constraint spectrum quantified from variation in 141,456 humans},
+  journal = {Nature},
+  year    = {2020},
+  doi     = {10.1038/s41586-020-2308-7},
+  note    = {"we classify human protein-coding genes along a spectrum that represents tolerance to inactivation" (abstract). Source of LOEUF, a covariate in the genetic tests}
+}
+
+@article{singh2022schema,
+  author  = {Singh, T. and others},
+  title   = {Rare coding variants in ten genes confer substantial risk for schizophrenia},
+  journal = {Nature},
+  year    = {2022},
+  doi     = {10.1038/s41586-022-04556-w},
+  note    = {"we implicate ultra-rare coding variants (URVs) in 10 genes as conferring substantial risk for schizophrenia" (abstract). Rare-variant check for psychosis modules}
+}
+
+@article{sollis2023gwascatalog,
+  author  = {Sollis, E. and others},
+  title   = {The {NHGRI-EBI} {GWAS} Catalog: knowledgebase and deposition resource},
+  journal = {Nucleic Acids Research},
+  year    = {2023},
+  doi     = {10.1093/nar/gkac1010},
+  note    = {">40 000 full P-value summary statistics datasets" (abstract). Where the per-study summary statistics sit}
+}
+
+@article{nagel2018item,
+  author  = {Nagel, Mats and Watanabe, Kyoko and Stringer, Sven and Posthuma, Danielle and van der Sluis, Sophie},
+  title   = {Item-level analyses reveal genetic heterogeneity in neuroticism},
+  journal = {Nature Communications},
+  year    = {2018},
+  doi     = {10.1038/s41467-018-03242-8},
+  note    = {"We conduct large-scale GWAS on 12 neuroticism items and observe notable and replicable variation in genetic signal between items." (abstract). Item-level GWAS for irritability, mood swings and nervous or anxious feelings}
+}
+
+@article{ward2019anhedonia,
+  author  = {Ward, J. and others},
+  title   = {Novel genome-wide associations for anhedonia, genetic correlation with psychiatric disorders, and polygenic association with brain structure},
+  journal = {Translational Psychiatry},
+  year    = {2019},
+  doi     = {10.1038/s41398-019-0635-y},
+  note    = {"We performed a genome-wide association study of state anhedonia in 375,275 UK Biobank participants" (abstract). Anhedonia GWAS; also the nearest available trait for apathy}
+}
+
+@article{ward2017mood,
+  author  = {Ward, J. and others},
+  title   = {Genome-wide analysis in {UK Biobank} identifies four loci associated with mood instability and genetic correlation with major depressive disorder, anxiety disorder and schizophrenia},
+  journal = {Translational Psychiatry},
+  year    = {2017},
+  doi     = {10.1038/s41398-017-0012-7},
+  note    = {"We conducted a genome-wide association study (GWAS) of mood instability in 53,525 cases and 60,443 controls from UK Biobank, identifying four independently associated loci" (abstract). GWAS for emotional lability}
+}
+
+@article{watanabe2022insomnia,
+  author  = {Watanabe, K. and others},
+  title   = {Genome-wide meta-analysis of insomnia prioritizes genes associated with metabolic and psychiatric pathways},
+  journal = {Nature Genetics},
+  year    = {2022},
+  doi     = {10.1038/s41588-022-01124-w},
+  note    = {"identified 554 risk loci (including 364 novel loci)" (abstract). Insomnia GWAS; whether the 23andMe part is in the public file is not checked}
+}
+
+@article{wang2019sleepiness,
+  author  = {Wang, H. and others},
+  title   = {Genome-wide association analysis of self-reported daytime sleepiness identifies 42 loci that suggest biological subtypes},
+  journal = {Nature Communications},
+  year    = {2019},
+  doi     = {10.1038/s41467-019-11456-7},
+  note    = {"we identify 42 loci for self-reported daytime sleepiness in GWAS of 452,071 individuals from the UK Biobank" (abstract). GWAS for somnolence or hypersomnia}
+}
+
+@article{deary2018tiredness,
+  author  = {Deary, V. and others},
+  title   = {Genetic contributions to self-reported tiredness},
+  journal = {Molecular Psychiatry},
+  year    = {2018},
+  doi     = {10.1038/mp.2017.5},
+  note    = {"GWAS identified one genome-wide significant hit" (abstract). Fatigue GWAS; shows that item GWAS can be weak, hence the power statement}
+}
+
+@article{trubetskoy2022schizophrenia,
+  author  = {Trubetskoy, V. and others},
+  title   = {Mapping genomic loci implicates genes and synaptic biology in schizophrenia},
+  journal = {Nature},
+  year    = {2022},
+  doi     = {10.1038/s41586-022-04434-5},
+  note    = {"we report common variant associations at 287 distinct genomic loci" (abstract). Diagnosis-level proxy for psychosis}
+}
+
+@article{legge2019psychotic,
+  author  = {Legge, S. E. and others},
+  title   = {Association of Genetic Liability to Psychotic Experiences With Neuropsychotic Disorders and Traits},
+  journal = {JAMA Psychiatry},
+  year    = {2019},
+  doi     = {10.1001/jamapsychiatry.2019.2508},
+  note    = {"6123 individuals reporting any psychotic experience" (abstract). A symptom-level psychosis GWAS, small}
+}
+
+@article{oconnell2025bipolar,
+  author  = {O'Connell, K. S. and others},
+  title   = {Genomics yields biological and phenotypic insights into bipolar disorder},
+  journal = {Nature},
+  year    = {2025},
+  doi     = {10.1038/s41586-024-08468-9},
+  note    = {"We identified 298 genome-wide significant loci in the multi-ancestry meta-analysis" (abstract). Diagnosis-level proxy for mania (PGC bip2024)}
+}
+
+@article{docherty2023suicide,
+  author  = {Docherty, A. R. and others},
+  title   = {{GWAS} Meta-Analysis of Suicide Attempt: Identification of 12 Genome-Wide Significant Loci and Implication of Genetic Risks for Specific Health Factors},
+  journal = {American Journal of Psychiatry},
+  year    = {2023},
+  doi     = {10.1176/appi.ajp.21121266},
+  note    = {"This study comprised 22 cohorts, including 43,871 SA cases and 915,025 ancestry-matched controls." (abstract). Proxy for suicidality; the PGC page lists no figshare DOI, so access is not checked}
+}
+
+@article{strom2025ocd,
+  author  = {Strom, N. I. and others},
+  title   = {Genome-wide analyses identify 30 loci associated with obsessive-compulsive disorder},
+  journal = {Nature Genetics},
+  year    = {2025},
+  doi     = {10.1038/s41588-025-02189-z},
+  note    = {"53,660 OCD cases and 2,044,417 controls and identified 30 independent genome-wide significant loci" (abstract). Proxy for compulsive behaviour}
+}
+
+@article{demontis2023adhd,
+  author  = {Demontis, D. and others},
+  title   = {Genome-wide analyses of {ADHD} identify 27 risk loci, refine the genetic architecture and implicate several cognitive domains},
+  journal = {Nature Genetics},
+  year    = {2023},
+  doi     = {10.1038/s41588-022-01285-8},
+  note    = {"We identified 27 genome-wide significant loci" (abstract). Proxy for hyperactivity (PGC adhd2022)}
+}
+
+@article{karlssonlinner2021externalizing,
+  author  = {Karlsson Linn{\'e}r, R. and others},
+  title   = {Multivariate analysis of 1.5 million people identifies genetic associations with traits related to self-regulation and addiction},
+  journal = {Nature Neuroscience},
+  year    = {2021},
+  doi     = {10.1038/s41593-021-00908-3},
+  note    = {"By pooling data from ~1.5 million people, our approach is statistically more powerful than single-trait analyses and identifies more than 500 genetic loci." (abstract). Proxy for disinhibition or impulsivity}
+}
+
+@article{termorshuizen2026binge,
+  author  = {Termorshuizen, J. D. and others},
+  title   = {Genomic meta-analyses of binge-eating behavior and anorexia nervosa yield insights into the unique and shared biology of eating disorder phenotypes},
+  journal = {Nature Mental Health},
+  year    = {2026},
+  doi     = {10.1038/s44220-026-00698-2},
+  note    = {"We identified six BE-associated loci" (abstract). Nearest GWAS for increased appetite; access not checked}
+}
+
+@article{ollila2024nightmares,
+  author  = {Ollila, H. M. and others},
+  title   = {Nightmares share genetic risk factors with sleep and psychiatric traits},
+  journal = {Translational Psychiatry},
+  year    = {2024},
+  doi     = {10.1038/s41398-023-02637-6},
+  note    = {"While the GWAS did not reveal individual risk variants, heritability was estimated at 5%." (abstract). Abnormal dreams have only an underpowered GWAS}
+}
+
+@article{chenoweth2024varenicline,
+  author  = {Chenoweth, M. J. and others},
+  title   = {Genetic Prediction of Smoking Cessation Medication Side Effects: A Genome-Wide Investigation of Abnormal Dreams on Varenicline},
+  journal = {Clinical Pharmacology and Therapeutics},
+  year    = {2024},
+  doi     = {10.1002/cpt.3210},
+  note    = {"We conducted a genomewide association study (GWAS) of abnormal dreams in 188 European ancestry smokers treated with varenicline" (abstract). The only drug side-effect GWAS found for a project symptom; too small for a test}
+}
+
+@article{wilson2024catatonia,
+  author  = {Wilson, J. E. and others},
+  title   = {Exploring genetic risk for catatonia in a genome wide association study and polygenic risk score analysis},
+  journal = {Schizophrenia Research},
+  year    = {2024},
+  doi     = {10.1016/j.schres.2023.07.015},
+  note    = {"to the best of our knowledge no prior genome wide association studies of catatonia have been performed to date" (abstract). Catatonia has one small GWAS}
+}
+
+@article{vattathil2025nps,
+  author  = {Vattathil, Selina M. and others},
+  title   = {{GWAS} links {APOE} to neuropsychiatric symptoms in mild cognitive impairment and dementia},
+  journal = {Alzheimer's \& Dementia},
+  year    = {2025},
+  doi     = {10.1002/alz.70329},
+  note    = {"We found genome-wide significant signals for agitation, anxiety, apathy, delusions, and hallucinations that were driven by the apolipoprotein E (APOE) ε4 allele." (abstract). The only apathy GWAS found; restricted to dementia and dominated by APOE}
+}
+
+@article{adams2024symptoms,
+  author  = {Adams, M. J. and others},
+  title   = {Genome-wide meta-analysis of ascertainment and symptom structures of major depression in case-enriched and community cohorts},
+  journal = {Psychological Medicine},
+  year    = {2024},
+  doi     = {10.1017/S0033291724001880},
+  note    = {"The results show the importance of assessing the directionality of symptoms (such as hypersomnia versus insomnia)" (abstract). PGC mdd2024symptoms; also why bidirectional items cannot stand for psychomotor retardation}
+}
+
+@article{skelton2026gad,
+  author  = {Skelton, M. and others},
+  title   = {Genome-wide meta-analysis of quantitatively measured generalized anxiety symptoms in individuals of European ancestry},
+  journal = {Nature Human Behaviour},
+  year    = {2026},
+  doi     = {10.1038/s41562-026-02476-7},
+  note    = {"a genome-wide association meta-analysis of generalized anxiety symptom severity in 693,869 individuals of European ancestry from 14 cohorts" (abstract). Symptom-level anxiety GWAS (PGC anx2026_GADsymptsQuant)}
+}
+
+@article{strom2026anxiety,
+  author  = {Strom, N. I. and others},
+  title   = {Genome-wide association study of major anxiety disorders in 122,341 European-ancestry cases identifies 58 loci and highlights {GABAergic} signaling},
+  journal = {Nature Genetics},
+  year    = {2026},
+  doi     = {10.1038/s41588-025-02485-8},
+  note    = {"We identified 58 independent genome-wide significant risk variants and 66 genes with robust biological support." (abstract). Case-control anxiety alternative (PGC anx2026)}
+}
+
+@article{pgc2025mdd,
+  author  = {{Major Depressive Disorder Working Group of the Psychiatric Genomics Consortium}},
+  title   = {Trans-ancestry genome-wide study of depression identifies 697 associations implicating cell types and pharmacotherapies},
+  journal = {Cell},
+  year    = {2025},
+  doi     = {10.1016/j.cell.2024.12.002},
+  note    = {"The associations are enriched for antidepressant targets and provide potential repurposing opportunities." (abstract). Drug-target circularity: training drug targets must be excluded before a depression GWAS test}
 }
