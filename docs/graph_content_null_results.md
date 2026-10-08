@@ -108,6 +108,8 @@ so part of the gap may be the plausibility of the graph as a graph rather than t
 biology. What the control does establish is the claim it was run for: the specific wiring matters, and
 the random walk is reading the graph rather than the degree sequence.
 
+Correction of 8 October 2026: the walk merges the relations into one undirected graph with each pair once, and the rewiring above moved the stored directed edges per relation, so two edges joining one pair (binds in both directions, a reversible reaction's two edges) could move apart and the rewired walk graph was denser than the real one. Rerun with --rewiring-method walk_graph, which rewires the walk's own graph so every node keeps its number of neighbours (docs/rewiring_null_distribution_walk_graph.md): the 20 rewirings give 0.264 ± 0.011, best 0.285 and worst 0.250, against 0.293 on the real graph. None reaches it (p = 0.048), the real score sits 2.5 null standard deviations above the mean and the margin over the best rewiring is 0.008. The conclusion and its two limits stand.
+
 ## Which earlier interventions were and were not null
 
 Rescored 7 October 2026 by experiments/compare_twin_runs.py (docs/twin_comparisons.md), which takes every two slice

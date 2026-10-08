@@ -474,9 +474,10 @@ day). Each is a defect against text already in this specification, not a change 
   entries against about 135,000). --rewiring-method walk_graph (experiments/run_baselines.py and
   experiments/run_rewiring_null_distribution.py; negative_controls.rewire_walk_graph) rewires the walk's own graph so
   every node keeps its number of neighbours. The development reading that the slice wiring carries signal for the walk
-  (docs/rewiring_null_distribution.md, 0 of 20 rewirings as good as the real graph, p = 0.048) used the old null and is
-  rerun with the new one (docs/rewiring_null_distribution_walk_graph.md). No confirmatory reading uses the walk's
-  rewiring.
+  (docs/rewiring_null_distribution.md, 0 of 20 rewirings as good as the real graph, p = 0.048) used the old null. Rerun
+  with the new one (docs/rewiring_null_distribution_walk_graph.md), the 20 rewirings give 0.264 ± 0.011 (best 0.285)
+  against 0.293 on the real graph, again none as good (p = 0.048), so the reading stands. No confirmatory reading uses
+  the walk's rewiring.
 - The grade-shuffle and peripheral-event controls the skeleton lists under negative controls (design section 6.3)
   were never implemented and are not run; the confirmatory test has the two controls of its specification (permuted
   labels, a secondary reading, and the rewired graph of H2). The peripheral-event control needs adverse events without
