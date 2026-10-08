@@ -1,0 +1,1538 @@
+{
+  "method": {
+    "search_tools_used": [
+      "mcp__PubMed__search_articles",
+      "mcp__PubMed__get_article_metadata"
+    ],
+    "pubmed_searches_run": 57,
+    "pubmed_metadata_fetches": 18,
+    "attribution": "All references retrieved from PubMed; DOIs as returned by the PubMed tool.",
+    "fallback_tools_needed": "none - the primary PubMed MCP tools responded (one call was rate-limited and retried); Consensus and the plugin PubMed server were not needed",
+    "evidence_grading": "a=controlled human study > b=pharmacovigilance or cohort > c=review or clinical pharmacology > d=human genetic only; case reports marked weak",
+    "verdict_rule": {
+      "keep as human": "human pharmacological evidence for the claimed target, direction and symptom",
+      "keep but relabel to <symptom>": "human evidence exists for that target and direction but names a different symptom",
+      "keep as rodent only": "no human evidence for the symptom, but the mechanism has indirect human support (inverse-direction pharmacology, obligatory subunit, or human genetics) worth retaining as a rodent-derived hypothesis",
+      "drop": "no human pharmacological evidence, and either no human drug is selective enough to test the claim or a selective human drug exists and controlled data show the symptom does not occur"
+    },
+    "claims_assessed": 58
+  },
+  "claims": [
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "ADORA2A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "regadenoson (selective A2A agonist, IV, short-acting)",
+        "istradefylline (A2A ANTAGONIST - opposite direction)"
+      ],
+      "other_targets_they_hit": [
+        "regadenoson exposure is brief and essentially peripheral/coronary; no CNS psychomotor endpoint has been measured"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "21626090",
+          "doi": "10.1007/s12350-011-9399-3",
+          "quote": "REG appears to be safe and well tolerated without significant cardiovascular adverse events."
+        },
+        {
+          "pmid": "34486986",
+          "doi": "10.3233/JPD-212672",
+          "quote": "Istradefylline is a selective adenosine A2A receptor antagonist for the treatment of patients with Parkinson's disease (PD) experiencing OFF episodes while on levodopa/decarboxylase inhibitor."
+        },
+        {
+          "pmid": "34486986",
+          "doi": "10.3233/JPD-212672",
+          "quote": "OFF hours/day were reduced at Week 12 at istradefylline dosages of 20 mg/day ... Dyskinesia was the most frequent adverse event (placebo, 9.6%; 20 mg/day, 16.1%; 40 mg/day, 17.7%)."
+        }
+      ],
+      "verdict": "keep as rodent only",
+      "note": "No human A2A agonist study has measured psychomotor slowing; regadenoson trials report only cardiovascular tolerability. The only direction-relevant human data are inverse: the selective A2A antagonist istradefylline reduces OFF time and increases dyskinesia in Parkinson's disease, which is consistent with A2A activation being motor-suppressive but is not evidence that activation produces the symptom in people."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "ADORA3",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "piclidenoson (CF101), selective oral A3 adenosine receptor agonist"
+      ],
+      "other_targets_they_hit": [
+        "none of consequence - piclidenoson is A3-selective"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "38279575",
+          "doi": "10.1111/jdv.19811",
+          "quote": "We investigated the efficacy/safety of piclidenoson (CF101), an orally bioavailable A3AR agonist that inhibits IL-17 and IL-23 production in keratinocytes, in moderate-to-severe plaque psoriasis."
+        },
+        {
+          "pmid": "38279575",
+          "doi": "10.1111/jdv.19811",
+          "quote": "The safety/tolerability profile of piclidenoson was excellent and superior to apremilast."
+        }
+      ],
+      "verdict": "drop",
+      "note": "A selective human A3 agonist has been taken to phase 3 in psoriasis with an explicitly excellent tolerability profile and no psychomotor or CNS depressant signal. Selective human pharmacology exists and does not reproduce the claim."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "ADRA1B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; alpha-1 agonists in human use (phenylephrine, midodrine) are peripherally acting pressors with no alpha-1B subtype selectivity"
+      ],
+      "other_targets_they_hit": [
+        "ADRA1A",
+        "ADRA1D"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No alpha-1B-subtype-selective agonist exists for human use, and the available alpha-1 agonists are vasopressors without central psychomotor endpoints. No reference is cited because no human study of alpha-1B activation and psychomotor retardation was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "CACNA1C",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; every CACNA1C-directed human drug (dihydropyridines, verapamil, diltiazem) is a BLOCKER, i.e. the opposite direction"
+      ],
+      "other_targets_they_hit": [
+        "CACNA1D",
+        "CACNA1S",
+        "CACNA1F"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "There is no Cav1.2 activator in human use, so the activation direction cannot be tested pharmacologically in people. CACNA1C gain-of-function (Timothy syndrome) produces long QT, syndactyly and neurodevelopmental/autistic features rather than psychomotor retardation; no verifiable human phenotype paper making the psychomotor-retardation claim was found, so no genetic reference is credited."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "CCKAR",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "sincalide/CCK-8 (gallbladder imaging; hits CCKAR and CCKBR)",
+        "CCK-4 is a CCKBR/CCK2 agonist, not CCKAR"
+      ],
+      "other_targets_they_hit": [
+        "CCKBR (CCK2) - the receptor responsible for the only well-characterised human CCK challenge effect"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "22939006",
+          "doi": "10.1016/j.euroneuro.2012.08.011",
+          "quote": "Cholecystokinin-tetrapeptide (CCK-4)-induced panic attacks are reportedly attenuated by effective treatment with antipanic antidepressants in patients with panic disorder, but in healthy volunteers such effects are not well studied."
+        }
+      ],
+      "verdict": "drop",
+      "note": "The human CCK challenge literature uses CCK-4, a CCK2/CCKBR agonist, and the symptom it produces is panic, not psychomotor retardation. No human CCKAR-selective agonist has been shown to slow psychomotor function."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "CHRM1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "xanomeline-trospium (KarXT), M1/M4-preferring muscarinic agonist"
+      ],
+      "other_targets_they_hit": [
+        "CHRM4 (xanomeline is a dual M1/M4-preferring agonist)",
+        "CHRM2",
+        "CHRM3",
+        "CHRM5"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "38104575",
+          "doi": "10.1016/S0140-6736(23)02190-6",
+          "quote": "Xanomeline is a dual Mand M-preferring muscarinic receptor agonist that does not block Ddopamine receptors"
+        },
+        {
+          "pmid": "38104575",
+          "doi": "10.1016/S0140-6736(23)02190-6",
+          "quote": "Treatment-emergent adverse event rates of extrapyramidal motor symptoms (KarXT, zero [0%] vs placebo, zero [0%]), akathisia (one [1%] vs one [1%]), weight gain (zero [0%] vs one [1%]), and somnolence (six [5%] vs five [4%]) were similar between the KarXT and placebo groups"
+        }
+      ],
+      "verdict": "drop",
+      "note": "The one phase 3 human trial of an M1-preferring agonist found somnolence no different from placebo (5% vs 4%) and zero extrapyramidal motor adverse events; adverse effects were gastrointestinal and autonomic. This is controlled human evidence against the claim, and xanomeline cannot separate M1 from M4 in any case."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "CNR1",
+      "human_evidence": "controlled human study",
+      "selective_human_drug": true,
+      "drugs": [
+        "delta-9-tetrahydrocannabinol / dronabinol (CB1 partial agonist)"
+      ],
+      "other_targets_they_hit": [
+        "CNR2 (CB2) - THC is a CB1/CB2 partial agonist; smoked cannabis additionally contains cannabidiol and other constituents"
+      ],
+      "symptom_the_human_data_support": "psychomotor impairment (slowed/degraded psychomotor and cognitive performance), not the depressive sign of psychomotor retardation",
+      "references": [
+        {
+          "pmid": "23936144",
+          "doi": "10.1371/journal.pone.0070074",
+          "quote": "Task performance was impaired after THC administration, reflected in both an increase in false alarms and a reduction in detected targets."
+        },
+        {
+          "pmid": "20817749",
+          "doi": "10.1177/0269881110376687",
+          "quote": "THC induced more robust cognitive impairment compared with MDMA, and co-administration did not exacerbate single drug effects on cognitive function."
+        },
+        {
+          "pmid": "31201479",
+          "doi": "10.1007/s00213-019-05293-1",
+          "quote": "This study indicates that dronabinol did not enhance the analgesic effects of oxycodone and increased abuse- and impairment-related subjective effects."
+        }
+      ],
+      "verdict": "keep but relabel to psychomotor impairment",
+      "note": "Multiple randomised placebo-controlled crossover studies in healthy volunteers show THC degrades psychomotor and sustained-attention performance. This is genuine human drug-induced psychomotor slowing and CB1 agonism is the principal action, but the measured construct is performance impairment rather than the observable motor-and-speech slowing meant by psychomotor retardation."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA1",
+      "human_evidence": "review or clinical pharmacology",
+      "selective_human_drug": true,
+      "drugs": [
+        "zolpidem and zaleplon (alpha1-preferring GABA-A benzodiazepine-site agonists)"
+      ],
+      "other_targets_they_hit": [
+        "alpha2, alpha3 and alpha5 GABA-A subunits are bound at higher doses; selectivity is preference, not absolute"
+      ],
+      "symptom_the_human_data_support": "sedation with psychomotor impairment",
+      "references": [
+        {
+          "pmid": "12404558",
+          "doi": "10.1002/hup.310",
+          "quote": "Zaleplon is a novel pyrazolopyrimidine hypnotic agent that acts as a selective agonist to the brain omega(1) receptor situated on the alpha(1) subunit of the GABA(A) receptor complex."
+        },
+        {
+          "pmid": "12404558",
+          "doi": "10.1002/hup.310",
+          "quote": "consistent detrimental residual effects on various aspects of psychomotor and cognitive functions were observed with the therapeutic doses of the various commonly prescribed hypnotic agents used as comparators, e.g. zolpidem 10 mg up to 5 h after dose administration"
+        },
+        {
+          "pmid": "10379619",
+          "doi": "10.1007/s002130050971",
+          "quote": "Although both triazolam and zolpidem increased overall reaction time in the negative priming task, only triazolam increased the magnitude of negative priming relative to placebo."
+        }
+      ],
+      "verdict": "keep but relabel to sedation with psychomotor impairment",
+      "note": "This is the only GABA-A subunit with a genuinely subunit-preferring human drug. Controlled studies and a clinical pharmacology review document dose-dependent psychomotor and driving impairment and increased reaction time with zolpidem/zaleplon. The human construct is sedation-linked psychomotor impairment, so the claim should be relabelled rather than kept as psychomotor retardation."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA2",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "TPA023, an alpha2/alpha3-selective GABA-A partial agonist tested in humans"
+      ],
+      "other_targets_they_hit": [
+        "GABRA3 - TPA023 cannot separate alpha2 from alpha3"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "16183706",
+          "doi": "10.1124/jpet.105.089920",
+          "quote": "binds with equivalent high (subnanomolar) affinity to the benzodiazepine binding site of recombinant human GABA(A) receptors containing an alpha1, alpha2, alpha3, or alpha5 subunit but has partial agonist efficacy at the alpha2 and alpha3 subtypes and essentially antagonist efficacy at the alpha1 and alpha5 subtypes"
+        },
+        {
+          "pmid": "18482097",
+          "doi": "10.1111/j.1527-3458.2007.00034.x",
+          "quote": "TPA023 was clearly differentiated from the nonselective agonist lorazepam in terms of saccadic eye movement and unlike lorazepam, it did not impair either postural stability, as judged by body sway, or cognition."
+        }
+      ],
+      "verdict": "drop",
+      "note": "An alpha2/alpha3-selective positive modulator was taken into human studies and explicitly did NOT impair body sway or cognition, unlike nonselective lorazepam. This is direct controlled human evidence that alpha2-preferring GABA-A activation does not produce psychomotor slowing; benzodiazepine psychomotor impairment should not be credited to alpha2."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA3",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "TPA023, an alpha2/alpha3-selective GABA-A partial agonist tested in humans"
+      ],
+      "other_targets_they_hit": [
+        "GABRA2 - TPA023 cannot separate alpha3 from alpha2"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "16183706",
+          "doi": "10.1124/jpet.105.089920",
+          "quote": "binds with equivalent high (subnanomolar) affinity to the benzodiazepine binding site of recombinant human GABA(A) receptors containing an alpha1, alpha2, alpha3, or alpha5 subunit but has partial agonist efficacy at the alpha2 and alpha3 subtypes and essentially antagonist efficacy at the alpha1 and alpha5 subtypes"
+        },
+        {
+          "pmid": "18482097",
+          "doi": "10.1111/j.1527-3458.2007.00034.x",
+          "quote": "TPA023 was clearly differentiated from the nonselective agonist lorazepam in terms of saccadic eye movement and unlike lorazepam, it did not impair either postural stability, as judged by body sway, or cognition."
+        }
+      ],
+      "verdict": "drop",
+      "note": "Same evidence as GABRA2: the alpha2/alpha3-selective agonist TPA023 was non-sedating and non-impairing in humans. Nonselective benzodiazepine psychomotor impairment is not attributable to alpha3."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA4",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; alpha4-containing GABA-A receptors are benzodiazepine-insensitive and no human drug selectively activates them"
+      ],
+      "other_targets_they_hit": [
+        "GABRA6 (the other benzodiazepine-insensitive alpha subunit)",
+        "GABRD"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "Alpha4-containing receptors do not bind classical benzodiazepine-site agonists, so no human drug tests this claim. No human study of alpha4-selective activation was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA5",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none in the activation direction; the only alpha5-selective compound taken into humans (alpha5IA) is an INVERSE agonist, i.e. the opposite direction"
+      ],
+      "other_targets_they_hit": [
+        "GABRA1",
+        "GABRA2",
+        "GABRA3"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "18482097",
+          "doi": "10.1111/j.1527-3458.2007.00034.x",
+          "quote": "TPA023 has weak partial agonist efficacy at the alpha2 and alpha3 subtypes whereas alpha5IA has inverse agonist efficacy at the alpha5 subtype."
+        }
+      ],
+      "verdict": "drop",
+      "note": "Human alpha5-selective pharmacology exists only in the inverse-agonist (negative modulator) direction, where it enhanced cognition. There is no alpha5-selective agonist human study, so the activation claim has no human support and the one human alpha5 compound points the other way."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRA6",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; alpha6-containing GABA-A receptors are benzodiazepine-insensitive and largely cerebellar granule-cell restricted"
+      ],
+      "other_targets_they_hit": [
+        "GABRA4"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No human drug selectively activates alpha6-containing GABA-A receptors and no human study of alpha6 activation and psychomotor slowing was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRG1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no gamma-subunit-selective GABA-A drug exists for human use"
+      ],
+      "other_targets_they_hit": [
+        "GABRG2",
+        "GABRG3",
+        "and all alpha subunits"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "Benzodiazepine-site drugs require a gamma subunit but discriminate among alpha, not gamma, subunits; gamma1-containing receptors are in fact poorly benzodiazepine-sensitive. No human evidence found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRG2",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "benzodiazepines and Z-drugs (diazepam, lorazepam, triazolam, zolpidem) - their high-affinity site requires a gamma2 subunit, but they are not gamma2-selective"
+      ],
+      "other_targets_they_hit": [
+        "GABRA1",
+        "GABRA2",
+        "GABRA3",
+        "GABRA5",
+        "GABRG1",
+        "GABRG3"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "12404558",
+          "doi": "10.1002/hup.310",
+          "quote": "consistent detrimental residual effects on various aspects of psychomotor and cognitive functions were observed with the therapeutic doses of the various commonly prescribed hypnotic agents used as comparators, e.g. zolpidem 10 mg up to 5 h after dose administration"
+        },
+        {
+          "pmid": "18482097",
+          "doi": "10.1111/j.1527-3458.2007.00034.x",
+          "quote": "TPA023 was clearly differentiated from the nonselective agonist lorazepam in terms of saccadic eye movement and unlike lorazepam, it did not impair either postural stability, as judged by body sway, or cognition."
+        }
+      ],
+      "verdict": "keep as rodent only",
+      "note": "Gamma2 is obligatory for the action of every benzodiazepine-site drug that impairs human psychomotor function, so the human evidence is permissive of gamma2 but cannot isolate it - and the alpha-subtype dissection (TPA023 non-impairing, zolpidem impairing) shows the impairment tracks the alpha subunit, not gamma2. Retained as a rodent-derived claim rather than credited with family-level human evidence."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "GABRG3",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no gamma3-selective GABA-A drug exists for human use"
+      ],
+      "other_targets_they_hit": [
+        "GABRG2",
+        "GABRG1",
+        "and all alpha subunits"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No human drug selectively activates gamma3-containing GABA-A receptors. No human evidence found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "HTR2C",
+      "human_evidence": "controlled human study",
+      "selective_human_drug": true,
+      "drugs": [
+        "lorcaserin (selective 5-HT2C agonist, phase 3 programme)",
+        "mCPP (nonselective 5-HT2C agonist used in challenge studies)"
+      ],
+      "other_targets_they_hit": [
+        "HTR2A and HTR2B at higher exposures; mCPP also hits 5-HT1A/1B/1D and SERT"
+      ],
+      "symptom_the_human_data_support": "fatigue (with dizziness and headache)",
+      "references": [
+        {
+          "pmid": "27627785",
+          "doi": "10.1111/cob.12159",
+          "quote": "Additional adverse events occurring in >5% of patients receiving lorcaserin included dizziness, fatigue, nausea, dry mouth and constipation in patients without diabetes"
+        }
+      ],
+      "verdict": "keep but relabel to fatigue",
+      "note": "Pooled phase 3 data for the selective 5-HT2C agonist lorcaserin list fatigue, dizziness and headache among adverse events in >5% of patients, with no psychomotor retardation or motor slowing reported. The human data support fatigue, which is a different symptom from psychomotor retardation."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "KCNN1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no SK-channel activator (e.g. the research tools 1-EBIO, NS309, SKA-31) has reached human use"
+      ],
+      "other_targets_they_hit": [
+        "the other KCNN paralogues; riluzole and chlorzoxazone touch SK channels but hit many other targets"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "There is no human SK-channel activator, so the activation direction cannot be tested pharmacologically in people, and no human study was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "KCNN3",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no SK-channel activator (e.g. the research tools 1-EBIO, NS309, SKA-31) has reached human use"
+      ],
+      "other_targets_they_hit": [
+        "the other KCNN paralogues; riluzole and chlorzoxazone touch SK channels but hit many other targets"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "There is no human SK-channel activator, so the activation direction cannot be tested pharmacologically in people, and no human study was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "KCNN2",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no SK2 activator has reached human use"
+      ],
+      "other_targets_they_hit": [
+        "KCNN1",
+        "KCNN3"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "33242881",
+          "doi": "10.1093/brain/awaa346",
+          "quote": "All variants tested but one, which was reclassified to uncertain significance, led to a loss-of-function of SK2 channels. Patients with KCNN2 variants had motor and language developmental delay, intellectual disability often associated with early-onset movement disorders comprising cerebellar ataxia and/or extrapyramidal symptoms."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No human SK2 activator exists. The only human KCNN2 data are LOSS-of-function variants causing a neurodevelopmental movement disorder with ataxia, extrapyramidal signs and motor developmental delay - the opposite direction to the claim, so it is reported here as contradicting rather than credited as supporting genetic evidence."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "KCNN4",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none in the activation direction; the only KCa3.1-directed human drug, senicapoc, is a BLOCKER (opposite direction)"
+      ],
+      "other_targets_they_hit": [
+        "KCNN1",
+        "KCNN2",
+        "KCNN3"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "KCNN4/KCa3.1 is largely non-neuronal in humans and the only clinical-stage compound is an inhibitor developed for sickle cell disease. No human evidence for activation-induced psychomotor slowing was found."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "OPRK1",
+      "human_evidence": "review or clinical pharmacology",
+      "selective_human_drug": true,
+      "drugs": [
+        "spiradoline (U-62,066E)",
+        "enadoline",
+        "and other arylacetamide kappa agonists studied in humans"
+      ],
+      "other_targets_they_hit": [
+        "spiradoline is highly kappa-selective; dysphoria and sedation at sub-analgesic doses are attributed to central kappa agonism"
+      ],
+      "symptom_the_human_data_support": "sedation (with dysphoria and diuresis)",
+      "references": [
+        {
+          "pmid": "12847558",
+          "doi": "10.1111/j.1527-3458.2003.tb00248.x",
+          "quote": "Spiradoline is highly selective for the kappa receptor with K(i) of 8.6 nM in guinea pig."
+        },
+        {
+          "pmid": "12847558",
+          "doi": "10.1111/j.1527-3458.2003.tb00248.x",
+          "quote": "The available clinical data suggest that spiradoline produces disturbing adverse effects such as diuresis, sedation, and dysphoria at doses lower than those needed for analgesic effects."
+        }
+      ],
+      "verdict": "keep but relabel to sedation",
+      "note": "A clinical pharmacology review of a highly kappa-selective agonist states that in humans the dose-limiting effects are diuresis, sedation and dysphoria. Sedation and dysphoria, not psychomotor retardation, are what the human data support."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "SCN1B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; all sodium-channel drugs in human use (phenytoin, carbamazepine, lacosamide, lidocaine, flecainide) are BLOCKERS acting on the pore-forming alpha subunits"
+      ],
+      "other_targets_they_hit": [
+        "SCN1A",
+        "SCN2A",
+        "SCN5A",
+        "SCN8A - the alpha subunits that human sodium-channel drugs actually bind"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "30241906",
+          "doi": "10.1016/j.pbiomolbio.2018.08.003",
+          "quote": "Of particular interest is the prospect that cell adhesion mediated by the cardiac sodium channel beta subunit (Scn1b) may be a novel anti-arrhythmic target."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No human drug activates a sodium-channel beta subunit; beta subunits are modulatory/adhesion proteins and the only translational interest in SCN1B is as a cardiac anti-arrhythmic adhesion target. Sodium-channel pharmacology in humans is alpha-subunit blockade, which is neither this target nor this direction."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "SCN2B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; all sodium-channel drugs in human use (phenytoin, carbamazepine, lacosamide, lidocaine, flecainide) are BLOCKERS acting on the pore-forming alpha subunits"
+      ],
+      "other_targets_they_hit": [
+        "SCN1A",
+        "SCN2A",
+        "SCN5A",
+        "SCN8A - the alpha subunits that human sodium-channel drugs actually bind"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No human drug activates a sodium-channel beta subunit; beta subunits are modulatory/adhesion proteins and the only translational interest in SCN1B is as a cardiac anti-arrhythmic adhesion target. Sodium-channel pharmacology in humans is alpha-subunit blockade, which is neither this target nor this direction."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "SCN3B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; all sodium-channel drugs in human use (phenytoin, carbamazepine, lacosamide, lidocaine, flecainide) are BLOCKERS acting on the pore-forming alpha subunits"
+      ],
+      "other_targets_they_hit": [
+        "SCN1A",
+        "SCN2A",
+        "SCN5A",
+        "SCN8A - the alpha subunits that human sodium-channel drugs actually bind"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No human drug activates a sodium-channel beta subunit; beta subunits are modulatory/adhesion proteins and the only translational interest in SCN1B is as a cardiac anti-arrhythmic adhesion target. Sodium-channel pharmacology in humans is alpha-subunit blockade, which is neither this target nor this direction."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "activation",
+      "target": "SCN4B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; all sodium-channel drugs in human use (phenytoin, carbamazepine, lacosamide, lidocaine, flecainide) are BLOCKERS acting on the pore-forming alpha subunits"
+      ],
+      "other_targets_they_hit": [
+        "SCN1A",
+        "SCN2A",
+        "SCN5A",
+        "SCN8A - the alpha subunits that human sodium-channel drugs actually bind"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No human drug activates a sodium-channel beta subunit; beta subunits are modulatory/adhesion proteins and the only translational interest in SCN1B is as a cardiac anti-arrhythmic adhesion target. Sodium-channel pharmacology in humans is alpha-subunit blockade, which is neither this target nor this direction."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "inhibition",
+      "target": "DRD1",
+      "human_evidence": "controlled human study",
+      "selective_human_drug": true,
+      "drugs": [
+        "ecopipam (selective D1/D5 antagonist), phase 2b randomised trial in Tourette syndrome"
+      ],
+      "other_targets_they_hit": [
+        "DRD5 - ecopipam is a D1-family (D1/D5) antagonist and cannot separate the two"
+      ],
+      "symptom_the_human_data_support": "fatigue and somnolence (and insomnia), not psychomotor retardation",
+      "references": [
+        {
+          "pmid": "36628546",
+          "doi": "10.1542/peds.2022-059574",
+          "quote": "ecopipam, a first-in-class, selective dopamine 1 receptor antagonist, reduces tics with a low risk for these adverse events"
+        },
+        {
+          "pmid": "36628546",
+          "doi": "10.1542/peds.2022-059574",
+          "quote": "Headache (15.8%), insomnia (14.5%), fatigue (7.9%), and somnolence (7.9%) were the most common adverse events."
+        }
+      ],
+      "verdict": "keep but relabel to fatigue/somnolence",
+      "note": "The only selective D1-family antagonist in controlled human trials produced headache, insomnia, fatigue and somnolence at ~8% each, with no psychomotor retardation, bradykinesia or extrapyramidal signs reported. The honest human label is fatigue/somnolence, and DRD5 remains unseparated."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "inhibition",
+      "target": "DRD2",
+      "human_evidence": "pharmacovigilance or cohort",
+      "selective_human_drug": false,
+      "drugs": [
+        "haloperidol",
+        "chlorpromazine",
+        "olanzapine",
+        "risperidone and antipsychotics generally"
+      ],
+      "other_targets_they_hit": [
+        "DRD3",
+        "HTR2A",
+        "CHRM1",
+        "HRH1",
+        "ADRA1A/ADRA1B - most antipsychotics are multi-target; haloperidol and amisulpride/sulpiride are the closest to D2-preferring"
+      ],
+      "symptom_the_human_data_support": "bradykinesia / drug-induced parkinsonism",
+      "references": [
+        {
+          "pmid": "30710809",
+          "doi": "10.1016/j.psychres.2019.01.058",
+          "quote": "Using a statistical cut-point derived from normative data, 64% of the patients met criterion for bradykinesia compared with 46% using a conventional observer-based severity rating scale."
+        },
+        {
+          "pmid": "30710809",
+          "doi": "10.1016/j.psychres.2019.01.058",
+          "quote": "Recognizing drug-induced parkinsonian bradykinesia in psychosis patients can be challenging due to overlapping presentation with psychomotor slowing associated with depression, negative symptoms, or cognitive disturbances."
+        }
+      ],
+      "verdict": "keep but relabel to bradykinesia (drug-induced parkinsonism)",
+      "note": "Objective kinematic measurement in antipsychotic-treated patients found 64% met criterion for bradykinesia, and the same paper explicitly distinguishes drug-induced parkinsonian bradykinesia from the psychomotor slowing of depression or negative symptoms. D2 blockade is the shared principal action of the class, so the claim survives in human data but as bradykinesia/parkinsonism, not psychomotor retardation."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "inhibition",
+      "target": "SLC6A2",
+      "human_evidence": "controlled human study",
+      "selective_human_drug": true,
+      "drugs": [
+        "atomoxetine (selective noradrenaline reuptake inhibitor)",
+        "reboxetine"
+      ],
+      "other_targets_they_hit": [
+        "atomoxetine is NET-selective; at high occupancy it also raises prefrontal dopamine via NET"
+      ],
+      "symptom_the_human_data_support": "somnolence and fatigue, not psychomotor retardation",
+      "references": [
+        {
+          "pmid": "15231966",
+          "doi": "10.1542/peds.114.1.e1",
+          "quote": "Adverse events reported significantly more frequently with atomoxetine were decreased appetite, somnolence, and fatigue."
+        }
+      ],
+      "verdict": "keep but relabel to fatigue/somnolence",
+      "note": "In a randomised placebo-controlled paediatric trial the adverse events significantly more frequent on the selective NET inhibitor were decreased appetite, somnolence and fatigue. NET inhibitors are arousal-promoting drugs; the human signal is somnolence/fatigue, which the task instructions say must not be equated with psychomotor retardation."
+    },
+    {
+      "symptom": "psychomotor_retardation",
+      "direction": "inhibition",
+      "target": "TACR1",
+      "human_evidence": "review or clinical pharmacology",
+      "selective_human_drug": true,
+      "drugs": [
+        "aprepitant (and fosaprepitant/rolapitant), selective NK1 receptor antagonists"
+      ],
+      "other_targets_they_hit": [
+        "none of consequence for the CNS effect; aprepitant is given with ondansetron and dexamethasone in the cited trials, which is a co-medication confound"
+      ],
+      "symptom_the_human_data_support": "asthenia and fatigue",
+      "references": [
+        {
+          "pmid": "15025555",
+          "doi": "10.2165/00003495-200464070-00013",
+          "quote": "Aprepitant (Emend) is the first commercially available drug from a new class of agents, the neurokinin NK(1) receptor antagonists."
+        },
+        {
+          "pmid": "15025555",
+          "doi": "10.2165/00003495-200464070-00013",
+          "quote": "The most common adverse events in randomised trials were asthenia or fatigue."
+        }
+      ],
+      "verdict": "keep but relabel to fatigue/asthenia",
+      "note": "The clinical pharmacology review of the first selective NK1 antagonist states the most common adverse events in randomised trials were asthenia or fatigue. No psychomotor retardation is reported for NK1 antagonists, including in the depression programmes."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "CHRM1",
+      "human_evidence": "pharmacovigilance or cohort",
+      "selective_human_drug": false,
+      "drugs": [
+        "scopolamine, benztropine, diphenhydramine, tricyclics and other antimuscarinics in overdose"
+      ],
+      "other_targets_they_hit": [
+        "CHRM2",
+        "CHRM3",
+        "CHRM4",
+        "CHRM5 - no M1-selective antagonist is in human use; co-ingested drugs also block H1 and monoamine transporters"
+      ],
+      "symptom_the_human_data_support": "agitation / delirium",
+      "references": [
+        {
+          "pmid": "38465631",
+          "doi": "10.1080/15563650.2024.2319854",
+          "quote": "The spectrum of anticholinergic delirium ranges from mild agitation to severe behavioural disturbance."
+        }
+      ],
+      "verdict": "keep but relabel to agitation/delirium",
+      "note": "A toxicology case series states that anticholinergic delirium ranges from mild agitation to severe behavioural disturbance, and the catatonia pharmacovigilance study independently flags benztropine. The human symptom is agitated delirium, not locomotor hyperactivity, and the drugs block all five muscarinic subtypes so M1 cannot be isolated."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "ketamine",
+        "esketamine",
+        "memantine",
+        "dextromethorphan - open-channel blockers that necessarily act through the obligatory GluN1 subunit"
+      ],
+      "other_targets_they_hit": [
+        "GRIN2A-GRIN2D and GRIN3A/GRIN3B (all contain GluN1)",
+        "sigma-1",
+        "nicotinic receptors",
+        "HCN1",
+        "mu-opioid and monoamine transporters for ketamine"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        },
+        {
+          "pmid": "19011431",
+          "doi": "10.1097/JCP.0b013e31818a6cea",
+          "quote": "CP-101,606 was safe, generally well tolerated, and capable of producing an antidepressant response without also producing a dissociative reaction."
+        }
+      ],
+      "verdict": "keep as rodent only",
+      "note": "GluN1 is obligatory in every NMDA receptor, so channel blockers act through it but cannot be attributed to it selectively. The human data do not show hyperactivity: in a randomised trial low-dose esketamine DECREASED emergence agitation, and the GluN2B-selective antagonist was well tolerated without dissociation. Retained as a rodent-derived claim only."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN2A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family - ketamine, memantine and dextromethorphan are pore blockers with no GluN2/GluN3 subtype selectivity"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists for this subunit, so nonselective NMDA antagonist data cannot be credited to it, and those nonselective data do not show hyperactivity in any case."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN2C",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family - ketamine, memantine and dextromethorphan are pore blockers with no GluN2/GluN3 subtype selectivity"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists for this subunit, so nonselective NMDA antagonist data cannot be credited to it, and those nonselective data do not show hyperactivity in any case."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN2D",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family - ketamine, memantine and dextromethorphan are pore blockers with no GluN2/GluN3 subtype selectivity"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists for this subunit, so nonselective NMDA antagonist data cannot be credited to it, and those nonselective data do not show hyperactivity in any case."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN3A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family - ketamine, memantine and dextromethorphan are pore blockers with no GluN2/GluN3 subtype selectivity"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists for this subunit, so nonselective NMDA antagonist data cannot be credited to it, and those nonselective data do not show hyperactivity in any case."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN3B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family - ketamine, memantine and dextromethorphan are pore blockers with no GluN2/GluN3 subtype selectivity"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "39275772",
+          "doi": "10.1097/JS9.0000000000001642",
+          "quote": "A single low-dose of esketamine before general anesthesia induction failed to significantly decrease the risk of POD but decrease the risk of intraoperative hypotension and emergence agitation."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists for this subunit, so nonselective NMDA antagonist data cannot be credited to it, and those nonselective data do not show hyperactivity in any case."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "GRIN2B",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "traxoprodil / CP-101,606, an NR2B(GluN2B) subunit-selective NMDA antagonist tested in a randomised placebo-controlled trial"
+      ],
+      "other_targets_they_hit": [
+        "none of consequence - this is a genuinely subunit-selective human compound"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "19011431",
+          "doi": "10.1097/JCP.0b013e31818a6cea",
+          "quote": "This randomized, placebo-controlled, double-blind study was the first to evaluate the antidepressant efficacy, safety, and tolerability of an NR2B subunit-selective N-methyl-D-aspartate receptor antagonist, CP-101,606."
+        },
+        {
+          "pmid": "19011431",
+          "doi": "10.1097/JCP.0b013e31818a6cea",
+          "quote": "CP-101,606 was safe, generally well tolerated, and capable of producing an antidepressant response without also producing a dissociative reaction."
+        }
+      ],
+      "verdict": "drop",
+      "note": "GRIN2B is the one NMDA subunit with a genuinely subunit-selective drug tested in a human randomised controlled trial, and that trial reported it was safe and well tolerated without even a dissociative reaction, let alone hyperactivity. This is controlled human evidence against the claim."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "HRH1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "second-generation H1 antagonists (cetirizine, fexofenadine, loratadine) are H1-selective and in mass human use; first-generation agents (diphenhydramine, hydroxyzine, promethazine) are not"
+      ],
+      "other_targets_they_hit": [
+        "CHRM1-CHRM5, ADRA1, 5-HT and dopamine receptors for the first-generation antihistamines"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "Repeated searches for paradoxical excitation or hyperactivity with H1 antagonists returned no indexed human study, and the dominant human CNS effect of H1 blockade is sedation, the opposite direction. Any paradoxical excitation reported for first-generation agents is confounded by their antimuscarinic action. No reference is cited because none was verified."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "HTR1A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; there is no selective 5-HT1A antagonist in human use. Pindolol is a beta-adrenoceptor blocker with 5-HT1A/1B affinity"
+      ],
+      "other_targets_they_hit": [
+        "ADRB1",
+        "ADRB2",
+        "HTR1B - pindolol's beta-blockade dominates its human pharmacology"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [],
+      "verdict": "drop",
+      "note": "No selective human 5-HT1A antagonist exists, so the inhibition direction cannot be tested in people, and pindolol's effects cannot be assigned to 5-HT1A. No human evidence found."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "SLC6A2",
+      "human_evidence": "controlled human study",
+      "selective_human_drug": true,
+      "drugs": [
+        "atomoxetine (selective noradrenaline reuptake inhibitor)"
+      ],
+      "other_targets_they_hit": [
+        "atomoxetine is NET-selective"
+      ],
+      "symptom_the_human_data_support": "REDUCED hyperactivity - the opposite of the claim",
+      "references": [
+        {
+          "pmid": "15231966",
+          "doi": "10.1542/peds.114.1.e1",
+          "quote": "Both inattentive and hyperactive/impulsive symptom clusters were significantly reduced with atomoxetine, compared with placebo."
+        },
+        {
+          "pmid": "15231966",
+          "doi": "10.1542/peds.114.1.e1",
+          "quote": "Adverse events reported significantly more frequently with atomoxetine were decreased appetite, somnolence, and fatigue."
+        }
+      ],
+      "verdict": "drop",
+      "note": "CONTRADICTING HUMAN EVIDENCE. In a randomised placebo-controlled trial the selective NET inhibitor atomoxetine significantly REDUCED hyperactive/impulsive symptoms, and it is licensed for ADHD on that basis. Human data point the opposite way to the claim."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "inhibition",
+      "target": "SLC6A3",
+      "human_evidence": "review or clinical pharmacology",
+      "selective_human_drug": false,
+      "drugs": [
+        "cocaine",
+        "methamphetamine",
+        "amphetamine",
+        "methylphenidate"
+      ],
+      "other_targets_they_hit": [
+        "SLC6A2 (NET) and SLC6A4 (SERT) for cocaine",
+        "VMAT2, TAAR1 and monoamine oxidase for amphetamines",
+        "local anaesthetic sodium-channel block and sigma receptors for cocaine"
+      ],
+      "symptom_the_human_data_support": "psychomotor agitation (agitated/excited delirium at high exposure)",
+      "references": [
+        {
+          "pmid": "22390995",
+          "doi": "10.1016/j.jflm.2011.12.009",
+          "quote": "agitation, combativeness, and altered mental status can be produced by hypoglycemia, thyroid storm, certain kinds of seizures, and these conditions can be difficult to distinguish from those produced by cocaine or methamphetamine intoxication"
+        },
+        {
+          "pmid": "21112253",
+          "doi": "10.1016/S1474-4422(10)70269-6",
+          "quote": "children presented in infancy (median age 2.5 months, range 0.5-7) with either hyperkinesia (n=5), parkinsonism (n=4), or a mixed hyperkinetic and hypokinetic movement disorder (n=2)"
+        }
+      ],
+      "verdict": "keep but relabel to psychomotor agitation",
+      "note": "A clinical review of excited delirium names cocaine and methamphetamine intoxication as producing severe agitation and combativeness; human genetic SLC6A3 loss of function also produces infantile hyperkinesia in a minority before progressing to parkinsonism. The pharmacological drugs are all nonselective (NET and SERT, plus VMAT2 for amphetamines), and the human symptom is psychomotor agitation, not locomotor hyperactivity."
+    },
+    {
+      "symptom": "hyperactivity",
+      "direction": "activation",
+      "target": "OPRD1",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "AZD2327, a selective delta opioid receptor agonist, randomised placebo-controlled trial in anxious depression"
+      ],
+      "other_targets_they_hit": [
+        "none of consequence - AZD2327 is described as a selective DOR agonist"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "26728893",
+          "doi": "10.1007/s00213-015-4195-4",
+          "quote": "AZD2327 is a selective delta opioid receptor (DOR) agonist with anxiolytic and antidepressant activity in animal models."
+        },
+        {
+          "pmid": "26728893",
+          "doi": "10.1007/s00213-015-4195-4",
+          "quote": "These results suggest that AZD2327 has larger potential anxiolytic than antidepressant efficacy."
+        }
+      ],
+      "verdict": "drop",
+      "note": "A selective delta opioid agonist was tested in a randomised placebo-controlled human trial and its signal was anxiolytic; no hyperactivity, agitation or psychomotor activation was reported. Selective human pharmacology exists and does not reproduce the claim."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN1",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "memantine",
+        "ketamine",
+        "dextromethorphan - pore blockers acting through the obligatory GluN1 subunit"
+      ],
+      "other_targets_they_hit": [
+        "GRIN2A-D and GRIN3A/B",
+        "sigma-1",
+        "5-HT3",
+        "nicotinic receptors"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms - the opposite of the claim (at receptor-family level)",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "CONTRADICTING HUMAN EVIDENCE at receptor-family level: in a randomised placebo-controlled trial memantine augmentation significantly reduced Y-BOCS scores in SRI-refractory OCD, and NMDA antagonists are used to TREAT compulsive symptoms. GluN1 also cannot be isolated by any human drug."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN2A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms at receptor-family level",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists, and the available family-level human evidence is contradicting: memantine augmentation reduced OCD symptoms in a randomised controlled trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN2C",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms at receptor-family level",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists, and the available family-level human evidence is contradicting: memantine augmentation reduced OCD symptoms in a randomised controlled trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN2D",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms at receptor-family level",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists, and the available family-level human evidence is contradicting: memantine augmentation reduced OCD symptoms in a randomised controlled trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN3A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms at receptor-family level",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists, and the available family-level human evidence is contradicting: memantine augmentation reduced OCD symptoms in a randomised controlled trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN3B",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "none; no human drug is selective for this NMDA receptor subunit"
+      ],
+      "other_targets_they_hit": [
+        "the whole NMDA receptor family"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms at receptor-family level",
+      "references": [
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "No subunit-selective human drug exists, and the available family-level human evidence is contradicting: memantine augmentation reduced OCD symptoms in a randomised controlled trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "GRIN2B",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "traxoprodil / CP-101,606, GluN2B subunit-selective antagonist in a randomised placebo-controlled trial"
+      ],
+      "other_targets_they_hit": [
+        "none of consequence - genuinely subunit-selective"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "19011431",
+          "doi": "10.1097/JCP.0b013e31818a6cea",
+          "quote": "This randomized, placebo-controlled, double-blind study was the first to evaluate the antidepressant efficacy, safety, and tolerability of an NR2B subunit-selective N-methyl-D-aspartate receptor antagonist, CP-101,606."
+        },
+        {
+          "pmid": "19011431",
+          "doi": "10.1097/JCP.0b013e31818a6cea",
+          "quote": "CP-101,606 was safe, generally well tolerated, and capable of producing an antidepressant response without also producing a dissociative reaction."
+        },
+        {
+          "pmid": "29100251",
+          "doi": "10.1055/s-0043-120268",
+          "quote": "The Y-BOCS total score was significantly reduced in the memantine group at the end of weeks 8 and 12, while no improvement was observed in the placebo group throughout the trial."
+        }
+      ],
+      "verdict": "drop",
+      "note": "The one subunit-selective human trial reported good tolerability with no compulsive or repetitive behaviour signal, and family-level NMDA antagonism reduces rather than causes compulsive symptoms in a randomised trial."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "inhibition",
+      "target": "SLC6A3",
+      "human_evidence": "review or clinical pharmacology",
+      "selective_human_drug": false,
+      "drugs": [
+        "amphetamine",
+        "methamphetamine",
+        "cocaine",
+        "methylphenidate"
+      ],
+      "other_targets_they_hit": [
+        "SLC6A2 (NET) and SLC6A4 (SERT) for cocaine",
+        "VMAT2 and monoamine oxidase for amphetamines",
+        "levodopa-related D1 and D2 stimulation in the Parkinson's disease punding literature"
+      ],
+      "symptom_the_human_data_support": "punding / stereotyped repetitive behaviour",
+      "references": [
+        {
+          "pmid": "15077237",
+          "doi": "10.1002/mds.20045",
+          "quote": "Punding is a term that was coined originally to describe complex prolonged, purposeless, and stereotyped behaviour in chronic amphetamine users."
+        },
+        {
+          "pmid": "20489735",
+          "doi": "10.1038/mp.2009.95",
+          "quote": "The most common causes of punding are dopaminergic replacement therapy in patients affected by Parkinson's disease (PD) and cocaine and amphetamine use in addicts."
+        },
+        {
+          "pmid": "20489735",
+          "doi": "10.1038/mp.2009.95",
+          "quote": "almost all afflicted patients (90%) were on treatment with drugs acting mainly on dopamine receptors D1 and D2, whereas only three cases were reported in association with selective D2 and D3 agonists"
+        }
+      ],
+      "verdict": "keep but relabel to punding/stereotypy",
+      "note": "Punding was originally described in chronic amphetamine users and the mechanism review names cocaine and amphetamine use as a leading cause alongside dopaminergic replacement therapy. The evidence is descriptive/review-level rather than controlled, the drugs are nonselective monoamine transporter ligands and releasers, and the human phenotype is punding/stereotypy rather than OCD-type compulsion."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "activation",
+      "target": "DRD2",
+      "human_evidence": "pharmacovigilance or cohort",
+      "selective_human_drug": false,
+      "drugs": [
+        "pramipexole",
+        "ropinirole",
+        "levodopa",
+        "aripiprazole (D2/D3 partial agonist)"
+      ],
+      "other_targets_they_hit": [
+        "DRD3 - pramipexole and ropinirole are D3-PREFERRING D2/D3 agonists, so D3 is the leading alternative explanation",
+        "DRD1 via levodopa",
+        "HTR1A and HTR2A for aripiprazole"
+      ],
+      "symptom_the_human_data_support": "impulse control disorder / compulsive behaviour (gambling, hypersexuality, compulsive buying, binge eating)",
+      "references": [
+        {
+          "pmid": "20457959",
+          "doi": "10.1001/archneurol.2010.65",
+          "quote": "Impulse control disorders were more common in patients treated with a dopamine agonist than in patients not taking a dopamine agonist (17.1% vs 6.9%; odds ratio [OR], 2.72; 95% confidence interval [CI], 2.08-3.54; P < .001)."
+        },
+        {
+          "pmid": "20457959",
+          "doi": "10.1001/archneurol.2010.65",
+          "quote": "Impulse control disorder frequency was similar for pramipexole and ropinirole (17.7% vs 15.5%; OR, 1.22; 95% CI, 0.94-1.57; P = .14)."
+        },
+        {
+          "pmid": "21955669",
+          "doi": "10.1186/1471-2377-11-117",
+          "quote": "10/140 RLS patients of a clinical cohort (7.1%) were finally diagnosed with ICBs, 8 of 10 on dopamine agonist (DA) therapy, 2 of 10 on levodopa."
+        },
+        {
+          "pmid": "31206391",
+          "doi": "10.1097/JCP.0000000000001068",
+          "quote": "Pharmacovigilance studies have reported a higher risk of problematic gambling (PG) in people receiving aripiprazole (ARI), a partial dopamine agonist."
+        }
+      ],
+      "verdict": "keep as human",
+      "note": "The strongest human claim in this set: a 3090-patient cross-sectional study found impulse control disorders in 17.1% on a dopamine agonist vs 6.9% not (OR 2.72), replicated as a class effect in a restless legs cohort and supported by aripiprazole pharmacovigilance. Direction and symptom both match. The important caveat is selectivity: the agonists are D3-preferring, so DRD3 could account for much of the effect, and the punding literature notes only three punding cases with selective D2/D3 agonists."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "activation",
+      "target": "HTR1A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "buspirone (5-HT1A partial agonist)",
+        "psilocybin (potent 5-HT1A and 5-HT2A/2C agonist)"
+      ],
+      "other_targets_they_hit": [
+        "HTR2A and HTR2C - psilocybin cannot separate 5-HT1A from 5-HT2A/2C"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms - the opposite of the claim",
+      "references": [
+        {
+          "pmid": "17196053",
+          "doi": "10.4088/jcp.v67n1110",
+          "quote": "This modified double-blind study investigated the safety, tolerability, and clinical effects of psilocybin, a potent 5-HT(1A) and 5-HT(2A/2C) agonist, in patients with OCD."
+        },
+        {
+          "pmid": "17196053",
+          "doi": "10.4088/jcp.v67n1110",
+          "quote": "Marked decreases in OCD symptoms of variable degrees were observed in all subjects during 1 or more of the testing sessions (23%-100% decrease in YBOCS score)."
+        },
+        {
+          "pmid": "2874976",
+          "doi": "10.2165/00003495-198632020-00002",
+          "quote": "In healthy volunteers, buspirone does not impair psychomotor or cognitive function, and appears to have no additive effect with alcohol."
+        }
+      ],
+      "verdict": "drop",
+      "note": "CONTRADICTING HUMAN EVIDENCE. Psilocybin, a potent 5-HT1A as well as 5-HT2A/2C agonist, produced marked decreases in OCD symptoms in all subjects of a modified double-blind study, and the selective 5-HT1A partial agonist buspirone has no compulsivity signal and does not even impair psychomotor function in healthy volunteers."
+    },
+    {
+      "symptom": "compulsive_behavior",
+      "direction": "activation",
+      "target": "HTR2A",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "psilocybin",
+        "LSD and other classical psychedelics"
+      ],
+      "other_targets_they_hit": [
+        "HTR1A and HTR2C - psilocybin is a potent agonist at all three"
+      ],
+      "symptom_the_human_data_support": "REDUCED compulsive symptoms - the opposite of the claim",
+      "references": [
+        {
+          "pmid": "17196053",
+          "doi": "10.4088/jcp.v67n1110",
+          "quote": "This modified double-blind study investigated the safety, tolerability, and clinical effects of psilocybin, a potent 5-HT(1A) and 5-HT(2A/2C) agonist, in patients with OCD."
+        },
+        {
+          "pmid": "17196053",
+          "doi": "10.4088/jcp.v67n1110",
+          "quote": "Marked decreases in OCD symptoms of variable degrees were observed in all subjects during 1 or more of the testing sessions (23%-100% decrease in YBOCS score)."
+        }
+      ],
+      "verdict": "drop",
+      "note": "CONTRADICTING HUMAN EVIDENCE. In a modified double-blind study of 9 OCD patients, psilocybin produced 23-100% decreases in YBOCS score in every subject; 5-HT2A agonists are being developed to treat, not cause, compulsive symptoms."
+    },
+    {
+      "symptom": "catatonia",
+      "direction": "activation",
+      "target": "CHRM4",
+      "human_evidence": "none found",
+      "selective_human_drug": false,
+      "drugs": [
+        "xanomeline-trospium (KarXT), M1/M4-preferring muscarinic agonist, phase 3"
+      ],
+      "other_targets_they_hit": [
+        "CHRM1 - xanomeline is a dual M1/M4-preferring agonist and cannot isolate M4",
+        "CHRM2",
+        "CHRM3",
+        "CHRM5"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "38104575",
+          "doi": "10.1016/S0140-6736(23)02190-6",
+          "quote": "Xanomeline is a dual Mand M-preferring muscarinic receptor agonist that does not block Ddopamine receptors"
+        },
+        {
+          "pmid": "38104575",
+          "doi": "10.1016/S0140-6736(23)02190-6",
+          "quote": "Treatment-emergent adverse event rates of extrapyramidal motor symptoms (KarXT, zero [0%] vs placebo, zero [0%]), akathisia (one [1%] vs one [1%]), weight gain (zero [0%] vs one [1%]), and somnolence (six [5%] vs five [4%]) were similar between the KarXT and placebo groups"
+        }
+      ],
+      "verdict": "drop",
+      "note": "The phase 3 trial of the only M4-preferring agonist in late human development reported zero extrapyramidal motor adverse events and placebo-level somnolence, with no catatonia. Controlled human evidence against the claim, and M1 is in any case inseparable from M4 with this drug."
+    },
+    {
+      "symptom": "catatonia",
+      "direction": "activation",
+      "target": "CNR1",
+      "human_evidence": "case reports only",
+      "selective_human_drug": true,
+      "drugs": [
+        "cannabis / delta-9-tetrahydrocannabinol (CB1 agonist)",
+        "synthetic cannabinoid receptor agonists"
+      ],
+      "other_targets_they_hit": [
+        "CNR2 (CB2)",
+        "co-ingested substances and undiagnosed primary psychiatric illness are the main confounders in the case literature"
+      ],
+      "symptom_the_human_data_support": "catatonia (as claimed), but on case-report evidence only",
+      "references": [
+        {
+          "pmid": "34548987",
+          "doi": "10.7759/cureus.17490",
+          "quote": "Few case reports of catatonia associated with cannabis use are reported. Here, we describe a case of a 35-year-old African American male who developed malignant catatonia following heavy cannabis use."
+        },
+        {
+          "pmid": "40163577",
+          "doi": "10.1097/PRA.0000000000000849",
+          "quote": "It adds to the growing evidence of cannabis-associated catatonia, and it highlights the need for further research and increased counseling regarding the neuropsychiatric effects of marijuana."
+        }
+      ],
+      "verdict": "keep as human",
+      "note": "WEAK EVIDENCE. Cannabis-associated catatonia is reported in a growing case-report and small case-series literature, including malignant catatonia, and the symptom name matches the claim. There is no controlled study, no pharmacovigilance disproportionality analysis and no cohort; treat as low confidence and flagged as case-report level."
+    },
+    {
+      "symptom": "catatonia",
+      "direction": "inhibition",
+      "target": "DRD1",
+      "human_evidence": "none found",
+      "selective_human_drug": true,
+      "drugs": [
+        "ecopipam (selective D1/D5 antagonist), phase 2b randomised trial"
+      ],
+      "other_targets_they_hit": [
+        "DRD5"
+      ],
+      "symptom_the_human_data_support": null,
+      "references": [
+        {
+          "pmid": "36628546",
+          "doi": "10.1542/peds.2022-059574",
+          "quote": "ecopipam, a first-in-class, selective dopamine 1 receptor antagonist, reduces tics with a low risk for these adverse events"
+        },
+        {
+          "pmid": "36628546",
+          "doi": "10.1542/peds.2022-059574",
+          "quote": "Headache (15.8%), insomnia (14.5%), fatigue (7.9%), and somnolence (7.9%) were the most common adverse events."
+        }
+      ],
+      "verdict": "drop",
+      "note": "The only selective D1-family antagonist in controlled human trials reported headache, insomnia, fatigue and somnolence, with no catatonia and explicitly none of the usual antipsychotic motor adverse effects. Selective human pharmacology exists and does not reproduce the claim."
+    },
+    {
+      "symptom": "catatonia",
+      "direction": "inhibition",
+      "target": "DRD2",
+      "human_evidence": "pharmacovigilance or cohort",
+      "selective_human_drug": false,
+      "drugs": [
+        "haloperidol",
+        "chlorpromazine",
+        "olanzapine and antipsychotics generally"
+      ],
+      "other_targets_they_hit": [
+        "DRD3",
+        "HTR2A",
+        "CHRM1",
+        "HRH1",
+        "ADRA1 - antipsychotics are multi-target, and the same analysis independently flags the anticholinergic benztropine, a separate mechanism"
+      ],
+      "symptom_the_human_data_support": "catatonia (as claimed)",
+      "references": [
+        {
+          "pmid": "37308606",
+          "doi": "10.1007/s00787-023-02234-4",
+          "quote": "In adolescents, chlorpromazine (ROR 199.1; 95% CI 134.8-294.1), benzatropine (ROR 193; 95% CI 104.1-361.6), and olanzapine (ROR 135.7; 95% CI 104.6-175.9) reached the highest RORs."
+        },
+        {
+          "pmid": "37308606",
+          "doi": "10.1007/s00787-023-02234-4",
+          "quote": "In children, the main signals involved haloperidol (ROR 104.3; 95% CI 45.6-238.5), ondansetron (ROR 40.5; 95% CI 16.5-99.5), and ciclosporin (ROR 27.4; 95% CI 13.8-54.1)."
+        },
+        {
+          "pmid": "33602769",
+          "doi": "10.1136/bcr-2020-239596",
+          "quote": "developed neuroleptic-induced catatonia in an intensive psychiatric residential treatment centre approximately 24 hours after receiving a first-time intramuscular injection of haloperidol 5 mg for acute agitation"
+        }
+      ],
+      "verdict": "keep as human",
+      "note": "WHO VigiBase disproportionality analysis of 421 paediatric catatonia reports gives very large reporting odds ratios for chlorpromazine (199.1), olanzapine (135.7) and haloperidol (104.3) - drugs whose shared principal action is D2 blockade - supported by a case literature on neuroleptic-induced catatonia and its continuity with neuroleptic malignant syndrome. Direction and symptom match; the drugs are not D2-selective, and benztropine signalling in the same analysis shows antimuscarinic action is an independent route to the same symptom."
+    }
+  ]
+}

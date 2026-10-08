@@ -1,0 +1,16 @@
+{
+ "num_claims": 58,
+ "num_citations": 79,
+ "num_unique_articles": 38,
+ "articles_without_a_metadata_record": [],
+ "citations_whose_doi_disagrees_with_the_record": [],
+ "references_missing_a_field": [],
+ "quote_check": {
+  "ran": true,
+  "source": "PubMed get_article_metadata records",
+  "num_quotes": 79,
+  "num_quotes_verbatim_in_the_abstract": 79,
+  "quotes_not_found": [],
+  "folding": "whitespace and case, beta for the Greek letter, a full stop for the middle dot"
+ }
+}

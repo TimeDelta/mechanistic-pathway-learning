@@ -1,0 +1,587 @@
+{
+ "10379619": {
+  "article_types": [
+   "Clinical Trial",
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, U.S. Gov't, P.H.S."
+  ],
+  "doi": "10.1007/s002130050971",
+  "first_author": "MZ Mintzer",
+  "issue": "1",
+  "journal": "Psychopharmacology (Berl)",
+  "num_authors": 2,
+  "pages": "8-19",
+  "title": "Triazolam and zolpidem: effects on human memory and attentional processes",
+  "volume": "144",
+  "year": "1999"
+ },
+ "12404558": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1002/hup.310",
+  "first_author": "A Patat",
+  "issue": "5",
+  "journal": "Hum Psychopharmacol",
+  "num_authors": 3,
+  "pages": "369-392",
+  "title": "Pharmacodynamic profile of Zaleplon, a new non-benzodiazepine hypnotic agent",
+  "volume": "16",
+  "year": "2001"
+ },
+ "12847558": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.1111/j.1527-3458.2003.tb00248.x",
+  "first_author": "ML Wadenberg",
+  "issue": "2",
+  "journal": "CNS Drug Rev",
+  "num_authors": 1,
+  "pages": "187-98",
+  "title": "A review of the properties of spiradoline: a potent and selective kappa-opioid receptor agonist",
+  "volume": "9",
+  "year": "2003"
+ },
+ "15025555": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.2165/00003495-200464070-00013",
+  "first_author": "TM Dando",
+  "issue": "7",
+  "journal": "Drugs",
+  "num_authors": 2,
+  "pages": "777-94",
+  "title": "Aprepitant: a review of its use in the prevention of chemotherapy-induced nausea and vomiting",
+  "volume": "64",
+  "year": "2004"
+ },
+ "15077237": {
+  "article_types": [
+   "Case Reports",
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1002/mds.20045",
+  "first_author": "AH Evans",
+  "issue": "4",
+  "journal": "Mov Disord",
+  "num_authors": 7,
+  "pages": "397-405",
+  "title": "Punding in Parkinson's disease: its relation to the dopamine dysregulation syndrome",
+  "volume": "19",
+  "year": "2004"
+ },
+ "15231966": {
+  "article_types": [
+   "Clinical Trial",
+   "Journal Article",
+   "Multicenter Study",
+   "Randomized Controlled Trial",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1542/peds.114.1.e1",
+  "first_author": "DK Kelsey",
+  "issue": "1",
+  "journal": "Pediatrics",
+  "num_authors": 11,
+  "pages": "e1-8",
+  "title": "Once-daily atomoxetine treatment for children with attention-deficit/hyperactivity disorder, including an assessment of evening and morning behavior: a double-blind, placebo-controlled trial",
+  "volume": "114",
+  "year": "2004"
+ },
+ "16183706": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1124/jpet.105.089920",
+  "first_author": "JR Atack",
+  "issue": "1",
+  "journal": "J Pharmacol Exp Ther",
+  "num_authors": 18,
+  "pages": "410-22",
+  "title": "TPA023 [7-(1,1-dimethylethyl)-6-(2-ethyl-2H-1,2,4-triazol-3-ylmethoxy)-3-(2-fluorophenyl)-1,2,4-triazolo[4,3-b]pyridazine], an agonist selective for alpha2- and alpha3-containing GABAA receptors, is a nonsedating anxiolytic in rodents and primates",
+  "volume": "316",
+  "year": "2005"
+ },
+ "17196053": {
+  "article_types": [
+   "Clinical Trial",
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.4088/jcp.v67n1110",
+  "first_author": "FA Moreno",
+  "issue": "11",
+  "journal": "J Clin Psychiatry",
+  "num_authors": 4,
+  "pages": "1735-40",
+  "title": "Safety, tolerability, and efficacy of psilocybin in 9 patients with obsessive-compulsive disorder",
+  "volume": "67",
+  "year": "2006"
+ },
+ "18482097": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.1111/j.1527-3458.2007.00034.x",
+  "first_author": "JR Atack",
+  "issue": "1",
+  "journal": "CNS Neurosci Ther",
+  "num_authors": 1,
+  "pages": "25-35",
+  "title": "GABA(A) receptor subtype-selective efficacy: TPA023, an alpha2/alpha3 selective non-sedating anxiolytic and alpha5IA, an alpha5 selective cognition enhancer",
+  "volume": "14",
+  "year": "2008"
+ },
+ "19011431": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1097/JCP.0b013e31818a6cea",
+  "first_author": "SH Preskorn",
+  "issue": "6",
+  "journal": "J Clin Psychopharmacol",
+  "num_authors": 6,
+  "pages": "631-7",
+  "title": "An innovative design to establish proof of concept of the antidepressant effects of the NR2B subunit selective N-methyl-D-aspartate antagonist, CP-101,606, in patients with treatment-refractory major depressive disorder",
+  "volume": "28",
+  "year": "2008"
+ },
+ "20457959": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1001/archneurol.2010.65",
+  "first_author": "D Weintraub",
+  "issue": "5",
+  "journal": "Arch Neurol",
+  "num_authors": 9,
+  "pages": "589-95",
+  "title": "Impulse control disorders in Parkinson disease: a cross-sectional study of 3090 patients",
+  "volume": "67",
+  "year": "2010"
+ },
+ "20489735": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't",
+   "Review"
+  ],
+  "doi": "10.1038/mp.2009.95",
+  "first_author": "A Fasano",
+  "issue": "6",
+  "journal": "Mol Psychiatry",
+  "num_authors": 2,
+  "pages": "560-73",
+  "title": "Insights into pathophysiology of punding reveal possible treatment strategies",
+  "volume": "15",
+  "year": "2010"
+ },
+ "20817749": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1177/0269881110376687",
+  "first_author": "GJ Dumont",
+  "issue": "4",
+  "journal": "J Psychopharmacol",
+  "num_authors": 7,
+  "pages": "478-89",
+  "title": "Acute psychomotor, memory and subjective effects of MDMA and THC co-administration over time in healthy volunteers",
+  "volume": "25",
+  "year": "2010"
+ },
+ "21112253": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, N.I.H., Extramural",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1016/S1474-4422(10)70269-6",
+  "first_author": "MA Kurian",
+  "issue": "1",
+  "journal": "Lancet Neurol",
+  "num_authors": 22,
+  "pages": "54-62",
+  "title": "Clinical and molecular characterisation of hereditary dopamine transporter deficiency syndrome: an observational cohort and experimental study",
+  "volume": "10",
+  "year": "2010"
+ },
+ "21626090": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1007/s12350-011-9399-3",
+  "first_author": "JL Cavalcante",
+  "issue": "4",
+  "journal": "J Nucl Cardiol",
+  "num_authors": 3,
+  "pages": "628-33",
+  "title": "Regadenoson is a safe and well-tolerated pharmacological stress agent for myocardial perfusion imaging in post-heart transplant patients",
+  "volume": "18",
+  "year": "2011"
+ },
+ "21955669": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1186/1471-2377-11-117",
+  "first_author": "V Voon",
+  "issue": null,
+  "journal": "BMC Neurol",
+  "num_authors": 7,
+  "pages": "117",
+  "title": "Frequency of impulse control behaviours associated with dopaminergic therapy in restless legs syndrome",
+  "volume": "11",
+  "year": "2011"
+ },
+ "22390995": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.1016/j.jflm.2011.12.009",
+  "first_author": "GM Vilke",
+  "issue": "3",
+  "journal": "J Forensic Leg Med",
+  "num_authors": 5,
+  "pages": "117-21",
+  "title": "Excited delirium syndrome (ExDS): treatment options and considerations",
+  "volume": "19",
+  "year": "2012"
+ },
+ "22939006": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1016/j.euroneuro.2012.08.011",
+  "first_author": "I T\u00f5ru",
+  "issue": "7",
+  "journal": "Eur Neuropsychopharmacol",
+  "num_authors": 6,
+  "pages": "645-52",
+  "title": "The effect of 6-week treatment with escitalopram on CCK-4 challenge: a placebo-controlled study in CCK-4-sensitive healthy volunteers",
+  "volume": "23",
+  "year": "2012"
+ },
+ "23936144": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1371/journal.pone.0070074",
+  "first_author": "MG Bossong",
+  "issue": "7",
+  "journal": "PLoS One",
+  "num_authors": 6,
+  "pages": "e70074",
+  "title": "Default mode network in the effects of \u03949-Tetrahydrocannabinol (THC) on human executive function",
+  "volume": "8",
+  "year": "2013"
+ },
+ "26728893": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Research Support, N.I.H., Intramural",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1007/s00213-015-4195-4",
+  "first_author": "EM Richards",
+  "issue": "6",
+  "journal": "Psychopharmacology (Berl)",
+  "num_authors": 15,
+  "pages": "1119-30",
+  "title": "A randomized, placebo-controlled pilot trial of the delta opioid receptor agonist AZD2327 in anxious depression",
+  "volume": "233",
+  "year": "2016"
+ },
+ "27627785": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.1111/cob.12159",
+  "first_author": "FL Greenway",
+  "issue": "5",
+  "journal": "Clin Obes",
+  "num_authors": 5,
+  "pages": "285-95",
+  "title": "Safety and tolerability review of lorcaserin in clinical trials",
+  "volume": "6",
+  "year": "2016"
+ },
+ "2874976": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.2165/00003495-198632020-00002",
+  "first_author": "KL Goa",
+  "issue": "2",
+  "journal": "Drugs",
+  "num_authors": 2,
+  "pages": "114-29",
+  "title": "Buspirone. A preliminary review of its pharmacological properties and therapeutic efficacy as an anxiolytic",
+  "volume": "32",
+  "year": "1986"
+ },
+ "29100251": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1055/s-0043-120268",
+  "first_author": "A Modarresi",
+  "issue": "6",
+  "journal": "Pharmacopsychiatry",
+  "num_authors": 6,
+  "pages": "263-269",
+  "title": "Memantine Augmentation Improves Symptoms in Serotonin Reuptake Inhibitor-Refractory Obsessive-Compulsive Disorder: A Randomized Controlled Trial",
+  "volume": "51",
+  "year": "2017"
+ },
+ "30241906": {
+  "article_types": [
+   "Journal Article",
+   "Review"
+  ],
+  "doi": "10.1016/j.pbiomolbio.2018.08.003",
+  "first_author": "DT Hoagland",
+  "issue": null,
+  "journal": "Prog Biophys Mol Biol",
+  "num_authors": 4,
+  "pages": "41-50",
+  "title": "The role of the gap junction perinexus in cardiac conduction: Potential as a novel anti-arrhythmic drug target",
+  "volume": "144",
+  "year": "2018"
+ },
+ "30710809": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, N.I.H., Extramural"
+  ],
+  "doi": "10.1016/j.psychres.2019.01.058",
+  "first_author": "MP Caligiuri",
+  "issue": null,
+  "journal": "Psychiatry Res",
+  "num_authors": 4,
+  "pages": "537-543",
+  "title": "The nature of bradykinesia in schizophrenia treated with antipsychotics",
+  "volume": "273",
+  "year": "2019"
+ },
+ "31201479": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1007/s00213-019-05293-1",
+  "first_author": "S Babalonis",
+  "issue": "11",
+  "journal": "Psychopharmacology (Berl)",
+  "num_authors": 6,
+  "pages": "3341-3352",
+  "title": "Cannabinoid modulation of opioid analgesia and subjective drug effects in healthy humans",
+  "volume": "236",
+  "year": "2019"
+ },
+ "31206391": {
+  "article_types": [
+   "Case Reports",
+   "Journal Article"
+  ],
+  "doi": "10.1097/JCP.0000000000001068",
+  "first_author": "A Lachance",
+  "issue": "4",
+  "journal": "J Clin Psychopharmacol",
+  "num_authors": 7,
+  "pages": "393-397",
+  "title": "Case Reports of Aripiprazole and Problematic Gambling in Schizophrenia: A Critical Review of the Evidence",
+  "volume": "39",
+  "year": "2019"
+ },
+ "33242881": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1093/brain/awaa346",
+  "first_author": "F Mochel",
+  "issue": "12",
+  "journal": "Brain",
+  "num_authors": 34,
+  "pages": "3564-3573",
+  "title": "Variants in the SK2 channel gene (KCNN2) lead to dominant neurodevelopmental movement disorders",
+  "volume": "143",
+  "year": "2020"
+ },
+ "33602769": {
+  "article_types": [
+   "Case Reports",
+   "Journal Article"
+  ],
+  "doi": "10.1136/bcr-2020-239596",
+  "first_author": "MA Giggie",
+  "issue": "2",
+  "journal": "BMJ Case Rep",
+  "num_authors": 1,
+  "pages": null,
+  "title": "Catatonia in a 10-year-old boy with early childhood neglect and disruptive behaviours in psychiatric residential treatment",
+  "volume": "14",
+  "year": "2021"
+ },
+ "34486986": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.3233/JPD-212672",
+  "first_author": "RA Hauser",
+  "issue": "4",
+  "journal": "J Parkinsons Dis",
+  "num_authors": 12,
+  "pages": "1663-1675",
+  "title": "Efficacy of Istradefylline, an Adenosine A2A Receptor Antagonist, as Adjunctive Therapy to Levodopa in Parkinson's Disease: A Pooled Analysis of 8 Phase 2b/3 Trials",
+  "volume": "11",
+  "year": "2021"
+ },
+ "34548987": {
+  "article_types": [
+   "Case Reports",
+   "Journal Article"
+  ],
+  "doi": "10.7759/cureus.17490",
+  "first_author": "B Sheikh",
+  "issue": "8",
+  "journal": "Cureus",
+  "num_authors": 6,
+  "pages": "e17490",
+  "title": "Cannabis-Induced Malignant Catatonia: A Medical Emergency and Review of Prior Case Series",
+  "volume": "13",
+  "year": "2021"
+ },
+ "36628546": {
+  "article_types": [
+   "Randomized Controlled Trial",
+   "Multicenter Study",
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1542/peds.2022-059574",
+  "first_author": "DL Gilbert",
+  "issue": "2",
+  "journal": "Pediatrics",
+  "num_authors": 6,
+  "pages": null,
+  "title": "Ecopipam for Tourette Syndrome: A Randomized Trial",
+  "volume": "151",
+  "year": "2023"
+ },
+ "37308606": {
+  "article_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1007/s00787-023-02234-4",
+  "first_author": "D Merino",
+  "issue": "5",
+  "journal": "Eur Child Adolesc Psychiatry",
+  "num_authors": 7,
+  "pages": "1383-1393",
+  "title": "Drug-related catatonia in youths: real-world insights from the WHO Safety Database",
+  "volume": "33",
+  "year": "2023"
+ },
+ "38104575": {
+  "article_types": [
+   "Randomized Controlled Trial",
+   "Clinical Trial, Phase III",
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1016/S0140-6736(23)02190-6",
+  "first_author": "I Kaul",
+  "issue": "10422",
+  "journal": "Lancet",
+  "num_authors": 9,
+  "pages": "160-170",
+  "title": "Efficacy and safety of the muscarinic receptor agonist KarXT (xanomeline-trospium) in schizophrenia (EMERGENT-2) in the USA: results from a randomised, double-blind, placebo-controlled, flexible-dose phase 3 trial",
+  "volume": "403",
+  "year": "2023"
+ },
+ "38279575": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Clinical Trial, Phase III",
+   "Multicenter Study"
+  ],
+  "doi": "10.1111/jdv.19811",
+  "first_author": "KA Papp",
+  "issue": "6",
+  "journal": "J Eur Acad Dermatol Venereol",
+  "num_authors": 19,
+  "pages": "1112-1120",
+  "title": "Efficacy and safety of piclidenoson in plaque psoriasis: Results from a randomized phase 3 clinical trial (COMFORT-1)",
+  "volume": "38",
+  "year": "2024"
+ },
+ "38465631": {
+  "article_types": [
+   "Journal Article",
+   "Research Support, Non-U.S. Gov't"
+  ],
+  "doi": "10.1080/15563650.2024.2319854",
+  "first_author": "AL Chiew",
+  "issue": "2",
+  "journal": "Clin Toxicol (Phila)",
+  "num_authors": 4,
+  "pages": "82-87",
+  "title": "Rivastigmine for the management of anticholinergic delirium",
+  "volume": "62",
+  "year": "2024"
+ },
+ "39275772": {
+  "article_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1097/JS9.0000000000001642",
+  "first_author": "Y Zhang",
+  "issue": "9",
+  "journal": "Int J Surg",
+  "num_authors": 11,
+  "pages": "5496-5504",
+  "title": "Diurnal variation of postoperative delirium in elderly patients undergoing esketamine anesthesia for elective noncardiac surgery: a randomized clinical trial",
+  "volume": "110",
+  "year": "2024"
+ },
+ "40163577": {
+  "article_types": [
+   "Journal Article",
+   "Case Reports"
+  ],
+  "doi": "10.1097/PRA.0000000000000849",
+  "first_author": "D Herkert",
+  "issue": "2",
+  "journal": "J Psychiatr Pract",
+  "num_authors": 2,
+  "pages": "105-106",
+  "title": "Cannabis-induced Catatonia: A Case Study",
+  "volume": "31",
+  "year": "2025"
+ }
+}

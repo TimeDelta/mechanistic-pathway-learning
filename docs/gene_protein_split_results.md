@@ -16,6 +16,13 @@ disease-cluster folds each, seed 0:
 Each split arm is paired with the merged twin that carries the same descriptor values resolved per entry, so the
 comparison is the graph change alone.
 
+## Status: not a verdict (user, 8 October 2026)
+
+These readings do not decide whether the split helps. The user's instruction: the slice result is not accepted as
+evidence against the split until the final two confirmatory models are ready and tested on it. Until then the split
+stays in, and this document is a development reading of the metabolic slice, not a decision about the full graph. The
+three intervals below that exclude zero are reported as they came out and are not read as a null result.
+
 ## Macro and micro AUPRC
 
 `experiments/compare_twin_runs.py`, A = split arm, B = merged twin, 451 perturbations scored by both. Readings: paired
@@ -108,7 +115,11 @@ modules narrower and more redundant.
   structure, so a null here is weak evidence about the full graph.
 - Only one treatment per encoder ran (seed masking for message passing, none for linear response), as the job was
   registered. The `zero_init_slow` arm on the split still waits for the user.
-- No confirmatory configuration was moved. `configs/confirmatory_v2` still names `graph_full_neuronal`.
+- No confirmatory configuration was moved by this document. The user has since asked that the confirmatory
+  configuration be the split graph with the protein descriptors, brain expression and compartments; that change needs
+  a dated amendment in the preregistration before `configs/confirmatory_v2` is touched.
+- The two confirmatory models themselves have not been run on the split. Whatever the slice shows, the comparison the
+  user accepts is those two models, so this document cannot close the question either way.
 
 ## Reproducing
 
