@@ -6,6 +6,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments"))
 
+from aggregate_main_model_runs import run_names  # noqa: E402
 from analyze_pathway_modules import noisy_or_probabilities, sufficiency_test  # noqa: E402
 
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import paired_bootstrap_macro_difference  # noqa: E402
@@ -51,3 +52,10 @@ def test_paired_bootstrap_difference_is_positive_for_a_better_model() -> None:
     assert result["difference"] > 0.2 and result["lower"] > 0.0 and result["fraction_resamples_favoring_a"] > 0.99
     null = paired_bootstrap_macro_difference(worse, worse, outcomes, num_bootstrap=50)
     assert abs(null["difference"]) < 1e-12
+
+
+def test_runs_sharing_a_directory_name_keep_separate_names() -> None:
+    names = run_names([Path("runs/b3_typed_nodes_disease_cluster"), Path("runs/encoder/b3_typed_nodes_disease_cluster"), Path("runs/encoder/b3_degree_only_disease_cluster")])
+    assert names == {Path("runs/b3_typed_nodes_disease_cluster"): "runs/b3_typed_nodes_disease_cluster",
+                     Path("runs/encoder/b3_typed_nodes_disease_cluster"): "runs/encoder/b3_typed_nodes_disease_cluster",
+                     Path("runs/encoder/b3_degree_only_disease_cluster"): "b3_degree_only_disease_cluster"}

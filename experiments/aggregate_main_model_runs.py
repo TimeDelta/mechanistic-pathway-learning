@@ -142,13 +142,23 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
     }
 
 
+def run_names(run_directories: list[Path]) -> dict[Path, str]:
+    """The name each run is reported under: its directory name, or its whole path where two run directories share a
+    name (runs/b3_typed_nodes_disease_cluster and runs/encoder/b3_typed_nodes_disease_cluster), so that neither replaces
+    the other in the tables."""
+    directories_by_name: dict[str, set[Path]] = {}
+    for run_directory in run_directories:
+        directories_by_name.setdefault(run_directory.name, set()).add(run_directory)
+    return {run_directory: run_directory.name if len(directories_by_name[run_directory.name]) == 1 else str(run_directory) for run_directory in run_directories}
+
+
 def collect_time_split_runs(run_directories: list[Path]) -> list[dict]:
     rows = []
-    for run_directory in run_directories:
+    for run_directory, name in run_names(run_directories).items():
         for split_directory in sorted(path for path in run_directory.iterdir() if path.is_dir() and (path / "DONE").exists()):
             results = json.loads((split_directory / "results.json").read_text())
             if results.get("time_split"):
-                rows.append({"run": run_directory.name, "split": results["split"], **results["time_split"]})
+                rows.append({"run": name, "split": results["split"], **results["time_split"]})
     return rows
 
 
@@ -156,10 +166,10 @@ def load_pooled_predictions(aggregated: dict, run_directories: list[Path], basel
     """Pooled out-of-split predictions and scored-row masks of every aggregated run and every baseline."""
     predictions_by_name: dict[str, np.ndarray] = {}
     rows_by_name: dict[str, np.ndarray] = {}
-    for run_directory in run_directories:
-        if run_directory.name in aggregated and (run_directory / "pooled_predictions.npy").exists():
-            predictions_by_name[run_directory.name] = np.load(run_directory / "pooled_predictions.npy")
-            rows_by_name[run_directory.name] = np.load(run_directory / "pooled_scored_rows.npy")
+    for run_directory, name in run_names(run_directories).items():
+        if name in aggregated and (run_directory / "pooled_predictions.npy").exists():
+            predictions_by_name[name] = np.load(run_directory / "pooled_predictions.npy")
+            rows_by_name[name] = np.load(run_directory / "pooled_scored_rows.npy")
     if baseline_directory is not None and (baseline_directory / "perturbation_ids.json").exists():
         baseline_ids = json.loads((baseline_directory / "perturbation_ids.json").read_text())
         if baseline_ids == data.perturbation_ids:
@@ -270,13 +280,13 @@ def main() -> None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     label_selection_sha256 = file_sha256(arguments.label_selection)
     aggregated = {}
-    for run_directory in arguments.run_dirs:
+    for run_directory, name in run_names(arguments.run_dirs).items():
         entry = aggregate_run_directory(run_directory, data, arguments.num_bootstrap, label_selection_sha256)
         if entry is None:
             print(f"{run_directory}: no finished splits")
             continue
-        aggregated[run_directory.name] = entry
-        print(f"{run_directory.name:40s} splits {entry['num_splits']}  macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
+        aggregated[name] = entry
+        print(f"{name:40s} splits {entry['num_splits']}  macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  "
               f"micro AUPRC {entry['micro_auprc']['point']:.3f} (per fold {entry['per_fold_micro_auprc_mean']:.3f})  "
               f"macro AUROC {entry['macro_auroc']:.3f}  MRR {entry['mean_reciprocal_rank']:.3f}  hits@3 {entry['hits_at_3']:.3f}  ECE {entry['expected_calibration_error']:.3f}")
     baseline_entries = {}
