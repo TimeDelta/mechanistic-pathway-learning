@@ -31,6 +31,9 @@ from experiments.analyze_pathway_modules import (CURATED_GENES_FOR_A_NAME, NODE_
 
 OUTPUT_DOCUMENT = Path("docs/module_names.md")
 RULE_ORDER = ["curated module", "subsystem", "node type", "mixed", "empty"]
+# runs/smoke trains a few steps to check the code path, so its gates mean nothing; counting its supports would pad
+# the denominator of the headline count with a run no reading rests on
+EXCLUDED_RUN_NAMES = ("smoke",)
 
 
 def rule_that_named_it(label: str) -> str:
@@ -76,6 +79,8 @@ def main() -> int:
 
     per_run, named_modules, totals, backgrounds = {}, {}, Counter(), {}
     for analysis_path in sorted(arguments.runs_dir.rglob("module_analysis.json")):
+        if analysis_path.parent.name in EXCLUDED_RUN_NAMES:
+            continue
         rules, named = names_of_run(analysis_path, backgrounds)
         run = str(analysis_path.parent)
         per_run[run] = rules
