@@ -70,6 +70,14 @@ of it. The distribution of k over the conjunctions says how large that is.
 | conjunctions (Complex) | 1202 | 201 |
 | disjunctions (sets) | 853 | 111 |
 
+## The decision of 9 October 2026, and what it costs the aggregation
+
+The user: "i thought it would be multiple mins (one for each preserved quantity)" and "the inability for the linear encoder to use the true physiological min there is imposed by the encoder itself so it's still measuring a property of the encoder; it just includes a limitation of its implementation in the comparison". So the message-passing encoder takes a true minimum and the linear-response encoder keeps the additive in-degree average, and the two encoders are compared with that difference in them.
+
+The minimum is per channel, not over a scalar: each of the encoder's node-state channels is reduced to the smallest value its members carry, so a complex is as present as its scarcest subunit in every quantity separately. That is the stoichiometric reading of an obligate assembly and it needs no summary of a member into one number.
+
+The cost is small, which an earlier note of mine overstated. The aggregation is one stacked sparse product per layer, and on this graph it already touches 54,982 of 700,435 stacked rows. A minimum is not a matrix product, so the member edges of the conjunctions have to leave that product and be reduced separately with a segmented minimum, then added back: 542 entities and 1202 member protein nodes, against 6,767 member edges in all and 279,784 edges in the graph. One scatter-reduce over about two percent of the rows the product already reads is not a measurable cost per forward pass; what it does cost is a second code path in the encoder, which is a maintenance cost rather than a compute one.
+
 ## The gene-to-protein split, where the question was asked
 
 22 of 12709 protein nodes are encoded by two or more

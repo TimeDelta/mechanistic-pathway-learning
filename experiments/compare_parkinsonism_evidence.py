@@ -12,10 +12,11 @@ Every other column of every row that is not a parkinsonism row has to match the 
 whole label selection outside the new symptom. The two fitted columns are then reported with their size, because a
 large move in either is a reason to look rather than to proceed.
 
-The reference is evidence_full_v3, not the lockbox's evidence_full_v2. The salt-form and any-target-type change of
-8 October (docs/drug_targets_any_type.md: "The v2 tables rebuild byte-identically from the code before this change")
-is in the code, so a rebuild today lands on v3 whatever the crosswalk says. v2 is reported beside it because
-configs/lockbox_v2.json pins it, and the gap between those two columns is that change, not this one.
+The reference is evidence_full_v3. The salt-form and any-target-type change of 8 October
+(docs/drug_targets_any_type.md: "The v2 tables rebuild byte-identically from the code before this change") is in the
+code, so a rebuild today lands on v3 whatever the crosswalk says, and v2 is not reproducible from the current code.
+The user's decision of 9 October 2026 ("just get rid of the v2 test at this point since it was never used anyways.
+v3 is the usable one for now") is why v2 is neither rebuilt nor reported here.
 
 Writes docs/parkinsonism_symptom.md. Reads no lockbox outcome. Idempotent.
 
@@ -79,20 +80,14 @@ def main() -> int:
                         default=Path("data/processed/label_selection/better_v2_full_v3.parquet"))
     parser.add_argument("--new-selection", type=Path,
                         default=Path("data/processed/label_selection/better_v2_full_v3_parkinsonism.parquet"))
-    parser.add_argument("--lockbox-evidence", type=Path, default=Path("data/processed/evidence_full_v2"),
-                        help="the table configs/lockbox_v2.json pins, reported for context")
-    parser.add_argument("--lockbox-selection", type=Path,
-                        default=Path("data/processed/label_selection/better_v2_full_v2.parquet"))
     arguments = parser.parse_args()
 
     reference = pd.read_parquet(arguments.reference_evidence / "evidence_records.parquet")
     new = pd.read_parquet(arguments.new_evidence / "evidence_records.parquet")
-    pinned = pd.read_parquet(arguments.lockbox_evidence / "evidence_records.parquet")
     evidence = compare_evidence(reference, new)
 
     reference_selection = pd.read_parquet(arguments.reference_selection)
     new_selection = pd.read_parquet(arguments.new_selection)
-    pinned_selection = pd.read_parquet(arguments.lockbox_selection)
     selection_identical = rows_outside_the_new_symptom(reference_selection).equals(
         rows_outside_the_new_symptom(new_selection))
     sound = evidence["identical"] and selection_identical
@@ -104,9 +99,9 @@ def main() -> int:
     symptoms_above_the_macro_floor = int((reference_selection[reference_selection.keep]
                                           .symptom.value_counts() >= 5).sum())
     cluster_changes = evidence["cluster_changes"]
-    selections = (pinned_selection, reference_selection, new_selection)
-    evidence_directories = (arguments.lockbox_evidence, arguments.reference_evidence, arguments.new_evidence)
-    selection_paths = (arguments.lockbox_selection, arguments.reference_selection, arguments.new_selection)
+    selections = (reference_selection, new_selection)
+    evidence_directories = (arguments.reference_evidence, arguments.new_evidence)
+    selection_paths = (arguments.reference_selection, arguments.new_selection)
 
     lines = [
         "# Parkinsonism as the 24th symptom",
@@ -120,20 +115,19 @@ def main() -> int:
         f"{'identical' if selection_identical else 'NOT identical'}."
         + ("" if sound else " Something other than the symptom moved and nothing below should be read."),
         "",
-        "The reference is v3 and not the lockbox's v2 because the salt-form and any-target-type change of 8 October",
-        "(`docs/drug_targets_any_type.md`) is in the code: v2 rebuilds byte-identically only from the code before that",
-        "change, so a rebuild today lands on v3 whatever the crosswalk says. The v2 column below is what",
-        "`configs/lockbox_v2.json` pins, and the step from it to v3 is that change rather than this one.",
+        "The reference is v3, the table the current code produces. The salt-form and any-target-type change of",
+        "8 October (`docs/drug_targets_any_type.md`) is in the code, so a rebuild today lands on v3 whatever the",
+        "crosswalk says; v2 is not reproducible from the current code and is not reported here.",
         "",
-        "| | v2, pinned by the lockbox | v3, the current code | v3 with parkinsonism |",
-        "| --- | --- | --- | --- |",
+        "| | v3, the current code | v3 with parkinsonism |",
+        "| --- | --- | --- |",
     ]
     lines += [table_row(label, *cells) for label, cells in (
-        ("evidence rows", (f"{len(pinned):,}", f"{len(reference):,}", f"{len(new):,}")),
-        ("distinct symptoms", tuple(str(table.symptom.nunique()) for table in (pinned, reference, new))),
+        ("evidence rows", (f"{len(reference):,}", f"{len(new):,}")),
+        ("distinct symptoms", tuple(str(table.symptom.nunique()) for table in (reference, new))),
         ("selection rows", tuple(f"{len(table):,}" for table in selections)),
         ("kept positives", tuple(f"{int(table.keep.sum()):,}" for table in selections)),
-        ("disease clusters", tuple(f"{table.disease_cluster_id.nunique():,}" for table in (pinned, reference, new))),
+        ("disease clusters", tuple(f"{table.disease_cluster_id.nunique():,}" for table in (reference, new))),
         ("evidence_records sha256 (first 16)",
          tuple(file_digest(directory / "evidence_records.parquet") for directory in evidence_directories)),
         ("label selection sha256 (first 16)", tuple(file_digest(path) for path in selection_paths)),
@@ -171,10 +165,10 @@ def main() -> int:
         "",
         "## What has to follow before any confirmatory run",
         "",
-        "`configs/lockbox_v2.json` pins `evidence_records_sha256` and `label_selection_sha256` of the v2 tables, so it",
-        "describes neither column to its right. Moving to this table means two changes at once, v3 and the symptom,",
-        "unless the v3 change is reverted first; either way it means redrawing the lockbox from the same rule on the",
-        "chosen table and repeating the development runs. None of that is done here.",
+        "`configs/lockbox_v2.json` pins the `evidence_records_sha256` and `label_selection_sha256` of the v2 tables,",
+        "which the current code no longer produces, so it describes neither column above. A confirmatory run on this",
+        "table needs a lockbox drawn from the same rule on it, and the development runs repeated. None of that is done",
+        "here, and nothing in this script reads a lockbox outcome.",
     ]
     OUTPUT_DOCUMENT.write_text("\n".join(lines) + "\n")
     print(f"wrote {OUTPUT_DOCUMENT}")

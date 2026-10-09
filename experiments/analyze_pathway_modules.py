@@ -9,6 +9,9 @@ For one run directory of experiments/run_main_model.py (noisy-OR head), per spli
     equifinality_independence_and_convergence.py;
   - overlap of each module support with the curated modules (gene nodes of docs/curated_pathway_modules.csv)
     and the Human-GEM subsystems of the reactions in the support;
+  - a name per module, from its support (module_label) and from its behaviour (module_behaviour.py: the held-out
+    perturbations that switch it on, how far they are from its support and the symptoms it feeds more than the
+    other modules do);
   - stability across splits: for every pair of modules from different splits, Jaccard of supports;
   - the sufficiency test of design section 6.5, computed post hoc from the saved test module activations: for
     symptom s, P_k is the set of held-out perturbations whose largest contribution link_{k,s} * a_k comes from
@@ -36,6 +39,15 @@ from mechanistic_pathway_learning.evaluation.equifinality_independence_and_conve
     jaccard_index,
 )
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.module_behaviour import (
+    behaviour_label,
+    hops_into_support,
+    module_drivers,
+    module_symptom_side,
+    propagation_hops,
+    reverse_adjacency,
+    symptom_rdoc_domains,
+)
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import read_curated_modules
 
 
@@ -179,6 +191,29 @@ def module_label(description: dict, subsystem_background: dict[str, float] | Non
     return f"mixed support ({size} nodes, no subsystem above {SUBSYSTEM_SHARE_FOR_A_NAME:.0%})"
 
 
+def behaviour_of_module(module_index: int, module_support: set[str], activations: np.ndarray | None, test_rows: np.ndarray | None,
+                        data, links: np.ndarray, symptoms: list[str], rdoc_domains: dict[str, list[str]],
+                        curated_driver_genes: dict[str, set[str]], reverse_edges: dict[str, list[str]], hop_budget: int) -> dict:
+    """One module's behaviour reading: who switches it on, how far they are from its support, what it feeds."""
+    if activations is None or test_rows is None:
+        return {"available": False, "reason": "no saved module activations, so no driver reading"}
+    labels = [data.perturbation_labels[row] for row in test_rows]
+    types = [data.perturbation_types[row] for row in test_rows]
+    hops_of_perturbation, truncated = None, False
+    if module_support and hop_budget:
+        distance, truncated = hops_into_support(module_support, reverse_edges, hop_budget)
+        hops_of_perturbation = {}
+        for position, row in enumerate(test_rows):
+            reached = [distance[data.node_ids[index]] for index in data.perturbation_seeds[row]
+                       if data.node_ids[index] in distance]
+            if reached:
+                hops_of_perturbation[position] = min(reached)
+    return {"available": True, "reach_truncated": truncated,
+            "drivers": module_drivers(activations[:, module_index], labels, types, curated_driver_genes,
+                                      hops_of_perturbation, hop_budget),
+            "symptom_side": module_symptom_side(links, module_index, symptoms, rdoc_domains)}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run-dir", type=Path, required=True)
@@ -191,6 +226,8 @@ def main() -> None:
     parser.add_argument("--minimum-support-nodes", type=int, default=25, help="when fewer gates exceed the threshold, the top-ranked gates up to this many form the support (reported as such)")
     parser.add_argument("--evidence-dir", type=Path, default=None, help="default: the evidence directory the run was trained on")
     parser.add_argument("--markdown-output", type=Path, default=None)
+    parser.add_argument("--symptom-crosswalk", type=Path, default=Path("docs/symptom_crosswalk.csv"),
+                        help="the RDoC domain per symptom, which groups the symptoms a module feeds into a family")
     arguments = parser.parse_args()
     split_directories = sorted(path for path in arguments.run_dir.iterdir() if path.is_dir() and (path / "module_support.npy").exists() and (path / "results.json").exists())
     # the module supports index the nodes of the graph the run was trained on; reading another graph's node list
@@ -212,8 +249,12 @@ def main() -> None:
     node_ids = list(nodes.node_id)
     currency = set(nodes.loc[nodes.is_currency.fillna(False).astype(bool), "node_id"])
     adjacency = directed_adjacency(edges, currency)
-    curated = {module: {f"GENE:{symbol}" for symbol in symbols} for module, symbols in read_curated_modules(arguments.curated_modules).items()}
+    curated_symbols = read_curated_modules(arguments.curated_modules)
+    curated = {module: {f"GENE:{symbol}" for symbol in symbols} for module, symbols in curated_symbols.items()}
+    curated_driver_genes = {module: set(symbols) for module, symbols in curated_symbols.items()}
     subsystem_background = subsystem_shares_of_graph(nodes)
+    reverse_edges = reverse_adjacency(edges.source_id.to_numpy(), edges.target_id.to_numpy(), currency)
+    rdoc_domains = symptom_rdoc_domains(pd.read_csv(arguments.symptom_crosswalk))
 
     analysis = {"run_dir": str(arguments.run_dir), "graph_dir": str(arguments.graph_dir), "splits": {}, "stability": {}}
     all_supports: list[tuple[str, int, set[str]]] = []
@@ -234,14 +275,18 @@ def main() -> None:
             supports[f"module_{k}"] = {node_ids[i] for i in above}
             gate_values[f"module_{k}"] = {node_ids[i]: float(support[k, i]) for i in above}
         activations_path = split_directory / "test_module_activations.npy"
+        activations, test_rows = None, None
+        if activations_path.exists():
+            saved = np.load(activations_path)
+            rows = np.array([position_of[p] for p in results["test_perturbation_ids"] if p in position_of])
+            if len(rows) == saved.shape[0]:
+                activations, test_rows = saved, rows
+        hop_budget = propagation_hops(results.get("arguments", {}))
         sufficiency_rows = []
-        if activations_path.exists() and "symptom_leaks" in results:
-            activations = np.load(activations_path)
-            test_rows = np.array([position_of[p] for p in results["test_perturbation_ids"] if p in position_of])
-            if len(test_rows) == activations.shape[0]:
-                leaks_path = split_directory / "test_leaks.npy"  # per-perturbation leaks of a degree-offset run
-                leaks = np.load(leaks_path) if leaks_path.exists() else np.array(results["symptom_leaks"])
-                sufficiency_rows = sufficiency_test(activations, links, leaks, data.outcomes[test_rows], symptoms)
+        if activations is not None and "symptom_leaks" in results:
+            leaks_path = split_directory / "test_leaks.npy"  # per-perturbation leaks of a degree-offset run
+            leaks = np.load(leaks_path) if leaks_path.exists() else np.array(results["symptom_leaks"])
+            sufficiency_rows = sufficiency_test(activations, links, leaks, data.outcomes[test_rows], symptoms)
         split_entry = {"sufficiency_test": sufficiency_rows, "modules": {}, "symptoms": {}, "gate_summary": {f"module_{k}": {"max": float(support[k].max()), "mean": float(support[k].mean()), "above_threshold": int((support[k] > arguments.support_threshold).sum())} for k in range(support.shape[0])}}
         for module_name, module_support in supports.items():
             k = int(module_name.split("_")[1])
@@ -251,8 +296,17 @@ def main() -> None:
             description["links"] = {symptoms[s]: round(float(links[k, s]), 3) for s in range(links.shape[1])}
             description["curated_module_overlap"] = {module: len(module_support & genes) for module, genes in curated.items() if module_support & genes}
             description["label"] = module_label(description, subsystem_background)
+            description["behaviour"] = behaviour_of_module(k, module_support, activations, test_rows, data, links, symptoms,
+                                                           rdoc_domains, curated_driver_genes, reverse_edges, hop_budget)
+            description["behaviour_label"] = behaviour_label(description["behaviour"])
             split_entry["modules"][module_name] = description
             all_supports.append((split_directory.name, k, module_support))
+        driver_sets = {name: set(entry.get("behaviour", {}).get("drivers", {}).get("drivers", []))
+                       for name, entry in split_entry["modules"].items()
+                       if entry.get("behaviour", {}).get("available") and entry["behaviour"]["drivers"].get("responds")}
+        driver_overlaps = [jaccard_index(left, right) for (left, right) in combinations(driver_sets.values(), 2) if left and right]
+        split_entry["driver_overlap"] = {"responding_modules": len(driver_sets),
+                                         "median_pairwise_jaccard": float(np.median(driver_overlaps)) if driver_overlaps else float("nan")}
         for s, symptom in enumerate(symptoms):
             active = [f"module_{k}" for k in range(links.shape[0]) if links[k, s] > arguments.link_threshold and supports[f"module_{k}"]]
             split_entry["symptoms"][symptom] = {
@@ -274,20 +328,30 @@ def main() -> None:
     markdown_output = arguments.markdown_output or Path("docs") / f"{arguments.run_dir.name}_modules.md"
     lines = [f"# Learned pathway modules: {arguments.run_dir.name} (generated by experiments/analyze_pathway_modules.py)", "",
              f"Support threshold {arguments.support_threshold} on the evaluation gate saved by the run; link threshold {arguments.link_threshold}; downstream hops {arguments.downstream_hops}; currency metabolites removed from the downstream walk.", "",
-             "Each module keeps its index, which is what the tables below join on, and carries a name read off its own "
-             "support: the curated module it overlaps by at least "
+             "Each module keeps its index, which is what the tables below join on, and carries two names. The first is "
+             "read off its own support: the curated module it overlaps by at least "
              f"{CURATED_GENES_FOR_A_NAME} genes, else the subsystem holding at least {SUBSYSTEM_SHARE_FOR_A_NAME:.0%} of "
              f"the support and at least {SUBSYSTEM_ENRICHMENT_FOR_A_NAME:g} times its share of the graph (with the "
              "compartment when one holds half), else the node type holding at least "
-             f"{NODE_TYPE_SHARE_FOR_A_NAME:.0%}, else \"mixed support\". The share is printed with the name so the name "
-             "claims no more than its support. Two splits whose modules take the same name need not be the same module: "
+             f"{NODE_TYPE_SHARE_FOR_A_NAME:.0%}, else \"mixed support\". The second is read off its behaviour "
+             "(mechanistic_pathway_learning/evaluation/module_behaviour.py): the held-out perturbations in the top "
+             "fifth of its activation, the group they share, how many of them have a directed path into its support "
+             "no longer than the propagation the encoder runs, and the symptoms it links to more strongly than the "
+             "other modules do, grouped by the crosswalk's RDoC domain. The share is printed with each name so the "
+             "name claims no more than its support, and a reading that does not concentrate gives the number behind "
+             "its refusal instead of a name. Two splits whose modules take the same name need not be the same module: "
              "the gates are fitted per split, and the stability section is where that is judged.", ""]
     for split_name, split_entry in analysis["splits"].items():
-        lines += [f"## {split_name}", "", "| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |", "|---|---|---|---|---|---|---|---|"]
+        lines += [f"## {split_name}", "", "| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |", "|---|---|---|---|---|---|---|---|---|"]
         for module_name, description in split_entry["modules"].items():
             gate_summary = split_entry["gate_summary"][module_name]
-            lines.append(f"| {module_name} | {description.get('label', '')} | {description['support_rule']} | {gate_summary['above_threshold']} | {description.get('by_node_type', {})} | {[name for name, _ in description.get('top_subsystems', [])][:3]} | {description['links_above_threshold']} | {description['curated_module_overlap']} |")
-        lines += ["", "| symptom | active modules | independence index | convergence index |", "|---|---|---|---|"]
+            lines.append(f"| {module_name} | {description.get('label', '')} | {description.get('behaviour_label', '')} | {description['support_rule']} | {gate_summary['above_threshold']} | {description.get('by_node_type', {})} | {[name for name, _ in description.get('top_subsystems', [])][:3]} | {description['links_above_threshold']} | {description['curated_module_overlap']} |")
+        overlap = split_entry["driver_overlap"]
+        lines += ["", f"Modules whose activation varies across the held-out perturbations: {overlap['responding_modules']} of "
+                  f"{len(split_entry['modules'])}; median pairwise Jaccard of their driver sets: "
+                  f"{overlap['median_pairwise_jaccard']:.2f} (near 1 the same perturbations drive every module, so a "
+                  "driver name does not separate them).", ""]
+        lines += ["| symptom | active modules | independence index | convergence index |", "|---|---|---|---|"]
         for symptom, entry in split_entry["symptoms"].items():
             lines.append(f"| {symptom} | {entry['active_modules']} | {entry['independence_index']:.2f} | {entry['convergence_index']:.2f} |")
         lines.append("")
@@ -300,7 +364,9 @@ def main() -> None:
         for module_name, description in split_entry["modules"].items():
             if description["size"] == 0:
                 continue
-            lines += [f"### {split_name} {module_name}, {description.get('label', '')}: top nodes", "", "| node | type | name | compartment | subsystem | gate |", "|---|---|---|---|---|---|"]
+            lines += [f"### {split_name} {module_name}, {description.get('label', '')}: top nodes", "",
+                      f"How it behaves: {description.get('behaviour_label', '')}", "",
+                      "| node | type | name | compartment | subsystem | gate |", "|---|---|---|---|---|---|"]
             for row in description["top_nodes"]:
                 lines.append(f"| {row['node_id']} | {row['node_type']} | {row['name'][:60]} | {row['compartment']} | {row['subsystem'][:40]} | {row['gate']:.2f} |")
             lines.append("")

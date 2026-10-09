@@ -76,4 +76,7 @@ hard stop:
 So the limitation is not that the edges are unplaceable. It is that placing them needs drug nodes, a change to
 where a drug perturbation is seeded and a signed sequestration relation, which is three changes to the confirmatory
 graph and the perturbation model, not one. Recorded here as a known limitation of the graph rather than attempted.
+Those three changes, what the record holds about an earlier intention to make them and what they would cost are set
+out in docs/drug_entry_nodes.md, written on 9 October 2026 at the user's question; the carrier identity they would
+need now reaches 50 of the 154 drugs rather than 27 (docs/label_plasma_binders.md).
 

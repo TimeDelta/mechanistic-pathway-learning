@@ -140,6 +140,8 @@ hard stop:
 So the limitation is not that the edges are unplaceable. It is that placing them needs drug nodes, a change to
 where a drug perturbation is seeded and a signed sequestration relation, which is three changes to the confirmatory
 graph and the perturbation model, not one. Recorded here as a known limitation of the graph rather than attempted.
+docs/drug_entry_nodes.md sets out those three changes, what the record holds about an earlier intention to make them
+and the two objections to weigh, at the user's question of 9 October 2026 about drug nodes as new graph entry points.
 
 ## Stage 2: the free fraction and the binder state
 
@@ -274,6 +276,43 @@ right one:
   it; the correction above is the reason this is no longer on the critical path.
 - Whether the extension's second condition is modelled per drug or per population, which is a design question for the
   user, not a data gap.
+
+## Stage 3, 9 October 2026: the carrier identity of the other drugs, and what the special-population column affords
+
+Two questions from the user, both answered by measurement.
+
+**"For the fraction unbound, the 'in special populations' is the part that i am leaning on there. maybe it doesn't
+afford the leniancy i think it does?"** It affords less than it looks
+(`experiments/measure_special_population_carrier_signal.py`, docs/special_population_carrier_signal.md). Scored
+against the database's own carrier labels, the direction a drug's free fraction moves does separate the carriers, but
+**the sign is not one sign**: a higher free fraction means orosomucoid in hepatic impairment (AUROC 0.742), in the
+newborn (0.815) and across ethnic groups (0.925), and albumin in renal impairment (0.113), in the elderly (0.182) and
+in inflammatory disease (0.248). That is the physiology, since orosomucoid is a hepatic acute-phase protein that
+rises in inflammation and renal disease and falls in liver failure and at birth, but it means a free fraction with no
+population attached carries nothing. Pooling the populations a drug has, leave-one-drug-out, gets 155 of 193 drugs
+right, 80 percent, against a majority-class rate of 76 percent: it recovers 35 of the 47 orosomucoid carriers, which
+the trivial rule finds none of, at the cost of calling 26 of 146 albumin-carried drugs orosomucoid. That error rate
+is too high to place a carriage edge on and useful only for deciding which drugs to look up.
+
+And the coverage it could add is zero, for a reason that has nothing to do with its accuracy: the classifier needs a
+measured pair of fractions, which exists for the same 27 drugs whose carrier the database already labels. A ratio and
+a carrier label come together.
+
+**"I just want better coverage and i think it's possible to obtain in a valid way."** It is, from a source that
+states the carrier rather than implying it: the drug label
+(`experiments/fetch_fda_label_protein_binding.py`, `experiments/scope_label_plasma_binder_coverage.py`,
+docs/label_plasma_binders.md). openFDA serves each label with a `set_id` and an `effective_time`, so the exact
+version behind a sentence is recorded and the sentence can be quoted, which is the evidence standard the curated
+carriage table already uses. Of the study's 154 drug perturbations, 130 have an openFDA label and **34 name a
+carrier** (7 orosomucoid, 22 albumin, 6 both), **23 of them drugs the fraction-unbound database does not hold**. The
+check that matters: 11 drugs are named by both sources and **all 11 agree**. Carrier identity therefore reaches 50 of
+154 drugs rather than 27.
+
+Three cautions belong with that number. A label states the carrier when it matters clinically, so the drugs it names
+are not a random sample and the 34 cannot be read as an estimate of how many drugs orosomucoid carries. Six of the 34
+rest on a sentence that does not name the drug itself, and are marked in the table rather than counted silently. And
+a carrier identity is not yet an edge: a xenobiotic has no node to attach one to, which is the subject of
+docs/drug_entry_nodes.md.
 
 ## Built
 

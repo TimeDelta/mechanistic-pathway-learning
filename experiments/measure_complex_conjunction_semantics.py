@@ -73,7 +73,7 @@ def study_genes_inside(members: pd.DataFrame, entity_ids: set, edges: pd.DataFra
 
 
 def write_document(kinds_of_all: Counter, kinds_of_multi: Counter, member_counts: dict, reach: dict,
-                   signs: dict, genes_per_protein: pd.Series) -> None:
+                   signs: dict, genes_per_protein: pd.Series, graph_sizes: dict) -> None:
     conjunctions, disjunctions = kinds_of_multi.get(CONJUNCTION_KIND, 0), sum(kinds_of_multi.get(k, 0) for k in DISJUNCTION_KINDS)
     lines = [
         "# Conjunctive and disjunctive membership in the graph",
@@ -116,6 +116,29 @@ def write_document(kinds_of_all: Counter, kinds_of_multi: Counter, member_counts
         f"| conjunctions (Complex) | {reach['conjunction_proteins']} | {reach['conjunction_perturbations']} |",
         f"| disjunctions (sets) | {reach['disjunction_proteins']} | {reach['disjunction_perturbations']} |",
         "",
+        "## The decision of 9 October 2026, and what it costs the aggregation",
+        "",
+        "The user: \"i thought it would be multiple mins (one for each preserved quantity)\" and \"the inability for "
+        "the linear encoder to use the true physiological min there is imposed by the encoder itself so it's still "
+        "measuring a property of the encoder; it just includes a limitation of its implementation in the "
+        "comparison\". So the message-passing encoder takes a true minimum and the linear-response encoder keeps the "
+        "additive in-degree average, and the two encoders are compared with that difference in them.",
+        "",
+        "The minimum is per channel, not over a scalar: each of the encoder's node-state channels is reduced to the "
+        "smallest value its members carry, so a complex is as present as its scarcest subunit in every quantity "
+        "separately. That is the stoichiometric reading of an obligate assembly and it needs no summary of a member "
+        "into one number.",
+        "",
+        "The cost is small, which an earlier note of mine overstated. The aggregation is one stacked sparse product "
+        "per layer, and on this graph it already touches 54,982 of 700,435 stacked rows. A minimum is not a matrix "
+        "product, so the member edges of the conjunctions have to leave that product and be reduced separately with "
+        f"a segmented minimum, then added back: {conjunctions} entities and "
+        f"{reach['conjunction_proteins']} member protein nodes, against "
+        f"{graph_sizes['member_edges']:,} member edges in all and {graph_sizes['edges']:,} edges in "
+        "the graph. One scatter-reduce over about two percent of the rows the product already reads is not a "
+        "measurable cost per forward pass; what it does cost is a second code path in the encoder, which is a "
+        "maintenance cost rather than a compute one.",
+        "",
         "## The gene-to-protein split, where the question was asked",
         "",
         f"{int((genes_per_protein >= 2).sum())} of {len(genes_per_protein)} protein nodes are encoded by two or more",
@@ -155,7 +178,8 @@ def main() -> int:
                    {"conjunction_proteins": conjunction_proteins, "conjunction_perturbations": conjunction_perturbations,
                     "disjunction_proteins": disjunction_proteins, "disjunction_perturbations": disjunction_perturbations},
                    set(edges.loc[edges.relation_type == MEMBER_RELATION, "sign"].unique()),
-                   encodes.groupby("target_id").source_id.nunique())
+                   encodes.groupby("target_id").source_id.nunique(),
+                   {"member_edges": int((edges.relation_type == MEMBER_RELATION).sum()), "edges": len(edges)})
     print(f"conjunctions with 2 or more members: {len(conjunction_ids)}, disjunctions: {len(disjunction_ids)}")
     print(f"study perturbations inside a conjunction: {conjunction_perturbations}")
     return 0
