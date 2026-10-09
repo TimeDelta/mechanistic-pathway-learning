@@ -33,6 +33,11 @@ from mechanistic_pathway_learning.evidence.laboratory_abnormality_labels import 
     ChemicalDefinition, human_gem_metabolites_by_chebi, map_definition_to_metabolites, read_chebi_relations)
 from mechanistic_pathway_learning.graph.plasma_binding import add_plasma_carriage, curated_carriage_rows, uniprot_carriage_rows
 
+# Copied unchanged, which is sound only because carriage adds nothing these files read. Two model inputs follow the
+# wiring rather than an annotation: the reaction_brain descriptor block and the reactions' cell-class weights both carry
+# gene expression onto reactions through catalyzed_by (graph/rewired_expression_features.py). Carriage adds `binds`
+# edges only, so neither moves. A later variant that touched catalysis edges would have to recompute both, as the
+# rewired runs do, not copy them.
 COPIED_FILES = ("node_descriptors.parquet", "node_descriptors_summary.json", "gene_to_protein.parquet")
 
 
@@ -51,12 +56,21 @@ def binder_nodes_on_split(graph_directory: Path, binder_genes) -> dict[str, list
     return {symbol: sorted(set(ids)) for symbol, ids in nodes_of_gene.items()}
 
 
-def carriage_report(summary: dict, graph_directory: Path, output_directory: Path, curated: pd.DataFrame) -> str:
+def carriage_report(summary: dict, graph_directory: Path, output_directory: Path, curated: pd.DataFrame,
+                    other_outputs: list[Path] | None = None) -> str:
     lines = ["# Plasma substrate binders in the graph", "",
              f"Built by experiments/build_plasma_binder_variant.py from `{graph_directory}` into `{output_directory}`. "
              f"{summary['edges_added']} `binds` edges, sign 0, each from the extracellular copy of a cargo metabolite to its "
-             "binder's gene node, which is the direction and sign the graph's own small-molecule edges use.", "",
-             "## Cargo connected, by binder", "", "| binder | cargo | edges |", "|---|---|---|"]
+             f"binder, carried on {summary['carriage_on']}, which is the direction and sign the graph's own small-molecule "
+             "edges use."]
+    if other_outputs:
+        lines.append("")
+        lines.append("The same run built " + ", ".join(f"`{output}`" for output in other_outputs)
+                     + " from the matching source graphs. On a gene/protein split graph the carriage targets the protein "
+                       "node, because binding is the protein's property and the gene node there holds only expression, so "
+                       "the counts above hold but the edge endpoints differ.")
+    lines += ["",
+              "## Cargo connected, by binder", "", "| binder | cargo | edges |", "|---|---|---|"]
     for gene, cargo in sorted(summary["cargo_by_binder"].items()):
         lines.append(f"| {gene} | {', '.join(cargo)} | {summary['edges_by_binder'].get(gene, 0)} |")
     lines += ["", f"By source: {summary['edges_by_source']}. Rows read: {summary['carriage_rows_read']} "
@@ -114,7 +128,8 @@ def main() -> None:
         print(output_directory, json.dumps({key: value for key, value in summary.items()
                                             if key not in ("cargo_by_binder", "binder_genes_asked_for")}, indent=1))
         if position == 0 and str(arguments.markdown_output) != "none":
-            arguments.markdown_output.write_text(carriage_report(summary, graph_directory, output_directory, curated))
+            other_outputs = [other.parent / f"{other.name}_binders" for other in arguments.graph_dirs[1:]]
+            arguments.markdown_output.write_text(carriage_report(summary, graph_directory, output_directory, curated, other_outputs))
             print(f"wrote {arguments.markdown_output}")
 
 

@@ -168,6 +168,26 @@ the variant. Node set 36,865 (merged) and 49,574 (split); only `degree` moves.
   graph with no drug nodes has nowhere to put that, so stage 1 gives orosomucoid only progesterone, the one endogenous
   cargo with a measured constant, and orosomucoid's real role in this study waits on the fraction unbound of stage 2.
 
+### Checked against the trainer's own loader, 9 October 2026
+
+The variant was read through `load_experiment_data` and `node_feature_matrix` on
+`data/processed/graph_full_neuronal_split_binders`, with nothing trained. Node ids and `relation_types.json` are
+identical to the source graph, the first 279,757 edge rows are the source's rows unchanged, and the 27 added rows are
+all `binds`, all sign 0, all from an extracellular metabolite node to a `PROTEIN:` node. In the assembled feature
+matrix one column moves, the log-degree column (index 16, after the six node types and ten compartments), on exactly
+the 30 nodes the new edges touch; the perturbation and symptom counts are unchanged.
+
+The descriptor table is copied rather than rebuilt, which holds only because carriage adds nothing a descriptor reads.
+Two model inputs follow the wiring instead of an annotation: the `reaction_brain` block and the reactions' cell-class
+weights both carry gene expression onto reactions through `catalyzed_by`
+(`mechanistic_pathway_learning/graph/rewired_expression_features.py`). Carriage adds `binds` edges only, so neither
+changes. A later variant that touched catalysis edges would have to recompute both, as the rewired runs do. Rebuilding
+both variants a second time reproduced all seven parquet files byte for byte.
+
+The preregistered descriptor input (`full_neuronal_split_descriptors_brain_expression.parquet`, 138 columns) is keyed
+by node id and the node ids do not change, so it applies to the variant unchanged; the 84-column table inside each
+graph directory is the plainer one the slice configurations read, not the confirmatory input.
+
 ## Open
 
 - Whether the carriage edges go into the confirmatory graph or stay a variant. They change the graph, so they need a

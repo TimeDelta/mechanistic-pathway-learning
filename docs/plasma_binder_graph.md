@@ -1,6 +1,8 @@
 # Plasma substrate binders in the graph
 
-Built by experiments/build_plasma_binder_variant.py from `data/processed/graph_full_neuronal` into `data/processed/graph_full_neuronal_binders`. 27 `binds` edges, sign 0, each from the extracellular copy of a cargo metabolite to its binder's gene node, which is the direction and sign the graph's own small-molecule edges use.
+Built by experiments/build_plasma_binder_variant.py from `data/processed/graph_full_neuronal` into `data/processed/graph_full_neuronal_binders`. 27 `binds` edges, sign 0, each from the extracellular copy of a cargo metabolite to its binder, carried on gene nodes, which is the direction and sign the graph's own small-molecule edges use.
+
+The same run built `data/processed/graph_full_neuronal_split_binders` from the matching source graphs. On a gene/protein split graph the carriage targets the protein node, because binding is the protein's property and the gene node there holds only expression, so the counts above hold but the edge endpoints differ.
 
 ## Cargo connected, by binder
 

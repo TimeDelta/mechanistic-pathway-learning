@@ -149,3 +149,17 @@ def test_the_split_binder_nodes_come_from_the_gene_to_protein_map(tmp_path):
     pd.DataFrame({"gene_node_id": ["GENE:ALB", "GENE:OTHER"], "protein_node_id": ["PROTEIN:ALB", "PROTEIN:OTHER"]}
                  ).to_parquet(tmp_path / "gene_to_protein.parquet")
     assert binder_nodes_on_split(tmp_path, ("ALB",)) == {"ALB": ["PROTEIN:ALB"]}
+
+
+def test_the_report_names_the_endpoint_the_build_actually_used():
+    """The generated document said "gene node" whatever graph it described, which is wrong for a split graph."""
+    from experiments.build_plasma_binder_variant import carriage_report
+    summary = {"edges_added": 27, "carriage_on": "protein nodes (gene/protein split graph)", "cargo_by_binder": {"ALB": ["bilirubin"]},
+               "edges_by_binder": {"ALB": 1}, "edges_by_source": {"pubmed": 1}, "carriage_rows_read": 1,
+               "binder_genes_absent_from_graph": [], "cargo_not_mapped_to_human_gem": [],
+               "cargo_without_an_extracellular_node": [], "edges_already_in_the_graph": []}
+    report = carriage_report(summary, Path("graph_split"), Path("graph_split_binders"), pd.DataFrame([{"binder_gene": "ALB"}]),
+                             [Path("graph_other_binders")])
+    assert "protein nodes (gene/protein split graph)" in report
+    assert "binder's gene node" not in report
+    assert "graph_other_binders" in report, "the other variants the same run built are named"
