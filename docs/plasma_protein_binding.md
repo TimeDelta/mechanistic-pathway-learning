@@ -229,6 +229,22 @@ annotations are TTR (100 rows), APOB (55), APOA1 (49), ALB (39), RBP4 (22), SERP
 those are already perturbations. Orosomucoid cannot be a training example until some phenotype source other than
 HPO names it, which is a data gap and not a modelling choice. No human orosomucoid deficiency is described.
 
+Sources searched for one, 9 October 2026, at the user's question ("did you look for additional sources to find
+potential ORM1 / ORM2 knockouts?"):
+
+| source | what it returned |
+|---|---|
+| HPO `genes_to_phenotype`, the study's own label source | 0 annotation rows and 0 diseases for ORM1 and for ORM2 |
+| PubMed, for an ORM1 or ORM2 loss-of-function phenotype | nothing psychiatric. The nearest record is a mouse Orm2 study of adipose browning: "Orosomucoid 2 (Orm2) is identified as an IF-induced hepatokine that stimulates adipose browning", with "an obesity-associated Orm2 variant (D178E), which shows decreased GP130/IL23R binding and impaired browning capacity in mice" (abstract, PubMed 39248328, [DOI](https://doi.org/10.1002/advs.202407789), `zhu2024intermittent`) |
+| IMPC, for a systematic mouse knockout phenotype | no phenotyping planned for Orm1 (MGI:97443), so no behavioural panel exists to read |
+| commercial knockout lines | the described Orm2 phenotype is spontaneous obesity and hepatic steatosis, which is the same metabolic reading |
+
+So the answer to whether the binder can be a training example is no on two counts rather than one: HPO annotates
+neither gene, and the external literature describes the one existing knockout phenotype as metabolic. A psychiatric
+label for ORM1 or ORM2 would have to be invented, and inventing one is what this study's grading rules exist to
+prevent. These sources were retrieved from PubMed, which requires that it be cited and that the article DOI be given,
+as above.
+
 **The treatment.** Given those two numbers, a free-fraction input is the wrong instrument and a stratifier is the
 right one:
 
