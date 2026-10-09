@@ -2,20 +2,22 @@
 
 Support threshold 0.5 on the evaluation gate saved by the run; link threshold 0.5; downstream hops 3; currency metabolites removed from the downstream walk.
 
-Each module keeps its index, which is what the tables below join on, and carries a name read off its own support: the curated module it overlaps by at least 3 genes, else the subsystem holding at least 25% of the support and at least 2 times its share of the graph (with the compartment when one holds half), else the node type holding at least 75%, else "mixed support". The share is printed with the name so the name claims no more than its support. Two splits whose modules take the same name need not be the same module: the gates are fitted per split, and the stability section is where that is judged.
+Each module keeps its index, which is what the tables below join on, and carries two names. The first is read off its own support: the curated module it overlaps by at least 3 genes, else the subsystem holding at least 25% of the support and at least 2 times its share of the graph (with the compartment when one holds half), else the node type holding at least 75%, else "mixed support". The second is read off its behaviour (mechanistic_pathway_learning/evaluation/module_behaviour.py): the held-out perturbations in the top fifth of its activation, the group they share, how many of them have a directed path into its support no longer than the propagation the encoder runs, and the symptoms it links to more strongly than the other modules do, grouped by the crosswalk's RDoC domain. The share is printed with each name so the name claims no more than its support, and a reading that does not concentrate gives the number behind its refusal instead of a name. Two splits whose modules take the same name need not be the same module: the gates are fitted per split, and the stability section is where that is judged.
 
 ## fold0_seed0
 
-| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|---|
-| module_0 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'metabolite': 5, 'reaction': 22, 'gene': 5} | ['Transport reactions', 'Beta oxidation of odd-chain fatty acids (mitochondrial)', 'Keratan sulfate biosynthesis'] | {} | {} |
-| module_1 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'metabolite': 8, 'reaction': 18, 'gene': 6} | ['Transport reactions', 'Fatty acid oxidation', 'Beta oxidation of unsaturated fatty acids (n-9) (mitochondrial)'] | {} | {} |
-| module_2 | mixed support (29 nodes, no subsystem above 25%) | gate > 0.5 | 29 | {'gene': 7, 'metabolite': 8, 'reaction': 14} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Leukotriene metabolism'] | {} | {} |
-| module_3 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'metabolite': 10, 'reaction': 16, 'gene': 6} | ['Transport reactions', 'Exchange/demand reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {} | {'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
-| module_4 | mixed support (36 nodes; its largest subsystem, transport reactions, holds 31% against 31% of the graph) | gate > 0.5 | 36 | {'gene': 7, 'metabolite': 5, 'reaction': 24} | ['Transport reactions', 'Keratan sulfate degradation', 'Alanine, aspartate and glutamate metabolism'] | {} | {} |
-| module_5 | mixed support (33 nodes, no subsystem above 25%) | gate > 0.5 | 33 | {'reaction': 12, 'gene': 11, 'metabolite': 10} | ['Exchange/demand reactions', 'Transport reactions', 'Keratan sulfate degradation'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
-| module_6 | mixed support (29 nodes; its largest subsystem, transport reactions, holds 28% against 31% of the graph) | gate > 0.5 | 29 | {'gene': 7, 'reaction': 17, 'metabolite': 5} | ['Transport reactions', 'Arginine and proline metabolism', 'Exchange/demand reactions'] | {} | {} |
-| module_7 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'reaction': 17, 'metabolite': 8, 'gene': 7} | ['Transport reactions', 'Glycosphingolipid biosynthesis-globo series', 'Keratan sulfate degradation'] | {} | {} |
+| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (32 nodes, no subsystem above 25%) | driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 16 of 19 reach the support within 8 hops against 30 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.959) | gate > 0.5 | 32 | {'metabolite': 5, 'reaction': 22, 'gene': 5} | ['Transport reactions', 'Beta oxidation of odd-chain fatty acids (mitochondrial)', 'Keratan sulfate biosynthesis'] | {} | {} |
+| module_1 | mixed support (32 nodes, no subsystem above 25%) | driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 9 of 19 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.963) | gate > 0.5 | 32 | {'metabolite': 8, 'reaction': 18, 'gene': 6} | ['Transport reactions', 'Fatty acid oxidation', 'Beta oxidation of unsaturated fatty acids (n-9) (mitochondrial)'] | {} | {} |
+| module_2 | mixed support (29 nodes, no subsystem above 25%) | driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 12 of 19 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.966) | gate > 0.5 | 29 | {'gene': 7, 'metabolite': 8, 'reaction': 14} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Leukotriene metabolism'] | {} | {} |
+| module_3 | mixed support (32 nodes, no subsystem above 25%) | driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 14 of 19 reach the support within 8 hops against 22 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.946) | gate > 0.5 | 32 | {'metabolite': 10, 'reaction': 16, 'gene': 6} | ['Transport reactions', 'Exchange/demand reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {} | {'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
+| module_4 | mixed support (36 nodes; its largest subsystem, transport reactions, holds 31% against 31% of the graph) | driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 16 of 19 reach the support within 8 hops against 27 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.961) | gate > 0.5 | 36 | {'gene': 7, 'metabolite': 5, 'reaction': 24} | ['Transport reactions', 'Keratan sulfate degradation', 'Alanine, aspartate and glutamate metabolism'] | {} | {} |
+| module_5 | mixed support (33 nodes, no subsystem above 25%) | driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 13 of 19 reach the support within 8 hops against 32 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.95) | gate > 0.5 | 33 | {'reaction': 12, 'gene': 11, 'metabolite': 10} | ['Exchange/demand reactions', 'Transport reactions', 'Keratan sulfate degradation'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
+| module_6 | mixed support (29 nodes; its largest subsystem, transport reactions, holds 28% against 31% of the graph) | driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 13 of 19 reach the support within 8 hops against 29 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.924) | gate > 0.5 | 29 | {'gene': 7, 'reaction': 17, 'metabolite': 5} | ['Transport reactions', 'Arginine and proline metabolism', 'Exchange/demand reactions'] | {} | {} |
+| module_7 | mixed support (32 nodes, no subsystem above 25%) | driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 14 of 19 reach the support within 8 hops against 35 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.939) | gate > 0.5 | 32 | {'reaction': 17, 'metabolite': 8, 'gene': 7} | ['Transport reactions', 'Glycosphingolipid biosynthesis-globo series', 'Keratan sulfate degradation'] | {} | {} |
+
+Modules whose activation varies across the held-out perturbations: 8 of 8; median pairwise Jaccard of their driver sets: 0.41 (near 1 the same perturbations drive every module, so a driver name does not separate them).
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -53,6 +55,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold0_seed0 module_0, mixed support (32 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 16 of 19 reach the support within 8 hops against 30 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.959)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAM02008c | metabolite | GM1 | c |  | 0.59 |
@@ -72,6 +76,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08067 | reaction | L-cysteate:2-oxoglutarate aminotransferase | m | Cysteine and methionine metabolism | 0.53 |
 
 ### fold0_seed0 module_1, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 9 of 19 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.963)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -93,6 +99,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold0_seed0 module_2, mixed support (29 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 12 of 19 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.966)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:PLA2G6 | gene | PLA2G6 |  |  | 0.67 |
@@ -112,6 +120,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03816 | reaction | L-Arginine amidinohydrolase | c | Arginine and proline metabolism | 0.52 |
 
 ### fold0_seed0 module_3, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 14 of 19 reach the support within 8 hops against 22 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.946)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -133,6 +143,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold0_seed0 module_4, mixed support (36 nodes; its largest subsystem, transport reactions, holds 31% against 31% of the graph): top nodes
 
+How it behaves: driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 16 of 19 reach the support within 8 hops against 27 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.961)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:UBA1 | gene | UBA1 |  |  | 0.62 |
@@ -152,6 +164,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:UBE3A | gene | UBE3A |  |  | 0.53 |
 
 ### fold0_seed0 module_5, mixed support (33 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 13 of 19 reach the support within 8 hops against 32 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.95)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -173,6 +187,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold0_seed0 module_6, mixed support (29 nodes; its largest subsystem, transport reactions, holds 28% against 31% of the graph): top nodes
 
+How it behaves: driven by SLC22A5, ACADM, CPT1C and 16 others with no group in common; 13 of 19 reach the support within 8 hops against 29 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.924)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:SLC25A4 | gene | SLC25A4 |  |  | 0.63 |
@@ -192,6 +208,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR10104 | reaction | transport of murideoxycholic acid (cytosol to extracellular) | c;e | Transport reactions | 0.53 |
 
 ### fold0_seed0 module_7, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC22A5, CPT1C, ACADM and 16 others with no group in common; 14 of 19 reach the support within 8 hops against 35 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.939)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -213,16 +231,18 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold1_seed0
 
-| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|---|
-| module_0 | mixed support (30 nodes, no subsystem above 25%) | gate > 0.5 | 30 | {'metabolite': 3, 'reaction': 22, 'gene': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Beta oxidation of di-unsaturated fatty acids (n-6) (mitochondrial)'] | {} | {'tetrahydrobiopterin': 1} |
-| module_1 | mixed support (29 nodes, no subsystem above 25%) | gate > 0.5 | 29 | {'reaction': 14, 'metabolite': 5, 'gene': 10} | ['Transport reactions', 'Arginine and proline metabolism', 'Fatty acid oxidation'] | {} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
-| module_2 | mixed support (29 nodes, no subsystem above 25%) | gate > 0.5 | 29 | {'metabolite': 9, 'gene': 11, 'reaction': 9} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Riboflavin metabolism'] | {} | {} |
-| module_3 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.63) | 24 | {'reaction': 12, 'metabolite': 7, 'gene': 6} | ['Transport reactions', 'Fatty acid activation (endoplasmic reticular)', 'Estrogen metabolism'] | {} | {'creatine_energy': 1} |
-| module_4 | mixed support (34 nodes, no subsystem above 25%) | gate > 0.5 | 34 | {'reaction': 21, 'gene': 9, 'metabolite': 4} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {} | {} |
-| module_5 | mixed support (25 nodes, no subsystem above 25%) | gate > 0.5 | 25 | {'reaction': 9, 'gene': 6, 'metabolite': 10} | ['Exchange/demand reactions', 'Transport reactions', 'Keratan sulfate degradation'] | {} | {'sterol_lysosomal_lipid': 1} |
-| module_6 | mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph) | gate > 0.5 | 27 | {'reaction': 16, 'gene': 6, 'metabolite': 5} | ['Transport reactions', 'Exchange/demand reactions', 'Purine metabolism'] | {} | {} |
-| module_7 | mixed support (33 nodes, no subsystem above 25%) | gate > 0.5 | 33 | {'reaction': 18, 'metabolite': 9, 'gene': 6} | ['Transport reactions', 'Drug metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {'tetrahydrobiopterin': 1} |
+| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (30 nodes, no subsystem above 25%) | driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.927) | gate > 0.5 | 30 | {'metabolite': 3, 'reaction': 22, 'gene': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Beta oxidation of di-unsaturated fatty acids (n-6) (mitochondrial)'] | {} | {'tetrahydrobiopterin': 1} |
+| module_1 | mixed support (29 nodes, no subsystem above 25%) | driven by HADH, HEXA, SLC25A1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 22 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.929) | gate > 0.5 | 29 | {'reaction': 14, 'metabolite': 5, 'gene': 10} | ['Transport reactions', 'Arginine and proline metabolism', 'Fatty acid oxidation'] | {} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module_2 | mixed support (29 nodes, no subsystem above 25%) | driven by HADH, SLC25A1, HEXA and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 34 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.964) | gate > 0.5 | 29 | {'metabolite': 9, 'gene': 11, 'reaction': 9} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Riboflavin metabolism'] | {} | {} |
+| module_3 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 18 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.989) | top 25 gates (max gate 0.63) | 24 | {'reaction': 12, 'metabolite': 7, 'gene': 6} | ['Transport reactions', 'Fatty acid activation (endoplasmic reticular)', 'Estrogen metabolism'] | {} | {'creatine_energy': 1} |
+| module_4 | mixed support (34 nodes, no subsystem above 25%) | driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 30 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.985) | gate > 0.5 | 34 | {'reaction': 21, 'gene': 9, 'metabolite': 4} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {} | {} |
+| module_5 | mixed support (25 nodes, no subsystem above 25%) | driven by HADH, SLC25A1, HEXA and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 30 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.95) | gate > 0.5 | 25 | {'reaction': 9, 'gene': 6, 'metabolite': 10} | ['Exchange/demand reactions', 'Transport reactions', 'Keratan sulfate degradation'] | {} | {'sterol_lysosomal_lipid': 1} |
+| module_6 | mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph) | driven by HEXA, SLC25A1, HADH and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 31 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.956) | gate > 0.5 | 27 | {'reaction': 16, 'gene': 6, 'metabolite': 5} | ['Transport reactions', 'Exchange/demand reactions', 'Purine metabolism'] | {} | {} |
+| module_7 | mixed support (33 nodes, no subsystem above 25%) | driven by SLC25A1, HEXA, HADH and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 36 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.967) | gate > 0.5 | 33 | {'reaction': 18, 'metabolite': 9, 'gene': 6} | ['Transport reactions', 'Drug metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {'tetrahydrobiopterin': 1} |
+
+Modules whose activation varies across the held-out perturbations: 8 of 8; median pairwise Jaccard of their driver sets: 0.38 (near 1 the same perturbations drive every module, so a driver name does not separate them).
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -263,6 +283,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold1_seed0 module_0, mixed support (30 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 32 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.927)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAM02008c | metabolite | GM1 | c |  | 0.60 |
@@ -282,6 +304,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR05263 | reaction | antitrypsin phosphorylation | l | Protein degradation | 0.53 |
 
 ### fold1_seed0 module_1, mixed support (29 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by HADH, HEXA, SLC25A1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 22 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.929)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -303,6 +327,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold1_seed0 module_2, mixed support (29 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by HADH, SLC25A1, HEXA and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 34 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.964)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAM02658m | metabolite | ornithine | m |  | 0.67 |
@@ -322,6 +348,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01365e | metabolite | arginine | e |  | 0.51 |
 
 ### fold1_seed0 module_3, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 18 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.989)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -343,6 +371,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold1_seed0 module_4, mixed support (34 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC25A1, HADH, HEXA and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 30 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.985)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR03922 | reaction | N-acetylglutamate synthase (N-acetyl-L-cystathionine) | m | Cysteine and methionine metabolism | 0.62 |
@@ -362,6 +392,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:FIG4 | gene | FIG4 |  |  | 0.52 |
 
 ### fold1_seed0 module_5, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by HADH, SLC25A1, HEXA and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 30 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.95)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -383,6 +415,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold1_seed0 module_6, mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph): top nodes
 
+How it behaves: driven by HEXA, SLC25A1, HADH and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 31 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.956)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR04020 | reaction | ATP:GMP phosphotransferase | c | Purine metabolism | 0.67 |
@@ -402,6 +436,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR04728 | reaction | Transport of Adipoyl Carnitine into Cytosol | c;x | Fatty acid oxidation | 0.52 |
 
 ### fold1_seed0 module_7, mixed support (33 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC25A1, HEXA, HADH and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 36 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.967)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -423,16 +459,18 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold2_seed0
 
-| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|---|
-| module_0 | mixed support (36 nodes, no subsystem above 25%) | gate > 0.5 | 36 | {'reaction': 26, 'metabolite': 5, 'gene': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Cysteine and methionine metabolism'] | {} | {} |
-| module_1 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'reaction': 16, 'metabolite': 7, 'gene': 9} | ['Transport reactions', 'Fatty acid oxidation', 'Arginine and proline metabolism'] | {} | {'tryptophan_kynurenine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
-| module_2 | mixed support (28 nodes, no subsystem above 25%) | gate > 0.5 | 28 | {'metabolite': 9, 'reaction': 13, 'gene': 6} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Leukotriene metabolism'] | {} | {} |
-| module_3 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'metabolite': 9, 'gene': 7, 'reaction': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Arachidonic acid metabolism'] | {} | {'creatine_energy': 1} |
-| module_4 | mixed support (41 nodes, no subsystem above 25%) | gate > 0.5 | 41 | {'gene': 10, 'metabolite': 5, 'reaction': 26} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {} | {} |
-| module_5 | mixed support (32 nodes, no subsystem above 25%) | gate > 0.5 | 32 | {'reaction': 10, 'gene': 11, 'metabolite': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Keratan sulfate degradation'] | {} | {'urea_cycle': 1} |
-| module_6 | mixed support (28 nodes, no subsystem above 25%) | gate > 0.5 | 28 | {'reaction': 16, 'gene': 6, 'metabolite': 6} | ['Transport reactions', 'Exchange/demand reactions', 'Purine metabolism'] | {} | {} |
-| module_7 | mixed support (33 nodes, no subsystem above 25%) | gate > 0.5 | 33 | {'reaction': 19, 'metabolite': 9, 'gene': 5} | ['Transport reactions', 'Drug metabolism', 'Keratan sulfate degradation'] | {} | {} |
+| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (36 nodes, no subsystem above 25%) | driven by CPT1A, ACSL4, ABCB11 and 15 others with no group in common; 14 of 18 reach the support within 8 hops against 23 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.95) | gate > 0.5 | 36 | {'reaction': 26, 'metabolite': 5, 'gene': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Cysteine and methionine metabolism'] | {} | {} |
+| module_1 | mixed support (32 nodes, no subsystem above 25%) | driven by CPT1A, ACSL4, SLC6A14 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 23 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.957) | gate > 0.5 | 32 | {'reaction': 16, 'metabolite': 7, 'gene': 9} | ['Transport reactions', 'Fatty acid oxidation', 'Arginine and proline metabolism'] | {} | {'tryptophan_kynurenine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module_2 | mixed support (28 nodes, no subsystem above 25%) | driven by CPT1A, ACSL4, SLC6A14 and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 29 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.982) | gate > 0.5 | 28 | {'metabolite': 9, 'reaction': 13, 'gene': 6} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Leukotriene metabolism'] | {} | {} |
+| module_3 | mixed support (32 nodes, no subsystem above 25%) | driven by CPT1A, SLC6A14, ACSL4 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 13 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.984) | gate > 0.5 | 32 | {'metabolite': 9, 'gene': 7, 'reaction': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Arachidonic acid metabolism'] | {} | {'creatine_energy': 1} |
+| module_4 | mixed support (41 nodes, no subsystem above 25%) | driven by CPT1A, ABCB11, SLC6A14 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 28 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.96) | gate > 0.5 | 41 | {'gene': 10, 'metabolite': 5, 'reaction': 26} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {} | {} |
+| module_5 | mixed support (32 nodes, no subsystem above 25%) | driven by CPT1A, ABCB11, ACSL4 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 26 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.911) | gate > 0.5 | 32 | {'reaction': 10, 'gene': 11, 'metabolite': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Keratan sulfate degradation'] | {} | {'urea_cycle': 1} |
+| module_6 | mixed support (28 nodes, no subsystem above 25%) | driven by CPT1A, ACSL4, ABCB11 and 15 others with no group in common; 6 of 18 reach the support within 8 hops against 26 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.938) | gate > 0.5 | 28 | {'reaction': 16, 'gene': 6, 'metabolite': 6} | ['Transport reactions', 'Exchange/demand reactions', 'Purine metabolism'] | {} | {} |
+| module_7 | mixed support (33 nodes, no subsystem above 25%) | driven by CPT1A, ABCB11, ACSL4 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 25 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.975) | gate > 0.5 | 33 | {'reaction': 19, 'metabolite': 9, 'gene': 5} | ['Transport reactions', 'Drug metabolism', 'Keratan sulfate degradation'] | {} | {} |
+
+Modules whose activation varies across the held-out perturbations: 8 of 8; median pairwise Jaccard of their driver sets: 0.33 (near 1 the same perturbations drive every module, so a driver name does not separate them).
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -470,6 +508,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold2_seed0 module_0, mixed support (36 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by CPT1A, ACSL4, ABCB11 and 15 others with no group in common; 14 of 18 reach the support within 8 hops against 23 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.95)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR03284 | reaction | medium-chain acyl-CoA dehydrogenase (cis,cis-myristo-5,8-die | m | Beta oxidation of di-unsaturated fatty a | 0.62 |
@@ -489,6 +529,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM02991c | metabolite | thiosulfate | c |  | 0.53 |
 
 ### fold2_seed0 module_1, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by CPT1A, ACSL4, SLC6A14 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 23 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.957)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -510,6 +552,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold2_seed0 module_2, mixed support (28 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by CPT1A, ACSL4, SLC6A14 and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 29 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.982)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAM02658m | metabolite | ornithine | m |  | 0.67 |
@@ -529,6 +573,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR01131 | reaction | alcohol dehydrogenase (20-OH-LTB4) | r | Leukotriene metabolism | 0.52 |
 
 ### fold2_seed0 module_3, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by CPT1A, SLC6A14, ACSL4 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 13 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.984)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -550,6 +596,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold2_seed0 module_4, mixed support (41 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by CPT1A, ABCB11, SLC6A14 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 28 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.96)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:UBA1 | gene | UBA1 |  |  | 0.63 |
@@ -569,6 +617,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08440 | reaction | p-cumic alcohol:NAD+ oxidoreductase | m | Glycine, serine and threonine metabolism | 0.53 |
 
 ### fold2_seed0 module_5, mixed support (32 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by CPT1A, ABCB11, ACSL4 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 26 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.911)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -590,6 +640,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold2_seed0 module_6, mixed support (28 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by CPT1A, ACSL4, ABCB11 and 15 others with no group in common; 6 of 18 reach the support within 8 hops against 26 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.938)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR04020 | reaction | ATP:GMP phosphotransferase | c | Purine metabolism | 0.68 |
@@ -609,6 +661,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR09454 | reaction | Exchange of D-ornithine | e | Exchange/demand reactions | 0.53 |
 
 ### fold2_seed0 module_7, mixed support (33 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by CPT1A, ABCB11, ACSL4 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 25 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.975)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -630,16 +684,18 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold3_seed0
 
-| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|---|
-| module_0 | mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph) | gate > 0.5 | 27 | {'metabolite': 4, 'reaction': 15, 'gene': 8} | ['Transport reactions', 'Beta oxidation of di-unsaturated fatty acids (n-6) (mitochondrial)', 'Carnitine shuttle (endoplasmic reticular)'] | {} | {'tetrahydrobiopterin': 1} |
-| module_1 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.60) | 16 | {'metabolite': 5, 'reaction': 11, 'gene': 9} | ['Transport reactions', 'Biopterin metabolism', 'Arginine and proline metabolism'] | {} | {'tryptophan_kynurenine': 1, 'urea_cycle': 1} |
-| module_2 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.67) | 20 | {'gene': 9, 'reaction': 12, 'metabolite': 4} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Fatty acid activation (cytosolic)'] | {} | {} |
-| module_3 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.58) | 10 | {'reaction': 12, 'metabolite': 6, 'gene': 7} | ['Transport reactions', 'Fatty acid activation (endoplasmic reticular)', 'Arachidonic acid metabolism'] | {} | {'sterol_lysosomal_lipid': 2} |
-| module_4 | mixed support (25 nodes; its largest subsystem, transport reactions, holds 32% against 31% of the graph) | top 25 gates (max gate 0.63) | 21 | {'gene': 8, 'reaction': 14, 'metabolite': 3} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Alanine, aspartate and glutamate metabolism'] | {} | {} |
-| module_5 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.64) | 18 | {'gene': 12, 'reaction': 9, 'metabolite': 4} | ['Exchange/demand reactions', 'Fatty acid activation (cytosolic)', 'Inositol phosphate metabolism'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
-| module_6 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.69) | 21 | {'reaction': 13, 'gene': 7, 'metabolite': 5} | ['Transport reactions', 'Biopterin metabolism', 'Arginine and proline metabolism'] | {} | {} |
-| module_7 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.63) | 23 | {'reaction': 15, 'gene': 6, 'metabolite': 4} | ['Transport reactions', 'Drug metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {'tetrahydrobiopterin': 1} |
+| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph) | driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 34 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.919) | gate > 0.5 | 27 | {'metabolite': 4, 'reaction': 15, 'gene': 8} | ['Transport reactions', 'Beta oxidation of di-unsaturated fatty acids (n-6) (mitochondrial)', 'Carnitine shuttle (endoplasmic reticular)'] | {} | {'tetrahydrobiopterin': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC25A20, CYP27A1, ACOX1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 16 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.738) | top 25 gates (max gate 0.60) | 16 | {'metabolite': 5, 'reaction': 11, 'gene': 9} | ['Transport reactions', 'Biopterin metabolism', 'Arginine and proline metabolism'] | {} | {'tryptophan_kynurenine': 1, 'urea_cycle': 1} |
+| module_2 | mixed support (25 nodes, no subsystem above 25%) | driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 23 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.917) | top 25 gates (max gate 0.67) | 20 | {'gene': 9, 'reaction': 12, 'metabolite': 4} | ['Transport reactions', 'Phenylalanine, tyrosine and tryptophan biosynthesis', 'Fatty acid activation (cytosolic)'] | {} | {} |
+| module_3 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 14 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.925) | top 25 gates (max gate 0.58) | 10 | {'reaction': 12, 'metabolite': 6, 'gene': 7} | ['Transport reactions', 'Fatty acid activation (endoplasmic reticular)', 'Arachidonic acid metabolism'] | {} | {'sterol_lysosomal_lipid': 2} |
+| module_4 | mixed support (25 nodes; its largest subsystem, transport reactions, holds 32% against 31% of the graph) | driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 5 of 18 reach the support within 8 hops against 21 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.948) | top 25 gates (max gate 0.63) | 21 | {'gene': 8, 'reaction': 14, 'metabolite': 3} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Alanine, aspartate and glutamate metabolism'] | {} | {} |
+| module_5 | mixed support (25 nodes, no subsystem above 25%) | driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 13 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.854) | top 25 gates (max gate 0.64) | 18 | {'gene': 12, 'reaction': 9, 'metabolite': 4} | ['Exchange/demand reactions', 'Fatty acid activation (cytosolic)', 'Inositol phosphate metabolism'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
+| module_6 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC25A20, CYP27A1, ACOX1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 21 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.784) | top 25 gates (max gate 0.69) | 21 | {'reaction': 13, 'gene': 7, 'metabolite': 5} | ['Transport reactions', 'Biopterin metabolism', 'Arginine and proline metabolism'] | {} | {} |
+| module_7 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 24 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.926) | top 25 gates (max gate 0.63) | 23 | {'reaction': 15, 'gene': 6, 'metabolite': 4} | ['Transport reactions', 'Drug metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {'tetrahydrobiopterin': 1} |
+
+Modules whose activation varies across the held-out perturbations: 8 of 8; median pairwise Jaccard of their driver sets: 0.38 (near 1 the same perturbations drive every module, so a driver name does not separate them).
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -680,6 +736,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold3_seed0 module_0, mixed support (27 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph): top nodes
 
+How it behaves: driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 34 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.919)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAM02008c | metabolite | GM1 | c |  | 0.58 |
@@ -699,6 +757,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:ATP8B1 | gene | ATP8B1 |  |  | 0.53 |
 
 ### fold3_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC25A20, CYP27A1, ACOX1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 16 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.738)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -720,6 +780,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold3_seed0 module_2, mixed support (25 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 10 of 18 reach the support within 8 hops against 23 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.917)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:PLA2G6 | gene | PLA2G6 |  |  | 0.67 |
@@ -739,6 +801,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08433 | reaction | dihydrolipoyl dehydrogenase ([protein]-N6-(lipoyl)lysine) | m | Glycine, serine and threonine metabolism | 0.51 |
 
 ### fold3_seed0 module_3, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 14 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.925)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -760,6 +824,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold3_seed0 module_4, mixed support (25 nodes; its largest subsystem, transport reactions, holds 32% against 31% of the graph): top nodes
 
+How it behaves: driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 5 of 18 reach the support within 8 hops against 21 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.948)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:UBA1 | gene | UBA1 |  |  | 0.63 |
@@ -779,6 +845,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08440 | reaction | p-cumic alcohol:NAD+ oxidoreductase | m | Glycine, serine and threonine metabolism | 0.52 |
 
 ### fold3_seed0 module_5, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by ACOX1, SLC25A20, CYP27A1 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 13 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.854)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -800,6 +868,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold3_seed0 module_6, mixed support (25 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC25A20, CYP27A1, ACOX1 and 15 others with no group in common; 7 of 18 reach the support within 8 hops against 21 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.784)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR04020 | reaction | ATP:GMP phosphotransferase | c | Purine metabolism | 0.69 |
@@ -819,6 +889,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR10104 | reaction | transport of murideoxycholic acid (cytosol to extracellular) | c;e | Transport reactions | 0.52 |
 
 ### fold3_seed0 module_7, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC25A20, ACOX1, CYP27A1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 24 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.926)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -840,16 +912,18 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold4_seed0
 
-| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|---|
-| module_0 | mixed support (28 nodes; its largest subsystem, transport reactions, holds 25% against 31% of the graph) | gate > 0.5 | 28 | {'reaction': 18, 'gene': 5, 'metabolite': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Galactose metabolism'] | {} | {'tetrahydrobiopterin': 1} |
-| module_1 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.59) | 18 | {'metabolite': 6, 'reaction': 12, 'gene': 7} | ['Transport reactions', 'Fatty acid oxidation', 'Beta oxidation of unsaturated fatty acids (n-9) (mitochondrial)'] | {} | {'tryptophan_kynurenine': 1, 'sterol_lysosomal_lipid': 1} |
-| module_2 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.67) | 20 | {'gene': 6, 'reaction': 12, 'metabolite': 7} | ['Transport reactions', 'Leukotriene metabolism', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {} | {} |
-| module_3 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.60) | 17 | {'reaction': 13, 'metabolite': 6, 'gene': 6} | ['Transport reactions', 'Porphyrin metabolism', 'Fatty acid activation (endoplasmic reticular)'] | {} | {'creatine_energy': 1} |
-| module_4 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.64) | 22 | {'gene': 6, 'metabolite': 2, 'reaction': 17} | ['Transport reactions', 'Alanine, aspartate and glutamate metabolism', 'Keratan sulfate degradation'] | {} | {} |
-| module_5 | mixed support (25 nodes, no subsystem above 25%) | gate > 0.5 | 25 | {'reaction': 7, 'gene': 13, 'metabolite': 5} | ['Exchange/demand reactions', 'Keratan sulfate degradation', 'Fatty acid activation (cytosolic)'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
-| module_6 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.67) | 18 | {'gene': 7, 'reaction': 13, 'metabolite': 5} | ['Transport reactions', 'Biopterin metabolism', 'Protein degradation'] | {} | {} |
-| module_7 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.61) | 24 | {'reaction': 18, 'metabolite': 3, 'gene': 4} | ['Transport reactions', 'Drug metabolism', 'Keratan sulfate degradation'] | {} | {'tetrahydrobiopterin': 1} |
+| module | what its support holds | how it behaves | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (28 nodes; its largest subsystem, transport reactions, holds 25% against 31% of the graph) | driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 13 of 18 reach the support within 8 hops against 42 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.985) | gate > 0.5 | 28 | {'reaction': 18, 'gene': 5, 'metabolite': 5} | ['Transport reactions', 'Carnitine shuttle (endoplasmic reticular)', 'Galactose metabolism'] | {} | {'tetrahydrobiopterin': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 18 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.939) | top 25 gates (max gate 0.59) | 18 | {'metabolite': 6, 'reaction': 12, 'gene': 7} | ['Transport reactions', 'Fatty acid oxidation', 'Beta oxidation of unsaturated fatty acids (n-9) (mitochondrial)'] | {} | {'tryptophan_kynurenine': 1, 'sterol_lysosomal_lipid': 1} |
+| module_2 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 29 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.983) | top 25 gates (max gate 0.67) | 20 | {'gene': 6, 'reaction': 12, 'metabolite': 7} | ['Transport reactions', 'Leukotriene metabolism', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {} | {} |
+| module_3 | mixed support (25 nodes, no subsystem above 25%) | driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 27 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.92) | top 25 gates (max gate 0.60) | 17 | {'reaction': 13, 'metabolite': 6, 'gene': 6} | ['Transport reactions', 'Porphyrin metabolism', 'Fatty acid activation (endoplasmic reticular)'] | {} | {'creatine_energy': 1} |
+| module_4 | mixed support (25 nodes, no subsystem above 25%) | driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 26 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.955) | top 25 gates (max gate 0.64) | 22 | {'gene': 6, 'metabolite': 2, 'reaction': 17} | ['Transport reactions', 'Alanine, aspartate and glutamate metabolism', 'Keratan sulfate degradation'] | {} | {} |
+| module_5 | mixed support (25 nodes, no subsystem above 25%) | driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 2 of 18 reach the support within 8 hops against 7 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.972) | gate > 0.5 | 25 | {'reaction': 7, 'gene': 13, 'metabolite': 5} | ['Exchange/demand reactions', 'Keratan sulfate degradation', 'Fatty acid activation (cytosolic)'] | {} | {'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
+| module_6 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 13 of 18 reach the support within 8 hops against 31 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.884) | top 25 gates (max gate 0.67) | 18 | {'gene': 7, 'reaction': 13, 'metabolite': 5} | ['Transport reactions', 'Biopterin metabolism', 'Protein degradation'] | {} | {} |
+| module_7 | mixed support (25 nodes, no subsystem above 25%) | driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 14 of 18 reach the support within 8 hops against 38 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.966) | top 25 gates (max gate 0.61) | 24 | {'reaction': 18, 'metabolite': 3, 'gene': 4} | ['Transport reactions', 'Drug metabolism', 'Keratan sulfate degradation'] | {} | {'tetrahydrobiopterin': 1} |
+
+Modules whose activation varies across the held-out perturbations: 8 of 8; median pairwise Jaccard of their driver sets: 0.44 (near 1 the same perturbations drive every module, so a driver name does not separate them).
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -893,6 +967,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold4_seed0 module_0, mixed support (28 nodes; its largest subsystem, transport reactions, holds 25% against 31% of the graph): top nodes
 
+How it behaves: driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 13 of 18 reach the support within 8 hops against 42 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.985)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | MAR02793 | reaction | solute carrier (L-carnitine) | c;r | Carnitine shuttle (endoplasmic reticular | 0.58 |
@@ -912,6 +988,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR05263 | reaction | antitrypsin phosphorylation | l | Protein degradation | 0.51 |
 
 ### fold4_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 9 of 18 reach the support within 8 hops against 18 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.939)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -933,6 +1011,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold4_seed0 module_2, mixed support (25 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 11 of 18 reach the support within 8 hops against 29 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.983)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:PLA2G6 | gene | PLA2G6 |  |  | 0.67 |
@@ -952,6 +1032,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR00196 | reaction | long-chain-fatty-acid-CoA ligase (myristic acid) | c | Fatty acid activation (cytosolic) | 0.51 |
 
 ### fold4_seed0 module_3, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 8 of 18 reach the support within 8 hops against 27 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.92)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -973,6 +1055,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold4_seed0 module_4, mixed support (25 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 12 of 18 reach the support within 8 hops against 26 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.955)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:UBA1 | gene | UBA1 |  |  | 0.64 |
@@ -992,6 +1076,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR04416 | reaction | Galactosylglycerol galactohydrolase | e | Galactose metabolism | 0.51 |
 
 ### fold4_seed0 module_5, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by HSD17B10, SLC3A1, ABCD1 and 15 others with no group in common; 2 of 18 reach the support within 8 hops against 7 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.972)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -1013,6 +1099,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ### fold4_seed0 module_6, mixed support (25 nodes, no subsystem above 25%): top nodes
 
+How it behaves: driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 13 of 18 reach the support within 8 hops against 31 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.884)
+
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
 | GENE:COASY | gene | COASY |  |  | 0.67 |
@@ -1032,6 +1120,8 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR11601 | reaction | Transport of 1-NoNADecanoylglycerophosphocholine, Sn1-Lpc (1 | c;e | Transport reactions | 0.51 |
 
 ### fold4_seed0 module_7, mixed support (25 nodes, no subsystem above 25%): top nodes
+
+How it behaves: driven by SLC3A1, HSD17B10, ABCD1 and 15 others with no group in common; 14 of 18 reach the support within 8 hops against 38 of 72 others, so the activation does not follow the path; no symptom family of its own: its link profile matches the other modules (correlation 0.966)
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|

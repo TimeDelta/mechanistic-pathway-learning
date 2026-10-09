@@ -303,16 +303,24 @@ states the carrier rather than implying it: the drug label
 (`experiments/fetch_fda_label_protein_binding.py`, `experiments/scope_label_plasma_binder_coverage.py`,
 docs/label_plasma_binders.md). openFDA serves each label with a `set_id` and an `effective_time`, so the exact
 version behind a sentence is recorded and the sentence can be quoted, which is the evidence standard the curated
-carriage table already uses. Of the study's 154 drug perturbations, 130 have an openFDA label and **34 name a
-carrier** (7 orosomucoid, 22 albumin, 6 both), **23 of them drugs the fraction-unbound database does not hold**. The
-check that matters: 11 drugs are named by both sources and **all 11 agree**. Carrier identity therefore reaches 50 of
+carriage table already uses. Of the study's 154 drug perturbations, 130 have an openFDA label and **31 name a
+carrier** (5 orosomucoid, 20 albumin, 6 both), **22 of them drugs the fraction-unbound database does not hold**. The
+check that matters: 9 drugs are named by both sources and **all 9 agree**. Carrier identity therefore reaches 49 of
 154 drugs rather than 27.
 
-Three cautions belong with that number. A label states the carrier when it matters clinically, so the drugs it names
-are not a random sample and the 34 cannot be read as an estimate of how many drugs orosomucoid carries. Six of the 34
-rest on a sentence that does not name the drug itself, and are marked in the table rather than counted silently. And
-a carrier identity is not yet an edge: a xenobiotic has no node to attach one to, which is the subject of
-docs/drug_entry_nodes.md.
+Those counts are the second reading. The first was 34 carriers over 11 agreeing drugs, and four of them were wrong in
+ways a sentence-level rule has to refuse rather than report: oxcarbazepine was called an orosomucoid drug by the
+sentence "Oxcarbazepine and MHD do not bind to alpha-1-acid glycoprotein", prilocaine by a sentence stating
+lidocaine's binding, triazolam by one saying it does not displace bilirubin from albumin, and every phenytoin
+sentence that mentions albumin at all mentions it as hypoalbuminemia, a dosing condition. The script now refuses a
+negated binding or displacement claim, a binding clause whose subject is another drug in this study and the disease
+name, which costs three drugs and one flip and is the reason to prefer a quoted sentence over a count.
+
+Three cautions belong with the number that survives. A label states the carrier when it matters clinically, so the
+drugs it names are not a random sample and the 31 cannot be read as an estimate of how many drugs orosomucoid
+carries. Seven of the 31 rest on a sentence that does not name the drug itself (oxcarbazepine's names only its active
+metabolite), and are marked in the table rather than counted silently. And a carrier identity is not yet an edge: a
+xenobiotic has no node to attach one to, which is the subject of docs/drug_entry_nodes.md.
 
 ## Built
 

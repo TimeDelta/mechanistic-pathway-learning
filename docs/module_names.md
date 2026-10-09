@@ -6,6 +6,8 @@ A module is a learned gate, so its name is read off its support rather than assi
 
 **8 of 400 analysed module supports take a name from biology** (a curated module or a subsystem); 78 take only a node type and 314 are mixed. A mixed support is not a naming failure. It is a module with no identity to name, which is the same reading as the unused-module problem of `docs/module_health.md`, reached from the support rather than from the gate values.
 
+A second name comes from the run itself rather than from the support (`mechanistic_pathway_learning/evaluation/module_behaviour.py`): the held-out perturbations in the top fifth of the module's activation, whether they share a group, whether they reach the support through the graph more often than the perturbations that are not drivers, and the symptoms the module links to more strongly than the other modules do, grouped by the RDoC domain `docs/symptom_crosswalk.csv` already assigns each symptom. **155 of 400 supports have drivers that follow the graph** and 33 carry a symptom domain of their own.
+
 | run | curated module | subsystem | node type | mixed | empty |
 | --- | --- | --- | --- | --- | --- |
 | `runs/b6_default_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
@@ -20,15 +22,52 @@ A module is a learned gate, so its name is read off its support rather than assi
 | `runs/encoder/b6_mechanistic_gate_time_scales_disease_cluster` | 0 | 0 | 19 | 21 | 0 |
 | **total** | **8** | **0** | **78** | **314** | **0** |
 
-## The modules a biological name fits
+## The drivers: which perturbations switch a module on
 
-| run | split | module | name |
-| --- | --- | --- | --- |
-| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold0_seed0 | module_6 | sterol_lysosomal_lipid (3 of its genes, 53 nodes) |
-| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold1_seed0 | module_7 | urea_cycle (3 of its genes, 25 nodes) |
-| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold4_seed0 | module_4 | heme_porphyrin (3 of its genes, 25 nodes) |
-| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold0_seed0 | module_5 | heme_porphyrin (3 of its genes, 52 nodes) |
-| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold1_seed0 | module_3 | heme_porphyrin (3 of its genes, 25 nodes) |
-| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold2_seed0 | module_2 | urea_cycle (3 of its genes, 25 nodes) |
-| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold4_seed0 | module_3 | heme_porphyrin (3 of its genes, 25 nodes) |
-| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold4_seed0 | module_6 | heme_porphyrin (3 of its genes, 25 nodes) |
+`group` means the drivers share a curated module or a perturbation type that holds at least half of them and twice its share of the scored perturbations. `path followed` means the drivers have a directed path into the support, no longer than the propagation the encoder runs, at least 1.5 times as often as the perturbations that are not drivers; without that, the activation ordering is not coming through the graph and a driver name would be a correlation. `no driver` is a module whose activation varies by less than 0.05 across the held-out perturbations, the `responding_modules` reading of `docs/module_health.md`.
+
+| run | group, path followed | group, path not followed | no group, path followed | no group, path not followed | no driver | not recorded |
+| --- | --- | --- | --- | --- | --- | --- |
+| `runs/b6_default_disease_cluster` | 0 | 0 | 2 | 35 | 3 | 0 |
+| `runs/b6_mechanistic_disease_cluster` | 0 | 1 | 19 | 20 | 0 | 0 |
+| `runs/diagnosis/b6_mechanistic_expected_gate_disease_cluster` | 1 | 0 | 18 | 18 | 3 | 0 |
+| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | 0 | 0 | 1 | 0 | 39 | 0 |
+| `runs/encoder/b6_linear_response_disease_cluster` | 0 | 0 | 22 | 18 | 0 | 0 |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | 0 | 0 | 0 | 0 | 40 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_cofactors_disease_cluster` | 0 | 0 | 22 | 17 | 1 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_cofactors_log_disease_cluster` | 0 | 0 | 26 | 13 | 1 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_disease_cluster` | 0 | 0 | 22 | 18 | 0 | 0 |
+| `runs/encoder/b6_mechanistic_gate_time_scales_disease_cluster` | 0 | 0 | 22 | 0 | 18 | 0 |
+| **total** | **1** | **1** | **154** | **139** | **105** | **0** |
+
+## The symptom side: what a module feeds that the others do not
+
+A module earns a symptom name only if its link vector is distinguishable from the other modules' (correlation with their mean below 0.7, the target `docs/module_health.md` sets) and at least one symptom's link stands 20 percent above what the other modules give that symptom. A domain name then needs two of those symptoms in one RDoC domain, half the weight and 1.5 times the domain's share of the run's symptoms.
+
+| run | domain | symptoms without a domain | no symptom above the margin | profile matches the other modules | not recorded |
+| --- | --- | --- | --- | --- | --- |
+| `runs/b6_default_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/b6_mechanistic_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/diagnosis/b6_mechanistic_expected_gate_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | 12 | 6 | 0 | 22 | 0 |
+| `runs/encoder/b6_linear_response_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | 11 | 9 | 0 | 20 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_cofactors_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_cofactors_log_disease_cluster` | 1 | 3 | 0 | 36 | 0 |
+| `runs/encoder/b6_linear_response_time_scales_disease_cluster` | 0 | 0 | 0 | 40 | 0 |
+| `runs/encoder/b6_mechanistic_gate_time_scales_disease_cluster` | 9 | 14 | 0 | 17 | 0 |
+| **total** | **33** | **32** | **0** | **335** | **0** |
+
+## The modules a name fits
+
+| run | split | module | support name | behaviour name |
+| --- | --- | --- | --- | --- |
+| `runs/diagnosis/b6_mechanistic_expected_gate_disease_cluster` | fold4_seed0 | module_6 | mixed support (25 nodes, no subsystem above 25%) | driven by urea_cycle (3 of 18 drivers, GM2A, KL, NAGLU highest); 1 of 18 reach the support within 2 hops against 2 of 72 others; no symptom family of its own: its link profile matches the other modules (correlation 0.999) |
+| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold0_seed0 | module_6 | sterol_lysosomal_lipid (3 of its genes, 53 nodes) | no driver: its activation varies by 0.021 over the held-out perturbations; feeds negative_valence symptoms (2 of its 3 symptoms) |
+| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold1_seed0 | module_7 | urea_cycle (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; no symptom family of its own: its link profile matches the other modules (correlation 0.804) |
+| `runs/encoder/b6_linear_response_cofactors_neuronal_disease_cluster` | fold4_seed0 | module_4 | heme_porphyrin (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; no symptom family of its own: its link profile matches the other modules (correlation 0.772) |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold0_seed0 | module_5 | heme_porphyrin (3 of its genes, 52 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; feeds negative_valence symptoms (2 of its 4 symptoms) |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold1_seed0 | module_3 | heme_porphyrin (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; feeds negative_valence symptoms (2 of its 4 symptoms) |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold2_seed0 | module_2 | urea_cycle (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; no symptom family of its own: its link profile matches the other modules (correlation 0.838) |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold4_seed0 | module_3 | heme_porphyrin (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; no symptom family of its own: its link profile matches the other modules (correlation 0.929) |
+| `runs/encoder/b6_linear_response_gate_time_scales_cofactors_disease_cluster` | fold4_seed0 | module_6 | heme_porphyrin (3 of its genes, 25 nodes) | no driver: its activation varies by 0.000 over the held-out perturbations; symptoms depressed_mood, insomnia, psychosis, in no one domain |

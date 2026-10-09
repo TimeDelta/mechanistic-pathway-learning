@@ -32,8 +32,8 @@ relation".
 Carriage edges. The 27 carriage edges in the confirmatory graph run between an endogenous cargo and its binder's gene,
 because a xenobiotic has no node to attach to. With drug nodes, every drug whose carrier is known gets one. Two
 sources now name a carrier: the pinned fraction-unbound database for 27 of the 154 drugs
-(`docs/fraction_unbound_coverage.md`) and the FDA labels for 34, 23 of them drugs the database does not hold
-(`docs/label_plasma_binders.md`), so **50 of 154 drug perturbations would get a carriage edge** and 104 would not.
+(`docs/fraction_unbound_coverage.md`) and the FDA labels for 31, 22 of them drugs the database does not hold
+(`docs/label_plasma_binders.md`), so **49 of 154 drug perturbations would get a carriage edge** and 105 would not.
 
 It would also make representable two things the graph currently cannot state: a drug that reverses a transporter
 rather than blocking it, which is the amphetamine mechanism the neuronal variant's `catalyzes_reverse_transport`
@@ -45,7 +45,7 @@ relation was added for, and competition between two drugs for one binder.
    carrying the sign the mechanism table already assigns, and a `binds` edge to its carrier's gene or protein node.
 2. **The seed moves.** A drug perturbation is currently seeded on its target's nodes with magnitude spread over them.
    With a drug node, it is seeded on that node and the mechanism edges carry it to the targets. This changes how every
-   drug perturbation enters, not only the 50 with a carrier, and it costs one propagation hop: the message-passing
+   drug perturbation enters, not only the 49 with a carrier, and it costs one propagation hop: the message-passing
    configuration runs three layers, so a seed one hop further from the targets reaches a third less far through the
    metabolic layer. The linear-response encoder, which iterates one transition to a fixed point, pays an
    in-degree-averaged attenuation instead of a hard cut.
