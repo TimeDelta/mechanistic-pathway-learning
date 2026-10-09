@@ -44,7 +44,8 @@ multiple_comparisons: benjamini_hochberg
 failure_criterion: "B6 must beat popularity and network proximity under the disease-cluster grouped split before ablations run"
 confirmatory:                               # docs/preregistration.md; the scorer is experiments/score_confirmatory.py
   split: lockbox                            # configs/lockbox_v1.json, 317 perturbations drawn as whole disease_cluster_and_targets groups; 1,222 in development
-  graph: data/processed/graph_full_neuronal_split   # the second family trains on the gene and protein split (preregistration, amendment of 9 October 2026)
+  graph: data/processed/graph_full_neuronal_split_binders   # the gene and protein split carrying the plasma carriage edges
+                                            # (preregistration, amendments of 9 October 2026, first and fourth)
   models: [confirmatory_message_passing_noisy_or, confirmatory_message_passing_sigmoid, confirmatory_linear_response_noisy_or, confirmatory_linear_response_sigmoid]
   seeds: [0, 1, 2, 3, 4]
   comparator: best baseline per reading of [popularity, degree_popularity, random_walk_with_restart, knowledge_graph_embedding_transe]

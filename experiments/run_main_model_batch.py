@@ -35,7 +35,12 @@ CONFIRMATORY_VALIDATION = ["--keep-large-groups-in-training", "--refit-on-valida
 # should definitely be the split graph and include the protein descriptors and brain expressions, compartments,
 # everything that physiologically makes sense"; docs/preregistration.md, amendment of 9 October 2026, and
 # docs/gene_protein_split.md). The labels do not change with the graph, so the evidence table and the selection stay.
-FULL_GRAPH_ARGUMENTS_V2 = ["--graph-dir", "data/processed/graph_full_neuronal_split", "--evidence-dir", "data/processed/evidence_full_v2",
+# and on the plasma-binder variant of that graph (the user, 9 October 2026: "yes, include binder edges in confirmatory
+# graph"): 27 further binds edges, sign 0, from the extracellular copy of a cargo metabolite to its binder protein
+# (docs/plasma_binder_graph.md, docs/preregistration.md amendment of 9 October 2026 (fourth)). The variant is a strict
+# superset of the split graph: the same node ids, the same relation types and the same 279,757 edge rows, so the
+# descriptor table and the cell-class weights of the split graph are the ones it reads.
+FULL_GRAPH_ARGUMENTS_V2 = ["--graph-dir", "data/processed/graph_full_neuronal_split_binders", "--evidence-dir", "data/processed/evidence_full_v2",
                            "--label-selection", "data/processed/label_selection/better_v2_full_v2.parquet"]
 # the split descriptor table: the 64 protein components on the protein nodes, the brain region and cell-class expression
 # columns on the gene nodes, the metabolite and reaction blocks unchanged (docs/node_descriptor_columns.md, version 3)

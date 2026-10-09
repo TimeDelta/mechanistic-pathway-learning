@@ -1014,6 +1014,59 @@ Three decisions and one question from the user, each quoted.
     have to think about the leakage family grouping later").
 
 
+## Amendment, 9 October 2026 (fourth)
+
+The user's decision, verbatim: "yes, include binder edges in confirmatory graph". The second confirmatory family
+trains on the plasma-binder variant of the split graph. No lockbox run and no second-family development run has
+started, so no finished run changes meaning and nothing is re-scored.
+
+- **What changes.** The four `confirmatory_v2_*` configurations and their four no-descriptor ablations read
+  `data/processed/graph_full_neuronal_split_binders` instead of `data/processed/graph_full_neuronal_split`
+  (experiments/run_main_model_batch.py, `FULL_GRAPH_ARGUMENTS_V2`). The development baselines
+  (runs/full/v2_development.sh), the lockbox baselines and experiments/score_confirmatory.py are passed the same
+  directory (runs/full/confirmatory_lockbox.sh), so the models, the baselines and the scorer read one graph. Because
+  git ignores `data/processed` and `runs/`, the variant has to be rebuilt by
+  experiments/build_plasma_binder_variant.py in a fresh container and the two job-script edits reapplied; both are
+  recorded in docs/confirmatory_runbook.md, step 1b.
+- **What the variant is.** The split graph plus 27 `binds` edges, sign 0, from the extracellular copy of a cargo
+  metabolite to its binder protein: 19 cargo metabolites and the 11 binder proteins AFP, ALB, APOA1, APOB, ORM1,
+  ORM2, RBP4, SERPINA6, SERPINA7, SHBG and TTR (docs/plasma_binder_graph.md). It is a strict superset of the split
+  graph: the same node ids, the same `relation_types.json` and the same 279,757 edge rows as its prefix, checked
+  through the trainer's loader with nothing trained. The node descriptor table
+  (`full_neuronal_split_descriptors_brain_expression.parquet`, 138 columns, SHA-256 `df38d78c78ffe6d4`) and the
+  cell-class weights are the registered ones unchanged, because descriptors are keyed by node id and the two
+  graph-derived model inputs, the `reaction_brain` block and the reactions' cell-class weights, both follow
+  `catalyzed_by`, which carriage leaves alone. In the assembled feature matrix exactly one column moves, the
+  log-degree, on exactly the 30 nodes the edges touch.
+- **What does not change, measured.** experiments/measure_carriage_graph_effect.py, reported in
+  docs/plasma_binder_confirmatory_effect.md: the perturbation ids, the symptom list, the leakage group ids, the
+  outcome matrix, the label mask and the weights are identical with and without the carriage edges, so
+  configs/lockbox_v2.json, the better_v2 selection, configs/head_choice.json, the two tested models, the decision
+  rule, the one-sided 0.025 H1-then-H2 sequence and the floors all stand.
+- **The degree strata, and the one point that needs stating.** No perturbation's own seed node is touched, because
+  the carriage sits on protein nodes while a gene knockout seeds a gene node. But
+  `perturbation_degrees_for_strata` hops from a perturbed gene over `encodes` to its protein, so three binder genes
+  that are perturbations change strata degree: ALB 49 to 59, SERPINA6 3 to 5 and TTR 17 to 20. Two move degree
+  quintile, ALB from 3 to 4 and SERPINA6 from 0 to 1, and both are development perturbations. No lockbox
+  perturbation moves quintile, and the lockbox quintile sizes are identical (46, 69, 64, 74, 64). The two
+  within-strata readings of H1 and the secondary within-stratum label permutation are therefore unchanged over the
+  lockbox and changed over two development rows.
+- **TTR is a lockbox perturbation whose graph neighbourhood this amendment changes after the lockbox was drawn**
+  (drawn 2026-10-08; TTR holds 3 selection rows and 1 kept positive, cognitive_impairment). That is stated here
+  rather than left implicit. It is defensible on one ground only: the carriage edges come from curated carriage
+  literature (docs/curated_plasma_carriage.csv, 22 rows each with a PMID, a DOI and a quoted sentence) and from
+  UniProt binding-site features (release 2026_03, sha256 `eab6550251dd8056`), neither of which was consulted for,
+  derived from or filtered by any outcome label, and the edge set was fixed before this amendment and is not revised
+  after any lockbox score is read. Nothing in the lockbox was opened to choose it. The honest residual is that the
+  edge set was chosen by a person reading physiology, not drawn by a rule, and TTR's amyloid neuropathy phenotypes
+  are the kind of thing that reading could have been influenced by; a reader who rejects that should read the
+  lockbox result for TTR as the one row this amendment could in principle have touched.
+- **What is still open.** The second stage of docs/plasma_protein_binding.md, the fraction unbound per drug, is not
+  in this amendment and is not in the graph: it has no pinned source, and orosomucoid, whose cargo is basic drugs
+  that the graph has no node for, enters through that stage rather than through these edges. The development pilots
+  of the two split configurations are not re-run here (the user, the same message: "No new pilots yet"), so the
+  carriage edges are registered but not yet read on any run.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
