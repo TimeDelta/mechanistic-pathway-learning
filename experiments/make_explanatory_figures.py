@@ -6,7 +6,8 @@
   4. dopaminergic_class: marker genes in the dopaminergic class against the highest Human Protein Atlas cluster type;
   5. slice_twin_comparisons: the one-change twin comparisons of the slice pilot (runs/twin_comparisons.json);
   6. slice_baselines_and_models: per-fold macro AUPRC of the slice baselines and model configurations;
-  7. gene_protein_split: gene and protein nodes of graph_full_neuronal_split, with its counts.
+  7. gene_protein_split: gene and protein nodes of graph_full_neuronal_split, with its counts;
+  8. plasma_carriage: the binds edges that carry an extracellular cargo metabolite to its plasma binder protein.
 
 Figures whose inputs are missing are skipped with a message. Writes PNG files to docs/figures/. Idempotent.
 
@@ -35,6 +36,13 @@ from mechanistic_pathway_learning.models.linear_response_encoder import LinearRe
 OUTPUT_DIRECTORY = Path("docs/figures")
 FULL_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal")
 SPLIT_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal_split")
+# the graph the two tested models read: the gene and protein split with the plasma carriage edges
+# (docs/preregistration.md, amendments of 9 October 2026, first and fourth)
+CONFIRMATORY_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal_split_binders")
+BINDER_SUMMARY = CONFIRMATORY_GRAPH_DIRECTORY / "plasma_binder_summary.json"
+# the exact evidence_source values of a carriage edge. Matching the word "plasma" instead would also catch the
+# electrical edges, whose sources name the plasma membrane ("net charge across the plasma membrane (Reactome)").
+CARRIAGE_EVIDENCE_SOURCES = ("curated plasma carriage", "UniProt binding site (plasma binder carriage)")
 LABEL_SELECTION_SUMMARY = Path("data/processed/label_selection/better_v2_full_v2.summary.json")
 CELL_CLASS_WEIGHTS = Path("data/processed/cell_class_weights/full_neuronal_cell_class_weights.parquet")
 MINIMUM_POSITIVES_FOR_MACRO = 5
@@ -58,8 +66,10 @@ def graph_layer_counts(graph_directory: Path) -> dict:
     edges = pd.read_parquet(graph_directory / "edges.parquet")
     source = edges.evidence_source.fillna("")
     layer_of_edge = np.select(
-        [source.isin(["Human-GEM", "Human-GEM GPR"]), source.str.startswith("OmniPath"), source == "CollecTRI"],
-        ["metabolic (Human-GEM)", "signaling (OmniPath)", "transcription (CollecTRI)"],
+        [source.isin(["Human-GEM", "Human-GEM GPR"]), source.str.startswith("OmniPath"), source == "CollecTRI",
+         source.isin(CARRIAGE_EVIDENCE_SOURCES), edges.relation_type.eq("encodes")],
+        ["metabolic (Human-GEM)", "signaling (OmniPath)", "transcription (CollecTRI)",
+         "plasma carriage (curated and UniProt)", "gene to protein (encodes)"],
         default="neuronal, electrical and redox (Reactome and curated)")
     return {"nodes": len(nodes), "edges": len(edges), "relations": edges.relation_type.nunique(),
             "node_types": nodes.node_type.value_counts().to_dict(), "edges_by_layer": pd.Series(layer_of_edge).value_counts().to_dict()}
@@ -77,8 +87,8 @@ def draw_arrow(axis, start: tuple[float, float], end: tuple[float, float]) -> No
 
 
 def figure_model_pipeline() -> None:
-    counts = graph_layer_counts(FULL_GRAPH_DIRECTORY)
-    split_summary = json.loads((SPLIT_GRAPH_DIRECTORY / "split_summary.json").read_text())
+    counts = graph_layer_counts(CONFIRMATORY_GRAPH_DIRECTORY)
+    binder_summary = json.loads(BINDER_SUMMARY.read_text())
     label_summary = json.loads(LABEL_SELECTION_SUMMARY.read_text())
     cell_classes = [column for column in pd.read_parquet(CELL_CLASS_WEIGHTS).columns if column != "all_cells"]
     layer_lines = "\n".join(f"{layer}: {number:,} edges" for layer, number in sorted(counts["edges_by_layer"].items(), key=lambda item: -item[1]))
@@ -92,14 +102,13 @@ def figure_model_pipeline() -> None:
              "monogenic: loss or gain of function\nat one gene (sign, magnitude)\n\ndrug: signed effect at its\nprotein targets (ChEMBL mechanisms)\n\n"
              "entered as a sustained input u\nat the perturbed nodes\n\non the split graph (figure 7):\nknockouts seed gene nodes,\ndrugs seed protein nodes",
              BOX_COLOURS["input"])
-    draw_box(axis, 0.415, top_row, 0.38, height, "2. Graph (graph_full_neuronal)",
+    draw_box(axis, 0.415, top_row, 0.38, height, "2. Graph (graph_full_neuronal_split_binders)",
              f"{counts['nodes']:,} nodes, {counts['edges']:,} edges, {counts['relations']} relations\n{node_lines}\n\n{layer_lines}\n\n"
-             "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1\n\n"
-             f"gene and protein split (figure 7): {split_summary['gene_nodes'] + split_summary['protein_nodes']:,} gene and protein\n"
-             f"nodes, {split_summary['edges_after']:,} edges; slice runs only, the tested\nconfigurations do not use it",
+             "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1,\nplasma carriage 0\n\n"
+             f"genes and proteins are separate nodes (figure 7)\nplasma carriage, {binder_summary['edges_added']} binds edges (figure 8)",
              BOX_COLOURS["graph"])
     draw_box(axis, 0.815, top_row, 0.35, height, "3. Encoder (one per tested model)",
-             "message passing: node states from structural\nfeatures and descriptors, 2 layers of typed\nmessages (mean per relation)\n\n"
+             "message passing: node states from structural\nfeatures and descriptors, 3 layers of typed\nmessages (mean per relation), one more than on\na merged graph because a perturbed gene reaches\nits protein one hop later\n\n"
              "linear response, 8 steps:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
              "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
              f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
@@ -399,8 +408,75 @@ def figure_gene_protein_split() -> None:
     save(figure, "gene_protein_split")
 
 
+def carriage_edges_with_names(graph_directory: Path) -> pd.DataFrame:
+    """The plasma carriage edges of a graph, with the display name of the cargo metabolite and of the binder."""
+    nodes = pd.read_parquet(graph_directory / "nodes.parquet")
+    display_name_of_node = nodes.set_index("node_id").display_name
+    gene_symbol_of_node = nodes.set_index("node_id").gene_symbol
+    edges = pd.read_parquet(graph_directory / "edges.parquet")
+    carriage = edges[edges.evidence_source.isin(CARRIAGE_EVIDENCE_SOURCES)].copy()
+    carriage["cargo_name"] = carriage.source_id.map(display_name_of_node)
+    carriage["binder_name"] = carriage.target_id.map(gene_symbol_of_node).fillna(carriage.target_id.map(display_name_of_node))
+    return carriage
+
+
+def figure_plasma_carriage() -> None:
+    summary = json.loads(BINDER_SUMMARY.read_text())
+    carriage = carriage_edges_with_names(CONFIRMATORY_GRAPH_DIRECTORY)
+    binder_of_most_carried_cargo = carriage.groupby("source_id").target_id.nunique().sort_values()
+    worked_cargo_node = binder_of_most_carried_cargo.index[-1]
+    worked_cargo_name = carriage.loc[carriage.source_id == worked_cargo_node, "cargo_name"].iloc[0]
+    worked_binders = sorted(carriage.loc[carriage.source_id == worked_cargo_node, "target_id"])
+    first_binder_symbol = carriage.loc[carriage.target_id == worked_binders[0], "binder_name"].iloc[0]
+
+    cargo_colour, protein_colour, gene_colour, seed_colour = "#e8e2f4", "#e3f1df", "#dbe9f6", "#fdebd3"
+    figure, (left_axis, right_axis) = plt.subplots(1, 2, figsize=(15, 6.2), gridspec_kw={"width_ratios": [1.05, 1.0]})
+    # the axes are placed before the node-link diagram is drawn: its arrows are anchored to the text artists, so a
+    # later tight_layout would move the boxes out from under the arrows and bbox_inches="tight" would then save a
+    # figure wide enough to hold them
+    figure.subplots_adjust(left=0.04, right=0.97, top=0.86, bottom=0.08, wspace=0.18)
+    left_axis.set_xlim(0, 1)
+    left_axis.set_ylim(0, 1)
+    left_axis.axis("off")
+
+    worked_nodes = {"knockout": (0.17, 0.93, "knockout of the binder gene", seed_colour),
+                    "binder_gene": (0.17, 0.74, f"GENE:{first_binder_symbol}\n(brain expression columns)", gene_colour),
+                    # off the row of any binder, so that no arrow runs horizontally under its own label
+                    "cargo": (0.17, 0.22, f"{worked_cargo_node}\n{worked_cargo_name}\n(extracellular)", cargo_colour)}
+    worked_edges = [("knockout", "binder_gene", ""), ("binder_gene", worked_binders[0], "encodes")]
+    for index, binder_node in enumerate(worked_binders):
+        binder_symbol = carriage.loc[carriage.target_id == binder_node, "binder_name"].iloc[0]
+        worked_nodes[binder_node] = (0.62, 0.86 - index * 0.28, f"{binder_node}\n({binder_symbol}, protein descriptors)", protein_colour)
+        worked_edges.append(("cargo", binder_node, "binds, sign 0"))
+    draw_node_link_diagram(left_axis, worked_nodes, worked_edges)
+    left_axis.text(0.5, 0.06, f"One cargo with the most binders in the graph: {worked_cargo_name}. Carriage sits on the protein node, because binding is\n"
+                              "the protein's property; a knockout seeds the gene node and reaches the carriage one encodes hop later, which is what moves\n"
+                              "a binder gene's degree stratum (docs/plasma_binder_confirmatory_effect.md).", ha="center", va="bottom", fontsize=8)
+    left_axis.set_title("How a carriage edge sits in the graph", fontsize=11, fontweight="bold")
+
+    edges_per_binder = carriage.groupby("binder_name").size().sort_values()
+    cargo_per_binder = carriage.groupby("binder_name").cargo_name.apply(lambda names: ", ".join(sorted(set(names))))
+    positions = np.arange(len(edges_per_binder))
+    right_axis.set_xlim(0, float(edges_per_binder.max()) * 3.4)
+    right_axis.set_ylim(-0.8, len(edges_per_binder) - 0.2)
+    right_axis.barh(positions, edges_per_binder.to_numpy(), color="#7a9cc6", height=0.62)
+    right_axis.set_yticks(positions)
+    right_axis.set_yticklabels(edges_per_binder.index, fontsize=9)
+    right_axis.set_xlabel("binds edges")
+    right_axis.set_xticks(np.arange(0, int(edges_per_binder.max()) + 1, 2))
+    for position, binder_name in zip(positions, edges_per_binder.index):
+        right_axis.text(edges_per_binder[binder_name] + 0.25, position, cargo_per_binder[binder_name], va="center", fontsize=6.8, color="#333333")
+    sources = ", ".join(f"{number} {name.replace('_', ' ')}" for name, number in sorted(summary["edges_by_source"].items(), key=lambda item: -item[1]))
+    right_axis.set_title(f"{summary['edges_added']} carriage edges over {len(edges_per_binder)} binders ({sources})", fontsize=11, fontweight="bold")
+    right_axis.spines[["top", "right"]].set_visible(False)
+
+    figure.suptitle("Plasma carriage in the confirmatory graph: an extracellular cargo metabolite binds its carrier protein (relation binds, sign 0)",
+                    fontsize=12, fontweight="bold")
+    save(figure, "plasma_carriage")
+
+
 FIGURES = {
-    "model_pipeline": (figure_model_pipeline, [FULL_GRAPH_DIRECTORY / "edges.parquet", SPLIT_GRAPH_DIRECTORY / "split_summary.json",
+    "model_pipeline": (figure_model_pipeline, [CONFIRMATORY_GRAPH_DIRECTORY / "edges.parquet", BINDER_SUMMARY,
                                                LABEL_SELECTION_SUMMARY, CELL_CLASS_WEIGHTS]),
     "cell_class_channels": (figure_cell_class_channels, []),
     "label_selection": (figure_label_selection, [LABEL_SELECTION_SUMMARY]),
@@ -408,6 +484,7 @@ FIGURES = {
     "slice_twin_comparisons": (figure_slice_twin_comparisons, [TWIN_COMPARISONS]),
     "slice_baselines_and_models": (figure_slice_baselines_and_models, [SLICE_BASELINES, SLICE_AGGREGATE]),
     "gene_protein_split": (figure_gene_protein_split, [SPLIT_GRAPH_DIRECTORY / "split_summary.json", SPLIT_GRAPH_DIRECTORY / "gene_to_protein.parquet"]),
+    "plasma_carriage": (figure_plasma_carriage, [CONFIRMATORY_GRAPH_DIRECTORY / "edges.parquet", BINDER_SUMMARY]),
 }
 
 

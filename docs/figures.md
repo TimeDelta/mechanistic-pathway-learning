@@ -1,4 +1,4 @@
-# Explanatory figures (updated 8 October 2026)
+# Explanatory figures (updated 9 October 2026)
 
 Drawn by experiments/make_explanatory_figures.py from the repository's own outputs (graph tables, summaries and run
 results), so each figure can be regenerated after the inputs change. Every result shown is from the monogenic slice,
@@ -12,15 +12,17 @@ reads a second-family (confirmatory_v2) development score or a lockbox output.
 The two tested models of the second family (docs/confirmatory_runbook.md): the noisy-OR head on each of the two
 encoders. The user dropped the sigmoid head on 8 October 2026; it remains in the slice comparisons only. A perturbation
 (a gene's loss or gain of function, or a drug's signed effect at its targets) enters as a sustained input at its nodes
-in graph_full_neuronal. The message-passing encoder runs 2 layers of typed messages from node states built from the
-structural features and descriptors. The linear-response encoder propagates the input for 8 steps over the signed,
+in graph_full_neuronal_split_binders, the graph that separates genes from proteins (figure 7) and carries the plasma
+carriage edges (figure 8), which is what the two tested configurations read (docs/preregistration.md, amendments of
+9 October 2026, first and fourth). The message-passing encoder runs 3 layers of typed messages from node states built
+from the structural features and descriptors, one more than on a merged graph because a perturbed gene node reaches its
+protein one hop later. The linear-response encoder propagates the input for 8 steps over the signed,
 normalised adjacency of each relation, with a learned gain per relation and channel and one channel per cell class
 (11 classes and all cells); extracellular pools are shared across classes. Both read the difference field (perturbed
 minus unperturbed). A sum over nodes feeds a noisy-OR over pathway modules whose leaks start at their loss-optimal
 constants. Labels follow better_v2 (figure 3), folds are grouped by disease cluster and drug targets, lockbox_v2 is held
 out, the early-stopping validation set rotates with the seed and each model is refitted on training and validation
-together. Node and edge counts are computed from the graph tables when the figure is drawn. The gene and protein split
-(figure 7) is built and under test on the slice; the tested configurations still name graph_full_neuronal.
+together. Node and edge counts are computed from the graph tables when the figure is drawn.
 
 ## 2. Cell-class channels
 
@@ -96,3 +98,19 @@ by several genes (H3-3A and H3-3B for H3.3) get one shared node, so a knockout o
 Knockouts seed gene nodes, drugs seed protein nodes and transcription edges end at genes. Gene nodes carry the brain
 expression columns and protein nodes the protein descriptors. Counts are read from split_summary.json when the figure
 is drawn.
+
+## 8. Plasma carriage
+
+![plasma carriage](figures/plasma_carriage.png)
+
+The 27 `binds` edges of graph_full_neuronal_split_binders (docs/plasma_binder_graph.md), which carry an extracellular
+cargo metabolite to the plasma protein that binds it: 19 cargo metabolites over 11 binders, sign 0, from the curated
+carriage table (docs/curated_plasma_carriage.csv, each row with a PMID, a DOI and a quoted sentence) and from UniProt
+binding-site features. The carriage sits on the protein node, because binding is the protein's property, so no
+perturbation's own seed node is touched; a knockout of a binder gene reaches the carriage one `encodes` hop later,
+which is why three binder genes that are perturbations change strata degree and two of them, both development rows,
+move degree quintile (docs/plasma_binder_confirmatory_effect.md). The left panel takes the cargo with the most binders
+in the graph; the right panel counts the edges of each binder and names its cargo. Orosomucoid (ORM1, ORM2) gets one
+edge each, progesterone, and not because the rest was missed: its cargo is basic drugs, which this graph has no node
+for, so it enters through the fraction unbound of stage 2 (docs/plasma_protein_binding.md) rather than through these
+edges.
