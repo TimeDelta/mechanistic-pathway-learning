@@ -2,7 +2,8 @@
 
 The steps that run the confirmatory experiment of docs/preregistration.md ("Confirmatory specification, 8 October 2026"
 and its amendments). The specification decides what is run; this file decides in which order and who may do what. The
-job scripts are under runs/full/ (not committed); the check-in prompts point here.
+job scripts are under runs/full/ (not committed); the check-in prompts point here. The job registry, the resume
+script and the rule that pauses the check-in routines while no job is active are in docs/job_harness.md.
 
 Two families. The first (confirmatory_* configurations, configs/lockbox_v1.json, better_v1 labels) is not tested: its
 development pilots (steps 1 and 1b) are reported as checks that each configuration trains. The second

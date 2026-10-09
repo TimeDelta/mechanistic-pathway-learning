@@ -15,6 +15,12 @@
 #                                               write runs/jobs/NAME.job, then relaunch as above
 #   bash scripts/resume_jobs.sh --stop NAME     stop job NAME and every process it started, launch nothing
 # runs/ is gitignored: the registry and the markers live on the session's disk, which survives a container restart.
+#
+# Every run ends with one machine-readable line, "resume_jobs: N active jobs", and writes the same count to
+# runs/jobs/active_job_count. The hourly check-in routines exist only to relaunch these jobs, so they are disabled
+# while the count is 0 and re-enabled when a job is registered (the user's instruction of 9 October 2026); the rule,
+# the routine ids and who may change them are in docs/job_harness.md. A job counts as active when it is running, or
+# unfinished with neither marker; a failed job does not, because it is never relaunched and needs a person.
 set -uo pipefail
 repository_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repository_root"
@@ -44,6 +50,7 @@ elif [ "${1:-}" = "--register" ]; then
     printf 'JOB_DESCRIPTION=%q\n' "${6:-}"
   } > "$job_directory/$2.job"
   echo "registered job $2"
+  echo "resume_jobs: a job was registered, so the check-in routines must be enabled; see docs/job_harness.md"
 fi
 
 job_files=("$job_directory"/*.job)
@@ -81,6 +88,8 @@ stop_job_process_group() {
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) stopped process group $process_group" >> "$job_directory/$job_name.history"
 }
 
+active_job_count=0
+active_job_names=()
 for job_file in "${job_files[@]}"; do
   job_name="$(basename "$job_file" .job)"
   JOB_COMMAND="" JOB_DONE_MARKER="" JOB_FAILED_MARKER="" JOB_DESCRIPTION=""
@@ -101,12 +110,27 @@ for job_file in "${job_files[@]}"; do
     echo "$label: failed ($(head -c 200 "$JOB_FAILED_MARKER" | tr '\n' ' ')), needs attention, not relaunched"
   elif pgrep -f -x -- "$JOB_COMMAND" > /dev/null; then
     echo "$label: running"
+    active_job_count=$((active_job_count + 1))
+    active_job_names+=("$job_name")
   elif [ "$mode" = "status" ]; then
     echo "$label: not running and unfinished"
+    active_job_count=$((active_job_count + 1))
+    active_job_names+=("$job_name")
   else
     setsid nohup bash -c "$JOB_COMMAND" > "$job_directory/$job_name.launch.log" 2>&1 < /dev/null &
     disown
     echo "$label: relaunched at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) relaunched" >> "$job_directory/$job_name.history"
+    active_job_count=$((active_job_count + 1))
+    active_job_names+=("$job_name")
   fi
 done
+
+# The count the check-in rule reads (docs/job_harness.md). --stop reports no count, because it visits one job only.
+if [ "$mode" != "stop" ]; then
+  echo "$active_job_count" > "$job_directory/active_job_count"
+  echo "resume_jobs: $active_job_count active jobs${active_job_names[0]+: ${active_job_names[*]}}"
+  if [ "$active_job_count" -eq 0 ]; then
+    echo "resume_jobs: nothing to keep the container up for, so the check-in routines should be disabled; see docs/job_harness.md"
+  fi
+fi
