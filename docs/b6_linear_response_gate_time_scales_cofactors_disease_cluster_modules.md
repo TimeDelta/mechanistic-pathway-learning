@@ -2,18 +2,20 @@
 
 Support threshold 0.5 on the evaluation gate saved by the run; link threshold 0.5; downstream hops 3; currency metabolites removed from the downstream walk.
 
+Each module keeps its index, which is what the tables below join on, and carries a name read off its own support: the curated module it overlaps by at least 3 genes, else the subsystem holding at least 25% of the support and at least 2 times its share of the graph (with the compartment when one holds half), else the node type holding at least 75%, else "mixed support". The share is printed with the name so the name claims no more than its support. Two splits whose modules take the same name need not be the same module: the gates are fitted per split, and the stability section is where that is judged.
+
 ## fold0_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | top 25 gates (max gate 0.96) | 16 | {'gene': 20, 'reaction': 5} | ['Transport reactions', 'Terpenoid backbone biosynthesis', 'Metabolism of other amino acids'] | {'anxiety': 0.667, 'cognitive_impairment': 0.756, 'depressed_mood': 0.565, 'fatigue': 0.574} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1} |
-| module_1 | top 25 gates (max gate 0.98) | 15 | {'reaction': 7, 'gene': 18} | ['Transport reactions', 'Cholesterol biosynthesis 2', 'Porphyrin metabolism'] | {'fatigue': 0.716, 'irritability_or_aggression': 0.567, 'somnolence_or_hypersomnia': 0.609} | {'tetrahydrobiopterin': 1, 'creatine_energy': 1} |
-| module_2 | top 25 gates (max gate 0.97) | 15 | {'gene': 21, 'reaction': 4} | ['Transport reactions', 'Porphyrin metabolism', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {'anxiety': 0.671, 'cognitive_impairment': 0.843, 'depressed_mood': 0.676, 'psychosis': 0.73} | {'gaba_glutamate': 1, 'urea_cycle': 1} |
-| module_3 | top 25 gates (max gate 0.91) | 8 | {'gene': 23, 'reaction': 2} | ['Biopterin metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.935, 'fatigue': 0.914, 'irritability_or_aggression': 0.908} | {'tetrahydrobiopterin': 1, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1} |
-| module_4 | top 25 gates (max gate 0.92) | 10 | {'gene': 21, 'reaction': 4} | ['Pantothenate and CoA metabolism', 'Keratan sulfate degradation', 'Miscellaneous'] | {'cognitive_impairment': 0.606, 'irritability_or_aggression': 0.958} | {'urea_cycle': 1, 'vitamin_cofactor_transport': 1} |
-| module_5 | gate > 0.5 | 52 | {'gene': 41, 'reaction': 11} | ['Transport reactions', 'Porphyrin metabolism', 'Galactose metabolism'] | {'anxiety': 0.737, 'cognitive_impairment': 0.617, 'depressed_mood': 0.744, 'psychosis': 0.693} | {'phenylalanine_tyrosine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 3, 'creatine_energy': 1} |
-| module_6 | gate > 0.5 | 33 | {'gene': 31, 'reaction': 2} | ['Miscellaneous', 'Beta oxidation of branched-chain fatty acids (mitochondrial)'] | {'insomnia': 0.626, 'psychomotor_agitation': 0.782, 'somnolence_or_hypersomnia': 0.544} | {'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'gaba_glutamate': 2, 'urea_cycle': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1, 'vitamin_cofactor_transport': 1} |
-| module_7 | gate > 0.5 | 40 | {'reaction': 8, 'gene': 32} | ['Transport reactions', 'Porphyrin metabolism', 'Miscellaneous'] | {'anxiety': 0.817, 'depressed_mood': 0.775, 'psychosis': 0.508} | {'catecholamine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | gene nodes across subsystems (20 of 25 nodes) | top 25 gates (max gate 0.96) | 16 | {'gene': 20, 'reaction': 5} | ['Transport reactions', 'Terpenoid backbone biosynthesis', 'Metabolism of other amino acids'] | {'anxiety': 0.667, 'cognitive_impairment': 0.756, 'depressed_mood': 0.565, 'fatigue': 0.574} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.98) | 15 | {'reaction': 7, 'gene': 18} | ['Transport reactions', 'Cholesterol biosynthesis 2', 'Porphyrin metabolism'] | {'fatigue': 0.716, 'irritability_or_aggression': 0.567, 'somnolence_or_hypersomnia': 0.609} | {'tetrahydrobiopterin': 1, 'creatine_energy': 1} |
+| module_2 | gene nodes across subsystems (21 of 25 nodes) | top 25 gates (max gate 0.97) | 15 | {'gene': 21, 'reaction': 4} | ['Transport reactions', 'Porphyrin metabolism', 'Phenylalanine, tyrosine and tryptophan biosynthesis'] | {'anxiety': 0.671, 'cognitive_impairment': 0.843, 'depressed_mood': 0.676, 'psychosis': 0.73} | {'gaba_glutamate': 1, 'urea_cycle': 1} |
+| module_3 | gene nodes across subsystems (23 of 25 nodes) | top 25 gates (max gate 0.91) | 8 | {'gene': 23, 'reaction': 2} | ['Biopterin metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.935, 'fatigue': 0.914, 'irritability_or_aggression': 0.908} | {'tetrahydrobiopterin': 1, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1} |
+| module_4 | gene nodes across subsystems (21 of 25 nodes) | top 25 gates (max gate 0.92) | 10 | {'gene': 21, 'reaction': 4} | ['Pantothenate and CoA metabolism', 'Keratan sulfate degradation', 'Miscellaneous'] | {'cognitive_impairment': 0.606, 'irritability_or_aggression': 0.958} | {'urea_cycle': 1, 'vitamin_cofactor_transport': 1} |
+| module_5 | heme_porphyrin (3 of its genes, 52 nodes) | gate > 0.5 | 52 | {'gene': 41, 'reaction': 11} | ['Transport reactions', 'Porphyrin metabolism', 'Galactose metabolism'] | {'anxiety': 0.737, 'cognitive_impairment': 0.617, 'depressed_mood': 0.744, 'psychosis': 0.693} | {'phenylalanine_tyrosine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 3, 'creatine_energy': 1} |
+| module_6 | gene nodes across subsystems (31 of 33 nodes) | gate > 0.5 | 33 | {'gene': 31, 'reaction': 2} | ['Miscellaneous', 'Beta oxidation of branched-chain fatty acids (mitochondrial)'] | {'insomnia': 0.626, 'psychomotor_agitation': 0.782, 'somnolence_or_hypersomnia': 0.544} | {'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'gaba_glutamate': 2, 'urea_cycle': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1, 'vitamin_cofactor_transport': 1} |
+| module_7 | gene nodes across subsystems (32 of 40 nodes) | gate > 0.5 | 40 | {'reaction': 8, 'gene': 32} | ['Transport reactions', 'Porphyrin metabolism', 'Miscellaneous'] | {'anxiety': 0.817, 'depressed_mood': 0.775, 'psychosis': 0.508} | {'catecholamine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -42,7 +44,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_2 | 91 | 12 | 0.131 | 0.131 | 0.133 | +0.000 [+0.000, +0.000] | 0.037 |
 | somnolence_or_hypersomnia | module_1 | 91 | 8 | 0.100 | 0.141 | 0.099 | -0.041 [-0.174, +0.014] | 0.040 |
 
-### fold0_seed0 module_0: top nodes
+### fold0_seed0 module_0, gene nodes across subsystems (20 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -62,7 +64,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MAN2B1 | gene | MAN2B1 |  |  | 0.65 |
 | GENE:POLE | gene | POLE |  |  | 0.61 |
 
-### fold0_seed0 module_1: top nodes
+### fold0_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -82,7 +84,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03022 | reaction | transport of hexacosanoyl-CoA (cytosol to peroxisome) | c;x | Transport reactions | 0.68 |
 | GENE:FIG4 | gene | FIG4 |  |  | 0.51 |
 
-### fold0_seed0 module_2: top nodes
+### fold0_seed0 module_2, gene nodes across subsystems (21 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -102,7 +104,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08867 | reaction | transport of D-xylose (cytosol to extracellular) | c;e | Transport reactions | 0.58 |
 | MAR04763 | reaction | heme oxygenase (biliverdin-producing) (hemoglobin) | c | Porphyrin metabolism | 0.51 |
 
-### fold0_seed0 module_3: top nodes
+### fold0_seed0 module_3, gene nodes across subsystems (23 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -122,7 +124,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SOD1 | gene | SOD1 |  |  | 0.09 |
 | GENE:GCH1 | gene | GCH1 |  |  | 0.08 |
 
-### fold0_seed0 module_4: top nodes
+### fold0_seed0 module_4, gene nodes across subsystems (21 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -142,7 +144,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SLC19A3 | gene | SLC19A3 |  |  | 0.13 |
 | GENE:ABCC8 | gene | ABCC8 |  |  | 0.08 |
 
-### fold0_seed0 module_5: top nodes
+### fold0_seed0 module_5, heme_porphyrin (3 of its genes, 52 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -162,7 +164,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MT-ND4 | gene | MT-ND4 |  |  | 0.91 |
 | GENE:SOD1 | gene | SOD1 |  |  | 0.90 |
 
-### fold0_seed0 module_6: top nodes
+### fold0_seed0 module_6, gene nodes across subsystems (31 of 33 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -182,7 +184,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:ADA2 | gene | ADA2 |  |  | 0.90 |
 | GENE:CPOX | gene | CPOX |  |  | 0.89 |
 
-### fold0_seed0 module_7: top nodes
+### fold0_seed0 module_7, gene nodes across subsystems (32 of 40 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -204,16 +206,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold1_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | top 25 gates (max gate 0.75) | 3 | {'gene': 22, 'reaction': 3} | ['Arginine and proline metabolism', 'Purine metabolism'] | {'cognitive_impairment': 0.831, 'fatigue': 0.753, 'irritability_or_aggression': 0.899} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1} |
-| module_1 | gate > 0.5 | 25 | {'gene': 15, 'reaction': 10} | ['Arginine and proline metabolism', 'Keratan sulfate degradation', 'Porphyrin metabolism'] | {'fatigue': 0.529, 'irritability_or_aggression': 0.623, 'psychomotor_agitation': 0.511} | {'tetrahydrobiopterin': 1, 'creatine_energy': 1, 'vitamin_cofactor_transport': 1} |
-| module_2 | top 25 gates (max gate 0.78) | 3 | {'gene': 25} | [] | {'cognitive_impairment': 0.906, 'fatigue': 0.824, 'irritability_or_aggression': 0.95} | {'catecholamine': 1, 'serotonin_melatonin': 1, 'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 2, 'vitamin_cofactor_transport': 1} |
-| module_3 | top 25 gates (max gate 0.95) | 12 | {'gene': 23, 'reaction': 2} | ['Porphyrin metabolism', 'Arginine and proline metabolism'] | {'cognitive_impairment': 0.84, 'psychosis': 0.645} | {'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 2} |
-| module_4 | top 25 gates (max gate 0.81) | 4 | {'gene': 23, 'reaction': 2} | ['Eicosanoid metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.883, 'irritability_or_aggression': 0.833} | {'tetrahydrobiopterin': 1, 'urea_cycle': 2, 'sterol_lysosomal_lipid': 1} |
-| module_5 | gate > 0.5 | 46 | {'reaction': 6, 'gene': 40} | ['Transport reactions', 'Glycosphingolipid biosynthesis-globo series', 'Alanine, aspartate and glutamate metabolism'] | {'anxiety': 0.569, 'depressed_mood': 0.514} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1} |
-| module_6 | top 25 gates (max gate 0.95) | 21 | {'gene': 23, 'reaction': 2} | ['Nucleotide metabolism', 'Galactose metabolism'] | {'anxiety': 0.9, 'cognitive_impairment': 0.503, 'depressed_mood': 0.721, 'irritability_or_aggression': 0.513} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'heme_porphyrin': 2, 'creatine_energy': 1} |
-| module_7 | gate > 0.5 | 47 | {'gene': 39, 'reaction': 8} | ['Porphyrin metabolism', 'Transport reactions', 'Bile acid biosynthesis'] | {'anxiety': 0.68, 'cognitive_impairment': 0.622, 'depressed_mood': 0.783, 'psychosis': 0.545} | {'phenylalanine_tyrosine': 1, 'one_carbon_homocysteine': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | gene nodes across subsystems (22 of 25 nodes) | top 25 gates (max gate 0.75) | 3 | {'gene': 22, 'reaction': 3} | ['Arginine and proline metabolism', 'Purine metabolism'] | {'cognitive_impairment': 0.831, 'fatigue': 0.753, 'irritability_or_aggression': 0.899} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | gate > 0.5 | 25 | {'gene': 15, 'reaction': 10} | ['Arginine and proline metabolism', 'Keratan sulfate degradation', 'Porphyrin metabolism'] | {'fatigue': 0.529, 'irritability_or_aggression': 0.623, 'psychomotor_agitation': 0.511} | {'tetrahydrobiopterin': 1, 'creatine_energy': 1, 'vitamin_cofactor_transport': 1} |
+| module_2 | gene nodes across subsystems (25 of 25 nodes) | top 25 gates (max gate 0.78) | 3 | {'gene': 25} | [] | {'cognitive_impairment': 0.906, 'fatigue': 0.824, 'irritability_or_aggression': 0.95} | {'catecholamine': 1, 'serotonin_melatonin': 1, 'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 2, 'vitamin_cofactor_transport': 1} |
+| module_3 | heme_porphyrin (3 of its genes, 25 nodes) | top 25 gates (max gate 0.95) | 12 | {'gene': 23, 'reaction': 2} | ['Porphyrin metabolism', 'Arginine and proline metabolism'] | {'cognitive_impairment': 0.84, 'psychosis': 0.645} | {'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 2} |
+| module_4 | gene nodes across subsystems (23 of 25 nodes) | top 25 gates (max gate 0.81) | 4 | {'gene': 23, 'reaction': 2} | ['Eicosanoid metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.883, 'irritability_or_aggression': 0.833} | {'tetrahydrobiopterin': 1, 'urea_cycle': 2, 'sterol_lysosomal_lipid': 1} |
+| module_5 | gene nodes across subsystems (40 of 46 nodes) | gate > 0.5 | 46 | {'reaction': 6, 'gene': 40} | ['Transport reactions', 'Glycosphingolipid biosynthesis-globo series', 'Alanine, aspartate and glutamate metabolism'] | {'anxiety': 0.569, 'depressed_mood': 0.514} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1} |
+| module_6 | gene nodes across subsystems (23 of 25 nodes) | top 25 gates (max gate 0.95) | 21 | {'gene': 23, 'reaction': 2} | ['Nucleotide metabolism', 'Galactose metabolism'] | {'anxiety': 0.9, 'cognitive_impairment': 0.503, 'depressed_mood': 0.721, 'irritability_or_aggression': 0.513} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'heme_porphyrin': 2, 'creatine_energy': 1} |
+| module_7 | gene nodes across subsystems (39 of 47 nodes) | gate > 0.5 | 47 | {'gene': 39, 'reaction': 8} | ['Porphyrin metabolism', 'Transport reactions', 'Bile acid biosynthesis'] | {'anxiety': 0.68, 'cognitive_impairment': 0.622, 'depressed_mood': 0.783, 'psychosis': 0.545} | {'phenylalanine_tyrosine': 1, 'one_carbon_homocysteine': 1, 'heme_porphyrin': 2, 'sterol_lysosomal_lipid': 1} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -241,7 +243,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychomotor_agitation | module_1 | 89 | 7 | 0.109 | 0.108 | 0.110 | +0.002 [-0.172, +0.195] | 0.041 |
 | psychosis | module_3 | 89 | 12 | 0.301 | 0.250 | 0.298 | +0.051 [-0.006, +0.221] | 0.037 |
 
-### fold1_seed0 module_0: top nodes
+### fold1_seed0 module_0, gene nodes across subsystems (22 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -261,7 +263,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08097 | reaction | L-erythro-4-Hydroxyglutamate:NAD+ oxidoreductase | m | Arginine and proline metabolism | 0.16 |
 | GENE:SOD1 | gene | SOD1 |  |  | 0.12 |
 
-### fold1_seed0 module_1: top nodes
+### fold1_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -281,7 +283,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MT-CO3 | gene | MT-CO3 |  |  | 0.73 |
 | GENE:POLG | gene | POLG |  |  | 0.73 |
 
-### fold1_seed0 module_2: top nodes
+### fold1_seed0 module_2, gene nodes across subsystems (25 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -301,7 +303,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SLC2A10 | gene | SLC2A10 |  |  | 0.11 |
 | GENE:MAOA | gene | MAOA |  |  | 0.11 |
 
-### fold1_seed0 module_3: top nodes
+### fold1_seed0 module_3, heme_porphyrin (3 of its genes, 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -321,7 +323,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:CTSH | gene | CTSH |  |  | 0.47 |
 | GENE:TREX1 | gene | TREX1 |  |  | 0.43 |
 
-### fold1_seed0 module_4: top nodes
+### fold1_seed0 module_4, gene nodes across subsystems (23 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -341,7 +343,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MT-CO2 | gene | MT-CO2 |  |  | 0.17 |
 | GENE:NDC1 | gene | NDC1 |  |  | 0.14 |
 
-### fold1_seed0 module_5: top nodes
+### fold1_seed0 module_5, gene nodes across subsystems (40 of 46 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -361,7 +363,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MT-ND1 | gene | MT-ND1 |  |  | 0.83 |
 | GENE:SETD1A | gene | SETD1A |  |  | 0.82 |
 
-### fold1_seed0 module_6: top nodes
+### fold1_seed0 module_6, gene nodes across subsystems (23 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -381,7 +383,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:ALDH4A1 | gene | ALDH4A1 |  |  | 0.74 |
 | GENE:MT-CO3 | gene | MT-CO3 |  |  | 0.69 |
 
-### fold1_seed0 module_7: top nodes
+### fold1_seed0 module_7, gene nodes across subsystems (39 of 47 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -403,16 +405,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold2_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | top 25 gates (max gate 0.85) | 4 | {'gene': 22, 'reaction': 3} | ['Cysteine and methionine metabolism', 'Transport reactions', 'Biopterin metabolism'] | {'cognitive_impairment': 0.882, 'fatigue': 0.692, 'irritability_or_aggression': 0.73} | {'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'heme_porphyrin': 1} |
-| module_1 | top 25 gates (max gate 0.87) | 8 | {'reaction': 8, 'gene': 17} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {'fatigue': 0.697, 'irritability_or_aggression': 0.618} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1} |
-| module_2 | top 25 gates (max gate 0.91) | 6 | {'gene': 22, 'reaction': 3} | ['Arginine and proline metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.802, 'fatigue': 0.584, 'irritability_or_aggression': 0.83} | {'urea_cycle': 3} |
-| module_3 | top 25 gates (max gate 0.84) | 6 | {'gene': 23, 'reaction': 2} | ['ROS detoxification', 'Terpenoid backbone biosynthesis'] | {'cognitive_impairment': 0.764, 'irritability_or_aggression': 0.756} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'vitamin_cofactor_transport': 1} |
-| module_4 | top 25 gates (max gate 0.77) | 5 | {'gene': 20, 'reaction': 5} | ['Arginine and proline metabolism', 'Transport reactions', 'Miscellaneous'] | {'cognitive_impairment': 0.754, 'fatigue': 0.601, 'irritability_or_aggression': 0.792} | {'phenylalanine_tyrosine': 1, 'tryptophan_kynurenine': 1, 'urea_cycle': 2} |
-| module_5 | gate > 0.5 | 41 | {'gene': 34, 'reaction': 7} | ['Transport reactions', 'Miscellaneous', 'Metabolism of other amino acids'] | {'anxiety': 0.702, 'depressed_mood': 0.6, 'psychosis': 0.586} | {'gaba_glutamate': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
-| module_6 | top 25 gates (max gate 0.93) | 12 | {'gene': 25} | [] | {'anxiety': 0.624, 'cognitive_impairment': 0.592, 'depressed_mood': 0.506} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
-| module_7 | gate > 0.5 | 43 | {'gene': 36, 'reaction': 7} | ['Bile acid biosynthesis', 'Porphyrin metabolism', 'Miscellaneous'] | {'anxiety': 0.671, 'cognitive_impairment': 0.503, 'depressed_mood': 0.563, 'psychosis': 0.503} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 2} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | gene nodes across subsystems (22 of 25 nodes) | top 25 gates (max gate 0.85) | 4 | {'gene': 22, 'reaction': 3} | ['Cysteine and methionine metabolism', 'Transport reactions', 'Biopterin metabolism'] | {'cognitive_impairment': 0.882, 'fatigue': 0.692, 'irritability_or_aggression': 0.73} | {'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'heme_porphyrin': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.87) | 8 | {'reaction': 8, 'gene': 17} | ['Transport reactions', 'Cysteine and methionine metabolism', 'Keratan sulfate degradation'] | {'fatigue': 0.697, 'irritability_or_aggression': 0.618} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1} |
+| module_2 | urea_cycle (3 of its genes, 25 nodes) | top 25 gates (max gate 0.91) | 6 | {'gene': 22, 'reaction': 3} | ['Arginine and proline metabolism', 'Transport reactions'] | {'cognitive_impairment': 0.802, 'fatigue': 0.584, 'irritability_or_aggression': 0.83} | {'urea_cycle': 3} |
+| module_3 | gene nodes across subsystems (23 of 25 nodes) | top 25 gates (max gate 0.84) | 6 | {'gene': 23, 'reaction': 2} | ['ROS detoxification', 'Terpenoid backbone biosynthesis'] | {'cognitive_impairment': 0.764, 'irritability_or_aggression': 0.756} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'vitamin_cofactor_transport': 1} |
+| module_4 | gene nodes across subsystems (20 of 25 nodes) | top 25 gates (max gate 0.77) | 5 | {'gene': 20, 'reaction': 5} | ['Arginine and proline metabolism', 'Transport reactions', 'Miscellaneous'] | {'cognitive_impairment': 0.754, 'fatigue': 0.601, 'irritability_or_aggression': 0.792} | {'phenylalanine_tyrosine': 1, 'tryptophan_kynurenine': 1, 'urea_cycle': 2} |
+| module_5 | gene nodes across subsystems (34 of 41 nodes) | gate > 0.5 | 41 | {'gene': 34, 'reaction': 7} | ['Transport reactions', 'Miscellaneous', 'Metabolism of other amino acids'] | {'anxiety': 0.702, 'depressed_mood': 0.6, 'psychosis': 0.586} | {'gaba_glutamate': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
+| module_6 | gene nodes across subsystems (25 of 25 nodes) | top 25 gates (max gate 0.93) | 12 | {'gene': 25} | [] | {'anxiety': 0.624, 'cognitive_impairment': 0.592, 'depressed_mood': 0.506} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 1} |
+| module_7 | gene nodes across subsystems (36 of 43 nodes) | gate > 0.5 | 43 | {'gene': 36, 'reaction': 7} | ['Bile acid biosynthesis', 'Porphyrin metabolism', 'Miscellaneous'] | {'anxiety': 0.671, 'cognitive_impairment': 0.503, 'depressed_mood': 0.563, 'psychosis': 0.503} | {'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 2} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -441,7 +443,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_5 | 90 | 12 | 0.198 | 0.151 | 0.197 | +0.047 [-0.006, +0.162] | 0.037 |
 | somnolence_or_hypersomnia | module_6 | 90 | 6 | 0.045 | 0.045 | 0.045 | -0.000 [-0.001, +0.001] | 0.026 |
 
-### fold2_seed0 module_0: top nodes
+### fold2_seed0 module_0, gene nodes across subsystems (22 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -461,7 +463,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:FIG4 | gene | FIG4 |  |  | 0.11 |
 | GENE:NUP133 | gene | NUP133 |  |  | 0.10 |
 
-### fold2_seed0 module_1: top nodes
+### fold2_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -481,7 +483,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SDHB | gene | SDHB |  |  | 0.30 |
 | MAR04160 | reaction | GTP 7,8-8,9-dihydrolase | c | Biopterin metabolism | 0.29 |
 
-### fold2_seed0 module_2: top nodes
+### fold2_seed0 module_2, urea_cycle (3 of its genes, 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -501,7 +503,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:GLDC | gene | GLDC |  |  | 0.09 |
 | GENE:PSAP | gene | PSAP |  |  | 0.08 |
 
-### fold2_seed0 module_3: top nodes
+### fold2_seed0 module_3, gene nodes across subsystems (23 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -521,7 +523,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:EP300 | gene | EP300 |  |  | 0.25 |
 | GENE:SLC20A2 | gene | SLC20A2 |  |  | 0.18 |
 
-### fold2_seed0 module_4: top nodes
+### fold2_seed0 module_4, gene nodes across subsystems (20 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -541,7 +543,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SLC25A13 | gene | SLC25A13 |  |  | 0.10 |
 | MAR04169 | reaction | GTP 8,9-hydrolase | c | Biopterin metabolism | 0.10 |
 
-### fold2_seed0 module_5: top nodes
+### fold2_seed0 module_5, gene nodes across subsystems (34 of 41 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -561,7 +563,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:HS6ST1 | gene | HS6ST1 |  |  | 0.77 |
 | GENE:CLTRN | gene | CLTRN |  |  | 0.76 |
 
-### fold2_seed0 module_6: top nodes
+### fold2_seed0 module_6, gene nodes across subsystems (25 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -581,7 +583,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MT-CO2 | gene | MT-CO2 |  |  | 0.46 |
 | GENE:GLE1 | gene | GLE1 |  |  | 0.45 |
 
-### fold2_seed0 module_7: top nodes
+### fold2_seed0 module_7, gene nodes across subsystems (36 of 43 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -603,16 +605,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold3_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | top 25 gates (max gate 0.89) | 8 | {'gene': 19, 'reaction': 6} | ['Transport reactions', 'Porphyrin metabolism', 'Purine metabolism'] | {'cognitive_impairment': 0.804, 'fatigue': 0.78, 'irritability_or_aggression': 0.716} | {'gaba_glutamate': 1, 'urea_cycle': 1} |
-| module_1 | top 25 gates (max gate 0.92) | 13 | {'reaction': 7, 'gene': 18} | ['ROS detoxification', 'Transport reactions', 'Porphyrin metabolism'] | {'anxiety': 0.521, 'cognitive_impairment': 0.787, 'irritability_or_aggression': 0.628} | {'urea_cycle': 1} |
-| module_2 | top 25 gates (max gate 0.87) | 5 | {'gene': 19, 'reaction': 6} | ['Transport reactions', 'Pantothenate and CoA metabolism', 'Valine, leucine, and isoleucine metabolism'] | {'cognitive_impairment': 0.863, 'fatigue': 0.64, 'irritability_or_aggression': 0.804} | {'tetrahydrobiopterin': 1, 'urea_cycle': 2, 'heme_porphyrin': 2} |
-| module_3 | top 25 gates (max gate 0.86) | 6 | {'gene': 22, 'reaction': 3} | ['Purine metabolism', 'Porphyrin metabolism'] | {'anxiety': 0.64, 'cognitive_impairment': 0.814, 'fatigue': 0.819, 'irritability_or_aggression': 0.76} | {'urea_cycle': 1} |
-| module_4 | top 25 gates (max gate 0.94) | 6 | {'reaction': 4, 'gene': 21} | ['Transport reactions'] | {'cognitive_impairment': 0.873, 'irritability_or_aggression': 0.726} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
-| module_5 | gate > 0.5 | 50 | {'gene': 44, 'reaction': 6} | ['Biopterin metabolism', 'Porphyrin metabolism', 'Transport reactions'] | {'anxiety': 0.694, 'depressed_mood': 0.662} | {'tetrahydrobiopterin': 2, 'tryptophan_kynurenine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 2} |
-| module_6 | top 25 gates (max gate 0.91) | 22 | {'gene': 23, 'reaction': 2} | ['Cysteine and methionine metabolism', 'Transport reactions'] | {'anxiety': 0.59, 'depressed_mood': 0.651, 'psychosis': 0.535} | {'tetrahydrobiopterin': 2, 'phenylalanine_tyrosine': 1, 'heme_porphyrin': 2} |
-| module_7 | gate > 0.5 | 35 | {'reaction': 6, 'gene': 29} | ['Transport reactions', 'Porphyrin metabolism', 'Cysteine and methionine metabolism'] | {'psychomotor_agitation': 0.555} | {'serotonin_melatonin': 1, 'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'gaba_glutamate': 1, 'one_carbon_homocysteine': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | gene nodes across subsystems (19 of 25 nodes) | top 25 gates (max gate 0.89) | 8 | {'gene': 19, 'reaction': 6} | ['Transport reactions', 'Porphyrin metabolism', 'Purine metabolism'] | {'cognitive_impairment': 0.804, 'fatigue': 0.78, 'irritability_or_aggression': 0.716} | {'gaba_glutamate': 1, 'urea_cycle': 1} |
+| module_1 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.92) | 13 | {'reaction': 7, 'gene': 18} | ['ROS detoxification', 'Transport reactions', 'Porphyrin metabolism'] | {'anxiety': 0.521, 'cognitive_impairment': 0.787, 'irritability_or_aggression': 0.628} | {'urea_cycle': 1} |
+| module_2 | gene nodes across subsystems (19 of 25 nodes) | top 25 gates (max gate 0.87) | 5 | {'gene': 19, 'reaction': 6} | ['Transport reactions', 'Pantothenate and CoA metabolism', 'Valine, leucine, and isoleucine metabolism'] | {'cognitive_impairment': 0.863, 'fatigue': 0.64, 'irritability_or_aggression': 0.804} | {'tetrahydrobiopterin': 1, 'urea_cycle': 2, 'heme_porphyrin': 2} |
+| module_3 | gene nodes across subsystems (22 of 25 nodes) | top 25 gates (max gate 0.86) | 6 | {'gene': 22, 'reaction': 3} | ['Purine metabolism', 'Porphyrin metabolism'] | {'anxiety': 0.64, 'cognitive_impairment': 0.814, 'fatigue': 0.819, 'irritability_or_aggression': 0.76} | {'urea_cycle': 1} |
+| module_4 | gene nodes across subsystems (21 of 25 nodes) | top 25 gates (max gate 0.94) | 6 | {'reaction': 4, 'gene': 21} | ['Transport reactions'] | {'cognitive_impairment': 0.873, 'irritability_or_aggression': 0.726} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module_5 | gene nodes across subsystems (44 of 50 nodes) | gate > 0.5 | 50 | {'gene': 44, 'reaction': 6} | ['Biopterin metabolism', 'Porphyrin metabolism', 'Transport reactions'] | {'anxiety': 0.694, 'depressed_mood': 0.662} | {'tetrahydrobiopterin': 2, 'tryptophan_kynurenine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'sterol_lysosomal_lipid': 2} |
+| module_6 | gene nodes across subsystems (23 of 25 nodes) | top 25 gates (max gate 0.91) | 22 | {'gene': 23, 'reaction': 2} | ['Cysteine and methionine metabolism', 'Transport reactions'] | {'anxiety': 0.59, 'depressed_mood': 0.651, 'psychosis': 0.535} | {'tetrahydrobiopterin': 2, 'phenylalanine_tyrosine': 1, 'heme_porphyrin': 2} |
+| module_7 | gene nodes across subsystems (29 of 35 nodes) | gate > 0.5 | 35 | {'reaction': 6, 'gene': 29} | ['Transport reactions', 'Porphyrin metabolism', 'Cysteine and methionine metabolism'] | {'psychomotor_agitation': 0.555} | {'serotonin_melatonin': 1, 'tetrahydrobiopterin': 1, 'phenylalanine_tyrosine': 1, 'gaba_glutamate': 1, 'one_carbon_homocysteine': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -641,7 +643,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_6 | 89 | 11 | 0.396 | 0.351 | 0.414 | +0.045 [-0.016, +0.145] | 0.033 |
 | somnolence_or_hypersomnia | module_5 | 90 | 7 | 0.141 | 0.177 | 0.137 | -0.037 [-0.170, +0.014] | 0.024 |
 
-### fold3_seed0 module_0: top nodes
+### fold3_seed0 module_0, gene nodes across subsystems (19 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -661,7 +663,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR04020 | reaction | ATP:GMP phosphotransferase | c | Purine metabolism | 0.15 |
 | GENE:SDHB | gene | SDHB |  |  | 0.15 |
 
-### fold3_seed0 module_1: top nodes
+### fold3_seed0 module_1, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -681,7 +683,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:ABCB4 | gene | ABCB4 |  |  | 0.46 |
 | MAR12053 | reaction | Alpha-Galactosidase, Lysosomal | l | Sphingolipid metabolism | 0.41 |
 
-### fold3_seed0 module_2: top nodes
+### fold3_seed0 module_2, gene nodes across subsystems (19 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -701,7 +703,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:POLE | gene | POLE |  |  | 0.12 |
 | GENE:SPR | gene | SPR |  |  | 0.12 |
 
-### fold3_seed0 module_3: top nodes
+### fold3_seed0 module_3, gene nodes across subsystems (22 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -721,7 +723,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:NAGS | gene | NAGS |  |  | 0.08 |
 | MAR04020 | reaction | ATP:GMP phosphotransferase | c | Purine metabolism | 0.06 |
 
-### fold3_seed0 module_4: top nodes
+### fold3_seed0 module_4, gene nodes across subsystems (21 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -741,7 +743,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:PPT1 | gene | PPT1 |  |  | 0.20 |
 | GENE:MCCC1 | gene | MCCC1 |  |  | 0.16 |
 
-### fold3_seed0 module_5: top nodes
+### fold3_seed0 module_5, gene nodes across subsystems (44 of 50 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -761,7 +763,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:NAA10 | gene | NAA10 |  |  | 0.82 |
 | GENE:POLE | gene | POLE |  |  | 0.82 |
 
-### fold3_seed0 module_6: top nodes
+### fold3_seed0 module_6, gene nodes across subsystems (23 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -781,7 +783,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:EHMT1 | gene | EHMT1 |  |  | 0.70 |
 | MAR03922 | reaction | N-acetylglutamate synthase (N-acetyl-L-cystathionine) | m | Cysteine and methionine metabolism | 0.69 |
 
-### fold3_seed0 module_7: top nodes
+### fold3_seed0 module_7, gene nodes across subsystems (29 of 35 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -803,16 +805,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold4_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | top 25 gates (max gate 0.80) | 6 | {'gene': 22, 'reaction': 3} | ['Transport reactions', 'Arginine and proline metabolism'] | {'anxiety': 0.595, 'fatigue': 0.649, 'irritability_or_aggression': 0.818} | {'catecholamine': 1, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1} |
-| module_1 | top 25 gates (max gate 0.84) | 14 | {'reaction': 4, 'gene': 21} | ['Alanine, aspartate and glutamate metabolism', 'Porphyrin metabolism', 'Transport reactions'] | {'anxiety': 0.613, 'cognitive_impairment': 0.605, 'fatigue': 0.597, 'irritability_or_aggression': 0.649} | {'tetrahydrobiopterin': 2, 'gaba_glutamate': 1, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
-| module_2 | top 25 gates (max gate 0.79) | 1 | {'gene': 21, 'reaction': 4} | ['Transport reactions', 'Arginine and proline metabolism', 'Sphingolipid metabolism'] | {'cognitive_impairment': 0.84, 'fatigue': 0.608, 'irritability_or_aggression': 0.832} | {'tetrahydrobiopterin': 2, 'urea_cycle': 1, 'heme_porphyrin': 1} |
-| module_3 | top 25 gates (max gate 0.80) | 4 | {'gene': 20, 'reaction': 5} | ['Transport reactions', 'Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism', 'Arginine and proline metabolism'] | {'anxiety': 0.553, 'cognitive_impairment': 0.848, 'fatigue': 0.707, 'irritability_or_aggression': 0.673} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
-| module_4 | top 25 gates (max gate 0.86) | 2 | {'gene': 25} | [] | {'cognitive_impairment': 0.757, 'irritability_or_aggression': 0.728} | {'catecholamine': 1, 'tetrahydrobiopterin': 1, 'tryptophan_kynurenine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 2} |
-| module_5 | gate > 0.5 | 41 | {'gene': 33, 'reaction': 8} | ['Transport reactions', 'Keratan sulfate degradation', 'Glycosphingolipid biosynthesis-globo series'] | {'depressed_mood': 0.598} | {'serotonin_melatonin': 1, 'tryptophan_kynurenine': 1, 'heme_porphyrin': 2, 'creatine_energy': 1, 'vitamin_cofactor_transport': 1} |
-| module_6 | top 25 gates (max gate 0.87) | 15 | {'gene': 23, 'reaction': 2} | ['Transport reactions', 'Metabolism of other amino acids'] | {'anxiety': 0.504, 'cognitive_impairment': 0.51, 'depressed_mood': 0.532, 'psychosis': 0.554} | {'tetrahydrobiopterin': 1, 'gaba_glutamate': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 3} |
-| module_7 | gate > 0.5 | 32 | {'gene': 28, 'reaction': 4} | ['Transport reactions', 'Bile acid biosynthesis'] | {'depressed_mood': 0.576} | {'tetrahydrobiopterin': 2, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | gene nodes across subsystems (22 of 25 nodes) | top 25 gates (max gate 0.80) | 6 | {'gene': 22, 'reaction': 3} | ['Transport reactions', 'Arginine and proline metabolism'] | {'anxiety': 0.595, 'fatigue': 0.649, 'irritability_or_aggression': 0.818} | {'catecholamine': 1, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1} |
+| module_1 | gene nodes across subsystems (21 of 25 nodes) | top 25 gates (max gate 0.84) | 14 | {'reaction': 4, 'gene': 21} | ['Alanine, aspartate and glutamate metabolism', 'Porphyrin metabolism', 'Transport reactions'] | {'anxiety': 0.613, 'cognitive_impairment': 0.605, 'fatigue': 0.597, 'irritability_or_aggression': 0.649} | {'tetrahydrobiopterin': 2, 'gaba_glutamate': 1, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
+| module_2 | gene nodes across subsystems (21 of 25 nodes) | top 25 gates (max gate 0.79) | 1 | {'gene': 21, 'reaction': 4} | ['Transport reactions', 'Arginine and proline metabolism', 'Sphingolipid metabolism'] | {'cognitive_impairment': 0.84, 'fatigue': 0.608, 'irritability_or_aggression': 0.832} | {'tetrahydrobiopterin': 2, 'urea_cycle': 1, 'heme_porphyrin': 1} |
+| module_3 | heme_porphyrin (3 of its genes, 25 nodes) | top 25 gates (max gate 0.80) | 4 | {'gene': 20, 'reaction': 5} | ['Transport reactions', 'Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism', 'Arginine and proline metabolism'] | {'anxiety': 0.553, 'cognitive_impairment': 0.848, 'fatigue': 0.707, 'irritability_or_aggression': 0.673} | {'tetrahydrobiopterin': 1, 'urea_cycle': 1, 'heme_porphyrin': 3, 'sterol_lysosomal_lipid': 1, 'creatine_energy': 1} |
+| module_4 | gene nodes across subsystems (25 of 25 nodes) | top 25 gates (max gate 0.86) | 2 | {'gene': 25} | [] | {'cognitive_impairment': 0.757, 'irritability_or_aggression': 0.728} | {'catecholamine': 1, 'tetrahydrobiopterin': 1, 'tryptophan_kynurenine': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 2} |
+| module_5 | gene nodes across subsystems (33 of 41 nodes) | gate > 0.5 | 41 | {'gene': 33, 'reaction': 8} | ['Transport reactions', 'Keratan sulfate degradation', 'Glycosphingolipid biosynthesis-globo series'] | {'depressed_mood': 0.598} | {'serotonin_melatonin': 1, 'tryptophan_kynurenine': 1, 'heme_porphyrin': 2, 'creatine_energy': 1, 'vitamin_cofactor_transport': 1} |
+| module_6 | heme_porphyrin (3 of its genes, 25 nodes) | top 25 gates (max gate 0.87) | 15 | {'gene': 23, 'reaction': 2} | ['Transport reactions', 'Metabolism of other amino acids'] | {'anxiety': 0.504, 'cognitive_impairment': 0.51, 'depressed_mood': 0.532, 'psychosis': 0.554} | {'tetrahydrobiopterin': 1, 'gaba_glutamate': 1, 'one_carbon_homocysteine': 1, 'urea_cycle': 1, 'heme_porphyrin': 3} |
+| module_7 | gene nodes across subsystems (28 of 32 nodes) | gate > 0.5 | 32 | {'gene': 28, 'reaction': 4} | ['Transport reactions', 'Bile acid biosynthesis'] | {'depressed_mood': 0.576} | {'tetrahydrobiopterin': 2, 'gaba_glutamate': 1, 'urea_cycle': 1, 'heme_porphyrin': 1, 'sterol_lysosomal_lipid': 1} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -841,7 +843,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_6 | 90 | 20 | 0.212 | 0.205 | 0.211 | +0.007 [-0.008, +0.043] | 0.036 |
 | somnolence_or_hypersomnia | module_4 | 90 | 6 | 0.052 | 0.053 | 0.053 | -0.001 [-0.004, +0.001] | 0.025 |
 
-### fold4_seed0 module_0: top nodes
+### fold4_seed0 module_0, gene nodes across subsystems (22 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -861,7 +863,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:DNMT1 | gene | DNMT1 |  |  | 0.25 |
 | GENE:HMBS | gene | HMBS |  |  | 0.25 |
 
-### fold4_seed0 module_1: top nodes
+### fold4_seed0 module_1, gene nodes across subsystems (21 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -881,7 +883,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:SDHB | gene | SDHB |  |  | 0.53 |
 | GENE:ALDH4A1 | gene | ALDH4A1 |  |  | 0.45 |
 
-### fold4_seed0 module_2: top nodes
+### fold4_seed0 module_2, gene nodes across subsystems (21 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -901,7 +903,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:POLE | gene | POLE |  |  | 0.07 |
 | GENE:GLA | gene | GLA |  |  | 0.07 |
 
-### fold4_seed0 module_3: top nodes
+### fold4_seed0 module_3, heme_porphyrin (3 of its genes, 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -921,7 +923,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR00058 | reaction | Acetylcholine Secretion via Secretory Vesicle (ATP Driven) | c;e | Transport reactions | 0.12 |
 | GENE:DNMT1 | gene | DNMT1 |  |  | 0.12 |
 
-### fold4_seed0 module_4: top nodes
+### fold4_seed0 module_4, gene nodes across subsystems (25 of 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -941,7 +943,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:OCRL | gene | OCRL |  |  | 0.22 |
 | GENE:COQ2 | gene | COQ2 |  |  | 0.21 |
 
-### fold4_seed0 module_5: top nodes
+### fold4_seed0 module_5, gene nodes across subsystems (33 of 41 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -961,7 +963,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03863 | reaction | transport of 3-sulfinoalanine and aspartate (cytosol to mito | c;m | Transport reactions | 0.67 |
 | GENE:SLC19A3 | gene | SLC19A3 |  |  | 0.67 |
 
-### fold4_seed0 module_6: top nodes
+### fold4_seed0 module_6, heme_porphyrin (3 of its genes, 25 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -981,7 +983,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:MAN2B1 | gene | MAN2B1 |  |  | 0.58 |
 | GENE:ASL | gene | ASL |  |  | 0.51 |
 
-### fold4_seed0 module_7: top nodes
+### fold4_seed0 module_7, gene nodes across subsystems (28 of 32 nodes): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|

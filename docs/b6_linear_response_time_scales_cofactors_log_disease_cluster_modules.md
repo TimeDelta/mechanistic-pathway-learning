@@ -2,18 +2,20 @@
 
 Support threshold 0.5 on the evaluation gate saved by the run; link threshold 0.5; downstream hops 3; currency metabolites removed from the downstream walk.
 
+Each module keeps its index, which is what the tables below join on, and carries a name read off its own support: the curated module it overlaps by at least 3 genes, else the subsystem holding at least 25% of the support and at least 2 times its share of the graph (with the compartment when one holds half), else the node type holding at least 75%, else "mixed support". The share is printed with the name so the name claims no more than its support. Two splits whose modules take the same name need not be the same module: the gates are fitted per split, and the stability section is where that is judged.
+
 ## fold0_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | gate > 0.5 | 45 | {'metabolite': 16, 'reaction': 28, 'gene': 1} | ['Transport reactions', 'Sphingolipid metabolism', 'Omega-3 fatty acid metabolism'] | {} | {} |
-| module_1 | gate > 0.5 | 44 | {'reaction': 26, 'gene': 5, 'metabolite': 13} | ['Transport reactions', 'Exchange/demand reactions', 'Inositol phosphate metabolism'] | {} | {} |
-| module_2 | gate > 0.5 | 47 | {'gene': 6, 'reaction': 22, 'metabolite': 19} | ['Transport reactions', 'Chondroitin / heparan sulfate biosynthesis', 'Arginine and proline metabolism'] | {} | {'urea_cycle': 1} |
-| module_3 | gate > 0.5 | 37 | {'metabolite': 13, 'reaction': 23, 'gene': 1} | ['Transport reactions', 'Inositol phosphate metabolism', 'Nucleotide metabolism'] | {} | {} |
-| module_4 | gate > 0.5 | 41 | {'reaction': 26, 'metabolite': 8, 'gene': 7} | ['Transport reactions', 'Biopterin metabolism', 'Starch and sucrose metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
-| module_5 | gate > 0.5 | 51 | {'reaction': 26, 'metabolite': 21, 'gene': 4} | ['Transport reactions', 'Exchange/demand reactions', 'Fructose and mannose metabolism'] | {} | {} |
-| module_6 | gate > 0.5 | 44 | {'reaction': 27, 'metabolite': 14, 'gene': 3} | ['Transport reactions', 'Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism', 'Glycerophospholipid metabolism'] | {} | {'phenylalanine_tyrosine': 1} |
-| module_7 | gate > 0.5 | 55 | {'reaction': 35, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Inositol phosphate metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (45 nodes, no subsystem above 25%) | gate > 0.5 | 45 | {'metabolite': 16, 'reaction': 28, 'gene': 1} | ['Transport reactions', 'Sphingolipid metabolism', 'Omega-3 fatty acid metabolism'] | {} | {} |
+| module_1 | mixed support (44 nodes, no subsystem above 25%) | gate > 0.5 | 44 | {'reaction': 26, 'gene': 5, 'metabolite': 13} | ['Transport reactions', 'Exchange/demand reactions', 'Inositol phosphate metabolism'] | {} | {} |
+| module_2 | mixed support (47 nodes, no subsystem above 25%) | gate > 0.5 | 47 | {'gene': 6, 'reaction': 22, 'metabolite': 19} | ['Transport reactions', 'Chondroitin / heparan sulfate biosynthesis', 'Arginine and proline metabolism'] | {} | {'urea_cycle': 1} |
+| module_3 | mixed support (37 nodes, no subsystem above 25%) | gate > 0.5 | 37 | {'metabolite': 13, 'reaction': 23, 'gene': 1} | ['Transport reactions', 'Inositol phosphate metabolism', 'Nucleotide metabolism'] | {} | {} |
+| module_4 | mixed support (41 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph) | gate > 0.5 | 41 | {'reaction': 26, 'metabolite': 8, 'gene': 7} | ['Transport reactions', 'Biopterin metabolism', 'Starch and sucrose metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
+| module_5 | mixed support (51 nodes, no subsystem above 25%) | gate > 0.5 | 51 | {'reaction': 26, 'metabolite': 21, 'gene': 4} | ['Transport reactions', 'Exchange/demand reactions', 'Fructose and mannose metabolism'] | {} | {} |
+| module_6 | mixed support (44 nodes; its largest subsystem, transport reactions, holds 27% against 31% of the graph) | gate > 0.5 | 44 | {'reaction': 27, 'metabolite': 14, 'gene': 3} | ['Transport reactions', 'Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism', 'Glycerophospholipid metabolism'] | {} | {'phenylalanine_tyrosine': 1} |
+| module_7 | mixed support (55 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph) | gate > 0.5 | 55 | {'reaction': 35, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Inositol phosphate metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -45,7 +47,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_6 | 86 | 12 | 0.117 | 0.117 | 0.118 | -0.000 [-0.004, +0.003] | 0.096 |
 | somnolence_or_hypersomnia | module_3 | 74 | 7 | 0.134 | 0.132 | 0.133 | +0.002 [+0.000, +0.007] | 0.037 |
 
-### fold0_seed0 module_0: top nodes
+### fold0_seed0 module_0, mixed support (45 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -65,7 +67,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01547l | metabolite | chondroitin sulfate D (GlcNAc6S-GlcA2S), degradation product | l |  | 0.54 |
 | MAR04429 | reaction | S-Adenosyl-L-methionine:histamine N-tele-methyltransferase | c | Histidine metabolism | 0.54 |
 
-### fold0_seed0 module_1: top nodes
+### fold0_seed0 module_1, mixed support (44 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -85,7 +87,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08821 | reaction | ATP:1-phosphatidyl-1D-myo-inositol-4-phosphate 5-phosphotran | n | Inositol phosphate metabolism | 0.56 |
 | MAR08640 | reaction | DNA (cytosine-5-)-methyltransferase (DNA) | n | Metabolism of other amino acids | 0.55 |
 
-### fold0_seed0 module_2: top nodes
+### fold0_seed0 module_2, mixed support (47 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -105,7 +107,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01833n | metabolite | formate | n |  | 0.53 |
 | MAR06034 | reaction | transport of acetate and butyrate (cytosol to extracellular) | c;e | Transport reactions | 0.53 |
 
-### fold0_seed0 module_3: top nodes
+### fold0_seed0 module_3, mixed support (37 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -125,7 +127,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08814 | reaction | 1-phosphatidyl-1D-myo-inositol-3-phosphate phosphorylation | n | Inositol phosphate metabolism | 0.54 |
 | MAM02479e | metabolite | methylmalonate | e |  | 0.54 |
 
-### fold0_seed0 module_4: top nodes
+### fold0_seed0 module_4, mixed support (41 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -145,7 +147,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM02741m | metabolite | phosphopantetheine | m |  | 0.54 |
 | MAR02891 | reaction | cytochrome P450 (3alpha,7alpha-dihydroxy-5beta-cholestan-26- | m | Bile acid biosynthesis | 0.54 |
 
-### fold0_seed0 module_5: top nodes
+### fold0_seed0 module_5, mixed support (51 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -165,7 +167,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR09505 | reaction | alpha-tubulin:L-tyrosine ligase (ADP-forming) | c | Isolated | 0.55 |
 | GENE:UBAC2 | gene | UBAC2 |  |  | 0.55 |
 
-### fold0_seed0 module_6: top nodes
+### fold0_seed0 module_6, mixed support (44 nodes; its largest subsystem, transport reactions, holds 27% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -185,7 +187,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08526 | reaction | transport of choline (cytosol to endoplasmic reticulum) | c;r | Transport reactions | 0.54 |
 | MAR08215 | reaction | transport of digalactosylceramide (cytosol to Golgi apparatu | c;g | Transport reactions | 0.53 |
 
-### fold0_seed0 module_7: top nodes
+### fold0_seed0 module_7, mixed support (55 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -207,16 +209,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold1_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | gate > 0.5 | 132 | {'gene': 14, 'metabolite': 41, 'reaction': 77} | ['Transport reactions', 'Drug metabolism', 'Exchange/demand reactions'] | {} | {} |
-| module_1 | gate > 0.5 | 150 | {'reaction': 95, 'metabolite': 38, 'gene': 17} | ['Transport reactions', 'Exchange/demand reactions', 'Bile acid biosynthesis'] | {} | {'sterol_lysosomal_lipid': 1} |
-| module_2 | gate > 0.5 | 176 | {'reaction': 93, 'metabolite': 66, 'gene': 17} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'urea_cycle': 1} |
-| module_3 | gate > 0.5 | 146 | {'metabolite': 60, 'reaction': 70, 'gene': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'steroid_thyroid': 1} |
-| module_4 | gate > 0.5 | 144 | {'reaction': 81, 'metabolite': 44, 'gene': 19} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
-| module_5 | gate > 0.5 | 156 | {'reaction': 88, 'metabolite': 47, 'gene': 21} | ['Transport reactions', 'Exchange/demand reactions', 'Xenobiotics metabolism'] | {} | {} |
-| module_6 | gate > 0.5 | 136 | {'metabolite': 52, 'reaction': 73, 'gene': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Peptide metabolism'] | {} | {'phenylalanine_tyrosine': 1} |
-| module_7 | gate > 0.5 | 156 | {'reaction': 84, 'metabolite': 58, 'gene': 14} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (132 nodes, no subsystem above 25%) | gate > 0.5 | 132 | {'gene': 14, 'metabolite': 41, 'reaction': 77} | ['Transport reactions', 'Drug metabolism', 'Exchange/demand reactions'] | {} | {} |
+| module_1 | mixed support (150 nodes, no subsystem above 25%) | gate > 0.5 | 150 | {'reaction': 95, 'metabolite': 38, 'gene': 17} | ['Transport reactions', 'Exchange/demand reactions', 'Bile acid biosynthesis'] | {} | {'sterol_lysosomal_lipid': 1} |
+| module_2 | mixed support (176 nodes, no subsystem above 25%) | gate > 0.5 | 176 | {'reaction': 93, 'metabolite': 66, 'gene': 17} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'urea_cycle': 1} |
+| module_3 | mixed support (146 nodes, no subsystem above 25%) | gate > 0.5 | 146 | {'metabolite': 60, 'reaction': 70, 'gene': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'steroid_thyroid': 1} |
+| module_4 | mixed support (144 nodes, no subsystem above 25%) | gate > 0.5 | 144 | {'reaction': 81, 'metabolite': 44, 'gene': 19} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
+| module_5 | mixed support (156 nodes, no subsystem above 25%) | gate > 0.5 | 156 | {'reaction': 88, 'metabolite': 47, 'gene': 21} | ['Transport reactions', 'Exchange/demand reactions', 'Xenobiotics metabolism'] | {} | {} |
+| module_6 | mixed support (136 nodes, no subsystem above 25%) | gate > 0.5 | 136 | {'metabolite': 52, 'reaction': 73, 'gene': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Peptide metabolism'] | {} | {'phenylalanine_tyrosine': 1} |
+| module_7 | mixed support (156 nodes, no subsystem above 25%) | gate > 0.5 | 156 | {'reaction': 84, 'metabolite': 58, 'gene': 14} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -246,7 +248,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychomotor_agitation | module_5 | 74 | 6 | 0.097 | 0.125 | 0.096 | -0.028 [-0.150, +0.000] | 0.060 |
 | psychosis | module_6 | 66 | 10 | 0.300 | 0.296 | 0.330 | +0.004 [+0.000, +0.015] | 0.084 |
 
-### fold1_seed0 module_0: top nodes
+### fold1_seed0 module_0, mixed support (132 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -266,7 +268,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR11140 | reaction | Hydrolysis of ProGluLys | c | Peptide metabolism | 0.58 |
 | MAR09835 | reaction | Transport of Xanthosine | c;e | Transport reactions | 0.58 |
 
-### fold1_seed0 module_1: top nodes
+### fold1_seed0 module_1, mixed support (150 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -286,7 +288,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR07030 | reaction | trichloroethene, NADPH:oxygen oxidoreductase (RH-hydroxylati | c | Xenobiotics metabolism | 0.58 |
 | MAM02041m | metabolite | H2O2 | m |  | 0.58 |
 
-### fold1_seed0 module_2: top nodes
+### fold1_seed0 module_2, mixed support (176 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -306,7 +308,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01758l | metabolite | D-xylose | l |  | 0.58 |
 | MAR11489 | reaction | Formation of 2-Methyl-3-Hydroxy-Valerate | c | Propanoate metabolism | 0.58 |
 
-### fold1_seed0 module_3: top nodes
+### fold1_seed0 module_3, mixed support (146 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -326,7 +328,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR11611 | reaction | Transport of 1-Palmitoleoylglycerophosphocholine (Delta 9) | c;e | Transport reactions | 0.59 |
 | MAR08498 | reaction | cytochrome P450 (acetone) | c | Pyruvate metabolism | 0.58 |
 
-### fold1_seed0 module_4: top nodes
+### fold1_seed0 module_4, mixed support (144 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -346,7 +348,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03688 | reaction | Steryl-ester acylhydrolase | r | Formation and hydrolysis of cholesterol  | 0.59 |
 | MAR03554 | reaction | Steryl-ester acylhydrolase | l | Formation and hydrolysis of cholesterol  | 0.59 |
 
-### fold1_seed0 module_5: top nodes
+### fold1_seed0 module_5, mixed support (156 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -366,7 +368,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01751c | metabolite | dTDP-glucose | c |  | 0.58 |
 | MAR00803 | reaction | galactosidase alpha (globotriaosylceramide) | c | Glycosphingolipid biosynthesis-globo ser | 0.58 |
 
-### fold1_seed0 module_6: top nodes
+### fold1_seed0 module_6, mixed support (136 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -386,7 +388,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM00563m | metabolite | 2(S),6-dimethyl-heptanoyl-CoA | m |  | 0.57 |
 | MAR08254 | reaction | alpha-1,4-N-acetylglucosaminyltransferase (T-antigen) | g | O-glycan metabolism | 0.57 |
 
-### fold1_seed0 module_7: top nodes
+### fold1_seed0 module_7, mixed support (156 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -408,16 +410,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold2_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | gate > 0.5 | 30 | {'metabolite': 13, 'reaction': 16, 'gene': 1} | ['Transport reactions', 'Sphingolipid metabolism', 'Inositol phosphate metabolism'] | {} | {} |
-| module_1 | gate > 0.5 | 41 | {'reaction': 25, 'gene': 4, 'metabolite': 12} | ['Transport reactions', 'Exchange/demand reactions', 'Metabolism of other amino acids'] | {} | {} |
-| module_2 | gate > 0.5 | 42 | {'reaction': 24, 'metabolite': 15, 'gene': 3} | ['Transport reactions', 'Exchange/demand reactions', 'Arginine and proline metabolism'] | {} | {'urea_cycle': 1} |
-| module_3 | gate > 0.5 | 48 | {'metabolite': 18, 'reaction': 29, 'gene': 1} | ['Transport reactions', 'Metabolism of other amino acids', 'Nucleotide metabolism'] | {} | {} |
-| module_4 | top 25 gates (max gate 0.67) | 24 | {'reaction': 12, 'gene': 3, 'metabolite': 10} | ['Transport reactions', 'Bile acid biosynthesis', 'Starch and sucrose metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
-| module_5 | gate > 0.5 | 53 | {'metabolite': 18, 'reaction': 31, 'gene': 4} | ['Transport reactions', 'Exchange/demand reactions', 'Arachidonic acid metabolism'] | {} | {} |
-| module_6 | gate > 0.5 | 42 | {'reaction': 22, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Glycerolipid metabolism', 'Protein assembly'] | {} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1} |
-| module_7 | gate > 0.5 | 60 | {'metabolite': 14, 'reaction': 41, 'gene': 5} | ['Transport reactions', 'Inositol phosphate metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (30 nodes, no subsystem above 25%) | gate > 0.5 | 30 | {'metabolite': 13, 'reaction': 16, 'gene': 1} | ['Transport reactions', 'Sphingolipid metabolism', 'Inositol phosphate metabolism'] | {} | {} |
+| module_1 | mixed support (41 nodes, no subsystem above 25%) | gate > 0.5 | 41 | {'reaction': 25, 'gene': 4, 'metabolite': 12} | ['Transport reactions', 'Exchange/demand reactions', 'Metabolism of other amino acids'] | {} | {} |
+| module_2 | mixed support (42 nodes, no subsystem above 25%) | gate > 0.5 | 42 | {'reaction': 24, 'metabolite': 15, 'gene': 3} | ['Transport reactions', 'Exchange/demand reactions', 'Arginine and proline metabolism'] | {} | {'urea_cycle': 1} |
+| module_3 | mixed support (48 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph) | gate > 0.5 | 48 | {'metabolite': 18, 'reaction': 29, 'gene': 1} | ['Transport reactions', 'Metabolism of other amino acids', 'Nucleotide metabolism'] | {} | {} |
+| module_4 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.67) | 24 | {'reaction': 12, 'gene': 3, 'metabolite': 10} | ['Transport reactions', 'Bile acid biosynthesis', 'Starch and sucrose metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
+| module_5 | mixed support (53 nodes, no subsystem above 25%) | gate > 0.5 | 53 | {'metabolite': 18, 'reaction': 31, 'gene': 4} | ['Transport reactions', 'Exchange/demand reactions', 'Arachidonic acid metabolism'] | {} | {} |
+| module_6 | mixed support (42 nodes, no subsystem above 25%) | gate > 0.5 | 42 | {'reaction': 22, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Glycerolipid metabolism', 'Protein assembly'] | {} | {'phenylalanine_tyrosine': 1, 'urea_cycle': 1} |
+| module_7 | mixed support (60 nodes; its largest subsystem, transport reactions, holds 25% against 31% of the graph) | gate > 0.5 | 60 | {'metabolite': 14, 'reaction': 41, 'gene': 5} | ['Transport reactions', 'Inositol phosphate metabolism', 'Aminoacyl-tRNA biosynthesis'] | {} | {} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -447,7 +449,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_1 | 79 | 11 | 0.179 | 0.179 | 0.188 | -0.001 [-0.004, +0.002] | 0.085 |
 | somnolence_or_hypersomnia | module_7 | 29 | 4 | 0.398 | 0.523 | 0.452 | -0.125 [-0.394, +0.000] | 0.037 |
 
-### fold2_seed0 module_0: top nodes
+### fold2_seed0 module_0, mixed support (30 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -467,7 +469,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM02804m | metabolite | protoporphyrinogen IX | m |  | 0.53 |
 | MAR07621 | reaction | [protein] to [protein]-L-arginine conversion | c | Protein modification | 0.53 |
 
-### fold2_seed0 module_1: top nodes
+### fold2_seed0 module_1, mixed support (41 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -487,7 +489,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR20176 | reaction | branched chain keto acid dehydrogenase E1 (4-methyl-2-oxopen | m | Valine, leucine, and isoleucine metaboli | 0.54 |
 | MAM02759c | metabolite | PPi | c |  | 0.54 |
 
-### fold2_seed0 module_2: top nodes
+### fold2_seed0 module_2, mixed support (42 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -507,7 +509,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM02540m | metabolite | N-acetylmethionine | m |  | 0.53 |
 | GENE:OTC | gene | OTC |  |  | 0.53 |
 
-### fold2_seed0 module_3: top nodes
+### fold2_seed0 module_3, mixed support (48 nodes; its largest subsystem, transport reactions, holds 29% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -527,7 +529,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR05680 | reaction | transport of phenylalanine and serine (cytosol to extracellu | c;e | Transport reactions | 0.55 |
 | MAR04865 | reaction | transport of malate (cytosol to mitochondria) | c;m | Transport reactions | 0.55 |
 
-### fold2_seed0 module_4: top nodes
+### fold2_seed0 module_4, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -547,7 +549,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR09273 | reaction | Exchange of bilirubin | e | Exchange/demand reactions | 0.51 |
 | MAM03080c | metabolite | tRNA(trp) | c |  | 0.51 |
 
-### fold2_seed0 module_5: top nodes
+### fold2_seed0 module_5, mixed support (53 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -567,7 +569,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:PRODH | gene | PRODH |  |  | 0.56 |
 | MAR00977 | reaction | Beta Oxidation of Long Chain Fatty Acid | x | Fatty acid oxidation | 0.56 |
 
-### fold2_seed0 module_6: top nodes
+### fold2_seed0 module_6, mixed support (42 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -587,7 +589,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:PAH | gene | PAH |  |  | 0.53 |
 | MAR11106 | reaction | Hydrolysis of LysTyrIle | c | Peptide metabolism | 0.53 |
 
-### fold2_seed0 module_7: top nodes
+### fold2_seed0 module_7, mixed support (60 nodes; its largest subsystem, transport reactions, holds 25% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -609,16 +611,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold3_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | gate > 0.5 | 115 | {'reaction': 66, 'gene': 11, 'metabolite': 38} | ['Transport reactions', 'Drug metabolism', 'Exchange/demand reactions'] | {} | {} |
-| module_1 | gate > 0.5 | 125 | {'reaction': 81, 'metabolite': 31, 'gene': 13} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'sterol_lysosomal_lipid': 1} |
-| module_2 | gate > 0.5 | 159 | {'reaction': 85, 'gene': 15, 'metabolite': 59} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'urea_cycle': 1} |
-| module_3 | gate > 0.5 | 133 | {'metabolite': 51, 'reaction': 74, 'gene': 8} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'steroid_thyroid': 1} |
-| module_4 | gate > 0.5 | 130 | {'reaction': 75, 'metabolite': 39, 'gene': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
-| module_5 | gate > 0.5 | 132 | {'reaction': 74, 'gene': 16, 'metabolite': 42} | ['Transport reactions', 'Exchange/demand reactions', 'Sphingolipid metabolism'] | {} | {} |
-| module_6 | gate > 0.5 | 123 | {'reaction': 62, 'metabolite': 49, 'gene': 12} | ['Transport reactions', 'Exchange/demand reactions', 'Peptide metabolism'] | {} | {'phenylalanine_tyrosine': 1, 'heme_porphyrin': 1} |
-| module_7 | gate > 0.5 | 134 | {'reaction': 77, 'metabolite': 46, 'gene': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (115 nodes, no subsystem above 25%) | gate > 0.5 | 115 | {'reaction': 66, 'gene': 11, 'metabolite': 38} | ['Transport reactions', 'Drug metabolism', 'Exchange/demand reactions'] | {} | {} |
+| module_1 | mixed support (125 nodes, no subsystem above 25%) | gate > 0.5 | 125 | {'reaction': 81, 'metabolite': 31, 'gene': 13} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'sterol_lysosomal_lipid': 1} |
+| module_2 | mixed support (159 nodes, no subsystem above 25%) | gate > 0.5 | 159 | {'reaction': 85, 'gene': 15, 'metabolite': 59} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'urea_cycle': 1} |
+| module_3 | mixed support (133 nodes, no subsystem above 25%) | gate > 0.5 | 133 | {'metabolite': 51, 'reaction': 74, 'gene': 8} | ['Transport reactions', 'Exchange/demand reactions', 'Fatty acid oxidation'] | {} | {'steroid_thyroid': 1} |
+| module_4 | mixed support (130 nodes, no subsystem above 25%) | gate > 0.5 | 130 | {'reaction': 75, 'metabolite': 39, 'gene': 16} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {'acetylcholine_histamine_adenosine': 1} |
+| module_5 | mixed support (132 nodes, no subsystem above 25%) | gate > 0.5 | 132 | {'reaction': 74, 'gene': 16, 'metabolite': 42} | ['Transport reactions', 'Exchange/demand reactions', 'Sphingolipid metabolism'] | {} | {} |
+| module_6 | mixed support (123 nodes, no subsystem above 25%) | gate > 0.5 | 123 | {'reaction': 62, 'metabolite': 49, 'gene': 12} | ['Transport reactions', 'Exchange/demand reactions', 'Peptide metabolism'] | {} | {'phenylalanine_tyrosine': 1, 'heme_porphyrin': 1} |
+| module_7 | mixed support (134 nodes, no subsystem above 25%) | gate > 0.5 | 134 | {'reaction': 77, 'metabolite': 46, 'gene': 11} | ['Transport reactions', 'Exchange/demand reactions', 'Drug metabolism'] | {} | {} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -647,7 +649,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | somnolence_or_hypersomnia | module_0 | 42 | 4 | 0.134 | 0.143 | 0.152 | -0.010 [-0.040, +0.000] | 0.036 |
 | somnolence_or_hypersomnia | module_7 | 34 | 3 | 0.248 | 0.248 | 0.278 | +0.000 [+0.000, +0.000] | 0.034 |
 
-### fold3_seed0 module_0: top nodes
+### fold3_seed0 module_0, mixed support (115 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -667,7 +669,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03439 | reaction | ELOVL fatty acid elongase ((7Z,10Z,13Z,16Z)-docosatetraenoyl | c | Fatty acid oxidation | 0.58 |
 | MAR11140 | reaction | Hydrolysis of ProGluLys | c | Peptide metabolism | 0.57 |
 
-### fold3_seed0 module_1: top nodes
+### fold3_seed0 module_1, mixed support (125 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -687,7 +689,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | GENE:TRMU | gene | TRMU |  |  | 0.58 |
 | GENE:PSAP | gene | PSAP |  |  | 0.58 |
 
-### fold3_seed0 module_2: top nodes
+### fold3_seed0 module_2, mixed support (159 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -707,7 +709,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR01541 | reaction | Transport of Ammonium ion, Peroxisomal | c;x | Transport reactions | 0.58 |
 | MAR01854 | reaction | transport of chenodiol (cytosol to endoplasmic reticulum) | c;r | Transport reactions | 0.57 |
 
-### fold3_seed0 module_3: top nodes
+### fold3_seed0 module_3, mixed support (133 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -727,7 +729,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM00417c | metabolite | 17-hydroxy-E4-neuroprostane | c |  | 0.59 |
 | MAM03251c | metabolite | 3-Hydroxyoctadecanoyl Carnitine | c |  | 0.59 |
 
-### fold3_seed0 module_4: top nodes
+### fold3_seed0 module_4, mixed support (130 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -747,7 +749,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR03688 | reaction | Steryl-ester acylhydrolase | r | Formation and hydrolysis of cholesterol  | 0.58 |
 | MAR03554 | reaction | Steryl-ester acylhydrolase | l | Formation and hydrolysis of cholesterol  | 0.58 |
 
-### fold3_seed0 module_5: top nodes
+### fold3_seed0 module_5, mixed support (132 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -767,7 +769,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01155e | metabolite | 6-[(1S,2R)-1,2-dihydroxy-3-triphosphooxypropyl]-7,8-dihydrop | e |  | 0.58 |
 | MAR08695 | reaction | n4m2masn to n5m2masn conversion | g | N-glycan metabolism | 0.58 |
 
-### fold3_seed0 module_6: top nodes
+### fold3_seed0 module_6, mixed support (123 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -787,7 +789,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM10004l | metabolite | cholesterol-ester plasma pool | l |  | 0.56 |
 | MAR06989 | reaction | transport of iodide (cytosol to extracellular) | c;e | Transport reactions | 0.56 |
 
-### fold3_seed0 module_7: top nodes
+### fold3_seed0 module_7, mixed support (134 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -809,16 +811,16 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 
 ## fold4_seed0
 
-| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
-|---|---|---|---|---|---|---|
-| module_0 | gate > 0.5 | 27 | {'reaction': 17, 'metabolite': 9, 'gene': 1} | ['Transport reactions', 'Beta oxidation of even-chain fatty acids (mitochondrial)', 'Inositol phosphate metabolism'] | {} | {} |
-| module_1 | gate > 0.5 | 40 | {'reaction': 20, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Exchange/demand reactions', 'Metabolism of other amino acids'] | {} | {} |
-| module_2 | gate > 0.5 | 45 | {'reaction': 23, 'gene': 5, 'metabolite': 17} | ['Transport reactions', 'Arginine and proline metabolism', 'Isolated'] | {} | {} |
-| module_3 | gate > 0.5 | 37 | {'metabolite': 12, 'reaction': 21, 'gene': 4} | ['Transport reactions', 'Fatty acid oxidation', 'Inositol phosphate metabolism'] | {} | {} |
-| module_4 | top 25 gates (max gate 0.61) | 10 | {'metabolite': 5, 'gene': 3, 'reaction': 17} | ['Transport reactions', 'Fatty acid oxidation', 'Isolated'] | {} | {} |
-| module_5 | gate > 0.5 | 35 | {'reaction': 18, 'metabolite': 14, 'gene': 3} | ['Transport reactions', 'N-glycan metabolism', 'Fructose and mannose metabolism'] | {} | {} |
-| module_6 | gate > 0.5 | 34 | {'reaction': 19, 'metabolite': 12, 'gene': 3} | ['Transport reactions', 'Bile acid biosynthesis', 'Glycerolipid metabolism'] | {} | {} |
-| module_7 | gate > 0.5 | 34 | {'reaction': 20, 'metabolite': 13, 'gene': 1} | ['Transport reactions', 'Inositol phosphate metabolism', 'Exchange/demand reactions'] | {} | {} |
+| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |
+|---|---|---|---|---|---|---|---|
+| module_0 | mixed support (27 nodes, no subsystem above 25%) | gate > 0.5 | 27 | {'reaction': 17, 'metabolite': 9, 'gene': 1} | ['Transport reactions', 'Beta oxidation of even-chain fatty acids (mitochondrial)', 'Inositol phosphate metabolism'] | {} | {} |
+| module_1 | mixed support (40 nodes, no subsystem above 25%) | gate > 0.5 | 40 | {'reaction': 20, 'metabolite': 15, 'gene': 5} | ['Transport reactions', 'Exchange/demand reactions', 'Metabolism of other amino acids'] | {} | {} |
+| module_2 | mixed support (45 nodes, no subsystem above 25%) | gate > 0.5 | 45 | {'reaction': 23, 'gene': 5, 'metabolite': 17} | ['Transport reactions', 'Arginine and proline metabolism', 'Isolated'] | {} | {} |
+| module_3 | mixed support (37 nodes, no subsystem above 25%) | gate > 0.5 | 37 | {'metabolite': 12, 'reaction': 21, 'gene': 4} | ['Transport reactions', 'Fatty acid oxidation', 'Inositol phosphate metabolism'] | {} | {} |
+| module_4 | mixed support (25 nodes, no subsystem above 25%) | top 25 gates (max gate 0.61) | 10 | {'metabolite': 5, 'gene': 3, 'reaction': 17} | ['Transport reactions', 'Fatty acid oxidation', 'Isolated'] | {} | {} |
+| module_5 | mixed support (35 nodes, no subsystem above 25%) | gate > 0.5 | 35 | {'reaction': 18, 'metabolite': 14, 'gene': 3} | ['Transport reactions', 'N-glycan metabolism', 'Fructose and mannose metabolism'] | {} | {} |
+| module_6 | mixed support (34 nodes, no subsystem above 25%) | gate > 0.5 | 34 | {'reaction': 19, 'metabolite': 12, 'gene': 3} | ['Transport reactions', 'Bile acid biosynthesis', 'Glycerolipid metabolism'] | {} | {} |
+| module_7 | mixed support (34 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph) | gate > 0.5 | 34 | {'reaction': 20, 'metabolite': 13, 'gene': 1} | ['Transport reactions', 'Inositol phosphate metabolism', 'Exchange/demand reactions'] | {} | {} |
 
 | symptom | active modules | independence index | convergence index |
 |---|---|---|---|
@@ -850,7 +852,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | psychosis | module_6 | 34 | 12 | 0.348 | 0.345 | 0.360 | +0.002 [-0.005, +0.014] | 0.058 |
 | somnolence_or_hypersomnia | module_3 | 69 | 3 | 0.032 | 0.033 | 0.032 | -0.000 [-0.002, +0.000] | 0.047 |
 
-### fold4_seed0 module_0: top nodes
+### fold4_seed0 module_0, mixed support (27 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -870,7 +872,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR04174 | reaction | L-aspartate 1-carboxy-lyase (beta-alanine-forming) | c | Beta-alanine metabolism | 0.52 |
 | MAR09495 | reaction | Acetyl-CoA:histone acetyltransferase | c | Isolated | 0.52 |
 
-### fold4_seed0 module_1: top nodes
+### fold4_seed0 module_1, mixed support (40 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -890,7 +892,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01756m | metabolite | dUTP | m |  | 0.55 |
 | MAR08821 | reaction | ATP:1-phosphatidyl-1D-myo-inositol-4-phosphate 5-phosphotran | n | Inositol phosphate metabolism | 0.54 |
 
-### fold4_seed0 module_2: top nodes
+### fold4_seed0 module_2, mixed support (45 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -910,7 +912,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM02495m | metabolite | myristoyl-CoA | m |  | 0.54 |
 | MAR04868 | reaction | transport of malate and sulfite (cytosol to mitochondria) | c;m | Transport reactions | 0.53 |
 
-### fold4_seed0 module_3: top nodes
+### fold4_seed0 module_3, mixed support (37 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -930,7 +932,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01548l | metabolite | chondroitin sulfate D (GlcNAc6S-GlcA2S), degradation product | l |  | 0.54 |
 | MAR08814 | reaction | 1-phosphatidyl-1D-myo-inositol-3-phosphate phosphorylation | n | Inositol phosphate metabolism | 0.54 |
 
-### fold4_seed0 module_4: top nodes
+### fold4_seed0 module_4, mixed support (25 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -950,7 +952,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR06404 | reaction | protein N6-(dihydrolipoyl)lysine:NAD+ oxidoreductase | c;m | Lipoic acid metabolism | 0.49 |
 | MAR00799 | reaction | Beta Oxidation of Fatty Acid | m | Fatty acid oxidation | 0.49 |
 
-### fold4_seed0 module_5: top nodes
+### fold4_seed0 module_5, mixed support (35 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -970,7 +972,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAR08146 | reaction | transport of glucosylceramide pool (cytosol to Golgi apparat | c;g | Transport reactions | 0.55 |
 | MAM02891r | metabolite | selenomethionine | r |  | 0.55 |
 
-### fold4_seed0 module_6: top nodes
+### fold4_seed0 module_6, mixed support (34 nodes, no subsystem above 25%): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
@@ -990,7 +992,7 @@ Sufficiency test (design section 6.5): held-out perturbations grouped by the mod
 | MAM01679l | metabolite | D-galactosyl-N-acylsphingosine | l |  | 0.53 |
 | MAR09909 | reaction | Valine Transport by B0At3 | c;e | Transport reactions | 0.53 |
 
-### fold4_seed0 module_7: top nodes
+### fold4_seed0 module_7, mixed support (34 nodes; its largest subsystem, transport reactions, holds 26% against 31% of the graph): top nodes
 
 | node | type | name | compartment | subsystem | gate |
 |---|---|---|---|---|---|
