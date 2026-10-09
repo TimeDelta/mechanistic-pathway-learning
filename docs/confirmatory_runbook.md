@@ -30,6 +30,8 @@ is the one tested: two models, the noisy-OR head of each encoder (the user dropp
    runs/full/confirmatory_lockbox.sh the run_baselines.py call reads
    `--graph-dir data/processed/graph_full_neuronal_split`, and confirmatory_lockbox.sh passes the same
    `--graph-dir` to experiments/score_confirmatory.py, whose own default still names the merged graph.
+   The H2 rewiring holds `encodes` fixed (the user, 9 October 2026: "Encodes should not be rewired in H2."), which is
+   the default of experiments/run_main_model.py, so no job script changes and `--rewire-encodes` is not used.
 1. confirmatory_pilots (first family, registered 8 October 2026): fold 0, seed 0 development pilots of the four confirmatory
    configurations (runs/full/confirmatory_*_disease_cluster_and_targets_development/fold0_seed0), then the development
    baselines (runs/full/baselines_v2_development, docs/phase2_baselines_full_v2_development.md). When it ends, check that

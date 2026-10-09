@@ -25,15 +25,27 @@ match. Benztropine, deprenyl, dothiepin, esketamine, eslicarbazepine and propoxy
 
 ## Rules
 
-**One value per drug-target pair.** The affinity of drug d at gene g is the median of every measurement of d at g
-in both sources (types Ki, Kd, IC50, EC50, Kb, A2 and AC50, all as −log10 molar). A value is never borrowed from
+**One value per drug-target pair.** The affinity of drug d at gene g is the maximum of every measurement of d at g
+in both sources (the user's decision of 9 October 2026, "Oh. In that case, I guess Max is fine."; the median until
+then) (types Ki, Kd, IC50, EC50, Kb, A2 and AC50, all as −log10 molar). A value is never borrowed from
 another ligand: noradrenaline at the noradrenaline transporter and amphetamine at the same transporter are two
 different pairs. The value belongs to the pair, so it enters as the magnitude of that drug's seed at that gene, not
 as a node descriptor (a node descriptor would give every drug the same value at the gene).
 
+Why the maximum rather than the median. A pair with more than one value does not hold one assay run twice: DrugCentral
+keeps one value per pair 96.5 percent of the time and GtoPdb already medians its own papers, so the repeats are two
+curators' aggregates of different literature. 14.7 percent of the 26,597 pairs with an affinity have more than one
+value (median 2, maximum 20); of the 2,367 pairs in both sources the median absolute difference is 0.10 log units, the
+90th percentile 1.13, and 12.1 percent differ by more than 1 log unit, with GtoPdb higher in 35.7 percent. With two
+values the median is the midpoint, so the maximum sits half a gap above it (median half-gap 0.05, 90th percentile 0.57,
+which moves an off-target's occupancy at the 0.25 threshold from 0.25 to between about 0.35 and 0.70).
+
 Pooling Ki with IC50 and EC50 is a simplification. IC50 depends on the substrate or radioligand concentration in the
-assay, and EC50 measures potency, not binding (Hulme and Trevethick 2010). A build would prefer Ki and Kd and fall
-back to the others.
+assay, and EC50 measures potency, not binding (Hulme and Trevethick 2010). By Cheng-Prusoff an IC50 is at or above the
+Ki, so an IC50-derived value is biased downward and the maximum is the one closer to a dissociation constant, which is
+the pharmacological argument for the decision; 34.3 percent of DrugCentral pairs carry no Ki or Kd. The untried
+alternative, recorded as a note: the type-aware rule, the median over Ki and Kd where they exist and the maximum over
+IC50 and EC50 otherwise.
 
 **Occupancy.** At equilibrium and one binding site, the fraction of target bound at free drug concentration C is
 θ = C / (C + K), where K is the equilibrium dissociation constant (Hulme and Trevethick 2010). Affinity is a property
@@ -68,22 +80,24 @@ it is low).
 
 | | occupancy ≥ 0.1 | ≥ 0.25 | ≥ 0.5 |
 |---|---|---|---|
-| off-target pairs kept | 818 | 622 | 408 |
-| of which with an action (a sign) | 233 | 190 | 124 |
-| of which partial agonist | 28 | 24 | 16 |
-| of which the gene is a graph node | 806 | 612 | 400 |
-| drugs with at least one | 130 | 119 | 106 |
-| off-targets per drug, median (max) | 1 (34) | 1 (26) | 0 (22) |
-| drugs with an off-target that is a labelled gene perturbation | 49 | 41 | 26 |
+| off-target pairs kept | 743 | 540 | 357 |
+| of which with an action (a sign) | 224 | 165 | 119 |
+| of which partial agonist | 25 | 17 | 12 |
+| of which the gene is a graph node | 731 | 532 | 349 |
+| drugs with at least one | 127 | 117 | 105 |
+| off-targets per drug, median (max) | 1 (31) | 1 (24) | 0 (17) |
+| drugs with an off-target that is a labelled gene perturbation | 46 | 36 | 24 |
 
-Most kept pairs (432 of 622 at 0.25) carry no action. Affinity panels record binding, not function.
+Most kept pairs (375 of 540 at 0.25) carry no action. Affinity panels record binding, not function.
+
+These counts are lower than the median rule gave (540 pairs over 117 drugs at 0.25 against 622 over 119, and 357 against 408 at 0.5): the maximum raises the primary target's affinity along with the off-targets', and the primary sets the concentration an off-target has to compete with, so fewer pairs clear a threshold.
 
 | drug | mechanism genes (primary pK) | highest-occupancy off-targets: gene, pK, occupancy, sign |
 |---|---|---|
-| amitriptyline | SLC6A2, SLC6A4 (7.61) | HRH1 9.30 1.00 −1; ADRA1D 8.25 0.98 none; CHRM4 8.14 0.97 −1; HRH4 8.14 0.97 none; HTR2C 8.10 0.97 none; ADRA2C 8.07 0.96 none |
-| sertraline | SLC6A4 (9.32) | SLC6A3 7.60 0.15; SIGMAR1 7.24 0.07; ADRA2B 7.08 0.05 (none kept at 0.25) |
-| haloperidol | DRD2, DRD3, DRD4, HTR2A (9.09) | SIGMAR1 8.92 0.86; ADRA1B 8.10 0.48; ADRA1A 7.90 0.37; DRD1 7.86 0.35 −1; TMEM97 7.80 0.32 |
-| methylphenidate | SLC6A2, SLC6A3 (7.03) | ADRA2C 6.07 0.50; ADRA2B 5.62 0.26; ADRA2A 5.25 0.13 |
+| amitriptyline | SLC6A2, SLC6A4 (8.37) | HRH1 9.30 0.99 −1; ADRA1D 8.25 0.87; ADRA1A 8.20 0.86 −1; CHRM4 8.14 0.84 −1; HRH4 8.14 0.84; HTR2C 8.10 0.83 |
+| sertraline | SLC6A4 (9.54) | SLC6A3 7.60 0.09; SIGMAR1 7.24 0.04; ADRA2B 7.08 0.03; ADRA2A 6.96 0.02; ADRA1A 6.86 0.02; SLC6A2 6.38 0.01 (none kept at 0.25) |
+| haloperidol | DRD2, DRD3, DRD4, HTR2A (9.42) | SIGMAR1 8.92 0.74; ADRA1B 8.10 0.30 |
+| methylphenidate | SLC6A2, SLC6A3 (7.21) | ADRA2C 6.07 0.39 |
 
 **Measurement coverage is uneven.** Human genes with an affinity per matched drug: median 6, quartiles 3 and 14,
 maximum 68. Only 44 drugs have rows from DrugMatrix (a fixed panel run on every compound it holds) and 58 from PDSP.
@@ -143,7 +157,7 @@ in the group holding most):
 |---|---|---|---|
 | every off-target joins, as a mechanism target does | 209 (0.94); 0.51 | 209 (0.94); 0.51 | 208 (0.94); 0.50 |
 | an off-target joins its drug only to that gene's own perturbation | 204 (0.92); 0.50 | 204 (0.92); 0.50 | 203 (0.91); 0.50 |
-| drugs joined only to the labelled genes they bind (mechanism or off-target); drugs sharing a target stay apart | 144 (0.65); 0.40 | 143 (0.64); 0.40 | 129 (0.58); 0.37 |
+| drugs joined only to the labelled genes they bind (mechanism or off-target); drugs sharing a target stay apart | 144 (0.65); 0.40 | 142 (0.64); 0.40 | 129 (0.58); 0.37 |
 
 For comparison, without off-targets: the current rule gives 17 drug-holding groups, the largest holding 114 drugs
 (0.51) and 0.27 of kept positive pairs; drugs joined only to labelled genes gives 67 drug-holding groups, the largest
@@ -176,7 +190,13 @@ Pairs without an action could enter through a separate unsigned input channel: t
 the gene without being told the direction. Partial agonists would go there too. This changes the encoders' input
 layer, not the graph.
 
-## Albumin
+## Albumin and the other plasma substrate binders
+
+Decided on 9 October 2026 (the user: "All of the plasma substrate binders should be modeled. Once AAG and albumin are
+added, there will be state to attach that separate extension to."). The scope, the binders, the data audit and the two
+build stages are in docs/plasma_protein_binding.md, which also records why orosomucoid rather than albumin carries
+this study's drugs, most of them bases. Nothing is built yet: the carriage edges need one UniProt fetch and the
+fraction unbound per drug is in no pinned source here.
 
 `GENE:ALB` has 49 edges in `graph_full_neuronal`: 32 regulates_transcription_of, 10 binds (protein partners such as
 LRP2, FCGRT, VCAM1 and B2M), 3 activates, 2 member_of and 2 catalyzed_by (the Human-GEM reactions that make albumin
@@ -236,8 +256,21 @@ What a build would need:
 6. Open Targets target-level labels: build them with the requirements above, or not.
 7. Albumin-metabolite binding edges in the graph, or not.
 
-Decided since this document was written: the stratified evaluation by measurement coverage is built (section above),
-and the human-evidence review of the rodent-only curation rows is in docs/rodent_readout_human_evidence.md.
+Decided since this document was written (the user, 8 and 9 October 2026; docs/preregistration.md carries each decision
+with its wording):
+
+- the stratified evaluation by measurement coverage is built (section above), and the human-evidence review of the
+  rodent-only curation rows is in docs/rodent_readout_human_evidence.md;
+- one value per pair is the maximum, not the median (section "Rules"), which settles nothing about item 3 or 4;
+- item 5, input normalisation once off-targets enter: the summary of the off-target occupancies enters the drug input
+  normalisation, and no drug-level scalar is added beside the graph ("You can drop the off target summary into the
+  normalization but mark it down as a note in case a situation comes up where it is needed to try"). The note holds the
+  three feature forms that were offered instead: the mean occupancy over the kept off-targets, log(number of
+  off-targets) and log(sum of the occupancies), the last two count-driven and closer to a research-attention proxy;
+- item 7, the plasma binders: yes, in the two stages of docs/plasma_protein_binding.md;
+- item 1 is measured rather than decided. docs/leakage_group_rules.md and
+  docs/leakage_group_rules_evidence_full_v2.md test the target-family rules with both tie-breaks and report what
+  leakage each one leaves; the registered grouping stays for the confirmatory reading.
 
 ## References
 

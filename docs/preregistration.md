@@ -873,6 +873,91 @@ graph that splits genes from proteins. This closes the last question of the amen
 - The slice reading of docs/gene_protein_split_results.md is not evidence against this change: the user does not
   accept the slice as a verdict on the split until the two confirmatory models are tested on it.
 
+Amendment, 9 October 2026 (second), recording the user's decisions after the first. Each is quoted and then stated as
+a rule. No lockbox run has started, and none of these changes a finished run.
+
+- **`encodes` is not rewired in the H2 control** ("Encodes should not be rewired in H2."). The H2 rewiring swaps edges
+  within every other relation and leaves the gene-to-protein relation as it is
+  (`fast_degree_preserving_rewiring(..., fixed_relations=[encodes])`, which is what `--rewire-encodes` off already
+  does, so runs/full/confirmatory_lockbox.sh needs no change). Rewiring it would send gene X's knockout to gene Y's
+  protein and to that protein's descriptors, so the H2 reading would measure scrambled identity beside scrambled
+  wiring, and a model could lose the H2 comparison for a reason the hypothesis does not name. This closes the first of
+  the three items the first amendment of 9 October named as blocking.
+- **The protein descriptors keep rank 64** ("I understand the data support more dimensions for the protein descriptors
+  but remember that we don't want them to completely outcompete the graph structure. I guess 64 is fine for now."). 64
+  is the ceiling of `RANK_GRID` in graph/protein_descriptors.py rather than an interior optimum: held-out R-squared of
+  the annotations still rises at the last point (0.113 at rank 48, 0.127 at 64), so the prespecified rule "the smallest
+  rank reaching 95 percent of the best on the grid" selects the largest rank on offer. The width is not what keeps the
+  graph in charge; the descriptor treatments do (the amendment of 8 October on how the node descriptors enter, and the
+  graph-reliance reading of docs/graph_reliance.md), and the no-descriptor ablation of step 1d measures what the
+  descriptors are worth on their own. If the treatments leave the descriptors dominant, the answer is a treatment or a
+  dropped block, not a narrower table.
+- **Repeated affinity measurements of one drug-target pair are aggregated by their maximum** ("Oh. In that case, I
+  guess Max is fine."), in place of the median that experiments/scope_off_target_binding.py used. The premise was
+  corrected first: a pair with more than one value does not hold one assay run twice but two curators' aggregates of
+  different papers (DrugCentral keeps one value per pair 96.5 percent of the time, GtoPdb already medians its own
+  papers), and 2,367 pairs are in both sources with a median absolute difference of 0.10 log units, a 90th percentile
+  of 1.13 and 12.1 percent differing by more than 1 log unit. The maximum is defensible by Cheng-Prusoff, since an
+  IC50-derived pK is biased downward against a Ki and 34.3 percent of DrugCentral pairs carry no Ki or Kd. My own
+  proposal was the type-aware rule (median over Ki and Kd when present, maximum otherwise); the user's decision
+  overrides it, and the type-aware rule is recorded here as the untried alternative. This changes the off-target
+  scoping only: the measurement-coverage strata count genes with an affinity, not their values, so they do not move.
+- **Every plasma substrate binder is modelled, and the measured-occupancy extension waits for them** ("All of the
+  plasma substrate binders should be modeled. Once AAG and albumin are added, there will be state to attach that
+  separate extension to."). The scope, the data audit and what is missing are in docs/plasma_protein_binding.md. The
+  graph already holds the binders as gene nodes (ALB, ORM1, ORM2, SERPINA6, SERPINA7, TTR, AFP, SHBG and the
+  apolipoproteins) with no edge to anything they carry, so the first stage is binding edges for the substrates, and
+  the second is the fraction unbound per drug, which no pinned source in this repository carries. Nothing in the
+  confirmatory specification changes on this yet: the extension needs the binder state, and the binder state needs
+  data that must be fetched and pinned first.
+- **The off-target summary enters the drug input normalisation, not the feature vector** ("You can drop the off target
+  summary into the normalization but mark it down as a note in case a situation comes up where it is needed to try.").
+  So when off-targets enter a drug's seeds, the summary of their occupancies scales that drug's input alongside
+  `drug_input_normalised` (experiments/run_main_model.py), and no drug-level scalar is added beside the graph. The
+  note: the standalone feature (mean occupancy over the kept off-targets, which is what I would have taken of the
+  three the user offered) stays available and untried, as do log(number of off-targets) and log(sum of occupancies),
+  both of which are count-driven and closer to a research-attention proxy than to pharmacology.
+- **The leakage-group rules are measured, and the registered grouping stays until the user decides** ("I don't like the
+  alphabetical thing. Try the other version of family tie breaking and also make sure to include a measurement of the
+  remaining leakage confound from this decision."). experiments/measure_leakage_group_rules.py, run on two evidence
+  tables because the answer differs between them: docs/leakage_group_rules.md on the off-target scoping table
+  (evidence_full_v3_max3_targets, up to three mechanism targets per drug) and
+  docs/leakage_group_rules_evidence_full_v2.md on the table the confirmatory family reads (evidence_full_v2, one
+  mechanism target per drug).
+  - The tie-break by best-bound mechanism target does what it was asked to do where it applies. On the scoping table it
+    takes the largest group from 0.18 to 0.14 of the drugs and moves 15 drugs, among them the antipsychotics, from a
+    serotonin-receptor family to the dopamine-receptor family their own affinities name. On `evidence_full_v2` it
+    changes nothing at all: no drug there has mechanism targets in more than one family, so the two tie-breaks give the
+    same groups and the question is moot for the confirmatory split as it stands.
+  - The remaining confound is not the tie-break but the join the family rule drops. On the scoping table, where a drug
+    can carry three mechanism targets in different families, 0.49 of test drugs share a mechanism target with a
+    training drug under either tie-break, carrying 0.57 of the test fold's kept drug positives, against 0.000 under the
+    registered rule, which puts two drugs sharing a target node in one group by construction. On `evidence_full_v2`
+    that part is 0.000 under every rule, and what remains is the drug-to-gene leak of docs/drug_target_leakage.md:
+    0.377 of test drugs target a gene whose own perturbation is in training, carrying 0.411 of the test fold's kept
+    drug positives, against 0.000 under the registered rule.
+  - So the family rule's gain is bought with that leak, not with a better partition. Its largest group holds 0.18 of the
+    drugs against 0.44 for the registered rule on `evidence_full_v2`; putting the drug-to-gene join back closes the leak
+    and takes the largest group to 0.45, which is the registered rule's own figure. `group_by` therefore stays
+    `disease_cluster_and_targets` for the confirmatory reading, and the family grouping is available as a development
+    sensitivity reading, where the measured leakage is reported beside it rather than assumed away.
+- **The Reactome entities get their own annotation vector** ("I like the separate annotation vector much better for the
+  complexes"), not the mean of their members' descriptors. graph/complex_descriptors.py and
+  experiments/build_complex_descriptors.py: the entity's annotation vector is the union (maximum) of its members'
+  Pfam families, EC numbers and GO molecular function terms and the intersection (minimum) of their GO cellular
+  component and UniProt location terms, with a DefinedSet or CandidateSet taking the mean over its members because it
+  is a disjunction rather than a machine; the vector is standardised with the proteome's statistics and projected onto
+  the same annotation-space directions the protein descriptors use. docs/complex_descriptors.md reports the one
+  measurement that decides whether the entity block can share the protein block's columns: the correlation, over the
+  proteome, between the projection of a protein's recorded annotations and the projection of the annotations predicted
+  from its sequence. Wiring the table into a graph's node_descriptors.parquet is a build step, and whether the
+  confirmatory graph carries it is the user's call at the lockbox go-ahead.
+- **Two symptom mapping conflicts stay open** ("I'll have to look at the antipsychotic bradykinesia and the other one
+  later"): `psychomotor_retardation` matches `\bbradykine`, so the relabelling of the DRD2-inhibition claim to
+  bradykinesia lands back on the symptom it was taken off; and `compulsive_behavior` matches `stereotyp`, which
+  `ANIMAL_READOUT_PATTERN` also matches, so human punding cannot enter as a label without an exception to the
+  rodent-readout filter (docs/rodent_readout_human_evidence.md). Neither is changed here.
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

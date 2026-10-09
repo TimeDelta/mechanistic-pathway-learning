@@ -116,10 +116,18 @@ def standardise(values: pd.DataFrame) -> pd.DataFrame:
     return ((values - mean) / standard_deviation).fillna(0.0)
 
 
+PROTEIN_ENTITY_TYPE = "protein_entity"
+
+
 def assemble_node_descriptor_table(nodes: pd.DataFrame, metabolite_table: pd.DataFrame | None = None, reaction_table: pd.DataFrame | None = None,
-                                   protein_table: pd.DataFrame | None = None) -> pd.DataFrame:
+                                   protein_table: pd.DataFrame | None = None, complex_table: pd.DataFrame | None = None) -> pd.DataFrame:
     """node_id-indexed table with one block per node type (columns prefixed metabolite_, reaction_, protein_), zero
-    outside the block's own type. protein_table is indexed by gene symbol."""
+    outside the block's own type. protein_table is indexed by gene symbol; complex_table, the annotation vectors of the
+    Reactome protein entities (graph/complex_descriptors.py), is indexed by node_id.
+
+    The entity vectors are built in the protein descriptors' own directions, so when the two tables carry the same
+    columns they share the protein block and one linear map reads both, with has_complex_descriptors saying which rows
+    are entities. With different columns the entities get a block of their own (prefix complex_)."""
     blocks = []
     node_index = pd.Index(nodes.node_id, name="node_id")
     if metabolite_table is not None:
@@ -135,11 +143,27 @@ def assemble_node_descriptor_table(nodes: pd.DataFrame, metabolite_table: pd.Dat
         block = pd.DataFrame(0.0, index=node_index, columns=reaction_table.columns)
         block.loc[is_reaction] = reaction_table.reindex(nodes.node_id[is_reaction]).fillna(0.0).to_numpy()
         blocks.append(block.add_prefix("reaction_"))
+    is_entity = (nodes.node_type == PROTEIN_ENTITY_TYPE).to_numpy()
+    entities_share_the_protein_block = (complex_table is not None and protein_table is not None
+                                        and list(complex_table.columns) == list(protein_table.columns))
     if protein_table is not None:
         is_gene = (nodes.node_type == "gene").to_numpy()
         per_gene = protein_table.reindex(nodes.gene_symbol[is_gene])
-        block = pd.DataFrame(0.0, index=node_index, columns=list(protein_table.columns) + ["has_protein_descriptors"])
-        block.loc[is_gene, list(protein_table.columns)] = per_gene.fillna(0.0).to_numpy()
+        columns = list(protein_table.columns)
+        block = pd.DataFrame(0.0, index=node_index, columns=columns + ["has_protein_descriptors"])
+        block.loc[is_gene, columns] = per_gene.fillna(0.0).to_numpy()
         block.loc[is_gene, "has_protein_descriptors"] = per_gene.notna().all(axis=1).astype(float).to_numpy()
+        if entities_share_the_protein_block:
+            per_entity = complex_table.reindex(nodes.node_id[is_entity])
+            block["has_complex_descriptors"] = 0.0
+            block.loc[is_entity, columns] = per_entity.fillna(0.0).to_numpy()
+            block.loc[is_entity, "has_complex_descriptors"] = per_entity.notna().all(axis=1).astype(float).to_numpy()
         blocks.append(block.add_prefix("protein_"))
+    if complex_table is not None and not entities_share_the_protein_block:
+        per_entity = complex_table.reindex(nodes.node_id[is_entity])
+        columns = list(complex_table.columns)
+        block = pd.DataFrame(0.0, index=node_index, columns=columns + ["has_complex_descriptors"])
+        block.loc[is_entity, columns] = per_entity.fillna(0.0).to_numpy()
+        block.loc[is_entity, "has_complex_descriptors"] = per_entity.notna().all(axis=1).astype(float).to_numpy()
+        blocks.append(block.add_prefix("complex_"))
     return pd.concat(blocks, axis=1) if blocks else pd.DataFrame(index=node_index)

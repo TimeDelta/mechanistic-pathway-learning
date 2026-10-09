@@ -118,9 +118,10 @@ Defects found:
    - the log-degree node feature.
 
    This is also what the scorer does by default, since it reads degree from the graph directory of the runs.
-8. **Rewiring for H2 holds the encodes relation fixed** (open for the user, since it changes the H2 rewiring). Rewiring
-   swaps edges within each relation. Swapping encodes edges keeps every degree but joins gene X to protein Y, so a
-   knockout would reach Y's descriptors, and H2 would then also measure scrambled identity. --rewire-encodes swaps them.
+8. **Rewiring for H2 holds the encodes relation fixed.** Decided by the user on 9 October 2026 ("Encodes should not be
+   rewired in H2."), which is what the default already does. Rewiring swaps edges within each relation. Swapping
+   encodes edges keeps every degree but joins gene X to protein Y, so a knockout would reach Y's descriptors, and H2
+   would then also measure scrambled identity beside scrambled wiring. --rewire-encodes swaps them and is not used.
 9. **Message passing gets one more layer,** since a knockout reaches the protein layer one hop later.
 
 ## Degree strata on the split (measured)
@@ -172,9 +173,9 @@ Consequences of the user's decision:
   refit_pilots read them.
 - The confirmatory_v2 configurations named graph_full_neuronal when this was written. Decided since, by the user on
   9 October 2026: they move to graph_full_neuronal_split with the split descriptor table, the split cell-class weights
-  and a third message-passing layer (docs/preregistration.md, amendment of 9 October 2026). The development pilots on
-  the split graph, the one-hop degree check on the full split graph and the handling of `encodes` in the H2 rewiring
-  come before any lockbox run.
+  and a third message-passing layer (docs/preregistration.md, amendment of 9 October 2026). The degree check on the
+  full split graph is done and `encodes` is held fixed in the H2 rewiring (decision 8, the user's second amendment of
+  9 October 2026); the development pilots on the split graph come before any lockbox run.
 
 ## Built (8 October 2026, new directories only)
 

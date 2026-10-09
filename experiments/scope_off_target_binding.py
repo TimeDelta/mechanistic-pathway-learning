@@ -9,8 +9,11 @@ Sources (downloaded into their own directories under data/raw, which git ignores
   - IUPHAR/BPS Guide to PHARMACOLOGY interactions.csv and ligand_id_mapping.csv (release 2026.3): affinities with the
     ligand's type and action (full, partial or inverse agonist, antagonist, inhibitor, allosteric modulator, ...).
 
-Per drug and target gene the affinity is the median over every measurement of that pair in both sources (the same
-drug at the same target, never another ligand's value). Occupancy assumes the therapeutic free concentration
+Per drug and target gene the affinity is the maximum over every measurement of that pair in both sources (the same
+drug at the same target, never another ligand's value; the user's decision of 9 October 2026). A pair with more than
+one value holds two curators' aggregates of different papers rather than one assay run twice (DrugCentral keeps one
+value per pair 96.5 percent of the time, GtoPdb already medians its own papers), and by Cheng-Prusoff an IC50-derived
+pK is biased downward against a Ki, so the larger value is the one closer to the dissociation constant. Occupancy assumes the therapeutic free concentration
 occupies 90 percent of the drug's best-bound mechanism target, C = 9 K_primary, and Langmuir binding at one site:
 occupancy = C / (C + K_target) = 1 / (1 + 10 ** (pK_primary - pK_target) / 9).
 
@@ -236,7 +239,7 @@ def main() -> None:
             unmatched.append(label)
             continue
         mechanism_genes = {symbol_of_node.get(data.node_ids[seed]) for seed in seeds} - {None}
-        by_gene = measurements.groupby("gene").agg(p_affinity=("p_affinity", "median"), measurements=("p_affinity", "count"),
+        by_gene = measurements.groupby("gene").agg(p_affinity=("p_affinity", "max"), measurements=("p_affinity", "count"),
                                                    actions=("action", lambda values: sorted({value for value in values if value})),
                                                    listed_as_mechanism=("mechanism", "any"))
         with_affinity = by_gene[by_gene.p_affinity.notna()]
