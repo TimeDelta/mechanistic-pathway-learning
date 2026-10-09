@@ -2272,6 +2272,67 @@
   note = {Plasma substrate binders: orosomucoid carries basic drugs and is an acute phase protein (docs/plasma_protein_binding.md)}
 }
 
+@article{alqassabi2024facing,
+  author = {Al-Qassabi, Jokha and Tan, Shawn Pei Feng and Phonboon, Patcharapan and Galetin, Aleksandra and Rostami-Hodjegan, Amin and Scotcher, Daniel},
+  title = {Facing the facts of altered plasma protein binding: do current models correctly predict changes in fraction unbound in special populations?},
+  journal = {J. Pharm. Sci.},
+  year = {2024},
+  volume = {113},
+  number = {6},
+  pages = {1664--1673},
+  doi = {10.1016/j.xphs.2024.02.024},
+  pmid = {38417790},
+  note = {Stage 2 of docs/plasma_protein_binding.md. Refutes deriving the fraction unbound from the binder's concentration: "concordance correlation coefficients for predicted fold-change in fu for the same dataset were <0.38 for all populations and sub-groups" and "the predictions of fu solely based on changes in protein concentrations in plasma cannot explain the observed values in some special populations" (abstract, PubMed 38417790). Its database is alqassabi2024database}
+}
+
+@misc{alqassabi2024database,
+  author = {Al-Qassabi, Jokha and Tan, Shawn Pei Feng and Phonboon, Patcharapan and Galetin, Aleksandra and Rostami-Hodjegan, Amin and Scotcher, Daniel},
+  title = {Database of fraction unbound in plasma (fu) measurements},
+  year = {2024},
+  publisher = {University of Manchester},
+  doi = {10.48420/25243138.v1},
+  note = {CC BY 4.0. The supplementary dataset of alqassabi2024facing: 556 measurement rows over 209 drugs, each naming albumin, orosomucoid or both as the major binding protein and giving the fraction unbound in a reference and in a special population, with a PMID or DOI per row. Pinned by experiments/fetch_fraction_unbound_database.py; coverage in docs/fraction_unbound_coverage.md}
+}
+
+@article{israili2001human,
+  author = {Z. H. Israili and P. G. Dayton},
+  title = {Human alpha-1-glycoprotein and its interactions with drugs},
+  journal = {Drug Metab. Rev.},
+  year = {2001},
+  volume = {33},
+  number = {2},
+  pages = {161--235},
+  doi = {10.1081/dmr-100104402},
+  pmid = {11495502},
+  note = {Orosomucoid as a drug carrier: "hundreds of drugs with diverse structures bind to this glycoprotein. Although plasma concentration of AAG is much lower than that of albumin, AAG can become the major drug binding macromolecule in plasma with significant clinical implications" (abstract, PubMed 11495502)}
+}
+
+@article{kremer1988drug,
+  author = {J. M. Kremer and J. Wilting and L. H. Janssen},
+  title = {Drug binding to human alpha-1-acid glycoprotein in health and disease},
+  journal = {Pharmacol. Rev.},
+  year = {1988},
+  volume = {40},
+  number = {1},
+  pages = {1--47},
+  doi = {10.1016/S0031-6997(25)00015-8},
+  pmid = {3064105},
+  note = {The review of orosomucoid binding constants per drug. PubMed carries no abstract for it, so nothing is quoted here; the DOI was checked against Crossref, which returns the same title, authors, journal, volume and pages}
+}
+
+@article{romach1981methadone,
+  author = {M. K. Romach and K. M. Piafsky and J. G. Abel and V. Khouw and E. M. Sellers},
+  title = {Methadone binding to orosomucoid (alpha-1-acid glycoprotein): determinant of free fraction in plasma},
+  journal = {Clin. Pharmacol. Ther.},
+  year = {1981},
+  volume = {29},
+  number = {2},
+  pages = {211--217},
+  doi = {10.1038/clpt.1981.34},
+  pmid = {7193106},
+  note = {The free fraction of a basic drug as a function of the orosomucoid concentration: "As the alpha 1-AGP increased from 0.05 to 2.0 gm/l, free fraction fell from 92.40% to 8.80%" and, over 29 healthy subjects, "free fraction of dl-methadone was (mean% +/- SD) 10.62 +/- 1.43" (abstract, PubMed 7193106)}
+}
+
 @article{wallace1987binding,
   author = {S. M. Wallace and R. K. Verbeeck},
   title = {Plasma protein binding of drugs in the elderly},

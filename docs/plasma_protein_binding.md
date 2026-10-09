@@ -106,15 +106,81 @@ sentence, in the form the repository already uses for the presynaptic receptor a
 
 ## Stage 2: the free fraction and the binder state
 
-Needs data that is not here. A measured fraction unbound per drug is in neither DrugCentral's flat files
-(`classes.tsv`, `drug-to-class.tsv`, `indications.tsv`, `targets.tsv`) nor the GtoPdb release, and DrugBank's
-protein-binding field is in the full database rather than the pinned slim tables. Candidates to fetch and pin, in
-order of how much they can be checked: ChEMBL assay rows with a plasma-protein-binding or fraction-unbound endpoint;
-the open pharmacokinetic compilations that report fraction unbound with a source paper per drug; a hand-pinned table
-from the labels, which is the least checkable and would need its own appraisal.
+The user's request of 9 October 2026, "Can you please find the data you need for orosomucoid?", is answered here.
+The data is found and pinned, it reaches a quarter of this study's drugs, and one source it rests on refutes the
+plan this document gave for using it.
 
-Only then does the extension the user named become possible, and it is a second condition per drug (normal plasma
-against raised orosomucoid or low albumin) with its own evidence, not a descriptor column.
+### What is pinned
+
+`data/raw/plasma_protein_binding/fraction_unbound_database.xlsx`, fetched by
+experiments/fetch_fraction_unbound_database.py: the supplementary database of Al-Qassabi and colleagues (figshare
+`10.48420/25243138.v1`, CC BY 4.0; the paper is `10.1016/j.xphs.2024.02.024`, PMID 38417790). The fetch goes through
+the figshare API so the file's md5 can be checked against the one figshare publishes for it, which it matches.
+
+It holds 556 measurement rows over 209 drugs, each row carrying
+
+- the **major binding protein**: albumin (347 rows), orosomucoid (122) or both (87), which is the carrier identity no
+  other source here gives;
+- the **fraction unbound in a reference population**;
+- the **fraction unbound in a special population**: renal impairment, hepatic impairment, elderly, paediatric,
+  inflammatory disease (Crohn's disease, rheumatoid arthritis) and ethnicity;
+- a PMID or DOI for the measurement.
+
+That is the state the user asked for, measured rather than modelled: inflammatory disease is the raised-orosomucoid
+condition and hepatic impairment the low-albumin one, and the database gives both ends of each.
+
+### What it reaches, measured
+
+experiments/measure_fraction_unbound_coverage.py, reported in docs/fraction_unbound_coverage.md: **27 of this
+study's 142 drug perturbations**, and 2 of the 28 in the lockbox (caffeine and diphenhydramine). Eleven of the
+twenty-seven name orosomucoid as a major binding protein: alfentanil, desipramine, diphenhydramine, fentanyl,
+lidocaine, meperidine, methadone, reboxetine, ropivacaine, sufentanil and tiagabine. Two rows show the effect the
+extension is for: methadone's fraction unbound falls from 0.1062 to 0.0912 in rheumatoid arthritis, and alfentanil's
+from 0.11 to 0.052. One hundred and fifteen of the study's drugs have no row, so for them stage 2 has no free
+fraction from this source.
+
+### The plan this document gave for stage 2 is wrong, and the correction
+
+The cautions above proposed re-deriving the fraction unbound from the binder's affinity and concentration, so that a
+model that also varies the binder state would not count the same binding twice. The paper behind the pinned database
+tested that approach and it fails: "concordance correlation coefficients for predicted fold-change in fu for the same
+dataset were <0.38 for all populations and sub-groups", and "the predictions of fu solely based on changes in protein
+concentrations in plasma cannot explain the observed values in some special populations" (abstract, PMID 38417790;
+[DOI](https://doi.org/10.1016/j.xphs.2024.02.024)). Their recommendation is the opposite of the plan: "PBPK models of
+special populations for highly bound drugs should preferably use measured fu data". So the second condition per drug
+is a **pair of measured fractions**, the reference one and the special-population one, not a reference fraction
+rescaled by an orosomucoid concentration. The double-counting the plan feared does not arise, because neither number
+is derived from the other; what is lost is any drug the database does not measure in that population, which cannot be
+filled by prediction without reintroducing exactly the error the paper quantifies.
+
+### Why orosomucoid rather than albumin carries this state, with the sources
+
+- Orosomucoid can be the carrier that matters even though it is the rarer protein: "hundreds of drugs with diverse
+  structures bind to this glycoprotein. Although plasma concentration of AAG is much lower than that of albumin, AAG
+  can become the major drug binding macromolecule in plasma with significant clinical implications" (Israili and
+  Dayton, abstract, PMID 11495502, [DOI](https://doi.org/10.1081/dmr-100104402)).
+- The free fraction of a basic drug tracks the orosomucoid concentration over the whole physiological range: "As the
+  alpha 1-AGP increased from 0.05 to 2.0 gm/l, free fraction fell from 92.40% to 8.80%", measured for methadone, whose
+  free fraction over 29 healthy subjects was "10.62 +/- 1.43" per cent (Romach and colleagues, abstract, PMID 7193106,
+  [DOI](https://doi.org/10.1038/clpt.1981.34)). The same paper bounds where it does not matter: "Less than 20% of
+  naloxone, codeine, morphine, heroin, pentazocine, and diphenoxylate bound to alpha 1-AGP."
+- The per-drug binding constants are in Kremer, Wilting and Janssen, Pharmacol Rev 40:1-47, 1988 (PMID 3064105,
+  [DOI](https://doi.org/10.1016/S0031-6997(25)00015-8)), which PubMed indexes without an abstract, so nothing from it
+  is quoted or used here; it is recorded as the place to go if a drug the database misses has to be derived.
+
+These are PubMed records, and PubMed asks that it be cited and the article DOIs given, which this section does.
+
+### What is still missing
+
+- The 115 drugs with no measured fraction unbound. ChEMBL does not fill the gap: its human plasma-binding rows
+  (`standard_type` PPB and Fu, 2,260 and 1,759 rows) reach 19 of this study's 142 drugs, and its ADMET endpoint
+  returns calculated properties only, which a call for one of these drugs confirms. Lombardo and colleagues' 1,352
+  compound compilation (`10.1124/dmd.118.082966`) is the next candidate, and its protein-binding column is itself
+  compiled "from other available sources", so it would need its own appraisal.
+- Orosomucoid's own plasma concentration per population, which the database does not carry because it does not need
+  it; the correction above is the reason this is no longer on the critical path.
+- Whether the extension's second condition is modelled per drug or per population, which is a design question for the
+  user, not a data gap.
 
 ## Built
 
