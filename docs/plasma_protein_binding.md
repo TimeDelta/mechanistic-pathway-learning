@@ -170,6 +170,46 @@ filled by prediction without reintroducing exactly the error the paper quantifie
 
 These are PubMed records, and PubMed asks that it be cited and the article DOIs given, which this section does.
 
+### What the orosomucoid drugs are actually worth, and the treatment that follows
+
+The user, 9 October 2026: "If orosomucoid carries 11 of 27 drugs by itself, we NEED a physiologically and
+computationally viable way to deal with it ... If it just means dropping some portion of its pairs, check which
+pairs and how important they are for psych symptoms. Knockouts for the orosomucoid binder would also be fine as
+training examples." Both halves are measured in docs/orosomucoid_label_stake.md
+(experiments/measure_orosomucoid_label_stake.py), and both answers cut against the worry.
+
+**The pairs at stake are 23 of the study's 2,211 kept positives, 1.0 percent.** Seven of the eleven
+orosomucoid-carried drugs hold no kept positive at all (alfentanil, desipramine, diphenhydramine, meperidine,
+methadone, sufentanil, tiagabine), and diphenhydramine, the one of the eleven in the lockbox, is among them.
+Fentanyl alone holds 12 of the 23. The symptoms they reach are anxiety (4), psychomotor_agitation, insomnia and
+somnolence_or_hypersomnia (3 each), none of which depends on these drugs: every one is carried by many other
+perturbations. So dropping the orosomucoid-carried pairs outright would cost the study about one part in a hundred
+of its scored signal, concentrated in one opioid.
+
+**The knockouts are not available.** A gene perturbation's labels come from HPO disease annotations, and ORM1 and
+ORM2 have none: zero annotation rows and zero diseases, as do SHBG and SERPINA7. The binders that do carry HPO
+annotations are TTR (100 rows), APOB (55), APOA1 (49), ALB (39), RBP4 (22), SERPINA6 (13) and AFP (4), and three of
+those are already perturbations. Orosomucoid cannot be a training example until some phenotype source other than
+HPO names it, which is a data gap and not a modelling choice. No human orosomucoid deficiency is described.
+
+**The treatment.** Given those two numbers, a free-fraction input is the wrong instrument and a stratifier is the
+right one:
+
+1. The carriage edges stay as they are. They say which binder carries which cargo, which is structural and is
+   already in the confirmatory graph. They do not claim a free fraction and do not need one.
+2. The measured fraction unbound does not enter the model as a per-drug feature. It exists for 27 of 142 drugs, and
+   the drugs it exists for are the better-studied ones; docs/off_target_scoping.md already measures that kept
+   positives rise with measurement coverage (273, 374, 417 across the three terciles). A feature present for 19
+   percent of drugs, and present exactly where the labels are denser, would carry how well studied a drug is as
+   much as how much of it is free. That is the confounding the coverage strata exist to control, and a feature
+   would reintroduce it inside the model.
+3. The fraction unbound becomes a reported stratum instead, read the same way as the coverage terciles: the
+   confirmatory numbers with and without the drugs whose free fraction moves most with the binder state. This
+   changes no input, no graph and no label, so it needs no amendment and cannot disturb the lockbox.
+4. If the binder state is ever to be modelled per drug, it needs the measured pair of fractions per population, not
+   a concentration-rescaled one (the correction above), and it needs the 115 missing drugs, which no pinned source
+   supplies. That is a later study, not this one.
+
 ### What is still missing
 
 - The 115 drugs with no measured fraction unbound. ChEMBL does not fill the gap: its human plasma-binding rows

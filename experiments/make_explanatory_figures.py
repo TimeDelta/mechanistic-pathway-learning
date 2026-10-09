@@ -30,6 +30,7 @@ import pandas as pd  # noqa: E402
 import torch  # noqa: E402
 from matplotlib.colors import TwoSlopeNorm  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
+from matplotlib.path import Path as MatplotlibPath  # noqa: E402
 
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder  # noqa: E402
 
@@ -50,13 +51,15 @@ DOPAMINERGIC_SUMMARY = Path("data/processed/brain_expression/dopaminergic_silett
 TWIN_COMPARISONS = Path("runs/twin_comparisons.json")
 SLICE_BASELINES = Path("runs/baselines_disease_cluster/results.json")
 SLICE_AGGREGATE = Path("runs/phase3_aggregate.json")
+# 150 left the dense pipeline figure soft on a high-density display (the user, 9 October 2026)
+SAVE_DPI = 240
 BOX_COLOURS = {"input": "#dbe9f6", "graph": "#e3f1df", "propagation": "#fdebd3", "readout": "#efe3f4", "output": "#f4f4f4"}
 
 
 def save(figure, name: str) -> None:
     OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
     path = OUTPUT_DIRECTORY / f"{name}.png"
-    figure.savefig(path, dpi=150, bbox_inches="tight")
+    figure.savefig(path, dpi=SAVE_DPI, bbox_inches="tight")
     plt.close(figure)
     print(f"wrote {path}")
 
@@ -75,15 +78,48 @@ def graph_layer_counts(graph_directory: Path) -> dict:
             "node_types": nodes.node_type.value_counts().to_dict(), "edges_by_layer": pd.Series(layer_of_edge).value_counts().to_dict()}
 
 
-def draw_box(axis, centre_x: float, centre_y: float, width: float, height: float, title: str, body: str, colour: str) -> None:
-    axis.add_patch(FancyBboxPatch((centre_x - width / 2, centre_y - height / 2), width, height, boxstyle="round,pad=0.01,rounding_size=0.015",
-                                  facecolor=colour, edgecolor="#555555", linewidth=1.0))
-    axis.text(centre_x, centre_y + height / 2 - 0.035, title, ha="center", va="top", fontsize=9.5, fontweight="bold")
-    axis.text(centre_x, centre_y + height / 2 - 0.085, body, ha="center", va="top", fontsize=7.4, linespacing=1.35)
+BOX_BODY_FONT_SIZE, BOX_TITLE_FONT_SIZE, BOX_LINE_SPACING = 8.8, 11.0, 1.4
+# all in inches, because the pipeline figure's axis is drawn in inches (see figure_model_pipeline)
+BOX_INNER_PAD, BOX_TITLE_GAP, SMALLEST_BOX_GAP, FIGURE_MARGIN, ROW_GUTTER = 0.22, 0.16, 0.5, 0.22, 1.0
 
 
-def draw_arrow(axis, start: tuple[float, float], end: tuple[float, float]) -> None:
-    axis.add_patch(FancyArrowPatch(start, end, arrowstyle="-|>", mutation_scale=13, color="#444444", linewidth=1.2, connectionstyle="arc3,rad=0"))
+def text_size_in_inches(figure, axis, text: str, font_size: float, weight: str = "normal") -> tuple[float, float]:
+    """The width and height a text block occupies, in inches, measured by drawing it once and removing it.
+    get_window_extent reports pixels at the canvas dpi, which is why the division is by figure.dpi and not by the
+    dpi the file is finally saved at. The pipeline figure sizes its boxes from these measurements rather than from
+    hand-set constants, so no box is left with dead space under its last line and no line can outgrow its box."""
+    artist = axis.text(0.0, 0.0, text, fontsize=font_size, fontweight=weight, linespacing=BOX_LINE_SPACING)
+    figure.canvas.draw()
+    extent = artist.get_window_extent(figure.canvas.get_renderer())
+    artist.remove()
+    return extent.width / figure.dpi, extent.height / figure.dpi
+
+
+def measured_box(figure, axis, title: str, body: str, colour: str) -> dict:
+    title_width, title_height = text_size_in_inches(figure, axis, title, BOX_TITLE_FONT_SIZE, "bold")
+    body_width, body_height = text_size_in_inches(figure, axis, body, BOX_BODY_FONT_SIZE)
+    return {"title": title, "body": body, "colour": colour, "title_height": title_height,
+            "width": max(title_width, body_width) + 2 * BOX_INNER_PAD,
+            "height": title_height + BOX_TITLE_GAP + body_height + 2 * BOX_INNER_PAD}
+
+
+def draw_box(axis, box: dict, left: float, top: float, height: float) -> None:
+    axis.add_patch(FancyBboxPatch((left, top - height), box["width"], height, boxstyle="round,pad=0,rounding_size=0.1",
+                                  facecolor=box["colour"], edgecolor="#555555", linewidth=1.1, zorder=1))
+    centre_x = left + box["width"] / 2
+    axis.text(centre_x, top - BOX_INNER_PAD, box["title"], ha="center", va="top", fontsize=BOX_TITLE_FONT_SIZE,
+              fontweight="bold", zorder=2)
+    axis.text(centre_x, top - BOX_INNER_PAD - box["title_height"] - BOX_TITLE_GAP, box["body"], ha="center", va="top",
+              fontsize=BOX_BODY_FONT_SIZE, linespacing=BOX_LINE_SPACING, zorder=2)
+
+
+def draw_arrow(axis, vertices: list[tuple[float, float]]) -> None:
+    """A straight arrow between two points, an elbow through every point given. The step from the last box of one
+    row to the first box of the next is routed through the gutter between the rows; drawn as a single diagonal it
+    crossed the whole figure and read as an error."""
+    path = MatplotlibPath(vertices, [MatplotlibPath.MOVETO] + [MatplotlibPath.LINETO] * (len(vertices) - 1))
+    axis.add_patch(FancyArrowPatch(path=path, arrowstyle="-|>", mutation_scale=18, color="#444444", linewidth=1.5,
+                                   joinstyle="miter", zorder=3))
 
 
 def figure_model_pipeline() -> None:
@@ -93,48 +129,88 @@ def figure_model_pipeline() -> None:
     cell_classes = [column for column in pd.read_parquet(CELL_CLASS_WEIGHTS).columns if column != "all_cells"]
     layer_lines = "\n".join(f"{layer}: {number:,} edges" for layer, number in sorted(counts["edges_by_layer"].items(), key=lambda item: -item[1]))
     node_lines = ", ".join(f"{number:,} {node_type.replace('_', ' ')}" for node_type, number in counts["node_types"].items() if number > 1)
-    figure, axis = plt.subplots(figsize=(15, 8.4))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
+    # the axis is drawn in inches, so a measured text size is directly a coordinate and the figure can be sized to
+    # its contents; the size passed here is provisional and is replaced once the boxes have been measured
+    figure = plt.figure(figsize=(16, 10))
+    axis = figure.add_axes((0.0, 0.0, 1.0, 1.0))
     axis.axis("off")
-    top_row, bottom_row, height = 0.755, 0.245, 0.44
-    draw_box(axis, 0.105, top_row, 0.19, height, "1. Perturbation",
-             "monogenic: loss or gain of function\nat one gene (sign, magnitude)\n\ndrug: signed effect at its\nprotein targets (ChEMBL mechanisms)\n\n"
-             "entered as a sustained input u\nat the perturbed nodes\n\non the split graph (figure 7):\nknockouts seed gene nodes,\ndrugs seed protein nodes",
-             BOX_COLOURS["input"])
-    draw_box(axis, 0.415, top_row, 0.38, height, "2. Graph (graph_full_neuronal_split_binders)",
-             f"{counts['nodes']:,} nodes, {counts['edges']:,} edges, {counts['relations']} relations\n{node_lines}\n\n{layer_lines}\n\n"
-             "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1,\nplasma carriage 0\n\n"
-             f"genes and proteins are separate nodes (figure 7)\nplasma carriage, {binder_summary['edges_added']} binds edges (figure 8)",
-             BOX_COLOURS["graph"])
-    draw_box(axis, 0.815, top_row, 0.35, height, "3. Encoder (one per tested model)",
-             "message passing: node states from structural\nfeatures and descriptors, 3 layers of typed\nmessages (mean per relation), one more than on\na merged graph because a perturbed gene reaches\nits protein one hop later\n\n"
-             "linear response, 8 steps:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
-             "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
-             f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
-             "both read the difference field:\nperturbed minus unperturbed", BOX_COLOURS["propagation"])
-    draw_box(axis, 0.2, bottom_row, 0.36, height, "4. Node properties",
-             "fixed, per node type: protein (ESM-2 embeddings),\nmetabolite and reaction (EC) descriptors; brain\n"
-             "region and cell-class expression, with the\ndopaminergic class\n\n"
-             "message passing: in the node's starting state\nlinear response: in the output gate,\n"
-             "field = (h W) * sigmoid(node properties W_g + b),\nwhich changes where the response is read,\nnot how it propagates\n\n"
-             "treatments that keep the graph in charge (seed\nmasking, zero-initialised slow descriptor map):\nslice arms only, not applied", BOX_COLOURS["readout"])
-    draw_box(axis, 0.52, bottom_row, 0.2, height, "5. Pooling and head",
-             "sum over nodes\n\nnoisy-OR over pathway\nmodules (gated node\nsupports and links); each\nleak starts at its\nloss-optimal constant\n\n"
-             "sigmoid head (one logit\nper symptom): slice\ncomparisons only, dropped\nfrom the tested models\non 8 October", BOX_COLOURS["readout"])
-    draw_box(axis, 0.82, bottom_row, 0.32, height, "6. Symptoms and labels",
-             f"{len(label_summary['all_by_symptom'])} psychiatric symptoms in the evidence\n\nlabels: HPO annotations (genes), SIDER and\n"
-             "OnSIDES drug labels (drugs)\nbetter_v2: low-frequency positives and pairs\nwhose only evidence is grade C are masked,\n"
-             "neither positive nor negative;\nunobserved pairs stay unlabelled\n\n"
-             "folds grouped by disease cluster and drug\ntargets; lockbox_v2 held out; early-stopping\nvalidation rotated per seed; refit on\n"
-             "training and validation together", BOX_COLOURS["output"])
-    draw_arrow(axis, (0.2, top_row), (0.225, top_row))
-    draw_arrow(axis, (0.605, top_row), (0.64, top_row))
-    draw_arrow(axis, (0.81, top_row - height / 2), (0.2, bottom_row + height / 2))
-    draw_arrow(axis, (0.38, bottom_row), (0.42, bottom_row))
-    draw_arrow(axis, (0.62, bottom_row), (0.66, bottom_row))
-    axis.set_title("The two tested models (confirmatory_v2, noisy-OR head on each encoder), from a perturbation to symptom probabilities",
-                   fontsize=12, fontweight="bold")
+    first_row = [
+        measured_box(figure, axis, "1. Perturbation",
+                     "monogenic: loss or gain of function\nat one gene (sign, magnitude)\n\n"
+                     "drug: signed effect at its\nprotein targets (ChEMBL mechanisms)\n\n"
+                     "entered as a sustained input u\nat the perturbed nodes\n\n"
+                     "on the split graph (figure 7):\nknockouts seed gene nodes,\ndrugs seed protein nodes",
+                     BOX_COLOURS["input"]),
+        measured_box(figure, axis, "2. Graph (graph_full_neuronal_split_binders)",
+                     f"{counts['nodes']:,} nodes, {counts['edges']:,} edges, {counts['relations']} relations\n{node_lines}\n\n"
+                     f"{layer_lines}\n\n"
+                     "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1,\nplasma carriage 0\n\n"
+                     f"genes and proteins are separate nodes (figure 7)\nplasma carriage, {binder_summary['edges_added']} binds edges (figure 8)",
+                     BOX_COLOURS["graph"]),
+        measured_box(figure, axis, "3. Encoder (one per tested model)",
+                     "message passing: node states from structural\nfeatures and descriptors, 3 layers of typed\n"
+                     "messages (mean per relation), one more than on\na merged graph because a perturbed gene reaches\n"
+                     "its protein one hop later\n\n"
+                     "linear response, 8 steps:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
+                     "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
+                     f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
+                     "both read the difference field:\nperturbed minus unperturbed", BOX_COLOURS["propagation"]),
+    ]
+    second_row = [
+        measured_box(figure, axis, "4. Node properties",
+                     "fixed, per node type: protein (ESM-2 embeddings),\nmetabolite and reaction (EC) descriptors; brain\n"
+                     "region and cell-class expression, with the\ndopaminergic class\n\n"
+                     "message passing: in the node's starting state\nlinear response: in the output gate,\n"
+                     "field = (h W) * sigmoid(node properties W_g + b),\nwhich changes where the response is read,\n"
+                     "not how it propagates\n\n"
+                     "treatments that keep the graph in charge (seed\nmasking, zero-initialised slow descriptor map):\n"
+                     "slice arms only, not applied", BOX_COLOURS["readout"]),
+        measured_box(figure, axis, "5. Pooling and head",
+                     "sum over nodes\n\nnoisy-OR over pathway modules\n(gated node supports and links);\n"
+                     "each leak starts at its\nloss-optimal constant\n\n"
+                     "sigmoid head (one logit per\nsymptom): slice comparisons only,\ndropped from the tested models\n"
+                     "on 8 October", BOX_COLOURS["readout"]),
+        measured_box(figure, axis, "6. Symptoms and labels",
+                     f"{len(label_summary['all_by_symptom'])} psychiatric symptoms in the evidence\n\n"
+                     "labels: HPO annotations (genes), SIDER and\nOnSIDES drug labels (drugs)\n"
+                     "better_v2: low-frequency positives and pairs\nwhose only evidence is grade C are masked,\n"
+                     "neither positive nor negative;\nunobserved pairs stay unlabelled\n\n"
+                     "folds grouped by disease cluster and drug\ntargets; lockbox_v2 held out; early-stopping\n"
+                     "validation rotated per seed; refit on\ntraining and validation together", BOX_COLOURS["output"]),
+    ]
+    title = "The two tested models (confirmatory_v2, noisy-OR head on each encoder), from a perturbation to symptom probabilities"
+    title_width, title_height = text_size_in_inches(figure, axis, title, 14.0, "bold")
+    rows = (first_row, second_row)
+    row_heights = [max(box["height"] for box in row) for row in rows]
+    figure_width = max([title_width] + [sum(box["width"] for box in row) + (len(row) - 1) * SMALLEST_BOX_GAP for row in rows]) + 2 * FIGURE_MARGIN
+    figure_height = 2 * FIGURE_MARGIN + title_height + 0.35 + row_heights[0] + ROW_GUTTER + row_heights[1]
+    figure.set_size_inches(figure_width, figure_height)
+    axis.set_xlim(0, figure_width)
+    axis.set_ylim(0, figure_height)
+    axis.text(figure_width / 2, figure_height - FIGURE_MARGIN, title, ha="center", va="top", fontsize=14, fontweight="bold")
+
+    row_tops = [figure_height - FIGURE_MARGIN - title_height - 0.35]
+    row_tops.append(row_tops[0] - row_heights[0] - ROW_GUTTER)
+    spans_by_row = []
+    for row, row_top, row_height in zip(rows, row_tops, row_heights):
+        # the slack goes into the gaps, so both rows share one left edge and one right edge
+        gap = (figure_width - 2 * FIGURE_MARGIN - sum(box["width"] for box in row)) / (len(row) - 1)
+        left, spans = FIGURE_MARGIN, []
+        for box in row:
+            draw_box(axis, box, left, row_top, row_height)
+            spans.append((left, left + box["width"]))
+            left += box["width"] + gap
+        spans_by_row.append(spans)
+
+    for spans, row_top, row_height in zip(spans_by_row, row_tops, row_heights):
+        middle_y = row_top - row_height / 2
+        for (_, right_edge), (next_left_edge, _) in zip(spans, spans[1:]):
+            draw_arrow(axis, [(right_edge + 0.08, middle_y), (next_left_edge - 0.08, middle_y)])
+    encoder_centre = sum(spans_by_row[0][-1]) / 2
+    properties_centre = sum(spans_by_row[1][0]) / 2
+    gutter_y = row_tops[1] + ROW_GUTTER / 2
+    draw_arrow(axis, [(encoder_centre, row_tops[0] - row_heights[0] - 0.08), (encoder_centre, gutter_y),
+                      (properties_centre, gutter_y), (properties_centre, row_tops[1] + 0.08)])
     save(figure, "model_pipeline")
 
 

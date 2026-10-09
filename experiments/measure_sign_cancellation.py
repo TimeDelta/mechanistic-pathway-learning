@@ -8,7 +8,6 @@ reweight relations, but they are shared across all nodes, so a gain cannot rescu
 destination without moving every other destination fed by the same relation.
 """
 import sys
-import numpy as np
 import pandas as pd
 
 graph_directory = sys.argv[1]

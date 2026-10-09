@@ -10,7 +10,8 @@ The curation names a target, a direction (activation or inhibition) and a free-t
 to reach the study's symptom vocabulary. This script uses keyword patterns per symptom, prints the rows each pattern
 catches and counts what a label set built this way would hold. Keyword matching is a scoping estimate, not the
 crosswalk a label build would use: it reads English effect names, so it catches animal readouts ("decreased locomotor
-activity") and misses what it has no word for, and a "decreased X" row is not a positive for X.
+activity") and misses what it has no word for, and a "decreased X" row is not a positive for X. Wording that the
+rodent assay and the clinic share ("stereotypy") decides neither species and is flagged separately.
 
     python experiments/scope_open_targets_symptom_labels.py
 """
@@ -44,7 +45,12 @@ SYMPTOM_PATTERNS = {
     "insomnia": r"\binsomnia\b|\bsleep disturb|decreased sleep",
     "irritability_or_aggression": r"irritab|aggress",
     "psychomotor_agitation": r"\bagitat|\brestless|akathisia",
-    "psychomotor_retardation": r"decreased (locomotor|motor|spontaneous) activity|psychomotor retardation|hypokine|\bhypoactiv|\bbradykine",
+    # docs/symptom_crosswalk.csv defines this symptom by two MedDRA terms, "Psychomotor retardation" and
+    # "Bradyphrenia", both of which name slowed thought and action; it has no HPO term and no MeSH descriptor. Until
+    # 9 October 2026 the pattern here was wider than that crosswalk and also took hypokinesia, bradykinesia and the
+    # rodent open-field counts, so antipsychotic parkinsonism was scored as depressive slowing. See
+    # PARKINSONIAN_PATTERN for where those rows went and why (the user's decision of 9 October 2026).
+    "psychomotor_retardation": r"psychomotor retardation|bradyphren",
     "psychosis": r"\bpsychos[ie]s\b|psychotic|hallucinat|\bdelusion|schizophren",
     "self_injury": r"self.injur|self.mutilat",
     "somnolence_or_hypersomnia": r"somnolen|sedat|\bdrowsi|hypersomn|\bsleepiness\b",
@@ -61,8 +67,23 @@ OPPOSITE_PATTERNS = {
 }
 AMBIGUOUS_PATTERN = r"increased/decreased|decreased/increased|^cognitive effects$"
 NOT_THE_SYMPTOM_PATTERNS = {"depressed_mood": r"respiratory"}
-# Readouts measured in rodents, not reported by patients.
-ANIMAL_READOUT_PATTERN = r"locomotor|catalep|stereotyp"
+# Readouts measured in rodents, not reported by patients: an open-field locomotor count, and catalepsy, whose human
+# analogue is called catatonia and not catalepsy. Both words name the assay, so matching them names the species.
+ANIMAL_READOUT_PATTERN = r"locomotor|catalep|(in|de)creased (motor|spontaneous) activity"
+# Wording the rodent assay and the clinic share, so it cannot decide the species on its own. "Stereotypy" is
+# amphetamine stereotypy in a rodent and also standard clinical English for human stereotyped movements, punding and
+# tardive dyskinesia. It was in ANIMAL_READOUT_PATTERN until 9 October 2026, which set aside a curated row phrased
+# "punding / stereotyped repetitive behaviour" as a rodent readout before it could become a compulsive_behavior
+# label, while the study's pattern for that symptom was matching the same word as the symptom itself. Treating the
+# word as human instead would credit the rodent rows, so neither reading is right and the rows are marked for the
+# human-evidence reading of docs/rodent_readout_human_evidence.md rather than decided here.
+SPECIES_AMBIGUOUS_READOUT_PATTERN = r"stereotyp"
+# Parkinsonian wording, which psychomotor_retardation matched until 9 October 2026. Drug-induced parkinsonism and
+# depressive psychomotor slowing are treated differently in the clinic, which is why the user asked for them to be
+# kept apart; they are also nearly nested in the labels, so merging them hides that (docs/off_target_scoping.md).
+# The study has no symptom for parkinsonism, so these rows now match none. They are counted rather than dropped in
+# silence, because adding that symptom is a live option and this is the count it would start from here.
+PARKINSONIAN_PATTERN = r"hypokine|\bbradykine|parkinson|extrapyramidal|akinesi|\brigidity\b"
 
 
 def row_class(target_symptom: str, curated_symptom: str) -> str:
@@ -85,7 +106,9 @@ def mapped_rows(adverse_effects: pd.DataFrame) -> pd.DataFrame:
         for record in caught.itertuples(index=False):
             direction, _, dosing = str(record.effect).partition("_")
             rows.append({"target_symptom": symptom, "curated_symptom": record.symptom, "row_class": row_class(symptom, str(record.symptom)),
-                         "animal_readout": bool(re.search(ANIMAL_READOUT_PATTERN, str(record.symptom).lower())), "target": record.target,
+                         "animal_readout": bool(re.search(ANIMAL_READOUT_PATTERN, str(record.symptom).lower())),
+                         "species_ambiguous_readout": bool(re.search(SPECIES_AMBIGUOUS_READOUT_PATTERN, str(record.symptom).lower())),
+                         "target": record.target,
                          "ensembl_id": record.ensemblId, "direction": direction, "dosing": dosing,
                          "biological_system": record.biologicalSystem, "reference": record.ref})
     return pd.DataFrame(rows)
@@ -103,6 +126,14 @@ def main() -> None:
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet", columns=["node_type", "gene_symbol"])
     gene_symbols = set(nodes.gene_symbol[nodes.node_type == "gene"].dropna())
 
+    # rows no symptom pattern catches, so that narrowing a pattern shows up as a count here rather than as a silence
+    curated_text = adverse_effects.symptom.astype(str).str.lower()
+    matches_a_symptom = curated_text.str.contains("|".join(f"(?:{pattern})" for pattern in SYMPTOM_PATTERNS.values()), regex=True, na=False)
+    unmatched = adverse_effects[~matches_a_symptom]
+    # the parkinsonian rows no longer belong to any target symptom, so they are counted from the curation directly
+    parkinsonian = adverse_effects[curated_text.str.contains(PARKINSONIAN_PATTERN, regex=True, na=False)]
+    parkinsonian_triples = parkinsonian.assign(direction=parkinsonian.effect.astype(str).str.partition("_")[0]).drop_duplicates(["target", "direction"])
+
     rows = mapped_rows(adverse_effects)
     caught = rows.drop_duplicates(["target_symptom", "target", "direction", "row_class"])
     rows_by_class = {name: sorted(group.curated_symptom.str.lower().unique()) for name, group in rows[rows.row_class != "positive"].groupby("row_class")}
@@ -118,8 +149,18 @@ def main() -> None:
                                    "targets": len({record["id"] for record in secondary}),
                                    "datasources": dict(Counter(record.get("datasource") for record in secondary))},
         "caught_by_class": caught.row_class.value_counts().astype(int).to_dict(), "curated_terms_set_aside": rows_by_class,
+        "rows_no_symptom_pattern_catches": {
+            "rows": int(len(unmatched)), "targets": int(unmatched.target.nunique()),
+            "most_common_curated_terms": unmatched.symptom.astype(str).str.lower().value_counts().head(12).astype(int).to_dict()},
+        "parkinsonian_rows_no_symptom_claims": {
+            "rows": int(len(parkinsonian)), "target_direction_pairs": int(len(parkinsonian_triples)),
+            "targets": int(parkinsonian.target.nunique()),
+            "curated_terms": sorted(parkinsonian.symptom.astype(str).str.lower().unique()),
+            "note": "parkinsonian wording, which psychomotor_retardation matched until 9 October 2026; the study has "
+                    "no symptom for it, so these rows now map to none (docs/off_target_scoping.md)"},
         "positive": {"rows": int(len(rows)), "symptom_target_direction_triples": int(len(pairs)),
                    "triples_from_animal_readouts": int(pairs.animal_readout.sum()),
+                   "triples_from_species_ambiguous_readouts": int(pairs.species_ambiguous_readout.sum()),
                    "symptom_target_pairs": int(pairs.drop_duplicates(["target_symptom", "target"]).shape[0]),
                    "targets": int(pairs.target.nunique()), "target_symptoms_reached": int(pairs.target_symptom.nunique()),
                    "target_symptoms_total": len(SYMPTOM_PATTERNS),

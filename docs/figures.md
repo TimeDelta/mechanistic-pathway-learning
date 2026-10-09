@@ -99,6 +99,13 @@ Knockouts seed gene nodes, drugs seed protein nodes and transcription edges end 
 expression columns and protein nodes the protein descriptors. Counts are read from split_summary.json when the figure
 is drawn.
 
+## How they are drawn
+
+Every figure is saved at 240 dpi (150 until 9 October 2026, which left the dense pipeline figure soft). Figure 1 is
+laid out in inches: each box is sized from its own measured title and body, the two rows share one left and right
+edge with the slack spread into the gaps, and the step from the encoder to the node properties is routed through the
+gutter between the rows. It was one diagonal across the whole figure until 9 October 2026, which read as an error.
+
 ## 8. Plasma carriage
 
 ![plasma carriage](figures/plasma_carriage.png)

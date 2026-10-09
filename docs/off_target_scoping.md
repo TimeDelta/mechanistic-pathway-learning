@@ -272,6 +272,49 @@ with its wording):
   docs/leakage_group_rules_evidence_full_v2.md test the target-family rules with both tie-breaks and report what
   leakage each one leaves; the registered grouping stays for the confirmatory reading.
 
+## Drug-induced parkinsonism, which the study does not score
+
+The user, 9 October 2026: "it's more important to split the bradykinesia one since it has strong clinical treatment
+implications between psychomotor slowing and drug-induced Parkinsonism." The split is made in
+`experiments/scope_open_targets_symptom_labels.py`, where `psychomotor_retardation` matched `\bbradykine` until
+then. It cost nothing to make, because the live labels never held the merger: `docs/symptom_crosswalk.csv` defines
+`psychomotor_retardation` by two MedDRA terms, `Psychomotor retardation` and `Bradyphrenia`, gives it no HPO term
+(HPO retired HP:0025356 into Global developmental delay) and no MeSH descriptor. The parkinsonian terms were in the
+scoping pattern only, so the pattern was wider than the symptom it mapped onto.
+
+Two things the narrowing showed:
+
+- Not one row of the Open Targets curation names this symptom. All 77 rows the old pattern caught read "decreased
+  locomotor activity" (74) or "increased/decreased locomotor activity" (3) - the rodent open-field count, over 30
+  targets. The curation could never have supplied an honest `psychomotor_retardation` label, and after the
+  narrowing it supplies none.
+- The bradykinesia that appeared in docs/rodent_readout_human_evidence.md came from the human-evidence sentence,
+  not from the curation: the DRD2-inhibition claim, curated as "decreased locomotor activity", has human evidence
+  naming drug-induced parkinsonism, and `\bbradykine` sent that relabel straight back to the claimed symptom. It
+  now lands on no study symptom, which is the honest outcome while the study scores no parkinsonism.
+
+**What a parkinsonism symptom would be worth, if one were added.** Measured against the same sources the study
+already uses, it would be one of the better-supported symptoms rather than a thin one:
+
+| source | reach |
+|---|---|
+| SIDER preferred terms, union of parkinsonism, extrapyramidal disorder, hypokinesia, muscle rigidity, hypertonia, akinesia, cogwheel rigidity, bradykinesia, Parkinson's disease | 67 of this study's 142 drugs |
+| HPO HP:0001300 Parkinsonism, direct annotations | 119 of this study's gene perturbations |
+| HPO HP:0002067 Bradykinesia, direct annotations | 103 |
+| for comparison, `psychomotor_retardation` in SIDER (Psychomotor retardation, Bradyphrenia) | 9 drugs, of which 8 also carry a parkinsonian term |
+
+Those are raw annotation counts before the better_v2 selection masks low-frequency positives and grade-C-only
+pairs, so the kept-positive counts would be lower. Two readings follow. The first is that the construct is well
+evidenced on both the gene and the drug side and is a reasonable 24th symptom. The second is sharper: the symptom
+the study does score, `psychomotor_retardation`, holds 5 kept positives in `evidence_full_v2`, exactly the macro
+floor, and 8 of the 9 drugs behind it in SIDER also carry a parkinsonian label. The study's weakest symptom is
+therefore also nearly nested in a construct it does not score.
+
+**Not done, and why.** Adding a symptom changes the evidence table, the label selection and the outcome matrix, and
+`configs/lockbox_v2.json` pins `evidence_records_sha256` and `label_selection_sha256`. The lockbox would have to be
+redrawn, and the macro average would gain a well-populated symptom, which moves the preregistered endpoint. That is
+the user's call, and it has to be made before the lockbox is finalised, not after.
+
 ## References
 
 See docs/references.bib: avram2023drugcentral, harding2024iuphar, bowes2012reducing, brennan2024state,
