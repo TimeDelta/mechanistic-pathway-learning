@@ -310,11 +310,14 @@ what the decision was made on; `docs/parkinsonism_symptom.md` is what the rebuil
 | for comparison, `psychomotor_retardation` in SIDER (Psychomotor retardation, Bradyphrenia) | 9 drugs, of which 8 also carry a parkinsonian term |
 
 Those are raw annotation counts before the better_v2 selection masks low-frequency positives and grade-C-only
-pairs. After it, the symptom holds 138 kept positives, 106 gene and 32 drug, against the 5 that
-`psychomotor_retardation` holds - exactly the macro floor - so the study's weakest symptom was also nearly nested
-in a construct it did not score. The narrower SIDER count is the one the crosswalk earns: Hypertonia, Muscle
-rigidity and Tremor are left out as nonspecific and Parkinson's disease as diagnosis level under A7, which costs
-14 drugs and is the price of the terms meaning what they say.
+pairs. After it, the symptom holds 138 kept positives, 106 gene and 32 drug. The comparison with
+`psychomotor_retardation` is sharper than an earlier draft of this document said: that symptom has 5 evidence rows
+but only 1 kept positive in the v2 selection and 2 in v3, against a macro floor of 5 kept positives, so it does not
+enter the macro average at all, while 8 of the 9 drugs behind it in SIDER also carry a parkinsonian term. The
+construct the study did score here was below its own reporting floor and nearly nested in one it did not score. The
+narrower SIDER count is the one the crosswalk earns: Hypertonia, Muscle rigidity and Tremor are left out as
+nonspecific and Parkinson's disease as diagnosis level under A7, which costs 14 drugs and is the price of the terms
+meaning what they say.
 
 The curation now supplies the symptom two target-direction pairs, DRD1 inhibition and SLC6A3 inhibition, from the
 curated terms "parkinsonism" and "parkinsonian symptoms (tremors)"; neither is a rodent readout. All 7 parkinsonian

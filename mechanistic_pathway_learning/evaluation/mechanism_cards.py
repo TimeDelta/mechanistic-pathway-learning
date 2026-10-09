@@ -1,7 +1,8 @@
 """Interpretability deliverables (design section 6.6): one mechanism card per symptom.
 
 A card gathers, across the splits of a noisy-OR run analysed by experiments/analyze_pathway_modules.py,
-the modules linked to the symptom (link above the threshold), each with its support size, node types,
+the modules linked to the symptom (link above the threshold), each with the name that script reads off its
+support (module_label, which also prints the share the name rests on), its support size, node types,
 top subsystems, top nodes, curated-module overlap and the equifinality indices of the symptom in that
 split; the sufficiency-test rows for the symptom; and how often a comparable module appeared across
 splits (consensus is judged by the cross-split Jaccard matches of the analysis). Cards are markdown
@@ -52,12 +53,14 @@ def build_mechanism_card(symptom_identifier: str, analysis: dict, top_nodes: int
         symptom_entry = split_entry.get("symptoms", {}).get(symptom_identifier)
         if symptom_entry is None:
             continue
+        active = ", ".join(f"{name} ({split_entry['modules'].get(name, {}).get('label', '')})"
+                           for name in symptom_entry["active_modules"]) or "none above the link threshold"
         lines += [f"## {split_name}", "",
-                  f"Active modules: {symptom_entry['active_modules'] or 'none above the link threshold'}; links: {symptom_entry['links']}; "
+                  f"Active modules: {active}; links: {symptom_entry['links']}; "
                   f"independence index: {symptom_entry['independence_index']:.2f}; convergence index: {symptom_entry['convergence_index']:.2f}", ""]
         for module_name in symptom_entry["active_modules"]:
             module = split_entry["modules"][module_name]
-            lines += [f"### {module_name} ({module.get('support_rule', '')}; support {module['size']} nodes)", "",
+            lines += [f"### {module_name}, {module.get('label', '')} ({module.get('support_rule', '')}; support {module['size']} nodes)", "",
                       f"Node types: {module.get('by_node_type', {})}; compartments: {module.get('by_compartment', {})}; top subsystems: {module.get('top_subsystems', [])}; curated overlap: {module.get('curated_module_overlap', {})}", "",
                       "| node | type | name | compartment | subsystem | gate |", "|---|---|---|---|---|---|"]
             for row in module.get("top_nodes", [])[:top_nodes]:

@@ -113,6 +113,72 @@ def describe_support(node_ids: list[str], nodes: pd.DataFrame, gate_values: np.n
     }
 
 
+# A module is a learned gate, so a name for it has to be read off the support it ends up holding rather than assigned.
+# The rules below take the first name the support actually carries, and every name states the share it rests on, so the
+# name cannot claim more than the content behind it. The dictionary key stays module_<k>: the index is what identifies
+# a gate inside a split and what the sufficiency test, the links and the stability matrix join on. Two splits whose
+# modules take the same name are not thereby the same module, because the gates are fitted per split; whether they are
+# is what the cross-split Jaccard in the stability section measures (the user, 9 October 2026: "can you please
+# identify better names for the modules than a simple indexing?").
+CURATED_GENES_FOR_A_NAME = 3  # below this a curated-module overlap is a coincidence of one or two genes
+SUBSYSTEM_SHARE_FOR_A_NAME = 0.25
+# A raw share is not enough on its own: Transport reactions is the largest subsystem of the graph, so a module holding
+# a quarter of its support in it may hold no more than the graph does. The subsystem also has to be this many times
+# over-represented against its share of the graph, when that background is known.
+SUBSYSTEM_ENRICHMENT_FOR_A_NAME = 2.0
+COMPARTMENT_SHARE_FOR_A_NAME = 0.5
+NODE_TYPE_SHARE_FOR_A_NAME = 0.75
+# Human-GEM's own compartment names (data/raw/Human-GEM/model/Human-GEM.xml, listOfCompartments), plus the vesicle
+# compartment the Reactome import adds (mechanistic_pathway_learning/graph/reactome_import.py: "vesicle lumens become v")
+COMPARTMENT_NAMES = {"c": "cytosol", "e": "extracellular", "l": "lysosome", "r": "endoplasmic reticulum",
+                     "m": "mitochondria", "x": "peroxisome", "n": "nucleus", "g": "Golgi apparatus",
+                     "i": "inner mitochondria", "v": "vesicle"}
+
+
+def subsystem_shares_of_graph(nodes: pd.DataFrame) -> dict[str, float]:
+    """Each subsystem's share of the nodes that carry one, the background a module's share is judged against."""
+    subsystems = nodes.subsystem.dropna().astype(str)
+    subsystems = subsystems[subsystems != ""]
+    return (subsystems.value_counts() / len(subsystems)).to_dict() if len(subsystems) else {}
+
+
+def module_label(description: dict, subsystem_background: dict[str, float] | None = None) -> str:
+    """A readable name for one module, derived from its support and carrying the share it rests on.
+
+    Without `subsystem_background` the subsystem rule judges a raw share, which the largest subsystem of the graph can
+    reach without being characteristic of the module; with it the subsystem also has to be over-represented.
+    """
+    size = description.get("size", 0)
+    if not size:
+        return "empty support"
+    curated = description.get("curated_module_overlap", {}) or {}
+    if curated:
+        module, genes = max(curated.items(), key=lambda item: item[1])
+        if genes >= CURATED_GENES_FOR_A_NAME:
+            return f"{module} ({genes} of its genes, {size} nodes)"
+    subsystems = description.get("top_subsystems", []) or []
+    if subsystems and subsystems[0][1] >= SUBSYSTEM_SHARE_FOR_A_NAME * size:
+        subsystem, count = subsystems[0]
+        background = (subsystem_background or {}).get(subsystem)
+        enriched = background is None or count / size >= SUBSYSTEM_ENRICHMENT_FOR_A_NAME * background
+        if not enriched:
+            return (f"mixed support ({size} nodes; its largest subsystem, {subsystem.lower()}, holds "
+                    f"{count / size:.0%} against {background:.0%} of the graph)")
+        name = f"{subsystem.lower()} ({count} of {size} nodes)"
+        compartments = description.get("by_compartment", {}) or {}
+        if compartments:
+            compartment, there = max(compartments.items(), key=lambda item: item[1])
+            if there >= COMPARTMENT_SHARE_FOR_A_NAME * size:
+                name = f"{subsystem.lower()} in the {COMPARTMENT_NAMES.get(compartment, compartment)} ({count} of {size} nodes)"
+        return name
+    node_types = description.get("by_node_type", {}) or {}
+    if node_types:
+        node_type, count = max(node_types.items(), key=lambda item: item[1])
+        if count >= NODE_TYPE_SHARE_FOR_A_NAME * size:
+            return f"{node_type} nodes across subsystems ({count} of {size} nodes)"
+    return f"mixed support ({size} nodes, no subsystem above {SUBSYSTEM_SHARE_FOR_A_NAME:.0%})"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run-dir", type=Path, required=True)
@@ -147,6 +213,7 @@ def main() -> None:
     currency = set(nodes.loc[nodes.is_currency.fillna(False).astype(bool), "node_id"])
     adjacency = directed_adjacency(edges, currency)
     curated = {module: {f"GENE:{symbol}" for symbol in symbols} for module, symbols in read_curated_modules(arguments.curated_modules).items()}
+    subsystem_background = subsystem_shares_of_graph(nodes)
 
     analysis = {"run_dir": str(arguments.run_dir), "graph_dir": str(arguments.graph_dir), "splits": {}, "stability": {}}
     all_supports: list[tuple[str, int, set[str]]] = []
@@ -183,6 +250,7 @@ def main() -> None:
             description["links_above_threshold"] = {symptoms[s]: round(float(links[k, s]), 3) for s in range(links.shape[1]) if links[k, s] > arguments.link_threshold}
             description["links"] = {symptoms[s]: round(float(links[k, s]), 3) for s in range(links.shape[1])}
             description["curated_module_overlap"] = {module: len(module_support & genes) for module, genes in curated.items() if module_support & genes}
+            description["label"] = module_label(description, subsystem_background)
             split_entry["modules"][module_name] = description
             all_supports.append((split_directory.name, k, module_support))
         for s, symptom in enumerate(symptoms):
@@ -205,12 +273,20 @@ def main() -> None:
 
     markdown_output = arguments.markdown_output or Path("docs") / f"{arguments.run_dir.name}_modules.md"
     lines = [f"# Learned pathway modules: {arguments.run_dir.name} (generated by experiments/analyze_pathway_modules.py)", "",
-             f"Support threshold {arguments.support_threshold} on the evaluation gate saved by the run; link threshold {arguments.link_threshold}; downstream hops {arguments.downstream_hops}; currency metabolites removed from the downstream walk.", ""]
+             f"Support threshold {arguments.support_threshold} on the evaluation gate saved by the run; link threshold {arguments.link_threshold}; downstream hops {arguments.downstream_hops}; currency metabolites removed from the downstream walk.", "",
+             "Each module keeps its index, which is what the tables below join on, and carries a name read off its own "
+             "support: the curated module it overlaps by at least "
+             f"{CURATED_GENES_FOR_A_NAME} genes, else the subsystem holding at least {SUBSYSTEM_SHARE_FOR_A_NAME:.0%} of "
+             f"the support and at least {SUBSYSTEM_ENRICHMENT_FOR_A_NAME:g} times its share of the graph (with the "
+             "compartment when one holds half), else the node type holding at least "
+             f"{NODE_TYPE_SHARE_FOR_A_NAME:.0%}, else \"mixed support\". The share is printed with the name so the name "
+             "claims no more than its support. Two splits whose modules take the same name need not be the same module: "
+             "the gates are fitted per split, and the stability section is where that is judged.", ""]
     for split_name, split_entry in analysis["splits"].items():
-        lines += [f"## {split_name}", "", "| module | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |", "|---|---|---|---|---|---|---|"]
+        lines += [f"## {split_name}", "", "| module | what its support holds | support rule | gates above threshold | node types | top subsystems | links above threshold | curated overlap |", "|---|---|---|---|---|---|---|---|"]
         for module_name, description in split_entry["modules"].items():
             gate_summary = split_entry["gate_summary"][module_name]
-            lines.append(f"| {module_name} | {description['support_rule']} | {gate_summary['above_threshold']} | {description.get('by_node_type', {})} | {[name for name, _ in description.get('top_subsystems', [])][:3]} | {description['links_above_threshold']} | {description['curated_module_overlap']} |")
+            lines.append(f"| {module_name} | {description.get('label', '')} | {description['support_rule']} | {gate_summary['above_threshold']} | {description.get('by_node_type', {})} | {[name for name, _ in description.get('top_subsystems', [])][:3]} | {description['links_above_threshold']} | {description['curated_module_overlap']} |")
         lines += ["", "| symptom | active modules | independence index | convergence index |", "|---|---|---|---|"]
         for symptom, entry in split_entry["symptoms"].items():
             lines.append(f"| {symptom} | {entry['active_modules']} | {entry['independence_index']:.2f} | {entry['convergence_index']:.2f} |")
@@ -224,7 +300,7 @@ def main() -> None:
         for module_name, description in split_entry["modules"].items():
             if description["size"] == 0:
                 continue
-            lines += [f"### {split_name} {module_name}: top nodes", "", "| node | type | name | compartment | subsystem | gate |", "|---|---|---|---|---|---|"]
+            lines += [f"### {split_name} {module_name}, {description.get('label', '')}: top nodes", "", "| node | type | name | compartment | subsystem | gate |", "|---|---|---|---|---|---|"]
             for row in description["top_nodes"]:
                 lines.append(f"| {row['node_id']} | {row['node_type']} | {row['name'][:60]} | {row['compartment']} | {row['subsystem'][:40]} | {row['gate']:.2f} |")
             lines.append("")
