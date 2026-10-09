@@ -213,6 +213,20 @@ Code changes, all inactive on a merged graph:
   checkpoints, so a checkpoint loads either way.
 - **Rewiring.** encodes is held fixed unless --rewire-encodes. It comes last in index order, so the other relations'
   random stream is unchanged.
+
+## Descriptor tables rebuilt with the entity vectors (9 October 2026)
+
+The user: "I'm ok with regenerating the pre-registered input but don't rerun the same pilots until we've completely
+nailed down the design options." The split descriptor tables were rebuilt so the Reactome protein entities carry their
+own annotation vectors in the protein block (docs/complex_descriptors.md): 138 columns against 137, SHA-256
+`df38d78c78ffe6d4`. `nodes.parquet`, `edges.parquet` and `gene_to_protein.parquet` reproduce byte-identically, and the
+split summary's checks still hold (no protein column on a gene row, no other column on a protein row, every other
+column unchanged on the nodes that existed before).
+
+One fix was needed in `place_descriptors_on_split`: it stripped the `protein_` prefix off every column of the block and
+looked the result up in the per-entry protein table, so the entities' new flag column would have been sought there as
+`has_complex_descriptors` and raised. It now places only the columns the per-entry table holds and zeroes the rest on
+the protein nodes, which is what a protein node should carry for an entity-only column.
 - **Rewired runs.** The rewired reaction rules read a protein catalyst's Ensembl id, which the protein node keeps as an
   identifier, not as a descriptor.
 - **Tests and smoke runs.**

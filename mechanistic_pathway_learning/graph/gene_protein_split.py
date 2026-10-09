@@ -308,16 +308,21 @@ def place_descriptors_on_split(table: pd.DataFrame, split_nodes: pd.DataFrame, a
         per_protein = table.loc[pairs.gene_node_id, protein_columns].set_axis(pairs.protein_node_id.to_numpy()).groupby(level=0).max()
         result.loc[protein_ids, protein_columns] = per_protein.reindex(protein_ids).fillna(0.0).to_numpy()
     else:
-        source_columns = [column[len(PROTEIN_DESCRIPTOR_PREFIX):] for column in value_columns]
+        from_entries = [column for column in value_columns
+                        if column[len(PROTEIN_DESCRIPTOR_PREFIX):] in protein_descriptors_per_entry.columns]
+        entity_only = [column for column in value_columns if column not in from_entries]
+        source_columns = [column[len(PROTEIN_DESCRIPTOR_PREFIX):] for column in from_entries]
         entries_of_protein = assignment.drop_duplicates("protein_node_id").set_index("protein_node_id").uniprot_entry.reindex(protein_ids)
-        values = np.zeros((len(protein_ids), len(value_columns)))
+        values = np.zeros((len(protein_ids), len(from_entries)))
         known = np.zeros(len(protein_ids), dtype=bool)
         for position, entries in enumerate(entries_of_protein):
             with_rows = [entry for entry in str(entries).split(ENTRY_SEPARATOR) if entry in protein_descriptors_per_entry.index]
             if with_rows:
                 values[position] = protein_descriptors_per_entry.loc[with_rows, source_columns].to_numpy(dtype=float).mean(axis=0)
                 known[position] = True
-        result.loc[protein_ids, value_columns] = values
+        result.loc[protein_ids, from_entries] = values
+        if entity_only:
+            result.loc[protein_ids, entity_only] = 0.0
         if PROTEIN_DESCRIPTOR_FLAG in protein_columns:
             result.loc[protein_ids, PROTEIN_DESCRIPTOR_FLAG] = known.astype(float)
     result.loc[gene_ids, protein_columns] = 0.0

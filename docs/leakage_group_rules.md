@@ -57,6 +57,7 @@ Caveats on the family rule itself:
 - the grouping inherits GtoPdb's family coverage, and a mechanism gene outside it cannot be grouped at all.
 - a drug is assigned one family while it may bind targets in others, so 0.543 of test drugs share a mechanism family with a training drug under the family rule (0 where every drug's targets sit in one family).
 - the numbers are for the evidence table named at the top of this document, not necessarily the one a confirmatory run reads.
+- the family is recoverable from what the model reads, so no grouping of drugs removes the family confound: docs/family_in_graph.md recovers a held-out mechanism target's family 0.90 of the time from the 64 protein components, 0.91 from its graph neighbours and 0.97 from its Reactome protein-entity memberships, against a chance rate of 0.09. Grouping changes which drugs share a fold, not what the graph tells the model about a held-out target.
 
 
 ## Unmatched genes

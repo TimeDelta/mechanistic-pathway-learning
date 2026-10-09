@@ -1,8 +1,8 @@
 # Node descriptor columns
 
-Version 3, generated 2026-10-08 by experiments/write_descriptor_column_doc.py from the code at commit bdc0f89. Rerun the script after any change to the table; it reads the column names and their placement from the table.
+Version 4, generated 2026-10-09 by experiments/write_descriptor_column_doc.py from the code at commit 42f040b. Rerun the script after any change to the table; it reads the column names and their placement from the table.
 
-This document covers the final descriptor table only: `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet` (graph `data/processed/graph_full_neuronal_split`, the full graph with the neuronal variant and with genes and proteins as separate nodes), used by the full graph with genes and proteins split (docs/gene_protein_split.md). It holds every block: protein components on the protein nodes, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the dopaminergic neuron class) on the gene and reaction nodes, metabolite properties and reaction EC classes. 137 columns; SHA-256 `27ed5e89ccb369d9`.
+This document covers the final descriptor table only: `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet` (graph `data/processed/graph_full_neuronal_split`, the full graph with the neuronal variant and with genes and proteins as separate nodes), used by the full graph with genes and proteins split (docs/gene_protein_split.md). It holds every block: protein components on the protein nodes, brain expression by GTEx tissue, Human Protein Atlas region and cell class (with the dopaminergic neuron class) on the gene and reaction nodes, metabolite properties and reaction EC classes. 138 columns; SHA-256 `df38d78c78ffe6d4`.
 
 Every node gets the same descriptor columns. Each node type fills its own block and is 0 in the others, so the encoder's input layer acts as one linear map per node type and nothing is learned per node (mechanistic_pathway_learning/graph/node_descriptors.py). A column is listed under a node type below when at least one node of that type has a non-zero value in it.
 
@@ -123,9 +123,73 @@ No descriptor column; all 0.
 - `protein_rrr_64`: high: Ankyrin repeats (3 copies) (PF12796); low: Sugar (and other) transporter (PF00083) (see Protein components)
 - `protein_has_protein_descriptors`: 1 when the node's protein has an ESM-2 embedding; 0 leaves the components at 0
 
-### protein_entity (0 columns)
+### protein_entity (65 columns)
 
-No descriptor column; all 0.
+- `protein_rrr_1`: high: DNA-binding transcription factor activity; low: purine ribonucleoside triphosphate binding (see Protein components)
+- `protein_rrr_2`: high: nucleus; low: multi-pass membrane protein (see Protein components)
+- `protein_rrr_3`: high: DNA-binding transcription factor activity; low: oxidoreductase activity (see Protein components)
+- `protein_rrr_4`: high: hydrolase activity; low: protein kinase activity (see Protein components)
+- `protein_rrr_5`: high: peptidase activity; low: oxidoreductase activity (see Protein components)
+- `protein_rrr_6`: high: Cytochrome P450 (PF00067); low: EC 2.4 transferases: glycosyltransferases (see Protein components)
+- `protein_rrr_7`: high: Cytochrome P450 (PF00067); low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors (see Protein components)
+- `protein_rrr_8`: high: Ras family (PF00071); low: EC 7.6 translocases: catalysing the translocation of other compounds (see Protein components)
+- `protein_rrr_9`: high: AMP-binding enzyme (PF00501); low: glycosyltransferase activity (see Protein components)
+- `protein_rrr_10`: high: sulfotransferase activity; low: AMP-binding enzyme (PF00501) (see Protein components)
+- `protein_rrr_11`: high: ubiquitin protein ligase activity; low: DNA-binding transcription factor activity (see Protein components)
+- `protein_rrr_12`: high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: AMP-binding enzyme (PF00501) (see Protein components)
+- `protein_rrr_13`: high: aminoacyl-tRNA ligase activity; low: EC 1.1 oxidoreductases: acting on the ch-oh group of donors (see Protein components)
+- `protein_rrr_14`: high: ubiquitin protein ligase activity; low: EC 3.1 hydrolases: acting on ester bonds (see Protein components)
+- `protein_rrr_15`: high: methyltransferase activity; low: EC 3.1 hydrolases: acting on ester bonds (see Protein components)
+- `protein_rrr_16`: high: G protein-coupled receptor activity; low: cytoskeleton (see Protein components)
+- `protein_rrr_17`: high: mitochondrial inner membrane; low: EC 6.1 ligases: forming carbon-oxygen bonds (see Protein components)
+- `protein_rrr_18`: high: ligase activity, forming carbon-oxygen bonds; low: glutathione transferase activity (see Protein components)
+- `protein_rrr_19`: high: methyltransferase activity; low: EC 1.2 oxidoreductases: acting on the aldehyde or oxo group of donors (see Protein components)
+- `protein_rrr_20`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: Cadherin domain (PF00028) (see Protein components)
+- `protein_rrr_21`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: extracellular matrix structural constituent conferring tensile strength (see Protein components)
+- `protein_rrr_22`: high: Cadherin domain (PF00028); low: Collagen triple helix repeat (20 copies) (PF01391) (see Protein components)
+- `protein_rrr_23`: high: Neurotransmitter-gated ion-channel ligand binding domain (PF02931); low: Cadherin domain (PF00028) (see Protein components)
+- `protein_rrr_24`: high: hydrolase activity, hydrolyzing O-glycosyl compounds; low: BTB And C-terminal Kelch (PF07707) (see Protein components)
+- `protein_rrr_25`: high: mitochondrial inner membrane; low: glutathione transferase activity (see Protein components)
+- `protein_rrr_26`: high: Immunoglobulin V-set domain (PF07686); low: Collagen triple helix repeat (20 copies) (PF01391) (see Protein components)
+- `protein_rrr_27`: high: ABC transporter (PF00005); low: EC 7.2 translocases: catalysing the translocation of inorganic cations (see Protein components)
+- `protein_rrr_28`: high: Ion transport protein (PF00520); low: macromolecular conformation isomerase activity (see Protein components)
+- `protein_rrr_29`: high: secondary active transmembrane transporter activity; low: G protein-coupled receptor activity (see Protein components)
+- `protein_rrr_30`: high: oxidoreductase activity, acting on the aldehyde or oxo group of donors, NAD or NADP as acceptor; low: vitamin B6 binding (see Protein components)
+- `protein_rrr_31`: high: keratin filament; low: SNAP receptor activity (see Protein components)
+- `protein_rrr_32`: high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: vitamin B6 binding (see Protein components)
+- `protein_rrr_33`: high: Reprolysin (M12B) family zinc metalloprotease (PF01421); low: symporter activity (see Protein components)
+- `protein_rrr_34`: high: EC 1.3 oxidoreductases: acting on the ch-ch group of donors; low: peptidyl-prolyl cis-trans isomerase activity (see Protein components)
+- `protein_rrr_35`: high: Immunoglobulin V-set domain (PF07686); low: Reprolysin (M12B) family zinc metalloprotease (PF01421) (see Protein components)
+- `protein_rrr_36`: high: SNAP receptor activity; low: SPRY domain (PF00622) (see Protein components)
+- `protein_rrr_37`: high: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048); low: Zinc finger, C2H2 type (PF00096) (see Protein components)
+- `protein_rrr_38`: high: transaminase activity; low: Mitochondrial carrier protein (PF00153) (see Protein components)
+- `protein_rrr_39`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) (see Protein components)
+- `protein_rrr_40`: high: Immunoglobulin V-set domain (PF07686); low: Leucine rich repeat (PF13855) (see Protein components)
+- `protein_rrr_41`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: acyltransferase activity, transferring groups other than amino-acyl groups (see Protein components)
+- `protein_rrr_42`: high: Leucine rich repeat (PF13855); low: SNAP receptor activity (see Protein components)
+- `protein_rrr_43`: high: 7 transmembrane receptor (rhodopsin family) (PF00001); low: Olfactory receptor (PF13853) (see Protein components)
+- `protein_rrr_44`: high: Mitochondrial carrier protein (PF00153); low: Leucine rich repeat (PF13855) (see Protein components)
+- `protein_rrr_45`: high: Olfactory receptor (PF13853); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_46`: high: Leucine rich repeat (PF13855); low: dioxygenase activity (see Protein components)
+- `protein_rrr_47`: high: Tubulin/FtsZ family, GTPase domain (PF00091); low: Receptor family ligand binding region (PF01094) (see Protein components)
+- `protein_rrr_48`: high: Tubulin/FtsZ family, GTPase domain (PF00091); low: structural constituent of ribosome (see Protein components)
+- `protein_rrr_49`: high: Serpin (serine protease inhibitor) (PF00079); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_50`: high: Cyclin, N-terminal domain (PF00134); low: structural constituent of ribosome (see Protein components)
+- `protein_rrr_51`: high: Serpin (serine protease inhibitor) (PF00079); low: Small cytokines (intecrine/chemokine), interleukin-8 like (PF00048) (see Protein components)
+- `protein_rrr_52`: high: Trypsin (PF00089); low: Ubiquitin carboxyl-terminal hydrolase (PF00443) (see Protein components)
+- `protein_rrr_53`: high: Mitochondrial carrier protein (PF00153); low: Serpin (serine protease inhibitor) (PF00079) (see Protein components)
+- `protein_rrr_54`: high: keratin filament; low: Thioredoxin (PF00085) (see Protein components)
+- `protein_rrr_55`: high: U4/U6 snRNP; low: SNAP receptor activity (see Protein components)
+- `protein_rrr_56`: high: EF-hand domain pair (PF13499); low: Transforming growth factor beta like domain (PF00019) (see Protein components)
+- `protein_rrr_57`: high: Lectin C-type domain (PF00059); low: Receptor family ligand binding region (PF01094) (see Protein components)
+- `protein_rrr_58`: high: PMP-22/EMP/MP20/Claudin family (PF00822); low: Trypsin (PF00089) (see Protein components)
+- `protein_rrr_59`: high: Serpin (serine protease inhibitor) (PF00079); low: Sugar (and other) transporter (PF00083) (see Protein components)
+- `protein_rrr_60`: high: Ankyrin repeats (3 copies) (PF12796); low: MAGE homology domain (PF01454) (see Protein components)
+- `protein_rrr_61`: high: Ankyrin repeats (3 copies) (PF12796); low: EF-hand domain pair (PF13499) (see Protein components)
+- `protein_rrr_62`: high: Actin (PF00022); low: Serpin (serine protease inhibitor) (PF00079) (see Protein components)
+- `protein_rrr_63`: high: Sugar (and other) transporter (PF00083); low: Immunoglobulin V-set domain (PF07686) (see Protein components)
+- `protein_rrr_64`: high: Ankyrin repeats (3 copies) (PF12796); low: Sugar (and other) transporter (PF00083) (see Protein components)
+- `protein_has_complex_descriptors`: 1 on a Reactome protein entity whose own annotation vector fills the components above, which is a different quantity from a sequence's prediction and is flagged apart from it (docs/complex_descriptors.md); 0 elsewhere
 
 ### reaction (35 columns)
 
@@ -167,7 +231,7 @@ No descriptor column; all 0.
 
 ## Protein components
 
-`protein_rrr_1` to `protein_rrr_64` are the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations (mechanistic_pathway_learning/graph/protein_descriptors.py, docs/protein_descriptor_report.md), averaged over a gene's reviewed entries and standardised. Each is a direction in annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. The name gives the annotation with the largest positive correlation (high) and the most negative correlation (low) with the component over the 19,628 proteins of the fit, and each pole lists up to four annotations (one of any group whose proteins nearly coincide, as with a GO term and its parent). A high value means the protein looks like the positive pole, a low one like the negative pole. The correlations show how well a name fits: below about 0.3 the name is the strongest of weak associations. Generated by experiments/name_protein_descriptor_components.py; the column identifiers in the table are unchanged.
+`protein_rrr_1` to `protein_rrr_64` are the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, GO function, GO component, UniProt location and Pfam annotations (mechanistic_pathway_learning/graph/protein_descriptors.py, docs/protein_descriptor_report.md), averaged over a gene's reviewed entries and standardised. Each is a direction in annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. On a Reactome protein entity the same columns hold the entity's own annotation vector projected onto the same directions, not a sequence prediction, and `protein_has_complex_descriptors` marks those rows (docs/complex_descriptors.md). The name gives the annotation with the largest positive correlation (high) and the most negative correlation (low) with the component over the 19,628 proteins of the fit, and each pole lists up to four annotations (one of any group whose proteins nearly coincide, as with a GO term and its parent). A high value means the protein looks like the positive pole, a low one like the negative pole. The correlations show how well a name fits: below about 0.3 the name is the strongest of weak associations. Generated by experiments/name_protein_descriptor_components.py; the column identifiers in the table are unchanged.
 
 | column | name | largest abs. r | positive pole | negative pole |
 |---|---|---|---|---|
@@ -270,7 +334,7 @@ experiments/run_main_model.py --drop-descriptor-blocks leaves out whole blocks, 
 - `metabolite`: 10 columns
 - `reaction_ec`: 8 columns
 - `reaction_brain`: 27 columns
-- `protein`: 65 columns
+- `protein`: 66 columns
 - `gene_brain`: 27 columns
 
 ## Placement
@@ -282,8 +346,8 @@ Cells give how many of a block's columns are non-zero on at least one node of th
 | gene | 12810 |  |  |  |  | all |
 | membrane_potential | 1 |  |  |  |  |  |
 | metabolite | 8580 | all |  |  |  |  |
-| protein | 12709 |  |  |  | all |  |
-| protein_entity | 1681 |  |  |  |  |  |
+| protein | 12709 |  |  |  | 65 of 66 |  |
+| protein_entity | 1681 |  |  |  | 65 of 66 |  |
 | reaction | 13793 |  | all | all |  |  |
 
 ## Changes
@@ -293,3 +357,4 @@ Cells give how many of a block's columns are non-zero on at least one node of th
 | 1 | 2026-10-08 | First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables. |
 | 2 | 2026-10-08 | Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); a name for each of the 64 protein components from the annotations it correlates with most. |
 | 3 | 2026-10-08 | The final table is the split one (the user's decision): the full neuronal graph with genes and proteins as separate nodes, so the protein components sit on the protein nodes. |
+| 4 | 2026-10-09 | The Reactome protein entities carry their own annotation vectors in the same protein block, with a flag of their own (the user's decisions of 9 October 2026: "I like the separate annotation vector much better for the complexes" and "I'm ok with regenerating the pre-registered input"): 138 columns, 1,527 of the 1,681 protein entity nodes filled. |

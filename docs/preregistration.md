@@ -958,6 +958,62 @@ a rule. No lockbox run has started, and none of these changes a finished run.
   `ANIMAL_READOUT_PATTERN` also matches, so human punding cannot enter as a label without an exception to the
   rodent-readout filter (docs/rodent_readout_human_evidence.md). Neither is changed here.
 
+## Amendment, 9 October 2026 (third)
+
+Three decisions and one question from the user, each quoted.
+
+- **The Reactome entity annotation vectors go into the preregistered descriptor table, and the pilots do not re-run
+  yet** ("I'm ok with regenerating the pre-registered input but don't rerun the same pilots until we've completely
+  nailed down the design options"). `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet`
+  is rebuilt with `--complex-descriptors`: 138 columns against 137, SHA-256 `df38d78c78ffe6d4` against
+  `27ed5e89ccb369d9`. The 64 protein components now carry the entity annotation vectors on 1,527 of the 1,681 protein
+  entity nodes, and the new column `protein_has_complex_descriptors` marks those rows, because an entity's vector is
+  the projection of its recorded annotations while a protein's is the projection of the annotations predicted from its
+  sequence, and the two are not the same quantity (docs/complex_descriptors.md). What did not change: the split graph's
+  `nodes.parquet`, `edges.parquet` and `gene_to_protein.parquet` reproduce byte-identically, gene rows still carry no
+  protein column, protein rows no other column, and the protein nodes' own values are unchanged. No confirmatory or
+  development run has been launched on the new table, per the second half of the instruction; the pilots are the
+  user's call once the design options are settled.
+  - One code change was needed and is worth recording, because it would have failed silently on a later build:
+    `gene_protein_split.place_descriptors_on_split` stripped the `protein_` prefix off every column of the block and
+    looked the result up in the per-entry protein table, so the new flag would have been sought there as
+    `has_complex_descriptors`. It now places only the columns the per-entry table holds and zeroes the rest on the
+    protein nodes, which is correct: a protein node is not a Reactome entity.
+- **The plasma substrate binders are built, orosomucoid among them** ("Implement the plasma binders please, download
+  and pin whatever data you need. orosomucoid should also be implemented"). Stage 1 of
+  docs/plasma_protein_binding.md: 27 `binds` edges, sign 0, from the extracellular copy of each cargo metabolite to
+  its binder, in `data/processed/graph_full_neuronal_binders` and `data/processed/graph_full_neuronal_split_binders`
+  (on the split graph the carriage sits on the protein nodes, since binding is the protein's property). Two sources,
+  kept apart in `evidence_source`: the newly pinned UniProt binding-site features
+  (`data/raw/uniprot/uniprot_plasma_binders.tsv.gz`, release 2026_03, sha256 `eab6550251dd8056`) and
+  docs/curated_plasma_carriage.csv, 22 rows each with its source, PMID, DOI and a quoted sentence. Nothing in the
+  confirmatory specification changes: the edges are in variant directories, and folding them into the confirmatory
+  graph would need its own amendment and the pilots re-run, which the same message defers.
+  - Orosomucoid gets one edge per gene, progesterone, and that is the honest limit rather than an oversight. Its
+    UniProt function statement names no specific endogenous cargo ("Binds various ligands in the interior of its
+    beta-barrel domain. Also binds synthetic drugs and influences their distribution and availability in the body"),
+    and a graph with no drug nodes has nowhere to put the basic drugs that are its real cargo. Orosomucoid therefore
+    enters this study through the fraction unbound of stage 2, which still has no pinned source.
+- **Target family is recoverable from the graph and from the descriptors, which bounds what any drug grouping can buy**
+  (the user's question: "is there any graph structure or attribute that corresponds to family? That might be another
+  source of leakage."). Yes, and strongly: experiments/measure_family_in_graph.py, reported in
+  docs/family_in_graph.md, scores each channel by leave-one-out nearest neighbour over the graph's gene nodes with a
+  GtoPdb family. On the 104 genes that are drug mechanism targets (20 families, chance rate 0.092), a held-out gene's
+  family is recovered 0.904 of the time from the 64 protein components, 0.912 from its graph neighbours and 0.973 from
+  its Reactome protein-entity memberships; the brain expression block, which carries nothing about a family's
+  sequence, reaches 0.173. Over all 2,651 family-bearing gene nodes (498 families, chance 0.004) the figures are 0.790,
+  0.576 and 0.821 against 0.043. Same-family gene pairs share a Reactome protein entity 0.732 of the time against
+  0.023 for different-family pairs.
+  - What follows for the grouping question of docs/leakage_group_rules.md: a family-grouped split changes which drugs
+    share a fold, not whether the model can tell which family a held-out target belongs to. The confound is a property
+    of the graph and of the descriptor block, so the registered grouping `disease_cluster_and_targets` leaves it
+    available too. This is not an argument for or against the family rule; it is a ceiling on what grouping drugs can
+    remove, and it belongs in the limitations of any family-grouped sensitivity reading. The measurement is an upper
+    bound on the confound, not an estimate of its effect on a score: nearest-neighbour recovery says the information
+    is present and easy to reach, not that a trained model uses it. The user has deferred the grouping decision ("I'll
+    have to think about the leakage family grouping later").
+
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;

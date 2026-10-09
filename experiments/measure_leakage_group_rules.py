@@ -43,6 +43,9 @@ MARKUP = re.compile(r"<[^>]+>")  # GtoPdb family names carry HTML (5-HT<sub>3</s
 OCCUPANCY_THRESHOLD = 0.25
 NUM_FOLDS = 5
 UNASSIGNED_FAMILY = "unassigned"
+# The measurement of experiments/measure_family_in_graph.py, which bounds what any grouping of drugs can remove.
+FAMILY_IS_IN_THE_GRAPH_CAVEAT = (
+    "the family is recoverable from what the model reads, so no grouping of drugs removes the family confound: docs/family_in_graph.md recovers a held-out mechanism target's family 0.90 of the time from the 64 protein components, 0.91 from its graph neighbours and 0.97 from its Reactome protein-entity memberships, against a chance rate of 0.09. Grouping changes which drugs share a fold, not what the graph tells the model about a held-out target.")
 
 
 def target_families(path: Path) -> tuple[dict[str, str], dict[str, str]]:
@@ -294,7 +297,8 @@ def markdown_report(result: dict) -> str:
               "drugs share a mechanism family with a training drug under the family rule (0 where every drug's targets sit "
               "in one family).",
               "- the numbers are for the evidence table named at the top of this document, not necessarily the one a "
-              "confirmatory run reads.", ""]
+              "confirmatory run reads.",
+              FAMILY_IS_IN_THE_GRAPH_CAVEAT, ""]
     lines += ["", "## Unmatched genes", "",
               f"{len(result['mechanism_genes_without_a_family'])} mechanism genes carry no GtoPdb family: "
               f"{', '.join(result['mechanism_genes_without_a_family'])}.", ""]

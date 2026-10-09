@@ -35,3 +35,8 @@ Reading: the entity vectors share the protein descriptors' directions and units,
 
 154 entities get none: 154 have no member gene (small-molecule-only, polymer or unmapped entities) and 0 have member genes whose annotations are not in the reviewed table. They keep a zero block and a flag column, as a gene without protein descriptors does.
 
+## Wired into the descriptor table (9 October 2026)
+
+The user: "I'm ok with regenerating the pre-registered input but don't rerun the same pilots until we've completely nailed down the design options." So `data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet` was rebuilt with these vectors (experiments/build_node_descriptors.py `--complex-descriptors`, carried through the brain-expression table and the gene/protein split): 138 columns against 137, SHA-256 `df38d78c78ffe6d4` against `27ed5e89ccb369d9`, with 1,527 of the 1,681 protein entity nodes filled. The measured correlation above is what justified sharing the protein block's columns; the extra column `protein_has_complex_descriptors` marks the entity rows, because the two projections are not the same quantity.
+
+Unchanged: the split graph's `nodes.parquet`, `edges.parquet` and `gene_to_protein.parquet` reproduce byte-identically, gene rows carry no protein column, protein rows carry no other column, and the protein nodes' values are the same as before. No confirmatory or development run has been launched on the new table.

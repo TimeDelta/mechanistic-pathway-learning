@@ -21,13 +21,17 @@ import pandas as pd
 
 from mechanistic_pathway_learning.graph.node_descriptors import descriptor_blocks
 
-DOCUMENT_VERSION = 3
+DOCUMENT_VERSION = 4
 CHANGES = [
     (1, "2026-10-08", "First version: the 137 descriptor columns of the brain-expression tables and the 83 of the graph directories' own tables."),
     (2, "2026-10-08", "Only the final table (full neuronal graph with brain expression, used by the confirmatory configurations); "
                       "a name for each of the 64 protein components from the annotations it correlates with most."),
     (3, "2026-10-08", "The final table is the split one (the user's decision): the full neuronal graph with genes and proteins as "
                       "separate nodes, so the protein components sit on the protein nodes."),
+    (4, "2026-10-09", "The Reactome protein entities carry their own annotation vectors in the same protein block, with a flag of "
+                      "their own (the user's decisions of 9 October 2026: \"I like the separate annotation vector much better for "
+                      "the complexes\" and \"I'm ok with regenerating the pre-registered input\"): 138 columns, 1,527 of the 1,681 "
+                      "protein entity nodes filled."),
 ]
 # The final descriptor table, the graph directory whose nodes it describes, and where it is used.
 FINAL_TABLE = "data/processed/node_descriptors/full_neuronal_split_descriptors_brain_expression.parquet"
@@ -69,6 +73,9 @@ def meaning(column: str, component_names: dict | None = None) -> str:
                 "EC, GO function, GO component, UniProt location and Pfam annotations; standardised")
     if column == "protein_has_protein_descriptors":
         return "1 when the node's protein has an ESM-2 embedding; 0 leaves the components at 0"
+    if column == "protein_has_complex_descriptors":
+        return ("1 on a Reactome protein entity whose own annotation vector fills the components above, which is a different "
+                "quantity from a sequence's prediction and is flagged apart from it (docs/complex_descriptors.md); 0 elsewhere")
     for prefix, owner in (("gene_brain_", "gene"), ("reaction_brain_", "reaction")):
         if column.startswith(prefix):
             name = column[len(prefix):]
@@ -130,7 +137,9 @@ def component_section(component_names: dict, names_file: dict) -> list[str]:
              "`protein_rrr_1` to `protein_rrr_64` are the reduced-rank regression of ESM-2 (esm2_t12_35M_UR50D) embeddings onto EC, "
              "GO function, GO component, UniProt location and Pfam annotations (mechanistic_pathway_learning/graph/protein_descriptors.py, "
              "docs/protein_descriptor_report.md), averaged over a gene's reviewed entries and standardised. Each is a direction in "
-             "annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. The name gives the "
+             "annotation space and mixes many annotations; component 1 holds the most predicted annotation variance. On a Reactome "
+             "protein entity the same columns hold the entity's own annotation vector projected onto the same directions, not a "
+             "sequence prediction, and `protein_has_complex_descriptors` marks those rows (docs/complex_descriptors.md). The name gives the "
              "annotation with the largest positive correlation (high) and the most negative correlation (low) with the component over the "
              f"{names_file['proteins_correlated']:,} proteins of the fit, and each pole lists up to four annotations (one of any group whose "
              "proteins nearly coincide, as with a GO term and its parent). A high value means the protein looks like the positive pole, a "
