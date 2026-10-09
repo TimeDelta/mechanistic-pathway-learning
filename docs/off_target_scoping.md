@@ -214,25 +214,29 @@ developmental), from Lynch et al. 2017 (3,823 rows), Bowes et al. 2012 (647) and
 target-level labels: "inhibiting gene X causes symptom Y". The study has none of that kind today; its gene rows are
 loss of function.
 
-Mapping the effect terms to the 23 target symptoms by keyword (`experiments/scope_open_targets_symptom_labels.py`,
-then each caught term checked by hand):
+Mapping the effect terms to the 24 target symptoms by keyword (`experiments/scope_open_targets_symptom_labels.py`,
+then each caught term checked by hand). The counts below are after the two pattern changes of 9 October 2026, the
+`psychomotor_retardation` narrowing and the stereotypy flag, and after parkinsonism joined the symptom list:
 
 | | count |
 |---|---|
-| caught (symptom, target, direction) triples | 229 |
+| caught (symptom, target, direction) triples | 200 |
 | set aside: opposite direction ("decreased anxiety", "anxiolysis", "decreased aggression", "increased memory") | 44 |
-| set aside: both directions in one term ("increased/decreased sleep") or no direction ("cognitive effects") | 9 |
-| set aside: another thing ("respiratory depression") | 2 |
-| positive triples | 174 (87 activation, 87 inhibition) |
-| of which rodent readouts (locomotor activity, catalepsy, stereotypy) | 58 |
-| symptom-target pairs | 169 (5 positive under both directions) |
-| targets (graph gene nodes) | 60 (58) |
-| target symptoms reached | 18 of 23 |
+| set aside: both directions in one term ("increased/decreased sleep") or no direction ("cognitive effects") | 8 |
+| set aside: another thing ("respiratory depression", "Parkinson's disease" as a diagnosis) | 2 |
+| positive triples | 146 (61 activation, 85 inhibition) |
+| of which rodent readouts (locomotor activity, catalepsy) | 17 |
+| of which wording the rodent assay and the clinic share (stereotypy) | 11 |
+| symptom-target pairs | 141 (5 positive under both directions) |
+| targets (graph gene nodes) | 52 (50) |
+| target symptoms reached | 18 of 24 |
 
-Per symptom: cognitive impairment 31, psychomotor retardation 30, insomnia 18, psychosis 14, hyperactivity 13,
-compulsive behaviour 11, somnolence 9, anxiety 9, depressed mood 8, psychomotor agitation 7, irritability or
-aggression 6, increased appetite 5, catatonia 4, fatigue 3, elevated mood 2, decreased libido 2, suicidality 1,
-abnormal dreams 1. Not reached: anhedonia, apathy, disinhibition, emotional lability, self-injury.
+Per symptom: cognitive impairment 31, insomnia 18, psychosis 14, hyperactivity 13, compulsive behaviour 11,
+anxiety 9, somnolence 9, depressed mood 8, psychomotor agitation 7, irritability or aggression 6, increased
+appetite 5, catatonia 4, fatigue 3, decreased libido 2, elevated mood 2, parkinsonism 2, suicidality 1, abnormal
+dreams 1. Not reached: anhedonia, apathy, disinhibition, emotional lability, psychomotor retardation, self-injury.
+`psychomotor_retardation` left the list when its pattern stopped matching the rodent open-field count, which is
+the whole of what the curation held for it; 4,344 of the 4,939 curation rows match no symptom pattern at all.
 
 What a build would need:
 - a perturbation kind "pharmacological inhibition (or activation) of gene X", seeded at X with sign −1 or +1, kept
@@ -272,7 +276,7 @@ with its wording):
   docs/leakage_group_rules_evidence_full_v2.md test the target-family rules with both tie-breaks and report what
   leakage each one leaves; the registered grouping stays for the confirmatory reading.
 
-## Drug-induced parkinsonism, which the study does not score
+## Parkinsonism, split from psychomotor slowing and then scored in its own right
 
 The user, 9 October 2026: "it's more important to split the bradykinesia one since it has strong clinical treatment
 implications between psychomotor slowing and drug-induced Parkinsonism." The split is made in
@@ -284,36 +288,45 @@ scoping pattern only, so the pattern was wider than the symptom it mapped onto.
 
 Two things the narrowing showed:
 
-- Not one row of the Open Targets curation names this symptom. All 77 rows the old pattern caught read "decreased
-  locomotor activity" (74) or "increased/decreased locomotor activity" (3) - the rodent open-field count, over 30
-  targets. The curation could never have supplied an honest `psychomotor_retardation` label, and after the
-  narrowing it supplies none.
+- Not one row of the Open Targets curation names `psychomotor_retardation`. All 77 rows the old pattern caught read
+  "decreased locomotor activity" (74) or "increased/decreased locomotor activity" (3) - the rodent open-field count,
+  over 30 targets. The curation could never have supplied an honest label for that symptom, and after the narrowing
+  it supplies none.
 - The bradykinesia that appeared in docs/rodent_readout_human_evidence.md came from the human-evidence sentence,
   not from the curation: the DRD2-inhibition claim, curated as "decreased locomotor activity", has human evidence
-  naming drug-induced parkinsonism, and `\bbradykine` sent that relabel straight back to the claimed symptom. It
-  now lands on no study symptom, which is the honest outcome while the study scores no parkinsonism.
+  naming drug-induced parkinsonism, and `\bbradykine` sent that relabel straight back to the claimed symptom.
 
-**What a parkinsonism symptom would be worth, if one were added.** Measured against the same sources the study
-already uses, it would be one of the better-supported symptoms rather than a thin one:
+**Then the symptom was added** (the user, the same day: "it's still a potential MAJOR side effect of some drugs and
+it would be very bad clinically if that side effect was not predicted so add it as a symptom"). The reach below is
+what the decision was made on; `docs/parkinsonism_symptom.md` is what the rebuild delivered.
 
 | source | reach |
 |---|---|
-| SIDER preferred terms, union of parkinsonism, extrapyramidal disorder, hypokinesia, muscle rigidity, hypertonia, akinesia, cogwheel rigidity, bradykinesia, Parkinson's disease | 67 of this study's 142 drugs |
-| HPO HP:0001300 Parkinsonism, direct annotations | 119 of this study's gene perturbations |
-| HPO HP:0002067 Bradykinesia, direct annotations | 103 |
+| SIDER preferred terms, wide union including muscle rigidity, hypertonia and Parkinson's disease | 67 of this study's 142 drugs |
+| SIDER preferred terms, the nine the crosswalk ended up giving the symptom | 53 of this study's 142 drugs |
+| HPO, the union of the crosswalk's six roots, direct annotations | 181 of this study's gene perturbations |
+| HPO HP:0001300 Parkinsonism alone | 119 |
+| HPO HP:0002067 Bradykinesia alone | 103 |
 | for comparison, `psychomotor_retardation` in SIDER (Psychomotor retardation, Bradyphrenia) | 9 drugs, of which 8 also carry a parkinsonian term |
 
 Those are raw annotation counts before the better_v2 selection masks low-frequency positives and grade-C-only
-pairs, so the kept-positive counts would be lower. Two readings follow. The first is that the construct is well
-evidenced on both the gene and the drug side and is a reasonable 24th symptom. The second is sharper: the symptom
-the study does score, `psychomotor_retardation`, holds 5 kept positives in `evidence_full_v2`, exactly the macro
-floor, and 8 of the 9 drugs behind it in SIDER also carry a parkinsonian label. The study's weakest symptom is
-therefore also nearly nested in a construct it does not score.
+pairs. After it, the symptom holds 138 kept positives, 106 gene and 32 drug, against the 5 that
+`psychomotor_retardation` holds - exactly the macro floor - so the study's weakest symptom was also nearly nested
+in a construct it did not score. The narrower SIDER count is the one the crosswalk earns: Hypertonia, Muscle
+rigidity and Tremor are left out as nonspecific and Parkinson's disease as diagnosis level under A7, which costs
+14 drugs and is the price of the terms meaning what they say.
 
-**Not done, and why.** Adding a symptom changes the evidence table, the label selection and the outcome matrix, and
-`configs/lockbox_v2.json` pins `evidence_records_sha256` and `label_selection_sha256`. The lockbox would have to be
-redrawn, and the macro average would gain a well-populated symptom, which moves the preregistered endpoint. That is
-the user's call, and it has to be made before the lockbox is finalised, not after.
+The curation now supplies the symptom two target-direction pairs, DRD1 inhibition and SLC6A3 inhibition, from the
+curated terms "parkinsonism" and "parkinsonian symptoms (tremors)"; neither is a rodent readout. All 7 parkinsonian
+rows in the curation fall inside the symptom's pattern, so the crosswalk's exclusion of bare rigidity costs nothing
+here. The DRD2 relabel lands on `parkinsonism` rather than on nothing.
+
+**What still has to follow.** Adding a symptom changes the evidence table, the label selection and the outcome
+matrix, and `configs/lockbox_v2.json` pins `evidence_records_sha256` and `label_selection_sha256`. The rebuild went
+into new directories, so nothing the lockbox describes was touched. Moving to it means redrawing the lockbox from
+the same rule and repeating the development runs, and it means adopting the salt-form and any-target-type change of
+`docs/drug_targets_any_type.md` at the same time, because the current code no longer reproduces the v2 tables the
+lockbox pins. That is the user's call and it has to be made before the lockbox is finalised, not after.
 
 ## References
 

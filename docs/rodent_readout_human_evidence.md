@@ -45,7 +45,7 @@ symptom the human data name; the sub-agent's sentence is matched after its negat
 | psychomotor_retardation | activation | HTR2C | fatigue | fatigue | controlled human study | [27627785](https://doi.org/10.1111/cob.12159) |
 | psychomotor_retardation | activation | OPRK1 | sedation | depressed_mood, somnolence_or_hypersomnia | review or clinical pharmacology | [12847558](https://doi.org/10.1111/j.1527-3458.2003.tb00248.x) |
 | psychomotor_retardation | inhibition | DRD1 | fatigue/somnolence | fatigue, insomnia, somnolence_or_hypersomnia | controlled human study | [36628546](https://doi.org/10.1542/peds.2022-059574) |
-| psychomotor_retardation | inhibition | DRD2 | bradykinesia (drug-induced parkinsonism) | none of the 23 | pharmacovigilance or cohort | [30710809](https://doi.org/10.1016/j.psychres.2019.01.058) |
+| psychomotor_retardation | inhibition | DRD2 | bradykinesia (drug-induced parkinsonism) | parkinsonism | pharmacovigilance or cohort | [30710809](https://doi.org/10.1016/j.psychres.2019.01.058) |
 | psychomotor_retardation | inhibition | SLC6A2 | fatigue/somnolence | fatigue, somnolence_or_hypersomnia | controlled human study | [15231966](https://doi.org/10.1542/peds.114.1.e1) |
 | psychomotor_retardation | inhibition | TACR1 | fatigue/asthenia | fatigue | review or clinical pharmacology | [15025555](https://doi.org/10.2165/00003495-200464070-00013) |
 | hyperactivity | inhibition | CHRM1 | agitation/delirium | cognitive_impairment, psychomotor_agitation | pharmacovigilance or cohort | [38465631](https://doi.org/10.1080/15563650.2024.2319854) |
@@ -72,8 +72,10 @@ Both were settled by the user on 9 October 2026, and the patterns in
   until then, so the DRD2-inhibition claim, whose human evidence names drug-induced parkinsonism, landed back on
   the claimed symptom. The two differ in treatment, so they are kept apart (the user). The pattern now matches
   only the two MedDRA terms `docs/symptom_crosswalk.csv` gives the symptom, `Psychomotor retardation` and
-  `Bradyphrenia`, and the claim lands on no study symptom, because the study scores no parkinsonism. Whether to
-  add one is open and is costed in `docs/off_target_scoping.md`.
+  `Bradyphrenia`. The claim landed on no study symptom for a few hours, until the user asked for parkinsonism
+  to be scored in its own right because the side effect is clinically serious enough that failing to predict
+  it would be worse than scoring it imperfectly; the crosswalk's 24th symptom now takes it, so the relabel
+  lands on `parkinsonism` rather than back on the claimed symptom or on nothing.
 - **Stereotypy was a bug.** The same word marked a row as a rodent readout and matched `compulsive_behavior`, so a
   curation row phrased "punding / stereotyped repetitive behaviour" was set aside as an animal readout before it
   could become a label, while the symptom pattern was reading the same word as the symptom. Wording cannot decide

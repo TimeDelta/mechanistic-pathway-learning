@@ -45,6 +45,10 @@ SYMPTOM_PATTERNS = {
     "insomnia": r"\binsomnia\b|\bsleep disturb|decreased sleep",
     "irritability_or_aggression": r"irritab|aggress",
     "psychomotor_agitation": r"\bagitat|\brestless|akathisia",
+    # added 9 October 2026 with the symptom itself. The pattern follows the crosswalk's nine MedDRA terms and so
+    # takes neither bare rigidity nor bare tremor, both of which the crosswalk leaves out as nonspecific; see
+    # PARKINSONIAN_PATTERN for the wider wording and the gap between the two.
+    "parkinsonism": r"parkinson|extrapyramidal|\bbradykine|hypokine|\bakinesi|cogwheel",
     # docs/symptom_crosswalk.csv defines this symptom by two MedDRA terms, "Psychomotor retardation" and
     # "Bradyphrenia", both of which name slowed thought and action; it has no HPO term and no MeSH descriptor. Until
     # 9 October 2026 the pattern here was wider than that crosswalk and also took hypokinesia, bradykinesia and the
@@ -66,7 +70,11 @@ OPPOSITE_PATTERNS = {
     "irritability_or_aggression": r"^decreased aggression",
 }
 AMBIGUOUS_PATTERN = r"increased/decreased|decreased/increased|^cognitive effects$"
-NOT_THE_SYMPTOM_PATTERNS = {"depressed_mood": r"respiratory"}
+NOT_THE_SYMPTOM_PATTERNS = {"depressed_mood": r"respiratory",
+                            # A7, the rule that keeps diagnosis-level terms out: docs/symptom_crosswalk.csv gives
+                            # parkinsonism nine MedDRA terms and leaves out Parkinson's disease, as hyperactivity
+                            # leaves out ADHD, so the disease name is not a claim about the symptom here either
+                            "parkinsonism": r"parkinson'?s? disease"}
 # Readouts measured in rodents, not reported by patients: an open-field locomotor count, and catalepsy, whose human
 # analogue is called catatonia and not catalepsy. Both words name the assay, so matching them names the species.
 ANIMAL_READOUT_PATTERN = r"locomotor|catalep|(in|de)creased (motor|spontaneous) activity"
@@ -78,11 +86,12 @@ ANIMAL_READOUT_PATTERN = r"locomotor|catalep|(in|de)creased (motor|spontaneous) 
 # word as human instead would credit the rodent rows, so neither reading is right and the rows are marked for the
 # human-evidence reading of docs/rodent_readout_human_evidence.md rather than decided here.
 SPECIES_AMBIGUOUS_READOUT_PATTERN = r"stereotyp"
-# Parkinsonian wording, which psychomotor_retardation matched until 9 October 2026. Drug-induced parkinsonism and
-# depressive psychomotor slowing are treated differently in the clinic, which is why the user asked for them to be
-# kept apart; they are also nearly nested in the labels, so merging them hides that (docs/off_target_scoping.md).
-# The study has no symptom for parkinsonism, so these rows now match none. They are counted rather than dropped in
-# silence, because adding that symptom is a live option and this is the count it would start from here.
+# Parkinsonian wording in the wide sense, which psychomotor_retardation matched until 9 October 2026. Drug-induced
+# parkinsonism and depressive psychomotor slowing are treated differently in the clinic, which is why the user asked
+# for them to be kept apart; they are also nearly nested in the labels, so merging them hides that
+# (docs/off_target_scoping.md). The study gained a parkinsonism symptom on 9 October 2026, so most of these rows now
+# have one; this pattern stays wider than that symptom's, by bare rigidity, and the difference between the two counts
+# is what the crosswalk's nonspecific exclusions cost here.
 PARKINSONIAN_PATTERN = r"hypokine|\bbradykine|parkinson|extrapyramidal|akinesi|\brigidity\b"
 
 
@@ -130,7 +139,7 @@ def main() -> None:
     curated_text = adverse_effects.symptom.astype(str).str.lower()
     matches_a_symptom = curated_text.str.contains("|".join(f"(?:{pattern})" for pattern in SYMPTOM_PATTERNS.values()), regex=True, na=False)
     unmatched = adverse_effects[~matches_a_symptom]
-    # the parkinsonian rows no longer belong to any target symptom, so they are counted from the curation directly
+    # the parkinsonian rows in the wide sense, counted from the curation directly, against the symptom's own pattern
     parkinsonian = adverse_effects[curated_text.str.contains(PARKINSONIAN_PATTERN, regex=True, na=False)]
     parkinsonian_triples = parkinsonian.assign(direction=parkinsonian.effect.astype(str).str.partition("_")[0]).drop_duplicates(["target", "direction"])
 
@@ -156,8 +165,10 @@ def main() -> None:
             "rows": int(len(parkinsonian)), "target_direction_pairs": int(len(parkinsonian_triples)),
             "targets": int(parkinsonian.target.nunique()),
             "curated_terms": sorted(parkinsonian.symptom.astype(str).str.lower().unique()),
-            "note": "parkinsonian wording, which psychomotor_retardation matched until 9 October 2026; the study has "
-                    "no symptom for it, so these rows now map to none (docs/off_target_scoping.md)"},
+            "rows_the_parkinsonism_pattern_takes": int(curated_text.str.contains(SYMPTOM_PATTERNS["parkinsonism"], regex=True, na=False).sum()),
+            "note": "parkinsonian wording in the wide sense, which psychomotor_retardation matched until 9 October "
+                    "2026; the parkinsonism symptom added that day takes all of it but bare rigidity, which the "
+                    "crosswalk leaves out as nonspecific (docs/off_target_scoping.md)"},
         "positive": {"rows": int(len(rows)), "symptom_target_direction_triples": int(len(pairs)),
                    "triples_from_animal_readouts": int(pairs.animal_readout.sum()),
                    "triples_from_species_ambiguous_readouts": int(pairs.species_ambiguous_readout.sum()),
