@@ -66,4 +66,29 @@ relation was added for, and competition between two drugs for one binder.
   amendment and the development runs repeated, which is the same cost as adopting v3. It is worth doing with that
   move rather than separately.
 
-Nothing here is built. The decision is the user's.
+## The decision, 10 October 2026
+
+The user: "sorry that i was unclear then but i definitely want drugs as nodes with an ablation on them". So drug
+entry nodes are adopted with an ablation arm that removes them, and the two objections above are costs to carry
+rather than reasons not to. Nothing is built yet; what follows is the specification that session should implement, and
+the three choices in it were stated to the user and not contradicted.
+
+1. **A drug node per drug perturbation, seeded on itself.** The mechanism edges carry the perturbation to the target
+   genes, so the seed moves off the targets and onto the drug. This changes how all 154 drug perturbations enter, and
+   costs the propagation hop item 2 above measures.
+2. **A drug that is itself a graph compound attaches to that compound rather than duplicating it.** The user:
+   "it just has to interact with the endogenous and exogenous drug nodes consistently". Today no drug perturbation is
+   seeded on a metabolite (all 154 land on gene nodes), and `configs/drugs_acting_as_graph_compounds.csv` holds one
+   row, tryptophan, so the case is latent rather than live; the rule has to exist before it is, or the same molecule
+   becomes two nodes with separate states.
+3. **A signed sequestration relation, not `binds`.** Item 3 above gives the reason: all 31,177 `binds` rows carry
+   sign 0, so reusing it would place a carriage edge that does not lower free drug.
+
+The ablation is the arm that drops the drug nodes and seeds on the targets as now, which is what makes the entry
+point a measured claim rather than a modelling preference. It belongs in the ablation list of
+`docs/experiment_design.md` section 5.7, which is where the original forward reference pointed and found nothing.
+
+Two things this needs that are not code. A dated amendment to `docs/preregistration.md`, because the confirmatory
+graph and the perturbation model are both preregistered; the amendment should be drafted for the user rather than
+applied. And the development runs repeated, which is the same cost as the move to v3, so the two should move
+together rather than separately.
