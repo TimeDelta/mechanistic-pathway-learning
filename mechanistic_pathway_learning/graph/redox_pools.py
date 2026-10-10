@@ -77,7 +77,9 @@ def add_redox_pools(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: li
     for compartment in POOL_COMPARTMENTS:
         glutathione_pool, nadph_pool = pool_node("GSH", compartment), pool_node("NADPH", compartment)
         glutathione_rows, nadph_rows = [], []
-        for reaction in set(consumed) | set(produced):
+        # sorted, because a set of strings iterates in an order that changes with PYTHONHASHSEED, which made the row
+        # order of the pool edges differ between two builds of the same inputs (docs/data_layer_rebuild.md)
+        for reaction in sorted(set(consumed) | set(produced)):
             takes = {base for base, letter in consumed[reaction] if letter == compartment}
             makes = {base for base, letter in produced[reaction] if letter == compartment}
             if GLUTATHIONE in takes and GLUTATHIONE not in makes:

@@ -210,7 +210,9 @@ def ions_moved_inward(participants: list[tuple[str, str, str, float]], ion_bases
     letter, stoichiometry). An ion counts only when it is consumed on one side of the plasma membrane and produced on
     the other, so binding, release and chemistry on one side move nothing."""
     moved = {}
-    for base in ion_bases:
+    # sorted, because ion_bases arrives as a set and the callers add one edge per entry in this dictionary's order,
+    # so an unsorted loop gave the ion-pool edges a row order that changed with PYTHONHASHSEED
+    for base in sorted(ion_bases):
         def amount(role: str, letter: str) -> float:
             return sum(stoichiometry for row_role, row_base, row_letter, stoichiometry in participants if row_role == role and row_base == base and row_letter == letter)
         net = min(amount("in", "e"), amount("out", "c")) - min(amount("in", "c"), amount("out", "e"))
