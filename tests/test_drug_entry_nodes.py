@@ -190,8 +190,9 @@ def typed_features(node_types: list[str], all_types: list[str]) -> torch.Tensor:
     return torch.tensor([[1.0 if node_type == name else 0.0 for name in all_types] for node_type in node_types])
 
 
-def message_passing_pair(num_layers: int = 2, carriers: pd.DataFrame = CARRIERS_OF_DRUG_NODES):
-    """An encoder on the toy graph and one on its drug-node variant sharing every parameter the two have in common."""
+def message_passing_pair(num_layers: int = 2, carriers: pd.DataFrame = CARRIERS_OF_DRUG_NODES, sequestration_carries: str = "presence"):
+    """An encoder on the toy graph and one on its drug-node variant sharing every parameter the two have in common.
+    sequestration_carries "change" hands the variant's sequestration edges to the encoder as change-only edges."""
     nodes, edges, new_nodes, new_edges, relations, entry_table, _ = variant(carriers=carriers)
     all_types = sorted(set(new_nodes.node_type))
     index_of = {node_id: index for index, node_id in enumerate(new_nodes.node_id)}
@@ -212,7 +213,9 @@ def message_passing_pair(num_layers: int = 2, carriers: pd.DataFrame = CARRIERS_
         len(new_nodes), len(relations), 6, num_layers, node_features=typed_features(list(new_nodes.node_type), all_types),
         entry_node_mask=torch.tensor(list(new_nodes.node_type == DRUG_NODE_TYPE)), entry_edge_index=edge_index[:, is_entry],
         entry_edge_sign=torch.tensor(list(new_edges.sign[is_entry.numpy()]), dtype=torch.float32), entry_edge_weight=entry_weight,
-        entry_relation_indices=(relations.index(DRUG_MECHANISM_RELATION),))
+        entry_relation_indices=(relations.index(DRUG_MECHANISM_RELATION),),
+        **({"change_only_edge_index": edge_index[:, relation == relations.index(SEQUESTERS_RELATION)], "change_only_relation_index": relations.index(SEQUESTERS_RELATION)}
+           if sequestration_carries == "change" else {}))
     adjacencies = RelationalMessagePassingEncoder.build_relation_adjacencies(edge_index, relation, len(new_nodes), len(relations))
     with torch.no_grad():  # the variant has one relation more (sequesters, appended last) and the same feature columns
         encoder.feature_projection.load_state_dict(source_encoder.feature_projection.state_dict())
@@ -475,4 +478,67 @@ def test_seed_masked_gates_a_drug_s_targets_on_their_structural_columns_under_li
     assert float((with_descriptors - without_descriptors)[index_of["GENE:A"]].abs().max()) > 1e-4  # the mask changes something
     field = encoder(torch.tensor([[index_of["DRUG:drug_one"]]]), torch.tensor([[[1.0, 1.0]]]))
     assert field.shape == (1, len(new_nodes), 6) and bool(torch.isfinite(field).all())
+
+
+def test_a_sequestration_edge_that_carries_change_is_silent_while_the_carrier_is_at_rest() -> None:
+    """ALB sequesters drug_one. Carrying the carrier's state, the edge gives drug_one an input that drug_two, which has
+    no known carrier, does not get. Carrying the carrier's change from its unperturbed state, it sends nothing when the
+    drug is taken alone, sends when the carrier is lowered with the drug, and never reaches a drug that is not taken."""
+    _, _, with_presence, adjacencies, index_of, num_source_nodes = message_passing_pair(sequestration_carries="presence")
+    _, _, with_change, _, _, _ = message_passing_pair(sequestration_carries="change")
+    with torch.no_grad():  # one set of parameters for the two readings of the edge
+        with_change.load_state_dict(with_presence.state_dict())
+    drug_one, carrier = index_of["DRUG:drug_one"], index_of["GENE:ALB"]
+    drug_alone = (torch.tensor([[drug_one, -1]]), torch.tensor([[[1.0, 1.0], [0.0, 0.0]]]))
+    drug_with_carrier_lowered = (torch.tensor([[drug_one, carrier]]), torch.tensor([[[1.0, 1.0], [-1.0, 1.0]]]))
+    carrier_lowered = (torch.tensor([[carrier, -1]]), torch.tensor([[[-1.0, 1.0], [0.0, 0.0]]]))
+
+    def without_the_edge(seeds: torch.Tensor, sign_and_magnitude: torch.Tensor) -> torch.Tensor:
+        """The field with the sequestration relation's maps at zero, which is the graph without the edge."""
+        _, _, silenced, _, _, _ = message_passing_pair(sequestration_carries="presence")
+        with torch.no_grad():
+            silenced.load_state_dict(with_presence.state_dict())
+            silenced.relation_weight[:, -1] = 0.0  # sequesters is the relation appended last
+        return silenced.perturbation_difference_field(seeds, sign_and_magnitude, adjacencies)
+
+    with torch.no_grad():
+        # taken alone: the change-carrying edge is the graph without the edge, exactly, and the state-carrying edge is not
+        torch.testing.assert_close(with_change.perturbation_difference_field(*drug_alone, adjacencies), without_the_edge(*drug_alone), atol=1e-6, rtol=0)
+        assert float((with_presence.perturbation_difference_field(*drug_alone, adjacencies) - without_the_edge(*drug_alone)).abs().max()) > 1e-3
+        # the carrier lowered with the drug: the edge sends, and the drug's targets move with it
+        moved = (with_change.perturbation_difference_field(*drug_with_carrier_lowered, adjacencies) - without_the_edge(*drug_with_carrier_lowered)).abs().amax(dim=2)[0]
+        assert float(moved[drug_one]) > 1e-4 and float(moved[index_of["GENE:A"]]) > 1e-4
+        # the carrier lowered alone: no drug is taken, so no drug node holds anything and the rest is the graph without the edge
+        alone = with_change.perturbation_difference_field(*carrier_lowered, adjacencies)
+        assert float(alone[0, num_source_nodes:].abs().max()) == 0.0
+        torch.testing.assert_close(alone, without_the_edge(*carrier_lowered), atol=1e-6, rtol=0)
+        # a batch is its rows: the three perturbations together give the three fields
+        together = with_change.perturbation_difference_field(torch.cat([drug_alone[0], drug_with_carrier_lowered[0], carrier_lowered[0]]),
+                                                             torch.cat([drug_alone[1], drug_with_carrier_lowered[1], carrier_lowered[1]]), adjacencies)
+        torch.testing.assert_close(together[2:3], alone, atol=1e-6, rtol=0)
+        torch.testing.assert_close(together[0:1], with_change.perturbation_difference_field(*drug_alone, adjacencies), atol=1e-6, rtol=0)
+    with pytest.raises(ValueError, match="change-only edges need both"):
+        RelationalMessagePassingEncoder(5, 2, 4, 2, change_only_relation_index=1)
+
+
+def test_lowering_a_carrier_with_its_drug_raises_the_drug_s_linear_response() -> None:
+    """The linear response is a deviation from rest, so the sequestration edge carries the carrier's change by
+    construction: with ALB lowered beside drug_one, the part of the response that passes through the drug node is the
+    drug's own response times a positive factor per channel, and nothing passes when the drug is not taken."""
+    _, encoder, index_of, num_source_nodes = linear_response_pair(num_propagation_steps=400)
+    drug_one, carrier = index_of["DRUG:drug_one"], index_of["GENE:ALB"]
+    with torch.no_grad():
+        drug = encoder.response(torch.tensor([[drug_one]]), torch.tensor([[[1.0, 1.0]]]))
+        both = encoder.response(torch.tensor([[drug_one, carrier]]), torch.tensor([[[1.0, 1.0], [-1.0, 1.0]]]))
+        carrier_alone = encoder.response(torch.tensor([[carrier]]), torch.tensor([[[-1.0, 1.0]]]))
+    assert float(carrier_alone[0, num_source_nodes:].abs().max()) == 0.0  # no drug node without the drug
+    through_the_drug = (both - drug - carrier_alone)[0]  # [nodes, channels]
+    factor = through_the_drug[drug_one] / drug[0, drug_one]  # one per channel
+    assert bool((factor > 1e-3).all())  # less carrier, more of the drug
+    for target in ("GENE:A", "GENE:B", "GENE:C"):
+        torch.testing.assert_close(through_the_drug[index_of[target]], factor * drug[0, index_of[target]], atol=1e-5, rtol=1e-4)
+    with torch.no_grad():  # the carrier raised: the same factor with the other sign
+        raised = encoder.response(torch.tensor([[drug_one, carrier]]), torch.tensor([[[1.0, 1.0], [1.0, 1.0]]]))
+        raised_alone = encoder.response(torch.tensor([[carrier]]), torch.tensor([[[1.0, 1.0]]]))
+    torch.testing.assert_close((raised - drug - raised_alone)[0, drug_one], -factor * drug[0, drug_one], atol=1e-6, rtol=1e-4)
 

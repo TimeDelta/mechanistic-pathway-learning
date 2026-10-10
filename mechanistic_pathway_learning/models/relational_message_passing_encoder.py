@@ -105,8 +105,12 @@ class RelationalMessagePassingEncoder(nn.Module):
         entry_edge_weight: Tensor | None = None,
         entry_relation_indices: tuple[int, ...] = (),
         entry_before_first_layer: bool = False,
+        change_only_edge_index: Tensor | None = None,
+        change_only_relation_index: int | None = None,
     ) -> None:
         super().__init__()
+        if (change_only_edge_index is None) != (change_only_relation_index is None):
+            raise ValueError("change-only edges need both their edge index and the index of their relation")
         if conjunction_aggregation not in CONJUNCTION_AGGREGATIONS:
             raise ValueError(f"conjunction_aggregation must be one of {CONJUNCTION_AGGREGATIONS}")
         if soft_minimum_temperature <= 0:
@@ -133,6 +137,21 @@ class RelationalMessagePassingEncoder(nn.Module):
         self.register_buffer("entry_edge_weight", None if entry_node_mask is None else entry_edge_weight, persistent=False)
         self.register_buffer("entry_edge_signed_weight", None if entry_node_mask is None else entry_edge_sign * entry_edge_weight, persistent=False)
         self.entry_relation_indices = tuple(sorted(set(entry_relation_indices)))
+        # edges that carry how far their source has moved from its unperturbed state, not the state itself (a carrier's
+        # sequestration of a drug: silent while the carrier is at rest, so it cannot mark which drugs have a known carrier)
+        self.change_only_relation_index = change_only_relation_index
+        if change_only_edge_index is None:
+            self.register_buffer("change_only_edge_source", None, persistent=False)
+            self.register_buffer("change_only_edge_target", None, persistent=False)
+            self.register_buffer("change_only_edge_scale", None, persistent=False)
+        else:
+            if not 0 <= change_only_relation_index < num_relation_types:
+                raise ValueError("change_only_relation_index must name one of the relation types")
+            change_only_target = change_only_edge_index[1].long()
+            in_degree = torch.zeros(num_graph_nodes).index_add(0, change_only_target, torch.ones(len(change_only_target)))
+            self.register_buffer("change_only_edge_source", change_only_edge_index[0].long(), persistent=False)
+            self.register_buffer("change_only_edge_target", change_only_target, persistent=False)
+            self.register_buffer("change_only_edge_scale", 1.0 / in_degree[change_only_target], persistent=False)  # the mean, as for every other relation
         # with "mean" the conjunction relations are left in the stacked product, so the encoder is the one it was
         # before this option existed and the member edges are averaged like any other relation
         self.conjunction_relation_indices = () if conjunction_aggregation == "mean" else tuple(sorted(set(conjunction_relation_indices)))
@@ -301,10 +320,30 @@ class RelationalMessagePassingEncoder(nn.Module):
             present = self.present_nodes(perturbation_node_index)
             if present is not None:  # the reference of a perturbation is the body without the drug: no entry node in it
                 present = torch.cat([present, (~self.entry_node_mask)[None, :].expand(batch_size, -1)], dim=0)
-            propagated = self.propagate(both, relation_adjacencies, present)
+            reference_row = torch.arange(batch_size, 2 * batch_size, device=both.device).repeat(2)  # each row and each reference reads its own reference
+            propagated = self.propagate(both, relation_adjacencies, present, reference_row)
+            return propagated[:batch_size] - propagated[batch_size:]
+        if self.change_only_edge_source is not None:
+            # one more row, the unperturbed reference, propagated beside the batch so that each layer can read how far a
+            # source has moved from it; the row itself reads no change, so it is the reference it would be alone
+            batch_size, width = perturbation_node_index.shape
+            joint_index = torch.cat([perturbation_node_index, torch.full((1, width), -1, dtype=perturbation_node_index.dtype, device=perturbation_node_index.device)], dim=0)
+            joint_injection = torch.cat([perturbation_sign_and_magnitude, torch.zeros_like(perturbation_sign_and_magnitude[:1])], dim=0)
+            reference_row = torch.full((batch_size + 1,), batch_size, dtype=torch.long, device=perturbation_node_index.device)
+            propagated = self.propagate(self.initial_node_state_field(joint_index, joint_injection), relation_adjacencies, self.present_nodes(joint_index), reference_row)
             return propagated[:batch_size] - propagated[batch_size:]
         perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
         return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
+
+    def change_only_messages(self, node_major_state: Tensor, layer_index: int, reference_row: Tensor) -> Tensor:
+        """The messages of the change-only edges, averaged into their targets: ((x - x_reference) W_r) / in-degree.
+
+        reference_row ([batch_size]) names, for each row of the batch, the row that holds its unperturbed reference; a
+        reference names itself and so sends nothing. With every source at rest the message is exactly zero, whatever the
+        source's own state is."""
+        source_state = node_major_state[self.change_only_edge_source]  # [num_edges, batch_size, node_state_dim]
+        change = (source_state - source_state[:, reference_row]) * self.change_only_edge_scale[:, None, None]
+        return torch.zeros_like(node_major_state).index_add(0, self.change_only_edge_target, change @ self.relation_weight[layer_index, self.change_only_relation_index])
 
     def stacked_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor]:
         """All present relation adjacencies stacked vertically into one sparse matrix of shape
@@ -319,7 +358,8 @@ class RelationalMessagePassingEncoder(nn.Module):
         if cached is not None and cached[0] == cache_key:
             return cached[1], cached[2]
         present_relations = [index for index, adjacency in enumerate(relation_adjacencies)
-                             if adjacency is not None and index not in self.conjunction_relation_indices and index not in self.entry_relation_indices]
+                             if adjacency is not None and index not in self.conjunction_relation_indices and index not in self.entry_relation_indices
+                             and index != self.change_only_relation_index]
         indices, values = [], []
         for stack_position, relation_index in enumerate(present_relations):
             adjacency = relation_adjacencies[relation_index].coalesce()
@@ -417,11 +457,15 @@ class RelationalMessagePassingEncoder(nn.Module):
                     + (source_state * self.entry_edge_signed_weight[:, None, None]) @ signed_weight)
         return torch.zeros_like(node_major_state).index_add(0, self.entry_edge_target, per_edge)
 
-    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None], present_nodes: Tensor | None = None) -> Tensor:
+    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None], present_nodes: Tensor | None = None,
+                  reference_row: Tensor | None = None) -> Tensor:
         """L rounds of typed mean aggregation; returns the field as [batch_size, num_graph_nodes, node_state_dim].
 
         present_nodes ([batch_size, num_graph_nodes], or None when every node is always present) holds each row's
         absent entry nodes at zero before the first layer and after every layer, and adds the entry edges' messages.
+        reference_row ([batch_size], or None) names each row's unperturbed reference in the same batch, which the
+        change-only edges read; without it those edges send nothing, so a field computed alone (forward) treats every
+        source as at rest.
 
         Per layer the new state is relu(X W_self + sum_r A_r X W_r + b). The states are kept node-major,
         [num_graph_nodes, batch_size, node_state_dim], so the sparse product reads them as a
@@ -450,6 +494,8 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self_messages = self_messages + self.conjunction_messages(node_major_state, layer_index, member_edges)
             if node_major_presence is not None and self.entry_edge_source.numel():
                 self_messages = self_messages + self.entry_messages(node_major_state, layer_index)
+            if reference_row is not None and self.change_only_edge_source is not None and self.change_only_edge_source.numel():
+                self_messages = self_messages + self.change_only_messages(node_major_state, layer_index, reference_row)
             if segments:
                 flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
                 aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]

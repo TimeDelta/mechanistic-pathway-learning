@@ -284,7 +284,7 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
 ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input", "drug_entry",
-                                    "drug_mechanism_before_first_layer"}
+                                    "drug_mechanism_before_first_layer", "sequestration_carries"}
 
 
 def array_sha256(values) -> str:
@@ -310,6 +310,27 @@ def entry_node_inputs(data) -> dict:
     if getattr(data, "entry_node_mask", None) is None:
         return {}
     return {"entry_node_mask": torch.as_tensor(data.entry_node_mask)}
+
+
+SEQUESTRATION_MODES = ("change", "presence")
+
+
+def sequestration_inputs(data, arguments) -> dict:
+    """The message-passing keywords for a carrier's sequestration edges. Under "change" (the default on a graph that
+    holds the relation) an edge carries how far the carrier has moved from its unperturbed state, so it is silent in a
+    perturbation that leaves the carrier at rest; under "presence" it is averaged like any other relation and carries
+    the carrier's state itself, which gives every drug with a known carrier the same extra input
+    (docs/drug_entry_nodes_measured.md, section 6). Empty on a graph without the relation."""
+    if SEQUESTERS_RELATION not in data.relation_types:
+        return {}
+    relation_index = data.relation_types.index(SEQUESTERS_RELATION)
+    is_sequestration = np.asarray(data.edge_relation) == relation_index
+    mode = getattr(arguments, "sequestration_carries", None) or "change"
+    print(f"sequestration edges: {int(is_sequestration.sum())}, carrying the carrier's {'change from its unperturbed state' if mode == 'change' else 'state (presence)'}")
+    if mode == "presence" or not is_sequestration.any():
+        return {}
+    return {"change_only_edge_index": torch.as_tensor(np.stack([np.asarray(data.edge_source)[is_sequestration], np.asarray(data.edge_target)[is_sequestration]]), dtype=torch.long),
+            "change_only_relation_index": relation_index}
 
 
 def entry_edge_arrays(data) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -423,6 +444,7 @@ def build_models(data, arguments, device):
                                 entry_before_first_layer=bool(getattr(arguments, "drug_mechanism_before_first_layer", False)))
             print(f"drug entry nodes: {int(np.asarray(data.entry_node_mask).sum())} nodes, {int(is_entry_edge.sum())} mechanism edges, present only where seeded"
                   + (", mechanism edges also delivered before the first layer" if entry_inputs["entry_before_first_layer"] else ""))
+        entry_inputs.update(sequestration_inputs(data, arguments))
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features,
                                                   conjunction_relation_indices=conjunction_indices,
                                                   conjunction_aggregation=arguments.conjunction_aggregation,
@@ -895,6 +917,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--drug-entry", choices=DRUG_ENTRY_MODES, default=None,
                         help="on a graph with drug entry nodes (docs/drug_entry_nodes.md): nodes seeds each drug on its own node, which is the default there; "
                              "targets drops the nodes and seeds the drug's targets, the ablation arm and the inputs of the source graph. No effect on a graph without drug nodes")
+    parser.add_argument("--sequestration-carries", choices=SEQUESTRATION_MODES, default=None,
+                        help="message passing on a graph with sequestration edges (a plasma carrier to the drug it binds): change, the default there, sends how far the "
+                             "carrier has moved from its unperturbed state, so the edge is silent while the carrier is at rest; presence averages the carrier's state "
+                             "in like any other relation, which marks every drug that has a known carrier. The linear-response encoder carries the change by construction")
     parser.add_argument("--drug-mechanism-before-first-layer", action="store_true",
                         help="message passing with drug entry nodes: also deliver each drug's mechanism edges once before the first layer, so the drug's signal reaches as far "
                              "beyond its targets as a seed on the targets does (docs/drug_entry_nodes_measured.md, the hop)")
