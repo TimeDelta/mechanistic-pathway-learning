@@ -2435,3 +2435,224 @@
   pmid = {22342675},
   note = {Plasma carriage: VLDL carries triglycerides, cholesterol and cholesteryl esters with one apolipoprotein B100 per particle (docs/curated_plasma_carriage.csv)}
 }
+
+% Added 10 October 2026 for docs/drug_entry_nodes.md: whether plasma protein binding changes a drug's effect, and how
+% graph models place a drug. Every quoted sentence was read in the abstract PubMed or arXiv serves or in the article
+% text, as each note says; records retrieved from PubMed are cited with the article DOI.
+
+@article{benet2018predicting,
+  author  = {Benet, Leslie Z.},
+  title   = {Predicting pharmacokinetics/pharmacodynamics in the individual patient: separating reality from hype},
+  journal = {The Journal of Clinical Pharmacology},
+  year    = {2018},
+  volume  = {58},
+  number  = {8},
+  pages   = {979--989},
+  doi     = {10.1002/jcph.1105},
+  pmid    = {29663413},
+  note    = {When a change in plasma binding changes unbound exposure: "In essence, protein binding changes will only be relevant for high-extraction-ratio drugs dosed intravenously, and I estimate that fewer than 3\% of drug dosings would require concerns about changes in response due to changes in binding caused by drug-drug interactions or disease states" and, for oral dosing with hepatic elimination, "the area under the curve of unbound drug (AUC oral,u) is independent of protein binding" (article text, section on protein binding, with its Table 1). The gate is route and extraction ratio, a property of the drug and not of the drug-carrier pair (docs/drug_entry_nodes.md)}
+}
+
+@article{benet2002changes,
+  author  = {Benet, Leslie Z. and Hoener, Betty-ann},
+  title   = {Changes in plasma protein binding have little clinical relevance},
+  journal = {Clinical Pharmacology and Therapeutics},
+  year    = {2002},
+  volume  = {71},
+  number  = {3},
+  pages   = {115--121},
+  doi     = {10.1067/mcp.2002.121829},
+  pmid    = {11907485},
+  note    = {The analysis benet2018predicting restates. PubMed carries no abstract for it and the text was not retrieved, so nothing is quoted from it here; the title is its claim}
+}
+
+@article{hochman2015drug,
+  author  = {Hochman, Jerome and Tang, Cuyue and Prueksaritanont, Thomayant},
+  title   = {Drug-drug interactions related to altered absorption and plasma protein binding: theoretical and regulatory considerations, and an industry perspective},
+  journal = {Journal of Pharmaceutical Sciences},
+  year    = {2015},
+  volume  = {104},
+  number  = {3},
+  pages   = {916--929},
+  doi     = {10.1002/jps.24306},
+  pmid    = {25557998},
+  note    = {The route by extraction-ratio table for displacement from plasma proteins (dPB): "the impact of dPB will be clinically relevant only for a small set of drugs characterized by (1) high ER and parenteral administration irrespective of elimination route and (2) high ER and oral administration with nonhepatic elimination" (article text, Theoretical considerations, Table 2). The same table marks the unbound peak and trough as changed for every intravenous row, so the invariance is of average unbound exposure and not of a peak}
+}
+
+@article{hiraoka2004changes,
+  author  = {Hiraoka, Haruhiko and Yamamoto, Koujirou and Okano, Nobuhiro and Morita, Toshihiro and Goto, Fumio and Horiuchi, Ryuya},
+  title   = {Changes in drug plasma concentrations of an extensively bound and highly extracted drug, propofol, in response to altered plasma binding},
+  journal = {Clinical Pharmacology and Therapeutics},
+  year    = {2004},
+  volume  = {75},
+  number  = {4},
+  pages   = {324--330},
+  doi     = {10.1016/j.clpt.2003.12.004},
+  pmid    = {15060510},
+  note    = {The human test of the intravenous high-extraction case: "During cardiopulmonary bypass, a significant increase in the concentration of unbound propofol occurred without alteration in the total propofol concentration in blood. The effect of the changes of propofol's protein binding on its kinetics was consistent with the predictions based on the well-stirred model of hepatic elimination for an intravenously infused high-clearance drug" (abstract, PubMed 15060510). It reports kinetics and no measure of anaesthetic depth}
+}
+
+@article{coutant2018disease,
+  author  = {Coutant, David E. and Hall, Stephen D.},
+  title   = {Disease-drug interactions in inflammatory states via effects on {CYP}-mediated drug clearance},
+  journal = {The Journal of Clinical Pharmacology},
+  year    = {2018},
+  volume  = {58},
+  number  = {7},
+  pages   = {849--863},
+  doi     = {10.1002/jcph.1093},
+  pmid    = {29505093},
+  note    = {Albumin and orosomucoid do not bind alike: "Binding to albumin is generally not saturable because of its high plasma concentration (600 μM) and because of multiple binding sites in each albumin molecule. In contrast, the plasma concentration of AAG is lower (10 to 20 μM), and it has only 1 binding site. Thus, binding to AAG is displaceable and saturable" and "most drugs will bind to both albumin and AAG to varying extents" (article text, Protein-binding discussion). It also gives the unbound exposure after intravenous dosing separately for low and for high hepatic extraction}
+}
+
+@article{coutant2015understanding,
+  author  = {Coutant, D. E. and Kulanthaivel, P. and Turner, P. K. and Bell, R. L. and Baldwin, J. and Wijayawardana, S. R. and Pitou, C. and Hall, S. D.},
+  title   = {Understanding disease-drug interactions in cancer patients: implications for dosing within the therapeutic window},
+  journal = {Clinical Pharmacology and Therapeutics},
+  year    = {2015},
+  volume  = {98},
+  number  = {1},
+  pages   = {76--86},
+  doi     = {10.1002/cpt.128},
+  pmid    = {25808023},
+  note    = {Raised orosomucoid as a marker of lowered clearance and not as a cause of lowered effect: "increases in AAG can serve as a marker for altered drug clearance, insofar as inflammation can increase AAG in concert with increases in various cytokines, which in turn lower CYP gene expression and activity" and "In the past, it was mistakenly thought that increased toxicity would occur through altered drug free fraction via the displacement of one drug from plasma proteins by another drug or by reduced protein concentration" (article text, section on markers of decreased drug clearance). Under this account inflammation raises exposure to a sensitive CYP substrate, the opposite sign to a sequestration edge from the carrier}
+}
+
+@article{ulldemolins2011effects,
+  author  = {Ulldemolins, Marta and Roberts, Jason A. and Rello, Jordi and Paterson, David L. and Lipman, Jeffrey},
+  title   = {The effects of hypoalbuminaemia on optimizing antibacterial dosing in critically ill patients},
+  journal = {Clinical Pharmacokinetics},
+  year    = {2011},
+  volume  = {50},
+  number  = {2},
+  pages   = {99--110},
+  doi     = {10.2165/11539220-000000000-00000},
+  pmid    = {21142293},
+  note    = {A case where less carrier means less effect: "hypoalbuminaemia is likely to increase the apparent total volume of distribution (V(d)) and clearance (CL) of a drug, which would translate to lower antibacterial exposures that might compromise the attainment of pharmacodynamic targets, especially for time-dependent antibacterials" (abstract, PubMed 21142293). Antibacterials, not nervous-system drugs; cited for the sign}
+}
+
+@article{jaehde1995clinical,
+  author  = {Jaehde, U. and S{\"o}rgel, F.},
+  title   = {Clinical pharmacokinetics in patients with burns},
+  journal = {Clinical Pharmacokinetics},
+  year    = {1995},
+  volume  = {29},
+  number  = {1},
+  pages   = {15--28},
+  doi     = {10.2165/00003088-199529010-00003},
+  pmid    = {7586895},
+  note    = {One patient state moves the two carriers' drugs in opposite directions: "The free fraction of a drug in plasma can be increased (when primarily bound to albumin) or decreased (when primarily bound to alpha 1-acid glycoprotein)" (abstract, PubMed 7586895)}
+}
+
+@article{macfie1992disposition,
+  author  = {Macfie, A. G. and Magides, A. D. and Reilly, C. S.},
+  title   = {Disposition of alfentanil in burns patients},
+  journal = {British Journal of Anaesthesia},
+  year    = {1992},
+  volume  = {69},
+  number  = {5},
+  pages   = {447--450},
+  doi     = {10.1093/bja/69.5.447},
+  pmid    = {1467073},
+  note    = {Raised orosomucoid, more binding, and unbound clearance unchanged: "The burns patients had significantly greater concentrations of alpha-1-acid glycoprotein (AAG) and smaller concentrations of albumin" and "The clearance of the unbound fraction and the elimination half-life of alfentanil were not decreased significantly" (abstract, PubMed 1467073). Six patients and six controls}
+}
+
+@article{garrido2000alpha,
+  author  = {Garrido, M. J. and Aguirre, C. and Troc{\'o}niz, I. F. and Marot, M. and Valle, M. and Zamacona, M. K. and Calvo, R.},
+  title   = {Alpha 1-acid glycoprotein ({AAG}) and serum protein binding of methadone in heroin addicts with abstinence syndrome},
+  journal = {International Journal of Clinical Pharmacology and Therapeutics},
+  year    = {2000},
+  volume  = {38},
+  number  = {1},
+  pages   = {35--40},
+  doi     = {10.5414/cpp38035},
+  pmid    = {10667835},
+  note    = {The nearest study to a sequestration effect for a study drug class, and it stops at the unbound fraction in vitro: "The mean of the AAG concentrations was significantly increased in patients showing signs of withdrawal while the albumin concentrations did not change. Also, the unbound methadone was significantly decreased in this group when compared to the control" (abstract, PubMed 10667835). The need for a higher dose is the authors' inference; no response was measured}
+}
+
+@article{mcnamara2019predicting,
+  author  = {McNamara, Patrick J. and Meiman, Darius},
+  title   = {Predicting drug binding to human serum albumin and alpha one acid glycoprotein in diseased and age patient populations},
+  journal = {Journal of Pharmaceutical Sciences},
+  year    = {2019},
+  volume  = {108},
+  number  = {8},
+  pages   = {2737--2747},
+  doi     = {10.1016/j.xphs.2019.03.018},
+  pmid    = {30905706},
+  note    = {The one located source said to carry a per-drug share between the two carriers: "predict f values of 183 drugs utilizing either a single binding protein model, where the predominant binding protein had been established, or a multiple binding protein model (MBPM), where the relative binding contribution of human serum albumin (HSA) or alpha 1 acid glycoprotein (AAG) is known" (abstract, PubMed 30905706). The table of shares was not retrieved, so which study drugs it covers is not known}
+}
+
+@article{smith2019pharmacokinetic,
+  author  = {Smith, Sherri A. and Waters, Nigel J.},
+  title   = {Pharmacokinetic and pharmacodynamic considerations for drugs binding to alpha-1-acid glycoprotein},
+  journal = {Pharmaceutical Research},
+  year    = {2019},
+  volume  = {36},
+  number  = {2},
+  pages   = {30},
+  doi     = {10.1007/s11095-018-2551-x},
+  pmid    = {30593605},
+  note    = {Orosomucoid as a carrier: "Of the major plasma proteins, alpha-1-acid glycoprotein (AAG) represents an intriguing one primarily due to the high affinity, low capacity properties of this protein" (abstract, PubMed 30593605)}
+}
+
+@article{bohnert2013plasma,
+  author  = {Bohnert, Tonika and Gan, Liang-Shang},
+  title   = {Plasma protein binding: from discovery to development},
+  journal = {Journal of Pharmaceutical Sciences},
+  year    = {2013},
+  volume  = {102},
+  number  = {9},
+  pages   = {2953--2994},
+  doi     = {10.1002/jps.23614},
+  pmid    = {23798314},
+  note    = {The free drug theory as the review states it: "in absence of energy-dependent processes, after steady state equilibrium has been attained, free drug concentration in plasma is equal to free drug concentration at the pharmacologic target receptor(s) in tissues" (abstract, PubMed 23798314)}
+}
+
+@article{chaouloff1986peripheral,
+  author  = {Chaouloff, F. and Laude, D. and Merino, D. and Serrurrier, B. and Elghozi, J. L.},
+  title   = {Peripheral and central short-term effects of fusaric acid, a {DBH} inhibitor, on tryptophan and serotonin metabolism in the rat},
+  journal = {Journal of Neural Transmission},
+  year    = {1986},
+  volume  = {65},
+  number  = {3-4},
+  pages   = {219--232},
+  doi     = {10.1007/BF01249084},
+  pmid    = {2423643},
+  note    = {A drug displacing an endogenous cargo from albumin, with a central consequence, in the rat: "in vitro experiments revealed that FA was able to displace TRP binding to albumin, thus increasing the plasma free TRP pool" and "The increase in brain TRP promoted an increased brain serotonin synthesis, as measured by the enhanced brain and CSF 5-HIAA levels" (abstract, PubMed 2423643). The authors name a second, catecholaminergic route for the same effect}
+}
+
+@article{ruiz2021identification,
+  author  = {Ruiz, Camilo and Zitnik, Marinka and Leskovec, Jure},
+  title   = {Identification of disease treatment mechanisms through the multiscale interactome},
+  journal = {Nature Communications},
+  year    = {2021},
+  volume  = {12},
+  number  = {1},
+  pages   = {1796},
+  doi     = {10.1038/s41467-021-21770-8},
+  pmid    = {33741907},
+  note    = {A published model with drug nodes in which the drugs not being asked about cannot pass a signal on: "We then make the drug or disease of interest a source node (i.e., no in-edges) and all other drugs and diseases sink nodes (i.e., no out-edges)", because "drugs and diseases do not propagate their effect by using other drugs and diseases as intermediates" (article text, Methods, PubMed Central PMC7979814). The precedent for a drug node that is present only where it is seeded}
+}
+
+@article{zietz2024probability,
+  author  = {Zietz, Michael and Himmelstein, Daniel S. and Kloster, Kyle and Williams, Christopher and Nagle, Michael W. and Greene, Casey S.},
+  title   = {The probability of edge existence due to node degree: a baseline for network-based predictions},
+  journal = {GigaScience},
+  year    = {2024},
+  volume  = {13},
+  pages   = {giae001},
+  doi     = {10.1093/gigascience/giae001},
+  pmid    = {38323677},
+  note    = {Degree as a shortcut in biomedical networks: "We discover that performance attributable to factors other than degree is often only a small portion of overall performance" (abstract, PubMed 38323677). Why a drug node's edges are kept out of the degree of the nodes they touch}
+}
+
+@misc{alon2021bottleneck,
+  author        = {Alon, Uri and Yahav, Eran},
+  title         = {On the bottleneck of graph neural networks and its practical implications},
+  year          = {2021},
+  eprint        = {2006.05205},
+  archivePrefix = {arXiv},
+  doi           = {10.48550/arXiv.2006.05205},
+  note          = {Accepted to ICLR 2021 (arXiv comment). Why one more layer is not a free way to recover the hop a drug node costs: "This bottleneck causes the over-squashing of exponentially growing information into fixed-size vectors. As a result, GNNs fail to propagate messages originating from distant nodes and perform poorly when the prediction task depends on long-range interaction" (abstract, arXiv 2006.05205)}
+}
