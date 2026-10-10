@@ -18,8 +18,10 @@
 #
 # Every run ends with one machine-readable line, "resume_jobs: N active jobs", and writes the same count to
 # runs/jobs/active_job_count. The hourly check-in routines exist only to relaunch these jobs, so they are disabled
-# while the count is 0 and re-enabled when a job is registered (the user's instruction of 9 October 2026); the rule,
-# the routine ids and who may change them are in docs/job_harness.md. A job counts as active when it is running, or
+# while the count is 0 and enabled while a job is registered (the user's instruction of 9 October 2026). A routine
+# fires into the session that created it and cannot be repointed, so the session that registers a job enables the
+# routines bound to itself, and creates its own four when it has none; the rule, the routine ids, the session each
+# one fires into and who may change them are in docs/job_harness.md. A job counts as active when it is running, or
 # unfinished with neither marker; a failed job does not, because it is never relaunched and needs a person.
 set -uo pipefail
 repository_root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,7 +52,8 @@ elif [ "${1:-}" = "--register" ]; then
     printf 'JOB_DESCRIPTION=%q\n' "${6:-}"
   } > "$job_directory/$2.job"
   echo "registered job $2"
-  echo "resume_jobs: a job was registered, so the check-in routines must be enabled; see docs/job_harness.md"
+  echo "resume_jobs: a job was registered, so this session needs enabled check-in routines bound to itself;"
+  echo "resume_jobs: create them if it has none, and never enable a routine bound to another session; see docs/job_harness.md"
 fi
 
 job_files=("$job_directory"/*.job)
