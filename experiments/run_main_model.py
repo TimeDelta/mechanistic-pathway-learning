@@ -43,7 +43,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
+from mechanistic_pathway_learning.evaluation.experiment_data import DRUG_ENTRY_MODES, load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, reciprocated_relations
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
@@ -70,6 +70,7 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
+from mechanistic_pathway_learning.graph.drug_entry_nodes import ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
 from mechanistic_pathway_learning.models.linear_response_encoder import (
@@ -189,12 +190,43 @@ def descriptor_treatment_inputs(data, arguments) -> dict:
     num_structural_columns = data.structural_node_features().shape[1]
     num_descriptor_columns = node_feature_matrix(data, arguments).shape[1] - num_structural_columns
     inputs = {"descriptor_treatment": treatment, "num_descriptor_columns": num_descriptor_columns}
-    if treatment == "seed_masked" and ENCODES_RELATION in data.relation_types:  # a split graph: the mask covers each seed's encodes partners
+    if treatment == "seed_masked":
+        partner_pairs = seed_mask_partner_pairs(data)
+        if partner_pairs.shape[1]:
+            inputs["seed_mask_partner_index"] = torch.as_tensor(partner_pairs, dtype=torch.long)
+    return inputs
+
+
+def seed_mask_partner_pairs(data) -> np.ndarray:
+    """[2, num_pairs] of (node, partner): a perturbation seeded on the node has its partner masked with it under
+    seed_masked. On a split graph the partners of a seed are its encodes partners, both directions. A drug entry node's
+    partners are the targets of its mechanism edges and their encodes partners, one direction only, so a drug seeded on
+    its node hides the descriptors of the nodes it hides when it is seeded on its targets, and a seed on a target does
+    not reach back to the drugs that act on it."""
+    nodes_of_pairs, partners_of_pairs = [], []
+    encodes_partners: dict[int, list[int]] = {}
+    if ENCODES_RELATION in data.relation_types:  # a split graph: the mask covers each seed's encodes partners
         encodes = np.asarray(data.edge_relation) == data.relation_types.index(ENCODES_RELATION)
         genes, proteins = np.asarray(data.edge_source)[encodes], np.asarray(data.edge_target)[encodes]
-        inputs["seed_mask_partner_index"] = torch.as_tensor(np.stack([np.concatenate([genes, proteins]), np.concatenate([proteins, genes])]), dtype=torch.long)
+        nodes_of_pairs += [genes, proteins]
+        partners_of_pairs += [proteins, genes]
+        for gene, protein in zip(genes.tolist(), proteins.tolist()):
+            encodes_partners.setdefault(gene, []).append(protein)
+            encodes_partners.setdefault(protein, []).append(gene)
         print(f"seed masking covers each seed's encodes partners ({int(encodes.sum())} encodes edges)")
-    return inputs
+    if getattr(data, "entry_node_mask", None) is not None:
+        is_entry_edge, _, _, _ = entry_edge_arrays(data)
+        entry_pairs = set()
+        for entry_node, target in zip(np.asarray(data.edge_source)[is_entry_edge].tolist(), np.asarray(data.edge_target)[is_entry_edge].tolist()):
+            entry_pairs.add((entry_node, target))
+            entry_pairs.update((entry_node, partner) for partner in encodes_partners.get(target, []))
+        ordered_entry_pairs = np.array(sorted(entry_pairs), dtype=int).reshape(-1, 2)
+        nodes_of_pairs.append(ordered_entry_pairs[:, 0])
+        partners_of_pairs.append(ordered_entry_pairs[:, 1])
+        print(f"seed masking covers each drug node's targets and their encodes partners ({len(ordered_entry_pairs)} pairs)")
+    if not nodes_of_pairs:
+        return np.zeros((2, 0), dtype=int)
+    return np.stack([np.concatenate(nodes_of_pairs), np.concatenate(partners_of_pairs)])
 
 
 def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
@@ -251,7 +283,8 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 # arguments a resumed process may change without changing what the checkpoint was trained for
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
-ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input"}
+ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input", "drug_entry",
+                                    "drug_mechanism_before_first_layer"}
 
 
 def array_sha256(values) -> str:
@@ -259,10 +292,51 @@ def array_sha256(values) -> str:
     return hashlib.sha256(str(array.dtype).encode() + str(array.shape).encode() + array.tobytes()).hexdigest()
 
 
-def rewiring_fixed_relations(relation_types: list[str], rewire_encodes: bool) -> list[int]:
+def rewiring_fixed_relations(relation_types: list[str], rewire_encodes: bool, has_entry_nodes: bool = False) -> list[int]:
     """Relation indices the rewiring leaves as they are: encodes on a split graph unless --rewire-encodes (an open
-    decision of the user, docs/gene_protein_split.md); none on a merged graph."""
-    return [relation_types.index(ENCODES_RELATION)] if ENCODES_RELATION in relation_types and not rewire_encodes else []
+    decision of the user, docs/gene_protein_split.md); none on a merged graph. With drug entry nodes, also a drug's
+    mechanism edges and its carriers' sequestration edges: they are how the perturbation enters, as its seeds are
+    without the nodes, and seeds are not rewired. A rewiring that moved them would give a drug other targets, which
+    tests something else than whether the graph beyond the targets carries the signal."""
+    fixed = [relation_types.index(ENCODES_RELATION)] if ENCODES_RELATION in relation_types and not rewire_encodes else []
+    if has_entry_nodes:
+        fixed += [relation_types.index(relation) for relation in (*ENTRY_RELATIONS, SEQUESTERS_RELATION) if relation in relation_types]
+    return fixed
+
+
+def entry_node_inputs(data) -> dict:
+    """The encoder keywords that say which nodes are drug entry nodes; empty on a graph without them or under
+    --drug-entry targets, so every earlier run builds the encoder it always built."""
+    if getattr(data, "entry_node_mask", None) is None:
+        return {}
+    return {"entry_node_mask": torch.as_tensor(data.entry_node_mask)}
+
+
+def entry_edge_arrays(data) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """(is entry edge, relation indices of the entry relations, edge signs, edge weights) of a graph with entry nodes."""
+    entry_relation_indices = np.array([data.relation_types.index(relation) for relation in ENTRY_RELATIONS if relation in data.relation_types], dtype=int)
+    is_entry_edge = np.isin(np.asarray(data.edge_relation), entry_relation_indices)
+    weights = np.ones(len(is_entry_edge)) if data.edge_weight is None else np.asarray(data.edge_weight, dtype=float)
+    return is_entry_edge, entry_relation_indices, np.asarray(data.edge_sign, dtype=float), weights
+
+
+def perturbations_with_a_zero_signed_input(data) -> list[str]:
+    """Perturbations whose input carries no sign: every seed has sign 0 or magnitude 0, or, for a drug seeded on its
+    entry node, every mechanism edge of that node does. The linear-response encoder gives them a zero field."""
+    signed_input_of_entry_node = None
+    if getattr(data, "entry_node_mask", None) is not None:
+        is_entry_edge, _, signs, weights = entry_edge_arrays(data)
+        signed_input_of_entry_node = np.zeros(len(data.node_ids))
+        np.add.at(signed_input_of_entry_node, np.asarray(data.edge_source)[is_entry_edge], np.abs(signs[is_entry_edge] * weights[is_entry_edge]))
+    zero_input = []
+    for perturbation_id, seeds, signs, magnitudes in zip(data.perturbation_ids, data.perturbation_seeds, data.perturbation_signs, data.perturbation_magnitudes):
+        seed_input = np.abs(np.asarray(signs, dtype=float) * np.asarray(magnitudes, dtype=float))
+        if signed_input_of_entry_node is not None:  # a seed on an entry node passes on only what its mechanism edges carry
+            on_entry_node = np.asarray(data.entry_node_mask)[np.asarray(seeds, dtype=int)]
+            seed_input = np.where(on_entry_node, seed_input * signed_input_of_entry_node[np.asarray(seeds, dtype=int)], seed_input)
+        if not np.any(seed_input):
+            zero_input.append(perturbation_id)
+    return zero_input
 
 
 def configuration_fingerprint(arguments, data, label_mask) -> dict:
@@ -322,7 +396,9 @@ def build_models(data, arguments, device):
                                         edge_signs=arguments.edge_signs, relation_gains=arguments.relation_gains,
                                         cell_class_weights=cell_class_weights, channels_per_cell_class=arguments.channels_per_cell_class,
                                         extracellular_pool_nodes=pool_nodes, shared_pool_classes=shared_pool_classes,
-                                        **descriptor_treatment_inputs(data, arguments)).to(device)
+                                        **descriptor_treatment_inputs(data, arguments),
+                                        **({"entry_relation_names": ENTRY_RELATIONS, "edge_weight": torch.as_tensor(data.edge_weight), **entry_node_inputs(data)}
+                                           if entry_node_inputs(data) else {})).to(device)
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
@@ -337,11 +413,21 @@ def build_models(data, arguments, device):
         conjunction_relations = [relation for relation in arguments.conjunction_relations if relation in set(data.relation_types)]
         missing_relations = [relation for relation in arguments.conjunction_relations if relation not in set(data.relation_types)]
         conjunction_indices = tuple(list(data.relation_types).index(relation) for relation in conjunction_relations)
+        entry_inputs = entry_node_inputs(data)
+        if entry_inputs:
+            is_entry_edge, entry_relation_indices, edge_signs, edge_weights = entry_edge_arrays(data)
+            entry_inputs.update(entry_edge_index=torch.as_tensor(np.stack([np.asarray(data.edge_source)[is_entry_edge], np.asarray(data.edge_target)[is_entry_edge]]), dtype=torch.long),
+                                entry_edge_sign=torch.as_tensor(edge_signs[is_entry_edge], dtype=torch.float32),
+                                entry_edge_weight=torch.as_tensor(edge_weights[is_entry_edge], dtype=torch.float32),
+                                entry_relation_indices=tuple(int(index) for index in entry_relation_indices),
+                                entry_before_first_layer=bool(getattr(arguments, "drug_mechanism_before_first_layer", False)))
+            print(f"drug entry nodes: {int(np.asarray(data.entry_node_mask).sum())} nodes, {int(is_entry_edge.sum())} mechanism edges, present only where seeded"
+                  + (", mechanism edges also delivered before the first layer" if entry_inputs["entry_before_first_layer"] else ""))
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features,
                                                   conjunction_relation_indices=conjunction_indices,
                                                   conjunction_aggregation=arguments.conjunction_aggregation,
                                                   soft_minimum_temperature=arguments.soft_minimum_temperature,
-                                                  **descriptor_treatment_inputs(data, arguments)).to(device)
+                                                  **descriptor_treatment_inputs(data, arguments), **entry_inputs).to(device)
         if arguments.conjunction_aggregation == "mean":
             print("conjunction relations: none; every relation is aggregated by its in-degree mean")
         elif conjunction_indices:
@@ -806,6 +892,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
                         help="rescale each drug's seed magnitudes to sum to 1, so a drug with more targets does not push more field; genes unchanged")
+    parser.add_argument("--drug-entry", choices=DRUG_ENTRY_MODES, default=None,
+                        help="on a graph with drug entry nodes (docs/drug_entry_nodes.md): nodes seeds each drug on its own node, which is the default there; "
+                             "targets drops the nodes and seeds the drug's targets, the ablation arm and the inputs of the source graph. No effect on a graph without drug nodes")
+    parser.add_argument("--drug-mechanism-before-first-layer", action="store_true",
+                        help="message passing with drug entry nodes: also deliver each drug's mechanism edges once before the first layer, so the drug's signal reaches as far "
+                             "beyond its targets as a seed on the targets does (docs/drug_entry_nodes_measured.md, the hop)")
     parser.add_argument("--description-length-coefficient", type=float, default=1e-6)
     parser.add_argument("--checkpoint-every-minutes", type=float, default=20.0)
     parser.add_argument("--time-budget-seconds", type=float, default=0.0, help="stop training after this many seconds (0 = no limit)")
@@ -823,7 +915,12 @@ def main() -> None:
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None,
-                                label_selection=arguments.label_selection)
+                                label_selection=arguments.label_selection, drug_entry=arguments.drug_entry or "nodes")
+    if data.drug_entry == "nodes":
+        if arguments.normalise_drug_input:
+            raise ValueError("--normalise-drug-input rescales seed magnitudes, and a drug seeded on its entry node has one seed of magnitude 1; "
+                             "its targets' shares are the mechanism edges' weights. Use --drug-entry targets with it")
+        print(f"drug entry: {int(np.asarray(data.entry_node_mask).sum())} drug nodes in the graph, each drug perturbation seeded on its own")
     if data.label_selection_summary is not None:
         print(f"label selection: {data.label_selection_summary}")
         if arguments.time_split_cutoff is not None:
@@ -857,8 +954,7 @@ def main() -> None:
     if arguments.normalise_drug_input:
         data.perturbation_magnitudes = drug_input_normalised(data.perturbation_types, data.perturbation_magnitudes)
     if arguments.encoder == "linear_response":  # its input is sign x magnitude, so a perturbation whose seeds all have sign 0 gives a zero field
-        zero_input = [perturbation_id for perturbation_id, signs, magnitudes in zip(data.perturbation_ids, data.perturbation_signs, data.perturbation_magnitudes)
-                      if not np.any(np.asarray(signs, dtype=float) * np.asarray(magnitudes, dtype=float))]
+        zero_input = perturbations_with_a_zero_signed_input(data)
         if zero_input:
             print(f"warning: {len(zero_input)} perturbations have no seed with a nonzero sign and magnitude; the linear-response encoder gives them "
                   f"the prediction of no perturbation: {zero_input}")
@@ -866,7 +962,7 @@ def main() -> None:
     if arguments.rewire_swaps_per_edge > 0:
         original_edges = np.stack([data.edge_source, data.edge_target])
         undirected_relations = reciprocated_relations(original_edges, data.edge_relation) if arguments.keep_reciprocated_relations_symmetric else []
-        fixed_relations = rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False))
+        fixed_relations = rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False), has_entry_nodes=data.entry_node_mask is not None)
         rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=arguments.rewire_swaps_per_edge, random_seed=arguments.seed,
                                                   undirected_relations=undirected_relations, fixed_relations=fixed_relations)
         rewiring_summary = {"swaps_per_edge": arguments.rewire_swaps_per_edge, "seed": arguments.seed, "num_edges": int(rewired.shape[1]),

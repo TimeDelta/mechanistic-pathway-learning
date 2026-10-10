@@ -10,8 +10,11 @@ negation. Sentences that name both are reported as "both" rather than resolved, 
 sentence and the label's set_id so a reader can check the claim rather than take it.
 
 Reads the cache of experiments/fetch_fda_label_protein_binding.py and the pinned database. Writes
-docs/label_plasma_binders.md. Adds no edge and changes no graph: whether these carriers become carriage edges is the
-user's decision, and the confirmatory graph is not touched here.
+docs/label_plasma_binders.md and configs/drug_plasma_carriers.csv, the same readings as a table a graph build can
+read (experiments/build_drug_entry_node_variant.py): one row per drug either source names a carrier for, with the
+carrier each source gives, the label version and the sentence. A drug the two sources disagree on is left out of the
+table and listed in the document, because no rule resolves a disagreement yet (docs/research_summary.md, 10 October
+2026). Adds no edge and changes no graph.
 
 Usage:
   python experiments/scope_label_plasma_binder_coverage.py
@@ -47,6 +50,9 @@ BINDING_SUBJECT = re.compile(r"\b([a-z][a-z-]{3,})\s+(?:is|was|are|were)\s+[^.;]
 ANOTHER_DRUG_S_BINDING = ("affect the binding of", "affected the binding of", "alter the binding of",
                           "altered the binding of", "displace the binding of")
 OUTPUT_DOCUMENT = Path("docs/label_plasma_binders.md")
+CARRIER_TABLE = Path("configs/drug_plasma_carriers.csv")
+CARRIER_TABLE_COLUMNS = ["perturbation_id", "drug", "carrier", "source", "label_carrier", "database_carrier", "label_names_the_drug",
+                         "label_set_id", "label_effective_time", "label_sentence"]
 FRACTION_UNBOUND_SHEET_BINDERS = {"hsa": "albumin", "aag": "orosomucoid", "both": "both"}
 
 
@@ -130,8 +136,32 @@ def measured_carriers(database_path: Path) -> dict[str, str]:
             for drug, binders in carriers.items()}
 
 
+def carrier_table(readings: pd.DataFrame) -> pd.DataFrame:
+    """One row per drug with a carrier from the label, the database or both, the two agreeing where both speak.
+
+    readings: the per-drug label readings with measured_carrier joined. The carrier column is what a carriage edge
+    takes; source says which of the two it rests on, and a drug the sources disagree on has no row."""
+    rows = []
+    for reading in readings.sort_values("perturbation_id").itertuples(index=False):
+        label_carrier, database_carrier = reading.carrier, reading.measured_carrier
+        if not label_carrier and not database_carrier:
+            continue
+        if label_carrier and database_carrier and label_carrier != database_carrier:
+            continue
+        sentence = getattr(reading, "sentence", "")
+        rows.append({"perturbation_id": reading.perturbation_id, "drug": reading.drug, "carrier": label_carrier or database_carrier,
+                     "source": "label and database" if label_carrier and database_carrier else ("label" if label_carrier else "database"),
+                     "label_carrier": label_carrier, "database_carrier": database_carrier,
+                     "label_names_the_drug": bool(reading.names_the_drug) if label_carrier else "",
+                     "label_set_id": getattr(reading, "set_id", "") if label_carrier else "",
+                     "label_effective_time": getattr(reading, "effective_time", "") if label_carrier else "",
+                     "label_sentence": " ".join(str(sentence).split()) if label_carrier and isinstance(sentence, str) else ""})
+    return pd.DataFrame(rows, columns=CARRIER_TABLE_COLUMNS)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--carrier-table", type=Path, default=CARRIER_TABLE, help="where the per-drug carrier table is written")
     parser.add_argument("--cache-dir", type=Path, default=Path("data/raw/fda_labels"))
     parser.add_argument("--fraction-unbound-database", type=Path,
                         default=Path("data/raw/plasma_protein_binding/fraction_unbound_database.xlsx"))
@@ -204,6 +234,10 @@ def main() -> int:
               "a dosing adjustment rather than a carrier."]
     OUTPUT_DOCUMENT.write_text("\n".join(lines) + "\n")
     print(f"wrote {OUTPUT_DOCUMENT}")
+    carriers = carrier_table(table.fillna(""))
+    arguments.carrier_table.parent.mkdir(parents=True, exist_ok=True)
+    carriers.to_csv(arguments.carrier_table, index=False)
+    print(f"wrote {arguments.carrier_table}: {len(carriers)} drugs ({carriers.carrier.value_counts().to_dict()}; by source {carriers.source.value_counts().to_dict()})")
     print(f"cached drugs {len(table)}; carrier named for {len(with_a_carrier)} "
           f"({len(orosomucoid)} orosomucoid); new to the study {len(new_to_the_study)}; "
           f"both sources {len(both_sources)} agreeing {len(agreeing)}")

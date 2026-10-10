@@ -44,6 +44,31 @@ preserved quantity)"). conjunction_aggregation picks the form: "minimum" is the 
 "soft_minimum" is -T log sum exp(-x/T) over the members, which approaches the hard minimum as the
 temperature falls and is the control that separates "a conjunction helps" from "a hard minimum
 helps", and "mean" is the in-degree mean every other relation uses.
+
+Entry nodes are not always there. A drug node (mechanistic_pathway_learning/graph/drug_entry_nodes.py)
+exists only in the perturbation that takes the drug, although the graph table holds a node for
+every drug of the study. Given entry_node_mask, an entry node that is not among a perturbation's
+seeds is held at zero in that perturbation's field, before the first layer and after every layer,
+and in the unperturbed reference every entry node is absent. Its edges to the rest of the graph
+(entry_edge_index, the mechanism edges of a drug) are added as a sum rather than a mean:
+
+    message into target = weight * (x_source W_unsigned) + sign * weight * (x_source W_signed)
+
+with one pair of maps per layer, which is the edge form of the injection Linear([sign, magnitude])
+that a seed on the target itself receives. A mean would divide a drug's signal at its target by the
+number of study drugs sharing that target, and with every drug node present a gene knockout's field
+would depend on which drugs the study contains; both are measured in
+docs/drug_entry_nodes_measured.md. The relations of entry_relation_indices are left out of the
+stacked product because these edges are handled here.
+
+An entry node sits one edge behind the nodes a seed on the targets starts from, so with L layers its
+signal reaches L - 1 edges beyond the targets instead of L. On the confirmatory graph at three
+layers that leaves a drug a median 0.11 of the nodes its targets reach
+(docs/drug_entry_nodes_measured.md). entry_before_first_layer delivers the entry edges once before
+the first layer as well, with maps of their own, so the targets start the first layer already
+carrying the drug's signal and the depth beyond them is the L of a seed on the targets. The entry
+edges still send at every layer, which makes a drug a sustained input where a seed is only an
+initial state.
 """
 from __future__ import annotations
 
@@ -74,12 +99,40 @@ class RelationalMessagePassingEncoder(nn.Module):
         conjunction_relation_indices: tuple[int, ...] = (),
         conjunction_aggregation: str = "minimum",
         soft_minimum_temperature: float = DEFAULT_SOFT_MINIMUM_TEMPERATURE,
+        entry_node_mask: Tensor | None = None,
+        entry_edge_index: Tensor | None = None,
+        entry_edge_sign: Tensor | None = None,
+        entry_edge_weight: Tensor | None = None,
+        entry_relation_indices: tuple[int, ...] = (),
+        entry_before_first_layer: bool = False,
     ) -> None:
         super().__init__()
         if conjunction_aggregation not in CONJUNCTION_AGGREGATIONS:
             raise ValueError(f"conjunction_aggregation must be one of {CONJUNCTION_AGGREGATIONS}")
         if soft_minimum_temperature <= 0:
             raise ValueError("soft_minimum_temperature must be positive")
+        if entry_node_mask is None and (entry_edge_index is not None or entry_relation_indices or entry_before_first_layer):
+            raise ValueError("entry edges need entry_node_mask, the nodes that exist only where they are seeded")
+        if entry_node_mask is not None:
+            if entry_node_mask.shape != (num_graph_nodes,):
+                raise ValueError("entry_node_mask must have one entry per graph node")
+            # under seed_masked the trainer passes each entry node's targets as its mask partners (seed_mask_partner_pairs),
+            # so a drug seeded on its node hides the descriptors it hides when it is seeded on its targets
+            if entry_edge_index is None:
+                entry_edge_index = torch.zeros((2, 0), dtype=torch.long)
+            num_entry_edges = entry_edge_index.shape[1]
+            entry_edge_sign = torch.ones(num_entry_edges) if entry_edge_sign is None else entry_edge_sign.to(torch.float32)
+            entry_edge_weight = torch.ones(num_entry_edges) if entry_edge_weight is None else entry_edge_weight.to(torch.float32)
+            if entry_edge_sign.shape != (num_entry_edges,) or entry_edge_weight.shape != (num_entry_edges,):
+                raise ValueError("entry_edge_sign and entry_edge_weight must have one entry per entry edge")
+            if num_entry_edges and not bool(entry_node_mask.bool()[entry_edge_index[0]].all()):
+                raise ValueError("every entry edge must leave an entry node")
+        self.register_buffer("entry_node_mask", None if entry_node_mask is None else entry_node_mask.bool(), persistent=False)
+        self.register_buffer("entry_edge_source", None if entry_node_mask is None else entry_edge_index[0].long(), persistent=False)
+        self.register_buffer("entry_edge_target", None if entry_node_mask is None else entry_edge_index[1].long(), persistent=False)
+        self.register_buffer("entry_edge_weight", None if entry_node_mask is None else entry_edge_weight, persistent=False)
+        self.register_buffer("entry_edge_signed_weight", None if entry_node_mask is None else entry_edge_sign * entry_edge_weight, persistent=False)
+        self.entry_relation_indices = tuple(sorted(set(entry_relation_indices)))
         # with "mean" the conjunction relations are left in the stacked product, so the encoder is the one it was
         # before this option existed and the member edges are averaged like any other relation
         self.conjunction_relation_indices = () if conjunction_aggregation == "mean" else tuple(sorted(set(conjunction_relation_indices)))
@@ -121,6 +174,15 @@ class RelationalMessagePassingEncoder(nn.Module):
         )
         self.self_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
         self.layer_bias = nn.Parameter(torch.zeros(num_message_passing_layers, node_state_dim))
+        # created last and only with entry nodes, so an encoder without them draws the parameters it always drew
+        self.entry_unsigned_weight, self.entry_signed_weight = None, None
+        self.entry_first_unsigned_weight, self.entry_first_signed_weight = None, None
+        if entry_node_mask is not None:
+            self.entry_unsigned_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
+            self.entry_signed_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
+            if entry_before_first_layer:
+                self.entry_first_unsigned_weight = nn.Parameter(torch.randn(node_state_dim, node_state_dim) * scale)
+                self.entry_first_signed_weight = nn.Parameter(torch.randn(node_state_dim, node_state_dim) * scale)
 
     def descriptor_parameters(self) -> list[nn.Parameter]:
         """The parameters that read the descriptor columns on their own (zero_init_slow), for their own learning rate."""
@@ -202,7 +264,19 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self._adjacency_cache_key = cache_key
             relation_adjacencies = self._cached_adjacencies
         node_state_field = self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude)
-        return self.propagate(node_state_field, relation_adjacencies)
+        return self.propagate(node_state_field, relation_adjacencies, self.present_nodes(perturbation_node_index))
+
+    def present_nodes(self, perturbation_node_index: Tensor) -> Tensor | None:
+        """[batch_size, num_graph_nodes], False for an entry node the perturbation is not seeded on; None without entry
+        nodes. An entry node exists only where it is taken, so a padded index (-1) and every unseeded row leave it out,
+        and the batch-of-one unperturbed reference, whose index is all padding, has no entry node at all."""
+        if self.entry_node_mask is None:
+            return None
+        batch_size = perturbation_node_index.shape[0]
+        seeded = torch.zeros((batch_size, self.num_graph_nodes + 1), dtype=torch.bool, device=perturbation_node_index.device)
+        # padding goes to an extra last column that is then dropped, so index -1 marks no node
+        seeded.scatter_(1, torch.where(perturbation_node_index >= 0, perturbation_node_index, torch.full_like(perturbation_node_index, self.num_graph_nodes)), True)
+        return ~self.entry_node_mask[None, :] | seeded[:, : self.num_graph_nodes]
 
     def unperturbed_node_state_field(self, relation_adjacencies: list[Tensor | None]) -> Tensor:
         """Field of shape [1, num_graph_nodes, node_state_dim] with no perturbation written on it."""
@@ -224,7 +298,10 @@ class RelationalMessagePassingEncoder(nn.Module):
             batch_size = perturbation_node_index.shape[0]
             both = torch.cat([self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude),
                               self.initial_node_state_field(perturbation_node_index, perturbation_sign_and_magnitude, inject=False)], dim=0)
-            propagated = self.propagate(both, relation_adjacencies)
+            present = self.present_nodes(perturbation_node_index)
+            if present is not None:  # the reference of a perturbation is the body without the drug: no entry node in it
+                present = torch.cat([present, (~self.entry_node_mask)[None, :].expand(batch_size, -1)], dim=0)
+            propagated = self.propagate(both, relation_adjacencies, present)
             return propagated[:batch_size] - propagated[batch_size:]
         perturbed = self.forward(perturbation_node_index, perturbation_sign_and_magnitude, relation_adjacencies=relation_adjacencies)
         return perturbed - self.unperturbed_node_state_field(relation_adjacencies)
@@ -242,7 +319,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         if cached is not None and cached[0] == cache_key:
             return cached[1], cached[2]
         present_relations = [index for index, adjacency in enumerate(relation_adjacencies)
-                             if adjacency is not None and index not in self.conjunction_relation_indices]
+                             if adjacency is not None and index not in self.conjunction_relation_indices and index not in self.entry_relation_indices]
         indices, values = [], []
         for stack_position, relation_index in enumerate(present_relations):
             adjacency = relation_adjacencies[relation_index].coalesce()
@@ -327,8 +404,24 @@ class RelationalMessagePassingEncoder(nn.Module):
             messages = messages + smallest @ self.relation_weight[layer_index, relation_index]
         return messages
 
-    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None]) -> Tensor:
+    def entry_messages(self, node_major_state: Tensor, layer_index: int | None) -> Tensor:
+        """The messages of the entry edges, summed into their targets: weight * (x W_unsigned) + sign * weight * (x W_signed).
+
+        node_major_state is [num_graph_nodes, batch_size, node_state_dim] with absent entry nodes already at zero, so an
+        entry node sends only in the perturbations seeded on it and no mask is needed here. layer_index None takes the
+        maps of the delivery before the first layer."""
+        unsigned_weight = self.entry_first_unsigned_weight if layer_index is None else self.entry_unsigned_weight[layer_index]
+        signed_weight = self.entry_first_signed_weight if layer_index is None else self.entry_signed_weight[layer_index]
+        source_state = node_major_state[self.entry_edge_source]  # [num_entry_edges, batch_size, node_state_dim]
+        per_edge = ((source_state * self.entry_edge_weight[:, None, None]) @ unsigned_weight
+                    + (source_state * self.entry_edge_signed_weight[:, None, None]) @ signed_weight)
+        return torch.zeros_like(node_major_state).index_add(0, self.entry_edge_target, per_edge)
+
+    def propagate(self, node_state_field: Tensor, relation_adjacencies: list[Tensor | None], present_nodes: Tensor | None = None) -> Tensor:
         """L rounds of typed mean aggregation; returns the field as [batch_size, num_graph_nodes, node_state_dim].
+
+        present_nodes ([batch_size, num_graph_nodes], or None when every node is always present) holds each row's
+        absent entry nodes at zero before the first layer and after every layer, and adds the entry edges' messages.
 
         Per layer the new state is relu(X W_self + sum_r A_r X W_r + b). The states are kept node-major,
         [num_graph_nodes, batch_size, node_state_dim], so the sparse product reads them as a
@@ -344,10 +437,19 @@ class RelationalMessagePassingEncoder(nn.Module):
         compressed_adjacency, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
         member_edges = self.conjunction_member_edges(relation_adjacencies) if self.conjunction_relation_indices else []
         node_major_state = node_state_field.permute(1, 0, 2).contiguous()  # [N, B, D]
+        node_major_presence = None
+        if present_nodes is not None:
+            node_major_presence = present_nodes.to(node_major_state.dtype).permute(1, 0)[:, :, None]  # [N, B, 1]
+            node_major_state = node_major_state * node_major_presence
+            if self.entry_first_unsigned_weight is not None and self.entry_edge_source.numel():
+                # the targets enter the first layer already holding the drug's signal, as a seed on them would
+                node_major_state = node_major_state + self.entry_messages(node_major_state, None)
         for layer_index in range(self.num_message_passing_layers):
             self_messages = node_major_state @ self.self_weight[layer_index]
             if member_edges:
                 self_messages = self_messages + self.conjunction_messages(node_major_state, layer_index, member_edges)
+            if node_major_presence is not None and self.entry_edge_source.numel():
+                self_messages = self_messages + self.entry_messages(node_major_state, layer_index)
             if segments:
                 flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
                 aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
@@ -357,4 +459,6 @@ class RelationalMessagePassingEncoder(nn.Module):
             else:
                 pre_activation = self_messages + self.layer_bias[layer_index]
             node_major_state = torch.relu(pre_activation)
+            if node_major_presence is not None:  # the layer bias alone would give an absent node a state
+                node_major_state = node_major_state * node_major_presence
         return node_major_state.permute(1, 0, 2).contiguous()

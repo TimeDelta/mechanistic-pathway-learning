@@ -1,0 +1,50 @@
+perturbation_id,drug,carrier,source,label_carrier,database_carrier,label_names_the_drug,label_set_id,label_effective_time,label_sentence
+CID100001775,phenytoin,albumin,database,,albumin,,,,
+CID100002118,alprazolam,albumin,label and database,albumin,albumin,True,0dce8232-0b0e-4f81-af95-36e6febdb550,20260519,"Alprazolam is 80% bound to human serum protein, and albumin accounts for the majority of the binding."
+CID100002443,bromocriptine,albumin,label,albumin,,True,17f3a343-1782-4799-95ba-31dfe93be2cf,20260727,Distribution In vitro experiments showed that bromocriptine was 90% -96% bound to serum albumin.
+CID100002474,bupivacaine,orosomucoid,label,orosomucoid,,False,01ca16de-ab2e-4e19-e063-6394a90a0510,20241231,Binding is also dependent on the plasma concentration of the alpha-1-acid glycoprotein.
+CID100002519,caffeine,albumin,database,,albumin,,,,
+CID100002554,carbamazepine,albumin,database,,albumin,,,,
+CID100002712,chlordiazepoxide,albumin,database,,albumin,,,,
+CID100002802,clonazepam,albumin,database,,albumin,,,,
+CID100002826,cocaine,both,label,both,,True,0f897764-fe30-090a-e063-6294a90af106,20241106,"Distribution Cocaine has been described in literature as approximately 84 – 92% bound to human plasma proteins, binding primarily to alpha-1-acid glycoprotein (AAG) and albumin."
+CID100002995,desipramine,orosomucoid,database,,orosomucoid,,,,
+CID100003016,diazepam,albumin,database,,albumin,,,,
+CID100003059,diflunisal,albumin,database,,albumin,,,,
+CID100003100,diphenhydramine,orosomucoid,database,,orosomucoid,,,,
+CID100003121,valproate,albumin,label and database,albumin,albumin,True,3dfb6da1-f66a-4618-9f74-d2d6c16c0b58,20241215,Liver disease is also associated with decreased albumin concentrations and larger unbound fractions (2 to 2.6 fold increase) of valproate.
+CID100003152,donepezil,both,label,both,,True,0c6b12e8-1933-40d8-bf43-97339b2b54fb,20230118,"Donepezil is approximately 96% bound to human plasma proteins, mainly to albumins (about 75%) and alpha1 -acid glycoprotein (about 21%) over the concentration range of 2-1000 ng/mL."
+CID100003331,felbamate,albumin,label,albumin,,False,0afffb17-e6ac-4bea-a90e-7ef3c8150290,20260714,"Binding ranged from 22% to 25%, mostly to albumin, and was dependent on the albumin concentration."
+CID100003345,fentanyl,orosomucoid,database,,orosomucoid,,,,
+CID100003386,fluoxetine,both,label,both,,True,02283de9-6087-45f7-a9ce-3b082ce860de,20190201,"Protein Binding — Over the concentration range from 200 to 1000 ng/mL, approximately 94.5% of fluoxetine is bound in vitro to human serum proteins, including albumin and α 1 -glycoprotein."
+CID100003404,fluvoxamine,albumin,label,albumin,,True,0b107225-ed5a-4461-9184-f3f2bad1892f,20260619,"Approximately 80% of fluvoxamine is bound to plasma protein, mostly albumin, over a concentration range of 20 to 2,000 ng/mL."
+CID100003676,lidocaine,orosomucoid,label and database,orosomucoid,orosomucoid,False,0050d05a-b8e9-c544-e063-6294a90a0243,20240208,Binding is also dependent on the plasma concentration of the alpha-1-acid glycoprotein.
+CID100003958,lorazepam,albumin,database,,albumin,,,,
+CID100004095,methadone,orosomucoid,label and database,orosomucoid,orosomucoid,True,0955ea4a-c6b8-431f-ba42-9641b5b102ea,20260112,"In plasma, methadone is predominantly bound to α1-acid glycoprotein (85% to 90%)."
+CID100004192,midazolam,albumin,label and database,albumin,albumin,True,06e4f754-72df-4eb4-aaed-b538524f5277,20231205,"In adults and children older than 1 year, midazolam is approximately 97% bound to plasma protein, principally albumin."
+CID100004236,modafinil,albumin,label,albumin,,True,0391f182-1958-9fef-a944-53b229ce99e7,20250827,"In human plasma, in vitro, modafinil is moderately bound to plasma protein (approximately 60%), mainly to albumin."
+CID100004253,morphine,albumin,database,,albumin,,,,
+CID100004456,neostigmine,albumin,label,albumin,,True,12f25113-bf55-cee7-e063-6294a90a9d56,20240305,Protein binding of neostigmine methylsulfate to human serum albumin ranges from 15 to 25%.
+CID100004616,oxazepam,albumin,database,,albumin,,,,
+CID100005070,riluzole,albumin,label,albumin,,True,4c851be4-f0d0-4b24-baf9-427ddfc6f7b0,20200516,Pharmacokinetic Parameters of Riluzole Absorption Bioavailability (oral) Approximately 60% Dose Proportionality Linear over a dose range of 25 mg to 100 mg every 12 hours (1/2 to 2 times the recommended dosage) Food effect AUC ↓ 20% and C max ↓ 45% (high fat meal) Distribution Plasma Protein Binding 96% (Mainly to albumin and lipoproteins) Elimination Elimination half-life 12 hours (CV=35%) The high interindividual variability in the clearance of riluzole is potentially attributable to variability of CYP1A2.
+CID100005466,tiagabine,both,label and database,both,both,True,7c034fe0-cdac-49e1-8e39-592846ea3bec,20210301,"Tiagabine is 96% bound to human plasma proteins, mainly to serum albumin and α1-acid glycoprotein over the concentration range of 10 ng/mL to 10,000 ng/mL."
+CID100005556,triazolam,albumin,database,,albumin,,,,
+CID100005732,zolpidem,albumin,database,,albumin,,,,
+CID100032169,articaine,albumin,label,albumin,,True,0eba0bd2-ccb6-4f7e-8d0c-e4b4e6cdce03,20241023,Distribution Approximately 60 to 80% of articaine HCl is bound to human serum albumin and γ-globulins at 37°C in vitro .
+CID100034312,oxcarbazepine,albumin,label,albumin,,False,03bec567-a9c3-4d82-9679-fec5324d0df6,20241118,"Approximately 40% of MHD is bound to serum proteins, predominantly to albumin."
+CID100036339,etomidate,albumin,label and database,albumin,albumin,True,0635683b-880a-0cd4-e063-6394a90ab73e,20230925,Protein binding of etomidate to serum albumin was also significantly decreased in these individuals.
+CID100041693,sufentanil,orosomucoid,label and database,orosomucoid,orosomucoid,True,20293943-46ff-4345-1aa4-929b4e017a25,20260601,"Distribution Plasma protein binding of sufentanil, related to the alpha acid glycoprotein concentration, was approximately 93% in healthy males, 91% in mothers and 79% in neonates."
+CID100051263,alfentanil,orosomucoid,database,,orosomucoid,,,,
+CID100054840,atomoxetine,albumin,label,albumin,,True,0782204e-56a3-4439-9fb8-194da9487049,20231101,"At therapeutic concentrations, 98% of atomoxetine in plasma is bound to protein, primarily albumin."
+CID100056338,fosphenytoin,albumin,label,albumin,,True,49b08648-6a83-42c7-ae7b-80c29f2534fc,20231017,"Distribution Fosphenytoin is extensively bound (95% to 99%) to human plasma proteins, primarily albumin."
+CID100065856,reboxetine,orosomucoid,database,,orosomucoid,,,,
+CID100071273,ropivacaine,orosomucoid,label and database,orosomucoid,orosomucoid,True,043b28cc-ce5c-4351-a646-704c381decb9,20260309,"Ropivacaine is 94% protein bound, mainly to α1-acid glycoprotein."
+CID100122316,rasagiline,albumin,label,albumin,,False,3b57a1c9-0ad9-40cf-a972-29851a658489,20260223,Plasma protein binding ranges from 88-94% with mean extent of binding of 61-63% to human albumin over the concentration range of 1-100 ng/mL.
+CID100129228,rufinamide,albumin,label,albumin,,True,0a3fa925-1abd-458a-bd57-4ae780a1ef2d,20221215,"Only a small fraction of rufinamide (34%) is bound to human serum proteins, predominantly to albumin (27%), giving little risk of displacement drug-drug interactions."
+CID100208902,ramelteon,albumin,label,albumin,,False,00f0fbda-eb62-4f79-ae9c-286b31eca733,20260507,"Binding to albumin accounts for most of that binding, since 70% of the drug is bound in human serum albumin."
+CID104659568,entacapone,albumin,label,albumin,,True,0bf133e4-1c17-4358-9a43-144e6bf2564f,20231007,Entacapone binds mainly to serum albumin.
+CID104659569,tolcapone,albumin,label,albumin,,True,a0e47a9d-78e7-4523-983a-aa259f221736,20201002,In vitro experiments have shown that tolcapone binds mainly to serum albumin.
+CID109924495,perampanel,both,label,both,,True,4d8be129-f3cb-49ad-ae5a-a74a50dff689,20221126,"Distribution Data from in vitro studies indicate that, in the concentration range of 20 to 2000 ng/mL, perampanel is approximately 9596% bound to plasma proteins, mainly bound to albumin and α1-acid glycoprotein."
+CID124965990,suvorexant,both,label,both,,True,e5b72731-1acb-45b7-9c13-290ad12d3951,20250310,Suvorexant binds to both human serum albumin and α1-acid glycoprotein.
+RXCUI:10493,thiopental,albumin,database,,albumin,,,,
+RXCUI:2383941,remimazolam,albumin,label,albumin,,False,4e1838f2-b999-41a7-a761-d94f09aa531f,20250220,"Plasma protein binding of BYFAVO was >91%, primarily to human serum albumin."

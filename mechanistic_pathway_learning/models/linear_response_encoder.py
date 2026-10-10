@@ -78,6 +78,19 @@ without adding anything where it did not. With node descriptors among the featur
 columns), seed_masked (at each perturbation's perturbed nodes, where the response is largest, the gate reads the
 structural columns only) or zero_init_slow (a separate descriptor map in the gate's logit that starts at zero and
 trains at its own learning rate).
+
+Entry nodes (entry_node_mask; a drug node, mechanistic_pathway_learning/graph/drug_entry_nodes.py) exist only in the
+perturbation seeded on them: the response of an entry node that is not a seed is held at zero at every step. The edges
+of entry_relation_names (a drug's mechanism edges) are kept out of the normalised adjacency and added on their own,
+
+    message into target = sign * weight * gain_entry * h_source
+
+with one positive gain per channel for each entry relation. Left in the adjacency they would be divided by the
+target's in-degree under the relation, which is the number of study drugs sharing the target, and they would add one
+to the number of relations feeding the target, which divides every other relation's message there for every
+perturbation, gene knockouts included (docs/drug_entry_nodes_measured.md). An entry node with no incoming edge holds
+its own input at every step, so its mechanism edges deliver a sustained input sign * weight * gain_entry * u to its
+targets: the same input a seed on the target delivers, scaled per channel by the gain and one step later.
 """
 from __future__ import annotations
 
@@ -340,9 +353,40 @@ class LinearResponseEncoder(nn.Module):
         num_descriptor_columns: int = 0,
         descriptor_treatment: str = "plain",
         seed_mask_partner_index: Tensor | None = None,
+        entry_node_mask: Tensor | None = None,
+        entry_relation_names: tuple[str, ...] = (),
+        edge_weight: Tensor | None = None,
     ) -> None:
         super().__init__()
         self.register_buffer("seed_mask_partner_index", None if seed_mask_partner_index is None else seed_mask_partner_index.long(), persistent=False)
+        entry_edges = None
+        if entry_node_mask is None:
+            if entry_relation_names:
+                raise ValueError("entry relations need entry_node_mask, the nodes that exist only where they are seeded")
+        else:
+            if entry_node_mask.shape != (num_graph_nodes,):
+                raise ValueError("entry_node_mask must have one entry per graph node")
+            present_entry_relations = [name for name in entry_relation_names if name in relation_types]
+            is_entry_edge = torch.zeros(len(edge_relation), dtype=torch.bool)
+            for name in present_entry_relations:
+                is_entry_edge |= edge_relation.long() == relation_types.index(name)
+            if bool(is_entry_edge.any()) and not bool(entry_node_mask.bool()[edge_source.long()[is_entry_edge]].all()):
+                raise ValueError("every edge of an entry relation must leave an entry node")
+            weights = torch.ones(len(edge_relation)) if edge_weight is None else edge_weight.to(torch.float32)
+            entry_edges = (edge_source.long()[is_entry_edge], edge_target.long()[is_entry_edge],
+                           edge_sign.float()[is_entry_edge] * weights[is_entry_edge],
+                           torch.as_tensor([present_entry_relations.index(relation_types[int(relation)]) for relation in edge_relation[is_entry_edge]], dtype=torch.long),
+                           len(present_entry_relations))
+            # the entry edges leave the arrays the normalised adjacency is built from; the relation list is unchanged
+            edge_source, edge_target, edge_relation, edge_sign = edge_source[~is_entry_edge], edge_target[~is_entry_edge], edge_relation[~is_entry_edge], edge_sign[~is_entry_edge]
+            if cofactor_edges is not None:
+                cofactor_edges = cofactor_edges[~is_entry_edge]
+        self.register_buffer("entry_node_mask", None if entry_node_mask is None else entry_node_mask.bool(), persistent=False)
+        self.register_buffer("entry_edge_source", None if entry_edges is None else entry_edges[0], persistent=False)
+        self.register_buffer("entry_edge_target", None if entry_edges is None else entry_edges[1], persistent=False)
+        self.register_buffer("entry_edge_signed_weight", None if entry_edges is None else entry_edges[2], persistent=False)
+        self.register_buffer("entry_edge_relation", None if entry_edges is None else entry_edges[3], persistent=False)
+        num_entry_relations = 0 if entry_edges is None else entry_edges[4]
         if node_features.shape[0] != num_graph_nodes:
             raise ValueError("node_features must have one row per graph node")
         check_descriptor_treatment(descriptor_treatment, num_descriptor_columns, node_features.shape[1])
@@ -438,6 +482,8 @@ class LinearResponseEncoder(nn.Module):
                                                                   weighting=mixture_weighting)
         else:
             self.cross_relation_mixture = None
+        # created last and only with entry edges, so an encoder without them draws the parameters it always drew
+        self.entry_gain_logit = nn.Parameter(torch.randn(num_entry_relations, propagation_channels)) if num_entry_relations else None
 
     @staticmethod
     def spectral_radius_of_unsigned_aggregate(num_graph_nodes: int, source: Tensor, target: Tensor, iterations: int = 200) -> float:
@@ -545,6 +591,11 @@ class LinearResponseEncoder(nn.Module):
         if node_weight is not None:
             node_major_input = node_major_input * node_weight  # a class that does not express the perturbed node does not feel it there
         state = node_major_input  # h(0) = u, so after k steps the response reaches k edges from the perturbed nodes
+        presence = self.present_nodes(perturbation_node_index)  # [N, B, 1], or None without entry nodes
+        entry_edge_gain = None
+        if self.entry_gain_logit is not None and self.entry_edge_source.numel():
+            # sign * weight * gain per entry edge and channel; the gain is positive, so the sign is the mechanism's
+            entry_edge_gain = (self.entry_edge_signed_weight[:, None] * torch.sigmoid(self.entry_gain_logit)[self.entry_edge_relation])[:, None, :]  # [E, 1, C]
         row_gain = gain[self.row_relation_index][:, None, :] if self.cross_relation_mixture is None else None  # [K, 1, C]
         for _ in range(self.num_propagation_steps if num_steps is None else num_steps):
             if row_gain is not None:  # the sum over relations of gain times the relation's messages, over the rows that hold an edge
@@ -554,12 +605,27 @@ class LinearResponseEncoder(nn.Module):
                 aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
                 per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
                 relation_messages = self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index)
+            if entry_edge_gain is not None:  # added on their own: no in-degree divisor, and no part in the mean or the mixture across relations
+                relation_messages = relation_messages.index_add(0, self.entry_edge_target, state[self.entry_edge_source] * entry_edge_gain)
             if node_weight is not None:  # every mixture statistic is positively homogeneous, so scaling after it equals scaling the messages
                 relation_messages = relation_messages * node_weight
             state = (1.0 - self.damping) * state + self.damping * (relation_messages + node_major_input)
             if self.extracellular_pool_nodes is not None:
                 state = self.share_extracellular_pool(state)
+            if presence is not None:  # an entry node that is not a seed is absent: it holds nothing and so sends nothing
+                state = state * presence
         return state.permute(1, 0, 2)
+
+    def present_nodes(self, perturbation_node_index: Tensor) -> Tensor | None:
+        """[num_graph_nodes, batch_size, 1], zero for an entry node the perturbation is not seeded on; None without
+        entry nodes. Padding (index -1) marks no node."""
+        if self.entry_node_mask is None:
+            return None
+        batch_size = perturbation_node_index.shape[0]
+        seeded = torch.zeros((batch_size, self.num_graph_nodes + 1), dtype=torch.bool, device=perturbation_node_index.device)
+        seeded.scatter_(1, torch.where(perturbation_node_index >= 0, perturbation_node_index, torch.full_like(perturbation_node_index, self.num_graph_nodes)), True)
+        present = ~self.entry_node_mask[None, :] | seeded[:, : self.num_graph_nodes]
+        return present.permute(1, 0)[:, :, None].to(torch.float32)
 
     def share_extracellular_pool(self, state: Tensor) -> Tensor:
         """state [N, B, C] with the pool nodes' channels of the pooled classes replaced by their mean over those classes."""
