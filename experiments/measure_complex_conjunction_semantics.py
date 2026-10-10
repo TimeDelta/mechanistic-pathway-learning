@@ -27,12 +27,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
+import time
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import torch
 
 from mechanistic_pathway_learning.graph.reactome_import import parse_reactome_sbml
+from mechanistic_pathway_learning.models.relational_message_passing_encoder import (CONJUNCTION_AGGREGATIONS,
+                                                                                    RelationalMessagePassingEncoder)
 
 PROTEIN_ENTITY_TYPE = "protein_entity"
 MEMBER_RELATION = "member_of"
@@ -72,8 +78,51 @@ def study_genes_inside(members: pd.DataFrame, entity_ids: set, edges: pd.DataFra
     return len(member_proteins), len(symbols & perturbations)
 
 
+def aggregation_timings(graph_directory: Path, nodes: pd.DataFrame, edges: pd.DataFrame, layers: int = 3,
+                        batch_size: int = 4, state_dim: int = 8, passes: int = 15) -> dict:
+    """Forward-and-backward time of one propagation under each conjunction aggregation, on this graph.
+
+    The row count the earlier note of this cost rested on is the wrong proxy: the member edges are about two percent
+    of the rows the sparse product reads, but the gather and scatter that reduce them are not as cheap per element as
+    that product, so the only honest number is a measured one. Random states and weights, because the time depends on
+    the shapes and not on the values.
+
+    The fastest pass is reported rather than the median. This runs on a shared CPU, where every disturbance makes a
+    pass slower and none makes it faster, so the minimum is the least contaminated estimate of the work itself; the
+    median moved by a factor of three between two runs of this script while the minimum held. The median and the
+    spread are carried beside it so a reader can see how noisy the measurement was.
+    """
+    relation_types = json.loads((graph_directory / "relation_types.json").read_text())
+    if MEMBER_RELATION not in relation_types:
+        return {}
+    row_of_node = {node_id: row for row, node_id in enumerate(nodes.node_id)}
+    source = torch.tensor([row_of_node[value] for value in edges.source_id], dtype=torch.long)
+    target = torch.tensor([row_of_node[value] for value in edges.target_id], dtype=torch.long)
+    relation = torch.tensor([relation_types.index(value) for value in edges.relation_type], dtype=torch.long)
+    adjacencies = RelationalMessagePassingEncoder.build_relation_adjacencies(torch.stack([source, target]), relation,
+                                                                            len(nodes), len(relation_types))
+    field = torch.randn(batch_size, len(nodes), state_dim)
+    milliseconds = {}
+    for aggregation in CONJUNCTION_AGGREGATIONS:
+        encoder = RelationalMessagePassingEncoder(len(nodes), len(relation_types), node_state_dim=state_dim,
+                                                  num_message_passing_layers=layers,
+                                                  conjunction_relation_indices=(relation_types.index(MEMBER_RELATION),),
+                                                  conjunction_aggregation=aggregation)
+        with torch.no_grad():
+            encoder.propagate(field, adjacencies)  # the adjacency stack is cached on first use, so warm it first
+        elapsed = []
+        for _ in range(passes):
+            started = time.perf_counter()
+            encoder.propagate(field, adjacencies).sum().backward()
+            elapsed.append(time.perf_counter() - started)
+        milliseconds[aggregation] = {"fastest": float(np.min(elapsed) * 1000.0),
+                                     "median": float(np.median(elapsed) * 1000.0)}
+    return {"nodes": len(nodes), "edges": len(edges), "layers": layers, "batch_size": batch_size,
+            "state_dim": state_dim, "passes": passes, "milliseconds": milliseconds}
+
+
 def write_document(kinds_of_all: Counter, kinds_of_multi: Counter, member_counts: dict, reach: dict,
-                   signs: dict, genes_per_protein: pd.Series, graph_sizes: dict) -> None:
+                   signs: dict, genes_per_protein: pd.Series, graph_sizes: dict, timing: dict) -> None:
     conjunctions, disjunctions = kinds_of_multi.get(CONJUNCTION_KIND, 0), sum(kinds_of_multi.get(k, 0) for k in DISJUNCTION_KINDS)
     lines = [
         "# Conjunctive and disjunctive membership in the graph",
@@ -129,16 +178,45 @@ def write_document(kinds_of_all: Counter, kinds_of_multi: Counter, member_counts
         "separately. That is the stoichiometric reading of an obligate assembly and it needs no summary of a member "
         "into one number.",
         "",
-        "The cost is small, which an earlier note of mine overstated. The aggregation is one stacked sparse product "
-        "per layer, and on this graph it already touches 54,982 of 700,435 stacked rows. A minimum is not a matrix "
-        "product, so the member edges of the conjunctions have to leave that product and be reduced separately with "
-        f"a segmented minimum, then added back: {conjunctions} entities and "
-        f"{reach['conjunction_proteins']} member protein nodes, against "
-        f"{graph_sizes['member_edges']:,} member edges in all and {graph_sizes['edges']:,} edges in "
-        "the graph. One scatter-reduce over about two percent of the rows the product already reads is not a "
-        "measurable cost per forward pass; what it does cost is a second code path in the encoder, which is a "
-        "maintenance cost rather than a compute one.",
+        "A minimum is not a matrix product, so the member edges of the conjunctions leave the stacked sparse product "
+        "and are reduced separately, then added back into their complex: "
+        f"{conjunctions} entities and {reach['conjunction_proteins']} member protein nodes, against "
+        f"{graph_sizes['member_edges']:,} member edges in all and {graph_sizes['edges']:,} edges in the graph.",
         "",
+    ]
+    if timing:
+        fastest = {aggregation: reading["fastest"] for aggregation, reading in timing["milliseconds"].items()}
+        hard_cost = fastest["minimum"] / fastest["mean"] - 1.0
+        soft_cost = fastest["soft_minimum"] / fastest["mean"] - 1.0
+        lines += [
+            "What that costs is now measured rather than inferred from the row count, because the row count was the "
+            "wrong proxy and my earlier notes of it were wrong in both directions: first too alarming (\"hot "
+            "loop\"), then too reassuring (\"about two percent\"). Timed on this graph "
+            f"({timing['nodes']:,} nodes, {timing['edges']:,} edges, {timing['layers']} layers, batch "
+            f"{timing['batch_size']}, {timing['state_dim']} channels, {timing['passes']} passes on one shared CPU). "
+            "The fastest pass is the reading, because noise on a shared machine only ever adds time:",
+            "",
+            "| aggregation | fastest forward and backward | against the mean | median pass |",
+            "| --- | --- | --- | --- |",
+        ]
+        for aggregation, reading in timing["milliseconds"].items():
+            against_the_mean = reading["fastest"] / fastest["mean"] - 1.0
+            lines.append(f"| {aggregation} | {reading['fastest']:.0f} ms | "
+                         + ("the comparator" if aggregation == "mean" else f"+{against_the_mean:.0%}")
+                         + f" | {reading['median']:.0f} ms |")
+        lines += [
+            "",
+            f"So the hard minimum costs about {hard_cost:.0%} more per propagation step and the soft minimum about "
+            f"{soft_cost:.0%}, against the two percent the row count implied: the gather of each member's state and "
+            "the scatter of the minimum are cheap per element but not as cheap as the fused sparse product they sit "
+            "beside. The user, 9 October 2026: \"even if it had costed compute, it would have to be a lot of compute "
+            "to outweigh the true physiology\". This is not that, so the decision stands on the measurement rather "
+            "than despite it. Read the figure as an order of magnitude and not a benchmark: the median column shows "
+            "how far a disturbed pass can sit from the fastest one, and a run of this script on a busier machine "
+            "moves the medians while leaving the ordering.",
+            "",
+        ]
+    lines += [
         "## The gene-to-protein split, where the question was asked",
         "",
         f"{int((genes_per_protein >= 2).sum())} of {len(genes_per_protein)} protein nodes are encoded by two or more",
@@ -179,7 +257,8 @@ def main() -> int:
                     "disjunction_proteins": disjunction_proteins, "disjunction_perturbations": disjunction_perturbations},
                    set(edges.loc[edges.relation_type == MEMBER_RELATION, "sign"].unique()),
                    encodes.groupby("target_id").source_id.nunique(),
-                   {"member_edges": int((edges.relation_type == MEMBER_RELATION).sum()), "edges": len(edges)})
+                   {"member_edges": int((edges.relation_type == MEMBER_RELATION).sum()), "edges": len(edges)},
+                   aggregation_timings(arguments.graph_dir, nodes, edges))
     print(f"conjunctions with 2 or more members: {len(conjunction_ids)}, disjunctions: {len(disjunction_ids)}")
     print(f"study perturbations inside a conjunction: {conjunction_perturbations}")
     return 0

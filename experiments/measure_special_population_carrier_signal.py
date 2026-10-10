@@ -35,6 +35,12 @@ SHEET_BINDERS = {"hsa": "albumin", "aag": "orosomucoid", "both": "both"}
 POPULATION_NAMES = {"InflamDisease": "inflammatory disease"}
 OUTPUT_DOCUMENT = Path("docs/special_population_carrier_signal.md")
 CARRIERS = ("albumin", "orosomucoid")
+# The user, 9 October 2026: "this project does not care about newborns as a special population because they aren't
+# diagnosable yet (it still matters to include developmental mechanisms just not whether the graph treats newborns
+# differently)". The paediatric sheet is the newborn and infant column, so it leaves the reading: the study's labels
+# are adult reports and no node or edge is to be set from a neonatal fraction. The developmental mechanisms are a
+# separate matter and are not touched by this.
+POPULATIONS_THE_STUDY_DOES_NOT_USE = ("paediatric",)
 
 
 def measurement_rows(database_path: Path) -> pd.DataFrame:
@@ -108,11 +114,17 @@ def main() -> int:
                         default=Path("data/raw/plasma_protein_binding/fraction_unbound_database.xlsx"))
     parser.add_argument("--study-evidence", type=Path, default=Path("data/processed/evidence_full_v3"),
                         help="to say how many of the study's drugs the classifier could be applied to at all")
+    parser.add_argument("--excluded-populations", nargs="*", default=list(POPULATIONS_THE_STUDY_DOES_NOT_USE),
+                        help="populations the study does not read a carrier from; pass none to read every sheet")
     arguments = parser.parse_args()
 
-    rows = measurement_rows(arguments.database)
+    every_row = measurement_rows(arguments.database)
+    excluded = [population for population in arguments.excluded_populations if population in set(every_row.population)]
+    rows = every_row[~every_row.population.isin(excluded)].reset_index(drop=True)
     readings = population_readings(rows)
+    excluded_readings = population_readings(every_row[every_row.population.isin(excluded)]) if excluded else None
     predictions = leave_one_drug_out_predictions(rows)
+    predictions_with_every_population = leave_one_drug_out_predictions(every_row) if excluded else predictions
     correct = int((predictions.carrier == predictions.predicted).sum())
     majority = predictions.carrier.value_counts(normalize=True).max() if len(predictions) else float("nan")
     orosomucoid_rows = predictions[predictions.carrier == "orosomucoid"]
@@ -121,6 +133,8 @@ def main() -> int:
                                   columns=["perturbation_type", "perturbation_label"])
     study_drug_labels = set(study_drugs[study_drugs.perturbation_type == "drug"].perturbation_label.str.lower())
     with_a_ratio = study_drug_labels & set(rows.drug)
+    with_a_ratio_anywhere = study_drug_labels & set(every_row.drug)
+    with_a_labelled_carrier = study_drug_labels & set(every_row[every_row.carrier.notna()].drug)
 
     lines = [
         "# Does the fraction unbound in a special population say which protein carries the drug?",
@@ -146,10 +160,33 @@ def main() -> int:
         "An AUROC near 1 means a lower ratio goes with albumin and a higher one with orosomucoid; near 0 means the "
         "reverse. **Both appear**, which is the first finding: the direction is not one direction. Orosomucoid is an "
         "acute-phase protein made in the liver, so it rises in inflammation and in renal disease and falls in hepatic "
-        "impairment and in the newborn, while albumin falls in hepatic impairment and in the newborn too. A ratio "
-        "therefore says nothing about the carrier until the population is known, and a source that reports a free "
-        "fraction without naming the population cannot be read this way at all.",
+        "impairment, while albumin falls in hepatic impairment too. A ratio therefore says nothing about the carrier "
+        "until the population is known, and a source that reports a free fraction without naming the population "
+        "cannot be read this way at all.",
         "",
+    ]
+    if excluded_readings is not None and len(excluded_readings):
+        lines += [
+            "The user, 9 October 2026: \"this project does not care about newborns as a special population because "
+            "they aren't diagnosable yet (it still matters to include developmental mechanisms just not whether the "
+            "graph treats newborns differently)\". The sheet named below is therefore left out of the table above "
+            "and out of the classifier: every label in this study is an adult report, so a neonatal free fraction "
+            "cannot set a carriage edge the labels would test. It is reported here rather than deleted, because it "
+            "was the strongest single reading and leaving it out costs accuracy.",
+            "",
+            "| population left out | measurements | albumin rows | orosomucoid rows | albumin median ratio | orosomucoid median ratio | AUROC for orosomucoid |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+        for row in excluded_readings.itertuples(index=False):
+            lines.append(f"| {row.population} | {row.measurements} | {row.albumin_rows} | {row.orosomucoid_rows} | "
+                         f"{row.albumin_median_ratio:.3f} | {row.orosomucoid_median_ratio:.3f} | {row.auroc:.3f} |")
+        lines.append("")
+        lines.append("Excluding it is not the same as excluding development. A developmental mechanism is a reaction, "
+                     "a transporter or an expression pattern, and those stay in the graph on their own evidence; what "
+                     "leaves is the claim that a drug's carrier can be read from how its free fraction moves in a "
+                     "newborn.")
+        lines.append("")
+    lines += [
         "## Pooling the populations a drug has, leave-one-drug-out",
         "",
         f"- drugs classified: **{len(predictions)}** ({len(orosomucoid_rows)} orosomucoid, {len(albumin_rows)} albumin)",
@@ -157,6 +194,11 @@ def main() -> int:
         f"- majority-class rate: {majority:.0%}",
         f"- orosomucoid drugs found: {int((orosomucoid_rows.predicted == 'orosomucoid').sum())} of {len(orosomucoid_rows)}",
         f"- albumin drugs found: {int((albumin_rows.predicted == 'albumin').sum())} of {len(albumin_rows)}",
+        (f"- for comparison, with every population including the one left out: "
+         f"**{int((predictions_with_every_population.carrier == predictions_with_every_population.predicted).sum())}** "
+         f"of {len(predictions_with_every_population)}, "
+         f"{(predictions_with_every_population.carrier == predictions_with_every_population.predicted).mean():.0%}")
+        if excluded else "- no population was left out, so there is nothing to compare against",
         "",
         "Accuracy is the wrong single number here, because the trivial rule \"albumin\" already reaches the "
         f"majority-class rate while finding none of the {len(orosomucoid_rows)} orosomucoid carriers. Read both ways: "
@@ -174,17 +216,33 @@ def main() -> int:
         "",
         "## What this can and cannot buy",
         "",
-        f"The classifier needs a measured pair of fractions for the drug. **{len(with_a_ratio)} of this study's "
-        f"{len(study_drug_labels)} drug perturbations have one in this database**, which is the same set the carrier "
-        "label already covers, so running the classifier on them adds nothing: where there is a ratio there is "
-        "already a labelled carrier. It would only widen coverage through a second source that reports a reference "
-        "and a special-population fraction for drugs this database misses, and names the population. No such source "
-        "is pinned.",
+        f"The classifier needs a measured pair of fractions for the drug in a population the study uses. "
+        f"**{len(with_a_ratio)} of this study's {len(study_drug_labels)} drug perturbations have one** "
+        f"({len(with_a_ratio_anywhere)} counting the population left out). Those are a subset of the "
+        f"{len(with_a_labelled_carrier)} drugs this database labels with a carrier outright, so running the "
+        "classifier on them adds nothing: where there is a ratio there is already a labelled carrier, and the "
+        "classifier would be predicting a fact the same file states. It would only widen coverage through a second "
+        "source that reports a reference and a special-population fraction for drugs this database misses, and names "
+        "the population. No such source is pinned.",
         "",
         "So the leniency the special-population column affords is real but narrow: it supports reading the carrier "
-        "off a free-fraction pair when the population is known, and it does not reach the 115 drugs with no measured "
-        "fraction at all. The per-drug carrier identity those drugs need comes from a source that states it, which is "
-        "what docs/label_plasma_binders.md measures.",
+        f"off a free-fraction pair when the population is known, and it does not reach the "
+        f"{len(study_drug_labels) - len(with_a_labelled_carrier)} drugs this database does not hold at all. The per-drug carrier "
+        "identity those drugs need comes from a source that states it, which is what docs/label_plasma_binders.md "
+        "measures.",
+        "",
+        "## Population attributes as inputs, which is a different proposal",
+        "",
+        "The user, 9 October 2026: \"attributes of the target populations can be included\". That is available and "
+        "it is not what the paragraphs above measure. The reading above asks whether a population's effect on a free "
+        "fraction identifies a carrier, which is a question about one edge of the graph. Including a population "
+        "attribute would instead make the state of the carrier protein a function of something, for example scaling "
+        "the orosomucoid node by an acute-phase level or the albumin node by a hepatic one, so that the same drug "
+        "sequesters differently under different conditions. What blocks it today is not the graph but the labels: "
+        "every row of the evidence table is a (perturbation, symptom) pair with no population axis, so a model given "
+        "a population input has nothing that varies with it to be scored against, and the attribute would be a free "
+        "parameter the data cannot constrain. It becomes measurable if a label source reports by population; the "
+        "OnSIDES label sections carry a population only as free text, and that is not pinned as a field.",
     ]
     OUTPUT_DOCUMENT.write_text("\n".join(lines) + "\n")
     print(f"wrote {OUTPUT_DOCUMENT}")

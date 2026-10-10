@@ -76,7 +76,17 @@ The user: "i thought it would be multiple mins (one for each preserved quantity)
 
 The minimum is per channel, not over a scalar: each of the encoder's node-state channels is reduced to the smallest value its members carry, so a complex is as present as its scarcest subunit in every quantity separately. That is the stoichiometric reading of an obligate assembly and it needs no summary of a member into one number.
 
-The cost is small, which an earlier note of mine overstated. The aggregation is one stacked sparse product per layer, and on this graph it already touches 54,982 of 700,435 stacked rows. A minimum is not a matrix product, so the member edges of the conjunctions have to leave that product and be reduced separately with a segmented minimum, then added back: 542 entities and 1202 member protein nodes, against 6,767 member edges in all and 279,784 edges in the graph. One scatter-reduce over about two percent of the rows the product already reads is not a measurable cost per forward pass; what it does cost is a second code path in the encoder, which is a maintenance cost rather than a compute one.
+A minimum is not a matrix product, so the member edges of the conjunctions leave the stacked sparse product and are reduced separately, then added back into their complex: 542 entities and 1202 member protein nodes, against 6,767 member edges in all and 279,784 edges in the graph.
+
+What that costs is now measured rather than inferred from the row count, because the row count was the wrong proxy and my earlier notes of it were wrong in both directions: first too alarming ("hot loop"), then too reassuring ("about two percent"). Timed on this graph (49,574 nodes, 279,784 edges, 3 layers, batch 4, 8 channels, 15 passes on one shared CPU). The fastest pass is the reading, because noise on a shared machine only ever adds time:
+
+| aggregation | fastest forward and backward | against the mean | median pass |
+| --- | --- | --- | --- |
+| mean | 120 ms | the comparator | 138 ms |
+| minimum | 151 ms | +26% | 182 ms |
+| soft_minimum | 165 ms | +38% | 205 ms |
+
+So the hard minimum costs about 26% more per propagation step and the soft minimum about 38%, against the two percent the row count implied: the gather of each member's state and the scatter of the minimum are cheap per element but not as cheap as the fused sparse product they sit beside. The user, 9 October 2026: "even if it had costed compute, it would have to be a lot of compute to outweigh the true physiology". This is not that, so the decision stands on the measurement rather than despite it. Read the figure as an order of magnitude and not a benchmark: the median column shows how far a disturbed pass can sit from the fastest one, and a run of this script on a busier machine moves the medians while leaving the ordering.
 
 ## The gene-to-protein split, where the question was asked
 

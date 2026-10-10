@@ -12,25 +12,37 @@ Source: the pinned database of Al-Qassabi and colleagues (figshare [10.48420/252
 | ethnicity | 18 | 8 | 10 | 0.983 | 1.242 | 0.925 |
 | hepatic impairment | 113 | 97 | 16 | 1.113 | 1.427 | 0.742 |
 | inflammatory disease | 26 | 7 | 19 | 0.993 | 0.797 | 0.248 |
-| paediatric | 78 | 51 | 27 | 1.424 | 2.324 | 0.815 |
 | renal impairment | 150 | 122 | 28 | 1.159 | 0.817 | 0.113 |
 
-An AUROC near 1 means a lower ratio goes with albumin and a higher one with orosomucoid; near 0 means the reverse. **Both appear**, which is the first finding: the direction is not one direction. Orosomucoid is an acute-phase protein made in the liver, so it rises in inflammation and in renal disease and falls in hepatic impairment and in the newborn, while albumin falls in hepatic impairment and in the newborn too. A ratio therefore says nothing about the carrier until the population is known, and a source that reports a free fraction without naming the population cannot be read this way at all.
+An AUROC near 1 means a lower ratio goes with albumin and a higher one with orosomucoid; near 0 means the reverse. **Both appear**, which is the first finding: the direction is not one direction. Orosomucoid is an acute-phase protein made in the liver, so it rises in inflammation and in renal disease and falls in hepatic impairment, while albumin falls in hepatic impairment too. A ratio therefore says nothing about the carrier until the population is known, and a source that reports a free fraction without naming the population cannot be read this way at all.
+
+The user, 9 October 2026: "this project does not care about newborns as a special population because they aren't diagnosable yet (it still matters to include developmental mechanisms just not whether the graph treats newborns differently)". The sheet named below is therefore left out of the table above and out of the classifier: every label in this study is an adult report, so a neonatal free fraction cannot set a carriage edge the labels would test. It is reported here rather than deleted, because it was the strongest single reading and leaving it out costs accuracy.
+
+| population left out | measurements | albumin rows | orosomucoid rows | albumin median ratio | orosomucoid median ratio | AUROC for orosomucoid |
+| --- | --- | --- | --- | --- | --- | --- |
+| paediatric | 78 | 51 | 27 | 1.424 | 2.324 | 0.815 |
+
+Excluding it is not the same as excluding development. A developmental mechanism is a reaction, a transporter or an expression pattern, and those stay in the graph on their own evidence; what leaves is the claim that a drug's carrier can be read from how its free fraction moves in a newborn.
 
 ## Pooling the populations a drug has, leave-one-drug-out
 
-- drugs classified: **193** (47 orosomucoid, 146 albumin)
-- correct: **155** of 193, 80%
-- majority-class rate: 76%
-- orosomucoid drugs found: 35 of 47
-- albumin drugs found: 120 of 146
+- drugs classified: **167** (44 orosomucoid, 123 albumin)
+- correct: **130** of 167, 78%
+- majority-class rate: 74%
+- orosomucoid drugs found: 31 of 44
+- albumin drugs found: 99 of 123
+- for comparison, with every population including the one left out: **155** of 193, 80%
 
-Accuracy is the wrong single number here, because the trivial rule "albumin" already reaches the majority-class rate while finding none of the 47 orosomucoid carriers. Read both ways: the direction barely moves accuracy, and it recovers 35 of the 47 orosomucoid carriers at the cost of calling 26 of 146 albumin-carried drugs orosomucoid. For deciding one drug's carriage edge that error rate is too high to place an edge on; for flagging which drugs to look up in a source that states the carrier, it is useful.
+Accuracy is the wrong single number here, because the trivial rule "albumin" already reaches the majority-class rate while finding none of the 44 orosomucoid carriers. Read both ways: the direction barely moves accuracy, and it recovers 31 of the 44 orosomucoid carriers at the cost of calling 24 of 123 albumin-carried drugs orosomucoid. For deciding one drug's carriage edge that error rate is too high to place an edge on; for flagging which drugs to look up in a source that states the carrier, it is useful.
 
 The rule is fitted per population on the other drugs (the median log ratio of each carrier's drugs, the midpoint between them as the threshold and the sign between them as the direction) and the populations a drug has rows in vote by their distance from that threshold. Drugs the database labels "both" are left out of both the fit and the test.
 
 ## What this can and cannot buy
 
-The classifier needs a measured pair of fractions for the drug. **27 of this study's 154 drug perturbations have one in this database**, which is the same set the carrier label already covers, so running the classifier on them adds nothing: where there is a ratio there is already a labelled carrier. It would only widen coverage through a second source that reports a reference and a special-population fraction for drugs this database misses, and names the population. No such source is pinned.
+The classifier needs a measured pair of fractions for the drug in a population the study uses. **22 of this study's 154 drug perturbations have one** (27 counting the population left out). Those are a subset of the 27 drugs this database labels with a carrier outright, so running the classifier on them adds nothing: where there is a ratio there is already a labelled carrier, and the classifier would be predicting a fact the same file states. It would only widen coverage through a second source that reports a reference and a special-population fraction for drugs this database misses, and names the population. No such source is pinned.
 
-So the leniency the special-population column affords is real but narrow: it supports reading the carrier off a free-fraction pair when the population is known, and it does not reach the 115 drugs with no measured fraction at all. The per-drug carrier identity those drugs need comes from a source that states it, which is what docs/label_plasma_binders.md measures.
+So the leniency the special-population column affords is real but narrow: it supports reading the carrier off a free-fraction pair when the population is known, and it does not reach the 127 drugs this database does not hold at all. The per-drug carrier identity those drugs need comes from a source that states it, which is what docs/label_plasma_binders.md measures.
+
+## Population attributes as inputs, which is a different proposal
+
+The user, 9 October 2026: "attributes of the target populations can be included". That is available and it is not what the paragraphs above measure. The reading above asks whether a population's effect on a free fraction identifies a carrier, which is a question about one edge of the graph. Including a population attribute would instead make the state of the carrier protein a function of something, for example scaling the orosomucoid node by an acute-phase level or the albumin node by a hepatic one, so that the same drug sequesters differently under different conditions. What blocks it today is not the graph but the labels: every row of the evidence table is a (perturbation, symptom) pair with no population axis, so a model given a population input has nothing that varies with it to be scored against, and the attribute would be a free parameter the data cannot constrain. It becomes measurable if a label source reports by population; the OnSIDES label sections carry a population only as free text, and that is not pinned as a field.

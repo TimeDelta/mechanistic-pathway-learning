@@ -82,7 +82,9 @@ from mechanistic_pathway_learning.models.linear_response_encoder import (
 )
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
-from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
+from mechanistic_pathway_learning.models.relational_message_passing_encoder import (CONJUNCTION_AGGREGATIONS, DEFAULT_CONJUNCTION_RELATIONS,
+                                                                                      DEFAULT_SOFT_MINIMUM_TEMPERATURE,
+                                                                                      RelationalMessagePassingEncoder)
 from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, equal_drug_loss_shares, evidence_weighted_binary_cross_entropy
 
 CHECKPOINT_REQUESTED = False
@@ -332,8 +334,25 @@ def build_models(data, arguments, device):
         if arguments.node_descriptors and arguments.node_features != "typed":
             raise ValueError("--node-descriptors extends the typed node features; use --node-features typed")
         node_features = torch.as_tensor(node_feature_matrix(data, arguments)) if arguments.node_features == "typed" else None
+        conjunction_relations = [relation for relation in arguments.conjunction_relations if relation in set(data.relation_types)]
+        missing_relations = [relation for relation in arguments.conjunction_relations if relation not in set(data.relation_types)]
+        conjunction_indices = tuple(list(data.relation_types).index(relation) for relation in conjunction_relations)
         encoder = RelationalMessagePassingEncoder(len(data.node_ids), len(data.relation_types), arguments.node_state_dim, arguments.num_layers, node_features=node_features,
+                                                  conjunction_relation_indices=conjunction_indices,
+                                                  conjunction_aggregation=arguments.conjunction_aggregation,
+                                                  soft_minimum_temperature=arguments.soft_minimum_temperature,
                                                   **descriptor_treatment_inputs(data, arguments)).to(device)
+        if arguments.conjunction_aggregation == "mean":
+            print("conjunction relations: none; every relation is aggregated by its in-degree mean")
+        elif conjunction_indices:
+            edges_of_relation = int(np.isin(data.edge_relation, np.array(conjunction_indices)).sum())
+            print(f"conjunction relations ({arguments.conjunction_aggregation}"
+                  + (f", temperature {arguments.soft_minimum_temperature:g}" if arguments.conjunction_aggregation == "soft_minimum" else "")
+                  + f"): {', '.join(conjunction_relations)}, {edges_of_relation} edges"
+                  + (f"; absent from this graph: {', '.join(missing_relations)}" if missing_relations else ""))
+        else:
+            print(f"conjunction relations: none of {', '.join(arguments.conjunction_relations)} is in this graph, "
+                  "so every relation is aggregated by its in-degree mean")
     if arguments.head == "sigmoid":
         head = RelationalGnnSigmoidHead(arguments.node_state_dim, len(data.symptoms), hidden_dim=arguments.sigmoid_hidden_dim, pooling=arguments.pooling,
                                         degree_offset=arguments.degree_offset).to(device)
@@ -700,6 +719,15 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
                         help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
+    parser.add_argument("--conjunction-relations", nargs="*", default=list(DEFAULT_CONJUNCTION_RELATIONS),
+                        help="relations whose messages combine by a per-channel minimum rather than a mean, because their "
+                             "target is present only to the extent that every source is (message-passing encoder only)")
+    parser.add_argument("--conjunction-aggregation", choices=list(CONJUNCTION_AGGREGATIONS), default="minimum",
+                        help="minimum: the hard per-channel minimum; soft_minimum: its temperature surrogate, the control "
+                             "that separates a conjunction from a hard minimum; mean: the in-degree mean, the arm before "
+                             "this option existed")
+    parser.add_argument("--soft-minimum-temperature", type=float, default=DEFAULT_SOFT_MINIMUM_TEMPERATURE,
+                        help="temperature of --conjunction-aggregation soft_minimum; the hard minimum is its limit at 0")
     parser.add_argument("--encoder", choices=["message_passing", "linear_response", "none", "local_descriptors"], default="message_passing",
                         help="route 1 encoder: L layers of message passing, the time-invariant signed linear-response state space (linear_response_encoder.py), none (a zero field: with --degree-offset, the degree-only control) or local_descriptors (the perturbed node's own features and nothing from the graph: the descriptors-only control)")
     parser.add_argument("--laboratory-label-weight", type=float, default=0.0,
