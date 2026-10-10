@@ -36,11 +36,17 @@ POPULATION_NAMES = {"InflamDisease": "inflammatory disease"}
 OUTPUT_DOCUMENT = Path("docs/special_population_carrier_signal.md")
 CARRIERS = ("albumin", "orosomucoid")
 # The user, 9 October 2026: "this project does not care about newborns as a special population because they aren't
-# diagnosable yet (it still matters to include developmental mechanisms just not whether the graph treats newborns
-# differently)". The paediatric sheet is the newborn and infant column, so it leaves the reading: the study's labels
-# are adult reports and no node or edge is to be set from a neonatal fraction. The developmental mechanisms are a
-# separate matter and are not touched by this.
-POPULATIONS_THE_STUDY_DOES_NOT_USE = ("paediatric",)
+# diagnosable yet", and on 10 October, correcting a first reading of that which dropped every paediatric row: "I
+# didn't say PEDIATRIC is irrelevant. Only NEWBORN through TODDLER. At the age of five, per much everything should be
+# diagnosable other than I.e. bipolar disorder". So the exclusion is by age band and not by sheet: a subgroup whose
+# band ends before a diagnosis can be made leaves, and an older child stays. Developmental mechanisms are a separate
+# matter and are not touched by this.
+SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE = ("neonate", "neonatal", "newborn", "preterm", "premature", "infant", "baby",
+                                       "toddler")
+# A band between toddler and adult (preschool, 3 to 5 years) is the user's call rather than this script's, because
+# their remark puts the line at five while naming toddler as the last band to drop. No such row exists in the pinned
+# database, so the question has not arisen; if a source brings one, it stays in until they decide.
+SUBGROUPS_TO_DECIDE = ("preschool", "preschooler")
 
 
 def measurement_rows(database_path: Path) -> pd.DataFrame:
@@ -114,17 +120,23 @@ def main() -> int:
                         default=Path("data/raw/plasma_protein_binding/fraction_unbound_database.xlsx"))
     parser.add_argument("--study-evidence", type=Path, default=Path("data/processed/evidence_full_v3"),
                         help="to say how many of the study's drugs the classifier could be applied to at all")
-    parser.add_argument("--excluded-populations", nargs="*", default=list(POPULATIONS_THE_STUDY_DOES_NOT_USE),
-                        help="populations the study does not read a carrier from; pass none to read every sheet")
+    parser.add_argument("--excluded-subgroups", nargs="*", default=list(SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE),
+                        help="special-population subgroups the study does not read a carrier from, matched case-insensitively "
+                             "against the database's subgroup column; pass none to read every row")
     arguments = parser.parse_args()
 
     every_row = measurement_rows(arguments.database)
-    excluded = [population for population in arguments.excluded_populations if population in set(every_row.population)]
-    rows = every_row[~every_row.population.isin(excluded)].reset_index(drop=True)
+    excluded_names = {name.lower() for name in arguments.excluded_subgroups}
+    is_excluded = every_row.subgroup.astype(str).str.strip().str.lower().isin(excluded_names)
+    rows = every_row[~is_excluded].reset_index(drop=True)
+    excluded_rows = every_row[is_excluded]
+    excluded = sorted(set(excluded_rows.subgroup.astype(str)))
+    undecided = sorted({str(name) for name in every_row.subgroup.astype(str)
+                        if str(name).strip().lower() in SUBGROUPS_TO_DECIDE})
     readings = population_readings(rows)
-    excluded_readings = population_readings(every_row[every_row.population.isin(excluded)]) if excluded else None
+    excluded_readings = population_readings(excluded_rows) if len(excluded_rows) else None
     predictions = leave_one_drug_out_predictions(rows)
-    predictions_with_every_population = leave_one_drug_out_predictions(every_row) if excluded else predictions
+    predictions_with_every_population = leave_one_drug_out_predictions(every_row) if len(excluded_rows) else predictions
     correct = int((predictions.carrier == predictions.predicted).sum())
     majority = predictions.carrier.value_counts(normalize=True).max() if len(predictions) else float("nan")
     orosomucoid_rows = predictions[predictions.carrier == "orosomucoid"]
@@ -169,23 +181,38 @@ def main() -> int:
         lines += [
             "The user, 9 October 2026: \"this project does not care about newborns as a special population because "
             "they aren't diagnosable yet (it still matters to include developmental mechanisms just not whether the "
-            "graph treats newborns differently)\". The sheet named below is therefore left out of the table above "
-            "and out of the classifier: every label in this study is an adult report, so a neonatal free fraction "
-            "cannot set a carriage edge the labels would test. It is reported here rather than deleted, because it "
-            "was the strongest single reading and leaving it out costs accuracy.",
+            "graph treats newborns differently)\", and on 10 October, correcting a first reading of that which "
+            "dropped the whole paediatric sheet: \"I didn't say PEDIATRIC is irrelevant. Only NEWBORN through "
+            "TODDLER. At the age of five, per much everything should be diagnosable other than I.e. bipolar "
+            "disorder\". The exclusion is therefore by age band and not by population: a subgroup whose band ends "
+            "before a diagnosis can be made leaves the table above and the classifier, because a symptom that cannot "
+            "be recorded yet cannot be the label a carriage edge is tested against, and an older child stays. The "
+            f"subgroups it removes here are {' and '.join(excluded)}. This database holds no paediatric subgroup "
+            "above them, so on this source the rule happens to empty the paediatric population, which is why a first "
+            "pass that dropped the population outright reached the same numbers for the wrong reason; a source with "
+            "school-age rows would keep them.",
             "",
-            "| population left out | measurements | albumin rows | orosomucoid rows | albumin median ratio | orosomucoid median ratio | AUROC for orosomucoid |",
+            "| subgroups left out | measurements | albumin rows | orosomucoid rows | albumin median ratio | orosomucoid median ratio | AUROC for orosomucoid |",
             "| --- | --- | --- | --- | --- | --- | --- |",
         ]
         for row in excluded_readings.itertuples(index=False):
             lines.append(f"| {row.population} | {row.measurements} | {row.albumin_rows} | {row.orosomucoid_rows} | "
                          f"{row.albumin_median_ratio:.3f} | {row.orosomucoid_median_ratio:.3f} | {row.auroc:.3f} |")
-        lines.append("")
-        lines.append("Excluding it is not the same as excluding development. A developmental mechanism is a reaction, "
-                     "a transporter or an expression pattern, and those stay in the graph on their own evidence; what "
-                     "leaves is the claim that a drug's carrier can be read from how its free fraction moves in a "
-                     "newborn.")
-        lines.append("")
+        lines += [
+            "",
+            "It is reported rather than deleted, because it was the strongest single reading and leaving it out costs "
+            "accuracy.",
+            "",
+            "Two limits on the rule. A band between toddler and school age (preschool, 3 to 5 years) is not decided "
+            "here: the user's remark puts the line at five while naming toddler as the last band to drop, and no such "
+            "row exists in this database"
+            + (f" (the undecided subgroups present are {', '.join(undecided)})" if undecided else "")
+            + ". And excluding an age band is not excluding development: a developmental mechanism is a reaction, a "
+            "transporter or an expression pattern, and those stay in the graph on their own evidence. What leaves is "
+            "the claim that a drug's carrier can be read from how its free fraction moves in a newborn, whose albumin "
+            "and orosomucoid are both still rising to adult levels.",
+            "",
+        ]
     lines += [
         "## Pooling the populations a drug has, leave-one-drug-out",
         "",
