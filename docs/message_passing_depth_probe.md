@@ -44,3 +44,18 @@ The relative change of the response when the number of steps is doubled, over th
 | 128 | 64 | 2.42e-14 | 5.28e-11 |
 
 The registered linear-response encoder runs 8 steps.
+
+## 4. A perturbation given once against a perturbation held on
+
+One shared layer with a damped update, new state = 0.5 of the old state + 0.5 of the layer's output, for 90 rounds. Given once, the perturbation is in the initial state only, as the registered encoder gives it; held, its injected state is added to the update at every round. The reference is the same iteration with no perturbation, and the field is the difference from it. Median norm of the difference field by round:
+
+| weights | perturbation | round 1 | round 3 | round 8 | round 18 | round 26 | round 40 | round 60 | round 90 | settled (change below 0.001 a round) | median round settled |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| x 1 | given once | 2.14 | 1.7 | 1.47 | 2.25 | 12.4 | 560 | 2.16e+05 | 1.43e+09 | 0 of 16 |  |
+| x 1 | held on | 3.17 | 4.3 | 9.01 | 33.3 | 137 | 2.95e+03 | 9.42e+05 | 8.12e+09 | 0 of 16 |  |
+| x 0.5 | given once | 1.59 | 0.73 | 0.153 | 0.0083 | 0.00117 | 0.000158 | 2.56e-05 | 2e-06 | 0 of 16 |  |
+| x 0.5 | held on | 2.81 | 3.11 | 3.58 | 3.81 | 3.83 | 3.85 | 3.85 | 3.85 | 16 of 16 | 33 |
+
+Median nodes with a nonzero difference field, for the held perturbation: x 1: 2,390 at round 3, 38,398 at round 8, 39,801 at round 26, 39,801 at round 40; x 0.5: 2,390 at round 3, 37,564 at round 8, 39,794 at round 26, 39,801 at round 40.
+
+How to read it. Where the iteration is stable, a perturbation given once fades and a held one settles at a value that is not zero; where it is not stable, both grow without limit. So a field read at convergence needs the perturbation held on and an update whose stability does not depend on where training leaves the weights.

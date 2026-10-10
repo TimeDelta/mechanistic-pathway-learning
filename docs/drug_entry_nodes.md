@@ -345,18 +345,55 @@ changed when the default did. `FULL_GRAPH_ARGUMENTS_V2` still names `evidence_fu
 which cannot be rebuilt. And the descriptor treatment the rule picked for message passing, `seed_masked`, now has a
 definition for drug nodes that the slice arms never ran.
 
-**F. Whether message passing gets more rounds with reused weights.** Raised by the user on 10 October: "Can set it to
-reuse parameters across layers (there are multiple ways this could be tried) and I meant until all reachable sink
-nodes have been reached, which shouldn't need convergence just a test for whether the new round added any new nodes
-reached and, if not, then stop." The stopping test is sound: the reached set only grows and is bounded, so it ends
-whatever cycles the graph has, and each perturbation's stop round is a property of the graph that the search above
-already gives. The options, set out for the user and not built: which weights are reused (one layer; the registered
-three-layer block repeated, of which the registered encoder is the case of one repeat; an own first layer and a shared
-rest; a gated update), how the repeated update is kept stable (damping, averaging across relations, a gate), and when
-it stops (each perturbation's own saturation round, 13 to 26; one number for all, 26 for full reach or 9 for about 96
-percent; or convergence, which the linear-response encoder already is). The recommendation given was the registered
-block repeated with one round count for every perturbation, starting at three repeats, with the per-perturbation stop
-as a switch. With enough rounds decision B stops mattering, because one hop is then a small share of the depth.
+**F. Whether message passing is run to a steady state, and with what parameter schema.** Raised by the user on 10
+October in three messages. First: "Why aren't we doing message passing in a way that carries the signal until all
+sink nodes are hit?" Then: "Can set it to reuse parameters across layers (there are multiple ways this could be tried)
+and I meant until all reachable sink nodes have been reached, which shouldn't need convergence just a test for whether
+the new round added any new nodes reached and, if not, then stop." Then, after a first set of options: "I didn't mean
+reusing the same values for every layer. I meant something more creative like making a schema that reuses some params
+across layers and not others or having multiple layer param sets that get collated", "Sampling is fine if it's
+needed" and "Same round count is fine I guess but wouldn't convergence be preferred for physiological correctness?"
+
+What was worked out, with probes and nothing trained (`docs/message_passing_depth_probe.md`):
+
+- The user's stopping test is sound. The reached set only grows and is bounded, so the test ends whatever cycles the
+  graph has, at 13 to 26 rounds, and each perturbation's stop round is a property of the graph.
+- Convergence is the better target, for the reason the user gave. The labels describe conditions that stay on (a
+  gene lost for life, a drug at regular dosing), so the quantity to model is the state the system settles into while
+  the perturbation is held, against the state without it. The design document already says this of the
+  linear-response encoder, whose fixed point "is the steady-state linear response".
+- Convergence needs two things the message-passing encoder does not have. The perturbation has to be held on at
+  every round: the encoder gives it once, as an initial state ("the perturbation is only the initial state", design
+  section 5.2), and a stable system forgets an initial state. And stability has to hold by construction. Section 4 of
+  the probe shows both with one shared layer and a damped update: at the registered scale the field grows without
+  limit either way (norm 1e9 by round 90); with the weights halved a perturbation given once fades (0.15 at round 8,
+  0.001 at round 26, 2e-6 at round 90) and a perturbation held on settles at a value that is not zero (3.58, 3.83,
+  3.85 from round 40), all 16 perturbations settling to a change under 0.1 percent a round at a median of round 33,
+  with every reachable node covered on the way.
+- At a steady state, parameters indexed by round cannot matter, because the settled state does not depend on the
+  route to it. So a schema of several parameter sets has to be indexed by something else if the field is read at
+  convergence: by time scale (sets with their own relation maps and rates, fast to slow, settling together, of which
+  the linear-response encoder's four channels with their own gains are a scalar case), by where a node is (sets
+  mixed per node by type, compartment or cell class) or by role (own maps for how a held perturbation enters and for
+  the readout, shared maps for propagation; Battaglia et al. 2018, [arXiv:1806.01261](https://arxiv.org/abs/1806.01261):
+  "a shared core block [...] is applied M times"). Sets mixed by round (early, middle, late) are meaningful only for
+  a fixed number of rounds, which models a transient.
+- A drug node already is a held input in message passing: it stays present and sends through its mechanism edges at
+  every layer, where a drug seeded on its targets is an initial state. So the two arms of the ablation differ in
+  that as well as in the hop, and a held gene knockout would be the same idea applied to the gene's own node.
+
+The design proposed to the user, not built: a third encoder beside the two registered ones, with the perturbation
+held on, one propagation law per relation shared across rounds, parameter sets collated across time-scale groups and
+mixed by node context, a damped update averaged across relations with bounded maps so that it converges for any
+weights, iteration to a tolerance, and training by iterating to convergence without gradients and backpropagating
+through the last few rounds (a random number of them, which is where sampling enters). It would be the nonlinear
+steady state: message passing is nonlinear and a three-step transient, the linear response is a steady state and
+linear, which is accurate for small changes, and a knockout is not small. Its limits: a unique steady state rules
+out switch-like responses, effects decay with distance, gradients through the last rounds only are approximate, the
+cost is estimated at about four times the registered step, and it needs an amendment and development runs of its
+own. Whether it predicts better is not known; every figure here is from an untrained probe. Open with the user:
+whether to build it, and whether as a third encoder or in place of message passing. With a steady state, decision B
+stops mattering, because one hop is then a small share of the depth.
 
 No amendment is drafted yet. A, B and F decide what it would say, and they were open with the user when this was
 written; the draft follows those decisions and will be a file of its own, for the user, outside
