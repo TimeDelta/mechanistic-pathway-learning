@@ -92,6 +92,13 @@ evidence_build "_parkinsonism" docs/symptom_crosswalk.csv
 
 # --- drug entry nodes -----------------------------------------------------------------------------------------------
 step data/raw/fda_labels/.complete "FDA label protein-binding sentences" bash -c "python experiments/fetch_fda_label_protein_binding.py --evidence-dir $processed/evidence_full_v3 && touch data/raw/fda_labels/.complete"
+# configs/drug_plasma_carriers.csv is committed; experiments/scope_label_plasma_binder_coverage.py --carrier-table rewrites it from the label
+# sentences and the fraction-unbound database. The variant holds the drug nodes, their mechanism edges and the carriers' sequestration edges;
+# both arms of the ablation are read from it (run_main_model.py --drug-entry nodes or targets).
+if [ "$stage" = "graphs" ]; then
+  step "$processed/graph_full_neuronal_split_binders_drugs/nodes.parquet" "drug entry nodes on the confirmatory graph" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v3_parkinsonism"
+fi
 
 if [ "$stage" = "descriptors" ]; then
   # --- node descriptors and cell-class weights ------------------------------------------------------------------------
@@ -109,6 +116,31 @@ if [ "$stage" = "descriptors" ]; then
     env OMP_NUM_THREADS=2 python experiments/build_protein_descriptors.py --slice-nodes data/releases/v0.4/graph/nodes.parquet --report "$log_directory/protein_descriptor_report.md"
   step "$descriptors/protein_descriptors_per_entry.parquet" "protein descriptors per UniProt entry" \
     env OMP_NUM_THREADS=2 python experiments/build_protein_descriptors.py --per-entry-only --slice-nodes data/releases/v0.4/graph/nodes.parquet --report "$log_directory/protein_descriptor_report.md"
-  echo "the remaining descriptor steps are listed in docs/data_layer_rebuild.md; they were not rerun on 10 October 2026"
+  step "$descriptors/complex_descriptors.parquet" "descriptors of the Reactome protein entities" \
+    env OMP_NUM_THREADS=2 python experiments/build_complex_descriptors.py --report "$log_directory/complex_descriptors.md"
+  step "$processed/graph_full_neuronal/node_descriptors.parquet" "node descriptors of the merged neuronal graph (84 columns)" \
+    python experiments/build_node_descriptors.py --graph-dir "$processed/graph_full_neuronal" --complex-descriptors "$descriptors/complex_descriptors.parquet"
+  atlas="data/raw/siletti_cellxgene"
+  step "$processed/brain_expression/dopaminergic_siletti_cluster395.parquet" "dopaminergic class from the brain atlas (872 nuclei of cluster 395)" \
+    python experiments/build_dopaminergic_expression.py --h5ad "$atlas/dissection_sn_rn.h5ad" "$atlas/dissection_sn.h5ad" "$atlas/dissection_pag_dr.h5ad" "$atlas/dissection_pag.h5ad" \
+      --output "$processed/brain_expression/dopaminergic_siletti_cluster395.parquet"
+  step "$descriptors/full_neuronal_descriptors_brain_expression.parquet" "brain expression descriptors of the merged neuronal graph" \
+    python experiments/build_brain_expression_descriptors.py --graph-dir "$processed/graph_full_neuronal" --output "$descriptors/full_neuronal_descriptors_brain_expression.parquet"
+  weights="$processed/cell_class_weights"
+  step "$weights/full_neuronal_cell_class_weights.parquet" "cell-class weights of the merged neuronal graph (about 8 minutes)" \
+    python experiments/build_cell_class_weights.py --graph-dir "$processed/graph_full_neuronal" --output "$weights/full_neuronal_cell_class_weights.parquet"
+  step "$processed/brain_expression/gene_expression_for_descriptors.parquet" "expression tables for the rewired runs" python experiments/write_expression_tables.py
+  # the split again, now with its descriptor table and cell-class weights; nodes and edges are the ones the graphs stage wrote
+  step "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet" "gene and protein split with its descriptor table and cell-class weights" \
+    python experiments/build_gene_protein_split.py --graph-dir "$processed/graph_full_neuronal" --output-dir "$processed/graph_full_neuronal_split" --overwrite \
+      --descriptor-table "$descriptors/full_neuronal_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_descriptors_brain_expression.parquet" \
+      --cell-class-weights "$weights/full_neuronal_cell_class_weights.parquet:$weights/full_neuronal_split_cell_class_weights.parquet"
+  step "$processed/graph_full_neuronal_split_binders/nodes.parquet" "plasma binder variants" \
+    python experiments/build_plasma_binder_variant.py --graph-dirs "$processed/graph_full_neuronal" "$processed/graph_full_neuronal_split" --markdown-output none
+  # the drug entry variant with a row per drug node in the descriptor table (zeros) and in the cell-class weights (ones)
+  step "$descriptors/full_neuronal_split_drugs_descriptors_brain_expression.parquet" "drug entry nodes with their descriptor table and cell-class weights" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v3_parkinsonism" --overwrite \
+      --descriptor-table "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_drugs_descriptors_brain_expression.parquet" \
+      --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_cell_class_weights.parquet"
 fi
 echo "done: $stage"

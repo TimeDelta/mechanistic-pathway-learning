@@ -19,7 +19,10 @@ The container had 2 cores and 7 GB of memory, against the 4 cores of the earlier
   recorded hash or content. The third is a live service whose change touches four identifiers and no table.
 - Two defects in the builds made a table depend on Python's hash seed. One is fixed here. The other is worked around
   by copying the committed release, because fixing it would change the pinned row order.
-- The node descriptors and the cell-class weights were not finished in this session (see the last section).
+- The node descriptors and the cell-class weights are rebuilt, with every recorded count, and the descriptor table is
+  not the registered file: its SHA-256 is `0ba1f817029f32e0` against the registered `df38d78c78ffe6d4` (last section).
+- On this container the confirmatory message-passing configuration trains at 9.4 s a step (11.4 minutes an epoch) and
+  the linear-response one at 4.9 s (6.0 minutes); message passing with 6 or 9 layers is killed for memory at batch 16.
 
 ## Library versions
 
@@ -138,21 +141,53 @@ earlier `data/processed`, with the stored protein descriptors whose column signs
 If that session can still be opened, a data release cut from its disk would settle the open hash question above and
 save the descriptor rebuild below.
 
-## Not finished: node descriptors and cell-class weights
+## Node descriptors and cell-class weights
 
-The ESM-2 embeddings of the 20,431 reviewed proteins take about three hours on two cores and were still running when
-the rest of this session's work was done. The steps after them, in order, with the checks to hold them to:
+Rebuilt on 10 October after the embeddings finished. The commands are the `descriptors` stage of
+`scripts/rebuild_data_layer.sh`.
 
-1. `experiments/build_protein_descriptors.py`, then the same with `--per-entry-only` (1,880 targets, 19,628 proteins in
-   the fit, rank 64, coverage 12,460 of 12,627; the sign of each of the 64 directions is not fixed by the fit, so a new
-   fit matches the earlier table up to sign and not by hash);
-2. `experiments/build_complex_descriptors.py` (1,681 entities, 1,527 with a vector);
-3. `experiments/build_node_descriptors.py --graph-dir data/processed/graph_full_neuronal --complex-descriptors ...`
-   (84 columns);
-4. `experiments/build_dopaminergic_expression.py` on the four brain atlas dissections (872 nuclei of cluster 395);
-5. `experiments/build_brain_expression_descriptors.py` and `experiments/build_cell_class_weights.py` on the merged
-   neuronal graph, then `experiments/write_expression_tables.py`;
-6. `experiments/build_gene_protein_split.py` again with the `--descriptor-table` and `--cell-class-weights` pairs (138
-   columns), then the binder variant and the drug-entry variant with theirs.
+| step | recorded | rebuilt | result |
+| --- | --- | --- | --- |
+| ESM-2 embeddings | 20,431 reviewed proteins | 103 batches, 20,431 proteins; 2 hours 55 minutes on two cores | count equal |
+| protein descriptors | 1,880 targets, 19,628 proteins in the fit, rank 64, coverage 12,460 of 12,627 | the same | the report regenerates with no difference from `docs/protein_descriptor_report.md`, every held-out R squared included |
+| complex descriptors | 1,681 entities, 1,527 with a vector; median correlation with a single member's protein descriptor 0.818 | 1,527 with a vector; 0.816 | counts equal; the one fitted figure the report prints differs in the third decimal |
+| node descriptors, merged neuronal graph | 84 columns | 84 columns | equal |
+| brain atlas dissections | four files, SHA-256 prefixes in `docs/data_sources.md` | the four prefixes match | equal |
+| dopaminergic class | 872 nuclei of cluster 395 | 872 (581, 192, 62 and 37 in the four dissections) | equal |
+| brain expression descriptors | 9,962 gene nodes without an Ensembl id, 9,783 resolved by symbol, 12,626 of 12,810 gene nodes and 7,752 of 7,759 reactions with expression | the same | equal |
+| expression tables | the script refuses to write unless the recomputed reaction rows equal the stored ones | largest difference 0.0 in both tables | equal |
+| split descriptor table | 138 columns; SHA-256 `df38d78c78ffe6d4` | 49,574 rows, 138 columns; `0ba1f817029f32e0` | **shape equal, hash not** |
+| split cell-class weights | none recorded | 49,574 rows, 12 classes; `84976a5e15a9867a` | no hash to compare |
+| drug entry variant | new | 49,728 rows in both tables, a zero row per drug node in the descriptors and a row of ones in the weights | new |
 
-Training needs these tables. Nothing built or measured in this session does.
+**The descriptor table is not the registered file.** The preregistration names
+`full_neuronal_split_descriptors_brain_expression.parquet` by its SHA-256. The rebuilt table has the registered shape
+and every recorded count, and other bytes. The 64 protein columns are a fit to embeddings computed on another machine,
+so their last digits differ, as the complex report's 0.816 against 0.818 shows, and the sign of each direction is not
+fixed by the fit. Whether the rebuilt directions agree in sign with the registered ones cannot be checked without the
+registered table, which is on the earlier session's disk. A model does not care about a column's sign, since the
+first layer can absorb it, so a run on the rebuilt table is a run of the registered configuration on equivalent
+inputs and not on the registered file. A confirmatory run needs one of two things: the registered table itself, or
+an amendment that pins the table it will read.
+
+**What a new container costs now.** About three hours for the embeddings, 1.24 GB for the brain atlas, 45 minutes for
+the OnSIDES identifier bridge and a few minutes for each other step. A data release that carries the processed tables
+would remove all of it and would settle which file a pin refers to.
+
+## What training costs on this container
+
+`run_main_model.py --timing-batches 6` on the drug entry variant with the rebuilt tables, the noisy-OR head and the
+confirmatory fitting arguments, on 2 cores with about 6 GB usable. It runs six training steps and exits: no split
+directory, no validation, no score.
+
+| configuration | seconds a step | minutes an epoch (69 steps) |
+| --- | --- | --- |
+| message passing, 3 layers | 9.4 | 11.4 |
+| message passing, 3 layers, mechanism also before the first layer | 9.7 | 11.7 |
+| message passing, 6 layers | killed for memory at 6.1 GB | |
+| message passing, 9 layers | killed for memory at 6.1 GB | |
+| linear response, 8 steps | 4.9 | 6.0 |
+
+No lockbox was passed, so the step count is for 1,089 training perturbations of the 1,568; with the held-out
+perturbations left out an epoch is shorter. A deeper message-passing variant needs gradients through its last rounds
+only, or a smaller batch, to run here at all.
