@@ -382,11 +382,28 @@ What was worked out, with probes and nothing trained (`docs/message_passing_dept
   every layer, where a drug seeded on its targets is an initial state. So the two arms of the ablation differ in
   that as well as in the hop, and a held gene knockout would be the same idea applied to the gene's own node.
 
-The design proposed to the user, not built: a third encoder beside the two registered ones, with the perturbation
-held on, one propagation law per relation shared across rounds, parameter sets collated across time-scale groups and
-mixed by node context, a damped update averaged across relations with bounded maps so that it converges for any
-weights, iteration to a tolerance, and training by iterating to convergence without gradients and backpropagating
-through the last few rounds (a random number of them, which is where sampling enters). It would be the nonlinear
+Two refinements followed in the same exchange. First, a correction: rates drop out at a steady state. With a damped
+update the settled state satisfies state = update(state) whatever the damping, so parameter sets that differ only in
+rate add nothing to a field read at convergence. What a time scale can do is choose which equilibrium is read: a fast
+equilibrium with only the fast relations active (binding, catalysis, transport, signalling) and transcription and
+expression frozen at baseline, and a full equilibrium with every relation active, both read by the head. Each is a
+steady state of a different system, which is the form of "several parameter sets collated" that survives
+convergence, and it matches the labels: a lifelong gene loss has only the full equilibrium, and a drug label mixes
+effects that appear within hours with effects that appear after months of adaptation. Second, the cleanest form of
+a held perturbation is a clamped source, a node fixed at its perturbed value that keeps sending and is not updated
+by its neighbours: the drug node for a drug, which already behaves that way, and the gene's own node for a knockout,
+as logic models clamp a target ("fixing the activity value of the drug target component to the Boolean value 0",
+Flobak et al. 2015, [doi:10.1371/journal.pcbi.1004426](https://doi.org/10.1371/journal.pcbi.1004426)). Combined
+perturbations (a drug with a lowered carrier, a drug with a gene variant, two drugs) then need nothing more. A
+consequence: in a converged encoder a drug on its node and a drug held on its targets differ by one edge in thirty
+or more rounds, so the drug-node ablation is null there as it is in the linear response, and stays informative for
+the registered three-layer message passing only.
+
+The design proposed to the user, not built: a third encoder beside the two registered ones, with clamped sources,
+one propagation law per relation shared across rounds, parameter sets mixed by node context, a damped update
+averaged across relations with bounded maps so that it converges for any weights, iteration to a tolerance, two
+equilibria (fast and full) read together, and training by iterating to convergence without gradients and
+backpropagating through the last few rounds (a random number of them, which is where sampling enters). It would be the nonlinear
 steady state: message passing is nonlinear and a three-step transient, the linear response is a steady state and
 linear, which is accurate for small changes, and a knockout is not small. Its limits: a unique steady state rules
 out switch-like responses, effects decay with distance, gradients through the last rounds only are approximate, the
