@@ -51,13 +51,17 @@ relation file and the CTD chemical-disease file to graph genes and SIDER drugs o
 one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature with the source named by extraction type (PubTator3-cause, CTD-curated). The
 rows are grade E soft priors and never labels or evaluation positives (the experiment loader refuses grades D and E). The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations, species first; the tables are in the data release and join the assembled table through --extra-reports. The component was reviewed adversarially on 6 October 2026 (docs/design_review_v04.md, third table); the fixes are in the code and were applied to the data the same day on the PubTator3 bulk file NCBI published then (214,375 reports over 134,747 papers), and release v0.4 holds those tables.
 
-Reproduce the data layer (downloads about 110 MB; raw files stay out of git):
+A new container has no `data/raw`, `data/processed` or `runs/`. `bash scripts/rebuild_data_layer.sh` fetches the pinned sources and rebuilds the
+graphs, the evidence tables and the label selections in dependency order; docs/data_layer_rebuild.md records what that reproduced on 10 October 2026
+and what it did not. Install pandas 2.3.3 and pyarrow 25.0.1 first if the tables are to be compared with recorded hashes.
+
+Reproduce the data layer by hand (downloads about 110 MB; raw files stay out of git). Human-GEM and the HPO files are fetched by tag: the `main` branch
+of Human-GEM moved to 2.1.1 on 7 October 2026 and no longer gives the graph of data/releases/v0.4.
 
 ```
 mkdir -p data/raw/hpo data/raw/Human-GEM/model data/raw/sider_4.1 data/raw/omnipath
-curl -L -o data/raw/hpo/hp.obo https://github.com/obophenotype/human-phenotype-ontology/releases/latest/download/hp.obo
-curl -L -o data/raw/hpo/genes_to_phenotype.txt https://github.com/obophenotype/human-phenotype-ontology/releases/latest/download/genes_to_phenotype.txt
-for f in Human-GEM.xml Human-GEM.yml genes.tsv metabolites.tsv reactions.tsv; do curl -L -o data/raw/Human-GEM/model/$f https://raw.githubusercontent.com/SysBioChalmers/Human-GEM/main/model/$f; done
+for f in hp.obo genes_to_phenotype.txt phenotype.hpoa genes_to_disease.txt; do curl -L -o data/raw/hpo/$f https://github.com/obophenotype/human-phenotype-ontology/releases/download/v2026-09-01/$f; done
+for f in Human-GEM.xml Human-GEM.yml genes.tsv metabolites.tsv reactions.tsv; do curl -L -o data/raw/Human-GEM/model/$f https://raw.githubusercontent.com/SysBioChalmers/Human-GEM/v2.0.1/model/$f; done
 for f in meddra_all_se.tsv.gz meddra_freq.tsv.gz meddra_all_indications.tsv.gz drug_names.tsv drug_atc.tsv; do curl -L -o data/raw/sider_4.1/$f https://sideeffects.embl.de/media/download/$f; done
 curl -L -o data/raw/omnipath/omnipath_interactions.tsv "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort,n_references&organisms=9606&format=tsv"
 curl -L -o data/raw/omnipath/collectri_interactions.tsv "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references,n_references&organisms=9606&format=tsv"
