@@ -1,0 +1,155 @@
+perturbation_id,drug,route_class,routes,retrieved,carrier,kept_positives
+CID100051263,alfentanil,no label route,,2026-10-10,orosomucoid,5
+CID100002118,alprazolam,oral or local only,ORAL (79),2026-10-10,albumin,14
+CID100002130,amantadine,oral or local only,ORAL (55),2026-10-10,,7
+RXCUI:2106338,amifampridine,oral or local only,ORAL (1),2026-10-10,,0
+CID100002215,apomorphine,other route past the first pass,ORAL (1); SUBCUTANEOUS (1); SUBLINGUAL (1),2026-10-10,,3
+CID100032169,articaine,oral or local only,SUBMUCOSAL (19),2026-10-10,albumin,0
+CID100002244,aspirin,oral or local only,ORAL (684); RECTAL (1),2026-10-10,,0
+RXCUI:2571813,atogepant,oral or local only,ORAL (1),2026-10-10,,0
+CID100054840,atomoxetine,oral or local only,ORAL (49),2026-10-10,albumin,11
+RXCUI:1373,benperidol,no label route,,2026-10-10,,0
+CID100002344,benztropine,intravenous,ORAL (29); INTRAMUSCULAR (5); INTRAVENOUS (5),2026-10-10,,0
+RXCUI:1739745,brivaracetam,intravenous,ORAL (17); INTRAVENOUS (5),2026-10-10,,0
+CID100002441,bromazepam,no label route,,2026-10-10,,1
+CID100002443,bromocriptine,oral or local only,ORAL (9),2026-10-10,albumin,8
+CID100002474,bupivacaine,intravenous,INFILTRATION (56); EPIDURAL (47); PERINEURAL (47); INTRACAUDAL (29); TOPICAL (16); INTRAMUSCULAR (15); INTRA-ARTICULAR (12); INTRALESIONAL (10); INTRAVENOUS (9); RETROBULBAR (9); SOFT TISSUE (7); SUBCUTANEOUS (6); SUBARACHNOID (5); SUBMUCOSAL (2),2026-10-10,orosomucoid,3
+CID100002477,buspirone,oral or local only,ORAL (169),2026-10-10,,9
+CID100002512,cabergoline,oral or local only,ORAL (12),2026-10-10,,12
+CID100002519,caffeine,intravenous,ORAL (406); INTRAVENOUS (10); TOPICAL (3); EXTRACORPOREAL (2); INTRAMUSCULAR (2); RECTAL (1),2026-10-10,albumin,1
+RXCUI:2045371,cannabidiol,oral or local only,ORAL (1),2026-10-10,,0
+CID100002554,carbamazepine,oral or local only,ORAL (76),2026-10-10,albumin,12
+CID100002712,chlordiazepoxide,oral or local only,ORAL (36),2026-10-10,albumin,1
+CID100008612,chloroprocaine,other route past the first pass,INFILTRATION (6); PERINEURAL (6); EPIDURAL (4); INTRACAUDAL (4); OPHTHALMIC (1),2026-10-10,,1
+CID100002771,citalopram,oral or local only,ORAL (89),2026-10-10,,16
+CID100002789,clobazam,oral or local only,ORAL (22),2026-10-10,,10
+CID100002801,clomipramine,oral or local only,ORAL (19),2026-10-10,,15
+CID100002802,clonazepam,oral or local only,ORAL (94),2026-10-10,albumin,11
+CID100002803,clonidine,intravenous,ORAL (113); TRANSDERMAL (6); EPIDURAL (2); INTRAVENOUS (2),2026-10-10,,11
+CID100002826,cocaine,other route past the first pass,NASAL (2); TOPICAL (2),2026-10-10,both,1
+CID100005195,deprenyl,no label route,,2026-10-10,,8
+CID100002995,desipramine,oral or local only,ORAL (9),2026-10-10,orosomucoid,1
+CID100060612,dexmedetomidine,intravenous,INTRAVENOUS (38),2026-10-10,,4
+CID100003016,diazepam,intravenous,ORAL (60); INTRAMUSCULAR (23); INTRAVENOUS (22); RECTAL (4); NASAL (1),2026-10-10,albumin,8
+CID100003059,diflunisal,oral or local only,ORAL (6),2026-10-10,albumin,3
+CID100003063,dihydrocodeine,oral or local only,ORAL (1),2026-10-10,,4
+CID100003066,dihydroergotamine,intravenous,NASAL (8); SUBCUTANEOUS (7); INTRAMUSCULAR (6); INTRAVENOUS (6),2026-10-10,,2
+CID100003100,diphenhydramine,intravenous,ORAL (882); TOPICAL (82); INTRAMUSCULAR (28); INTRAVENOUS (28); CUTANEOUS (1),2026-10-10,orosomucoid,3
+CID100003117,disulfiram,oral or local only,ORAL (5),2026-10-10,,0
+CID100003152,donepezil,oral or local only,ORAL (53),2026-10-10,both,13
+RXCUI:23744,dyclonine,oral or local only,TOPICAL (7); ORAL (3),2026-10-10,,0
+CID104659568,entacapone,oral or local only,ORAL (19),2026-10-10,albumin,11
+RXCUI:2282660,eptinezumab,intravenous,INTRAVENOUS (1),2026-10-10,,0
+RXCUI:2119365,esketamine,no label route,,2026-10-10,,0
+CID100114709,eslicarbazepine,oral or local only,ORAL (9),2026-10-10,,6
+CID100003261,estazolam,oral or local only,ORAL (3),2026-10-10,,7
+CID100003291,ethosuximide,oral or local only,ORAL (12),2026-10-10,,7
+CID100003292,ethotoin,no label route,,2026-10-10,,0
+CID100036339,etomidate,intravenous,INTRAVENOUS (17),2026-10-10,albumin,0
+CID100003331,felbamate,oral or local only,ORAL (15),2026-10-10,albumin,8
+CID100003345,fentanyl,intravenous,INTRAMUSCULAR (8); INTRAVENOUS (8); TRANSDERMAL (5),2026-10-10,orosomucoid,13
+CID100003380,flunitrazepam,no label route,,2026-10-10,,3
+CID100003386,fluoxetine,oral or local only,ORAL (164),2026-10-10,both,14
+CID100003372,fluphenazine,other route past the first pass,ORAL (34); INTRAMUSCULAR (11); SUBCUTANEOUS (10),2026-10-10,,3
+CID100003393,flurazepam,oral or local only,ORAL (1),2026-10-10,,2
+CID100003404,fluvoxamine,oral or local only,ORAL (24),2026-10-10,albumin,14
+CID100056338,fosphenytoin,intravenous,INTRAMUSCULAR (10); INTRAVENOUS (10),2026-10-10,albumin,5
+CID100003446,gabapentin,oral or local only,ORAL (398),2026-10-10,,13
+CID100003449,galantamine,oral or local only,ORAL (17),2026-10-10,,10
+RXCUI:2604689,ganaxolone,no label route,,2026-10-10,,0
+CID100003648,hydromorphone,intravenous,ORAL (19); INTRAMUSCULAR (10); INTRAVENOUS (10); SUBCUTANEOUS (10); RECTAL (2),2026-10-10,,6
+CID100010413,hydroxybutyrate,no label route,,2026-10-10,,6
+CID100003658,hydroxyzine,other route past the first pass,ORAL (210); INTRAMUSCULAR (4),2026-10-10,,2
+CID100003759,isocarboxazid,oral or local only,ORAL (1),2026-10-10,,1
+RXCUI:2199015,istradefylline,oral or local only,ORAL (1),2026-10-10,,0
+CID100003821,ketamine,intravenous,INTRAMUSCULAR (13); INTRAVENOUS (13),2026-10-10,,0
+CID100219078,lacosamide,intravenous,ORAL (50); INTRAVENOUS (20),2026-10-10,,8
+CID100003878,lamotrigine,oral or local only,ORAL (105),2026-10-10,,14
+RXCUI:2256930,lasmiditan,oral or local only,ORAL (1),2026-10-10,,0
+RXCUI:6375,levodopa,other route past the first pass,ORAL (69); RESPIRATORY (INHALATION) (2); ENTERAL (1),2026-10-10,,0
+CID100003676,lidocaine,intravenous,TOPICAL (1316); INFILTRATION (144); PERINEURAL (102); EPIDURAL (67); TRANSDERMAL (45); INTRACAUDAL (43); INTRAVENOUS (42); CUTANEOUS (37); INTRAMUSCULAR (28); ORAL (26); INTRA-ARTICULAR (24); RECTAL (24); SUBMUCOSAL (17); INTRALESIONAL (15); SOFT TISSUE (10); PERCUTANEOUS (9); SUBCUTANEOUS (6); AURICULAR (OTIC) (3); EXTRACORPOREAL (2); OPHTHALMIC (2); OROPHARYNGEAL (2); RETROBULBAR (2); INTRAVASCULAR (1); PERIODONTAL (1); TRANSTRACHEAL (1),2026-10-10,orosomucoid,4
+RXCUI:28863,lofexidine,oral or local only,ORAL (8),2026-10-10,,0
+CID100003958,lorazepam,intravenous,ORAL (92); INTRAMUSCULAR (9); INTRAVENOUS (9),2026-10-10,albumin,10
+CID100004011,maprotiline,no label route,,2026-10-10,,5
+CID100000896,melatonin,oral or local only,ORAL (49),2026-10-10,,10
+CID100004054,memantine,oral or local only,ORAL (74),2026-10-10,,10
+CID100004058,meperidine,intravenous,ORAL (3); INTRAMUSCULAR (2); INTRAVENOUS (2); SUBCUTANEOUS (2),2026-10-10,,5
+CID100004060,mephenytoin,no label route,,2026-10-10,,0
+CID100004062,mepivacaine,other route past the first pass,SUBMUCOSAL (10); INFILTRATION (4); EPIDURAL (2); SUBCUTANEOUS (1),2026-10-10,,1
+CID100004064,meprobamate,oral or local only,ORAL (3),2026-10-10,,1
+CID100004095,methadone,intravenous,ORAL (31); INTRAVENOUS (4); INTRAMUSCULAR (3); SUBCUTANEOUS (3),2026-10-10,orosomucoid,7
+CID100001206,methamphetamine,oral or local only,ORAL (3),2026-10-10,,2
+CID100009034,methohexital,intravenous,INTRAVENOUS (3); INTRAMUSCULAR (2); RECTAL (2),2026-10-10,,0
+CID100006476,methsuximide,oral or local only,ORAL (2),2026-10-10,,1
+CID100004192,midazolam,intravenous,INTRAVENOUS (38); INTRAMUSCULAR (34); ORAL (6); NASAL (1),2026-10-10,albumin,6
+CID100004235,moclobemide,no label route,,2026-10-10,,0
+CID100004236,modafinil,oral or local only,ORAL (35),2026-10-10,albumin,10
+CID100004253,morphine,intravenous,ORAL (59); INTRAVENOUS (9); RECTAL (5); EPIDURAL (4); INTRATHECAL (4); INTRAMUSCULAR (2),2026-10-10,albumin,8
+CID100004419,nalbuphine,intravenous,INTRAMUSCULAR (13); INTRAVENOUS (13); SUBCUTANEOUS (12); SUBCONJUNCTIVAL (1),2026-10-10,,2
+CID100004428,naltrexone,oral or local only,ORAL (45),2026-10-10,,7
+CID100004456,neostigmine,intravenous,INTRAVENOUS (31),2026-10-10,albumin,2
+CID100000942,nicotine,other route past the first pass,ORAL (493); TRANSDERMAL (59); BUCCAL (37); TOPICAL (25); NASAL (1),2026-10-10,,4
+RXCUI:2362167,opicapone,oral or local only,ORAL (1),2026-10-10,,0
+CID100004616,oxazepam,oral or local only,ORAL (5),2026-10-10,albumin,1
+CID100034312,oxcarbazepine,oral or local only,ORAL (72),2026-10-10,albumin,9
+CID100004635,oxycodone,oral or local only,ORAL (164),2026-10-10,,8
+CID100004639,oxymorphone,oral or local only,ORAL (9),2026-10-10,,0
+CID100004691,paroxetine,oral or local only,ORAL (84),2026-10-10,,15
+CID100004736,pentazocine,oral or local only,ORAL (3),2026-10-10,,0
+CID100004737,pentobarbital,intravenous,INTRAMUSCULAR (1); INTRAVENOUS (1),2026-10-10,,2
+CID109924495,perampanel,oral or local only,ORAL (7),2026-10-10,both,0
+CID100004745,pergolide,no label route,,2026-10-10,,10
+CID100004748,perphenazine,oral or local only,ORAL (36),2026-10-10,,4
+CID100003675,phenelzine,oral or local only,ORAL (3),2026-10-10,,0
+CID100001775,phenytoin,intravenous,ORAL (40); INTRAMUSCULAR (9); INTRAVENOUS (9),2026-10-10,albumin,6
+RXCUI:1791685,pimavanserin,oral or local only,ORAL (2),2026-10-10,,0
+RXCUI:2197878,pitolisant,oral or local only,ORAL (1),2026-10-10,,0
+CID100004885,pramipexole,oral or local only,ORAL (37),2026-10-10,,13
+CID100125889,pregabalin,oral or local only,ORAL (226),2026-10-10,,17
+CID100004906,prilocaine,oral or local only,TOPICAL (17); SUBMUCOSAL (3); PERIODONTAL (1),2026-10-10,,0
+CID100004914,procaine,other route past the first pass,INTRAMUSCULAR (2),2026-10-10,,0
+CID100004917,prochlorperazine,intravenous,ORAL (41); INTRAMUSCULAR (16); INTRAVENOUS (16); RECTAL (3),2026-10-10,,3
+RXCUI:8718,procyclidine,no label route,,2026-10-10,,0
+CID100004943,propofol,intravenous,INTRAVENOUS (16),2026-10-10,,0
+CID100010100,propoxyphene,no label route,,2026-10-10,,0
+CID100004991,pyridostigmine,intravenous,ORAL (22); INTRAVENOUS (1); PARENTERAL (1),2026-10-10,,0
+CID100004999,quazepam,oral or local only,ORAL (1),2026-10-10,,2
+CID100208902,ramelteon,oral or local only,ORAL (40),2026-10-10,albumin,4
+CID100122316,rasagiline,oral or local only,ORAL (16),2026-10-10,albumin,10
+CID100065856,reboxetine,no label route,,2026-10-10,orosomucoid,5
+CID100060814,remifentanil,intravenous,INTRAVENOUS (5),2026-10-10,,5
+RXCUI:2383941,remimazolam,intravenous,INTRAVENOUS (1),2026-10-10,albumin,0
+CID100121892,retigabine,no label route,,2026-10-10,,0
+CID100005070,riluzole,oral or local only,ORAL (10),2026-10-10,albumin,6
+CID100005077,rivastigmine,other route past the first pass,TRANSDERMAL (17); ORAL (11),2026-10-10,,12
+CID100005095,ropinirole,oral or local only,ORAL (58),2026-10-10,,14
+CID100071273,ropivacaine,intravenous,EPIDURAL (29); INFILTRATION (28); PERINEURAL (23); INTRAMUSCULAR (1); INTRAVENOUS (1); TOPICAL (1),2026-10-10,orosomucoid,2
+CID100057537,rotigotine,no label route,,2026-10-10,,8
+CID100129228,rufinamide,oral or local only,ORAL (16),2026-10-10,albumin,8
+CID100005184,scopolamine,other route past the first pass,TRANSDERMAL (17); ORAL (8),2026-10-10,,0
+CID100005193,secobarbital,no label route,,2026-10-10,,2
+CID100005203,sertraline,oral or local only,ORAL (158),2026-10-10,,13
+CID100041693,sufentanil,intravenous,EPIDURAL (1); INTRAVENOUS (1),2026-10-10,orosomucoid,3
+RXCUI:10239,sulpiride,no label route,,2026-10-10,,0
+CID124965990,suvorexant,oral or local only,ORAL (1),2026-10-10,both,0
+CID109794842,tasimelteon,oral or local only,ORAL (3),2026-10-10,,0
+CID100005391,temazepam,oral or local only,ORAL (53),2026-10-10,,6
+CID100006018,tetrabenazine,oral or local only,ORAL (11),2026-10-10,,8
+CID100005411,tetracaine,other route past the first pass,TOPICAL (12); OPHTHALMIC (9); SUBARACHNOID (1),2026-10-10,,0
+RXCUI:10493,thiopental,no label route,,2026-10-10,albumin,0
+CID100005466,tiagabine,oral or local only,ORAL (3),2026-10-10,both,14
+CID104659569,tolcapone,oral or local only,ORAL (3),2026-10-10,albumin,11
+CID100005523,tramadol,oral or local only,ORAL (112),2026-10-10,,3
+CID100005530,tranylcypromine,oral or local only,ORAL (6),2026-10-10,,0
+CID100005556,triazolam,oral or local only,ORAL (10),2026-10-10,albumin,4
+CID100005572,trihexyphenidyl,oral or local only,ORAL (12),2026-10-10,,3
+CID100005576,trimethadione,no label route,,2026-10-10,,0
+RXCUI:2268216,ubrogepant,no label route,,2026-10-10,,0
+CID100003121,valproate,intravenous,INTRAVENOUS (5),2026-10-10,albumin,8
+CID100170361,varenicline,oral or local only,ORAL (36),2026-10-10,,13
+CID100005665,vigabatrin,oral or local only,ORAL (24),2026-10-10,,13
+CID100005719,zaleplon,oral or local only,ORAL (15),2026-10-10,,7
+CID116129690,ziconotide,other route past the first pass,INTRATHECAL (1),2026-10-10,,6
+CID100005732,zolpidem,other route past the first pass,ORAL (114); SUBLINGUAL (2),2026-10-10,albumin,16
+CID100005734,zonisamide,oral or local only,ORAL (31),2026-10-10,,14
+CID100005735,zopiclone,no label route,,2026-10-10,,0
