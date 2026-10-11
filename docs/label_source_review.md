@@ -504,7 +504,7 @@ Twelve page requests made by the research passes behind this document ended beca
 five minutes for the user and was then withdrawn, and the passes wrote the page down as not retrieved. The user's
 ruling of 11 October: that is not an acceptable reason to leave a page unread, and a licence has to be verified. All
 twelve were requested again that morning, and each licence that had been left unverified was then read from the
-provider's own page, data file, source repository or paper. No count in sections 1 to 10 changed except the ClinGen
+provider's own page, data file, source repository or paper (ClinGen's from its terms page as the user read it). No count in sections 1 to 10 changed except the ClinGen
 row of section 6. None of the pages contained text addressed to an AI assistant.
 
 ### 11.1 The twelve pages
@@ -512,7 +512,7 @@ row of section 6. None of the pages contained text addressed to an AI assistant.
 | page | what the second request returned | what changed here |
 | --- | --- | --- |
 | ClinGen gene-dosage statistics (`search.clinicalgenome.org/kb/gene-dosage`) | the site declines automated readers | the counts were taken from the files ClinGen publishes for download (`ftp.clinicalgenome.org`, gene list dated 11 October 2026, region list dated 28 April 2026): 1,532 genes, of which 3 have triplosensitivity score 3 (LMNB1, PLP1, TPSAB1), 1 score 2, 10 score 1, 1,306 score 0, 2 are scored unlikely to be dosage sensitive, 1 is marked as not to be evaluated and 209 are not yet evaluated; 513 regions, of which 20 have score 3. Section 6 corrected |
-| ClinGen terms of use (`www.clinicalgenome.org/docs/terms-of-use/`) | the site declines automated readers | licence not verified (11.2) |
+| ClinGen terms of use (`www.clinicalgenome.org/docs/terms-of-use/`) | the site declines automated readers; the user opened the page the same morning and pasted its text | licence verified (11.2) |
 | DECIPHER downloads (`www.deciphergenomics.org/about/downloads/data`) | HTTP 403 to the fetch tool and to the shell | terms read from the DECIPHER paper instead (11.2) |
 | IMPC, "Is IMPC data freely available?" | read | licence confirmed with a quote (11.2) |
 | MGI statistics (`informatics.jax.org/mgihome/homepages/stats/all_stats.shtml`) | read; the page as returned shows no counts, only "last database update 09/29/2026" | nothing; no MGI count is used in this document |
@@ -534,7 +534,11 @@ row of section 6. None of the pages contained text addressed to an AI assistant.
 | IMPC | no (candidate of section 6) | "The IMPC makes this dataset publicly available under the Creative Commons Attribution 4.0 International license"; "You must give appropriate credit, provide a link to the license, and indicate if changes were made." | `mousephenotype.org/help/faqs/is-impc-data-freely-available/` |
 | OffSIDES and TWOSIDES | no | none stated for the data. The authors' site, the release notes and the release repository (`tatonetti-lab/nsides-release`) carry no licence. The project's code repository (`tatonetti-lab/nsides`) is under "Attribution-NonCommercial-ShareAlike 4.0 International", and the 2022 rebuild of the OffSIDES method (`tatonetti-lab/offsides`) is under the MIT licence, which covers its software | `nsides.io`; the three repositories, read on 11 October 2026 |
 | DECIPHER | no | "The openly consented patient data is available for bulk download for research purposes, subject to a data access agreement."; "DECIPHER also shares the data in bulk for display, subject to a Data Display Agreement." (Foreman et al. 2022, [doi:10.1002/humu.24340](https://doi.org/10.1002/humu.24340)) | the paper; the downloads page refused the request. The DECIPHER entries counted in section 6 come from the HPO annotation file, not from DECIPHER |
-| ClinGen dosage curation | no (candidate of section 6) | **not verified** | the terms page declines automated readers; the readme beside the download files and the two ClinGen papers read state no licence. It needs opening by hand before ClinGen data are used |
+| ClinGen dosage curation | no (candidate of section 6) | "All curated content published by ClinGen is available free of restriction under the CC0 1.0 Universal (CC0 1.0) Public Domain Dedication. However, ClinGen requests that you give attribution to ClinGen and provide the date accessed whenever possible and appropriate." | the terms page (`www.clinicalgenome.org/docs/terms-of-use/`, dated January 26, 2018), opened by the user on 11 October 2026 and pasted into the session; the page declines automated readers, and the readme beside the download files states no licence |
+
+Attribution, in the form ClinGen asks for: the following curated content was obtained from the Clinical Genome
+Resource (www.clinicalgenome.org): Gene Dosage Sensitivity classification [11 October 2026] (Rehm et al. 2015,
+[doi:10.1056/NEJMsr1406261](https://doi.org/10.1056/NEJMsr1406261)).
 
 Two consequences for the study, both about CTD, the one source in this table that the study uses.
 
@@ -586,7 +590,8 @@ repository inventory (333 quotes checked against the files), the combined-pertur
 single-perturbation sources. The notes are outside the repository. Limits they record: the ClinPGx counts are
 keyword matches; no page read contained text addressed to an AI assistant. The passes also recorded several
 licences and two statistics pages as not retrieved. Section 11 replaces that: every one of them was requested again
-on 11 October 2026, and the one licence still unread (ClinGen) is named there with the reason.
+on 11 October 2026. Every licence named there is now quoted from the provider; the ClinGen terms page declines
+automated readers and was read by the user.
 
 Sources named above and not linked there: CRESCENDDI, Kontsioti et al. 2022
 ([doi:10.1038/s41597-022-01159-y](https://doi.org/10.1038/s41597-022-01159-y)); TWOSIDES, Tatonetti et al. 2012
