@@ -76,7 +76,12 @@ DDIs revealed that inhibition of metabolism of the victim drugs by the correspon
 protein binding displacement, to be the culprit in these cases" (Bohnert and Gan 2013,
 [doi:10.1002/jps.23614](https://doi.org/10.1002/jps.23614)). The pairs with a central nervous
 system consequence that survive are valproate with phenytoin, valproate with diazepam or carbamazepine and aspirin
-with valproate or phenytoin, and each of them has a second, metabolic mechanism.
+with valproate or phenytoin, and each of them has a second, metabolic mechanism. The regulators' guideline on
+interaction studies leaves the topic out of its scope: "Other types of pharmacokinetic interactions, such as impact
+on absorption (e.g., gastric pH change, gastric motility change, formation of chelation or complexation), food
+effects, or protein binding displacement, are not part of this document and may be covered by regional guidelines"
+(ICH M12, section 1.3, EMA/CHMP/ICH/652460/2022). Its section 7.2, "Protein Binding", is about measuring the unbound
+fraction of the drug that causes an interaction, not about displacement.
 
 **The one carrier-mediated neurological outcome written into labels is for another class and another direction.**
 "Ceftriaxone can displace bilirubin from its binding to serum albumin, leading to a risk of bilirubin encephalopathy
@@ -97,7 +102,7 @@ drug's own. Four were looked at.
 | metaboliser status | FDA Table of Pharmacogenetic Associations (147 rows as parsed here, content of 10 September 2026) | drug, gene, affected subgroup, one sentence | 26 rows over 22 drugs under the current rule; 44 rows over 39 drugs with up to three targets (CYP2D6 30, CYP2C19 5, HLA-B 5, CYP2C9 2, NAT2 1, HLA-A 1) | free text with a direction: "Results in higher systemic concentrations and higher adverse reaction risk"; a symptom in few rows |
 | metaboliser status and other variants | ClinPGx (PharmGKB) variant annotations, 14,560 rows; CC BY-SA 4.0, and CC BY-NC-SA 4.0 for the 2026 variant release | direction of effect, "risk of" a side effect, significance | 224 annotations touch one of the 24 symptoms by keyword; about 13 are significant, positive and anchored to a metaboliser phenotype | structured sentence; the variant's effect on the gene is known for star alleles only |
 | a second drug | CRESCENDDI, CC0 (10,286 positive and 4,544 negative drug-drug-event controls) | a MedDRA event per pair | both drugs in the study and a study symptom: 2 pairs under the current rule, 43 pairs with up to three targets (somnolence and cognitive impairment), and 19 negative-control pairs | one event term per pair |
-| a second drug | TWOSIDES (5,729,992 triplets from 2014 reports) | an event and a reporting ratio per pair | not counted: the authors call it out of date and the licence is not stated | disproportionality signal |
+| a second drug | TWOSIDES (5,729,992 triplets from 2014 reports) | an event and a reporting ratio per pair | not counted: the authors' site says of OffSIDES and TWOSIDES "Note that these resources are quite a bit out of date.", and the data files carry no licence (section 11) | disproportionality signal |
 | a patient population | label sections for children, the elderly and pregnancy | free text | not structured; the paediatric file in the OnSIDES archive on disk is a manual annotation of 200 labels for testing an extractor, not a table of events | text |
 | dose | none found across drugs | | | |
 
@@ -167,9 +172,11 @@ encoder reads the wrong sign for them"), because the table could not change then
 than Orphanet's field shows: "dominant-negative and gain-of-function mechanisms account for 48% of phenotypes in
 dominant genes" (Badonyi and Marsh 2025,
 [doi:10.1038/s41467-025-63234-3](https://doi.org/10.1038/s41467-025-63234-3)), and of the 1,663 genes with a row,
-408 have a disease annotated autosomal dominant. Gene2Phenotype records a mechanism (loss of function, dominant
-negative, gain of function) on the same record as the phenotype terms; it was not fetched and its licence was not
-verified.
+408 have a disease annotated autosomal dominant. Gene2Phenotype records a mechanism on the same record as the
+phenotype terms: "These include ‘Loss of function’, ‘Dominant negative’ and ‘Gain of function’. There are also
+categories for ‘Undetermined’ and ‘Undetermined non-loss-of-function’" (Yates et al. 2024,
+[doi:10.1186/s13073-024-01398-1](https://doi.org/10.1186/s13073-024-01398-1)). Its data were not fetched. Its
+licence is CC BY 4.0, read on 11 October 2026 (section 11).
 
 **Events no more frequent on the drug than on placebo.** Measured on SIDER's frequency table: 373 of the 754 kept
 drug pairs have a drug arm and a placebo arm in the same label. In 314 every such label has the drug arm above its
@@ -187,7 +194,7 @@ placebo arm to check.
 | target inhibited or activated | Open Targets target-safety curation (scoped in `docs/off_target_scoping.md`) | 146 positive triples over 52 targets, 61 of them activations | a drug-like perturbation without a drug; an open decision of that document. Not the only source of positive-sign examples, as an earlier version of this row said: 388 of the 791 mechanism edges of the study's drugs are positive. Section 9 counts what it adds |
 | relief of a symptom | SIDER indications | 85 pairs over 55 drugs in the table | recorded at the level of a diagnosis; a second relation with its own link matrix |
 | copy-number syndromes | HPO entries of DECIPHER | 8 entries with a target symptom, 11 pairs | too few; each spans many genes |
-| dosage gain | ClinGen triplosensitivity | 1.5 percent of 1,461 genes at the top score | scarce and at the level of a disease |
+| dosage gain | ClinGen triplosensitivity | 3 of 1,532 genes (LMNB1, PLP1, TPSAB1) and 20 of 513 regions at the top score, counted on 11 October 2026 in ClinGen's own files (section 11). An earlier version of this row said "1.5 percent of 1,461 genes"; the paper's figure covers genes and regions together: "few genes/regions (1.5%) have sufficient evidence for TS (TS score 3)" (Thaxton et al. 2022, [doi:10.1002/humu.24291](https://doi.org/10.1002/humu.24291)) | scarcer for single genes than that row said, and at the level of a disease |
 | mouse knockouts | IMPC release 23.0, CC BY 4.0 | 9,277 genes, 113,803 significant calls | "Some of these symptoms (e.g., depressed mood, suicidality) cannot be assessed in mice" (Nestler and Hyman 2010, [doi:10.1038/nn.2647](https://doi.org/10.1038/nn.2647)); usable for hyperactivity, anxiety-like behaviour, cognition, sleep, appetite and motor signs, and better as a test |
 | chemicals that are not drugs, nutrients | CTD; no structured source links a nutrient level to a symptom | manganese with parkinsonism and vitamin B12 verified at the level of a syndrome | would be hand curation |
 | spontaneous reports | OffSIDES | 329 off-label events a drug on average | it "recovers 38.8% (18,842 associations) of SIDER's associations", so reports and labels disagree on most pairs; a test, as `docs/pathway_test_options.md` already lists it |
@@ -463,7 +470,10 @@ How to read the count.
   them) and the six primary sources named for the rate (Summerfield 2007 among them) were read only as abstracts. The
   occupancy studies were read as abstracts, one study per drug. The PubMed keyword counts in the generated
   document are the upper bounds: 68 drugs for an unbound brain concentration, 95 for an effect compartment, 62 for an
-  occupancy with words for time.
+  occupancy with words for time. Two page requests of this count were withdrawn because a permission request went
+  unanswered; both were repeated on 11 October (section 11) and neither adds a row: Spreafico and Jacobson 2013 had
+  been read by another route and tabulates no value per drug, and Mandema and Danhof 1992, a review of
+  electroencephalogram effect measures wanted for the rate, is a closed article.
 - **Most extent and rate values are from rats or mice.** 38 of the 95 have a microdialysis value, the reference
   method. Homogenate, slice and microdialysis values can differ several-fold for one drug.
 - **The rate inputs are not on one scale.** Permeability is reported in different units and under different assumed
@@ -487,6 +497,54 @@ Text addressed to an AI assistant: the repository of the dosing-simulation progr
 (stanpumpR) holds `AGENTS.md` and `CLAUDE.md`, files that orient AI coding agents working on that code; they were read
 as text and not followed. The PubMed connector attaches a notice requiring attribution and DOI links, which is met
 here. No journal article contained such text.
+
+## 11. Pages and licences read again on 11 October 2026
+
+Twelve page requests made by the research passes behind this document ended because a permission request waited
+five minutes for the user and was then withdrawn, and the passes wrote the page down as not retrieved. The user's
+ruling of 11 October: that is not an acceptable reason to leave a page unread, and a licence has to be verified. All
+twelve were requested again that morning, and each licence that had been left unverified was then read from the
+provider's own page, data file, source repository or paper. No count in sections 1 to 10 changed except the ClinGen
+row of section 6. None of the pages contained text addressed to an AI assistant.
+
+### 11.1 The twelve pages
+
+| page | what the second request returned | what changed here |
+| --- | --- | --- |
+| ClinGen gene-dosage statistics (`search.clinicalgenome.org/kb/gene-dosage`) | the site declines automated readers | the counts were taken from the files ClinGen publishes for download (`ftp.clinicalgenome.org`, gene list dated 11 October 2026, region list dated 28 April 2026): 1,532 genes, of which 3 have triplosensitivity score 3 (LMNB1, PLP1, TPSAB1), 1 score 2, 10 score 1, 1,306 score 0, 2 are scored unlikely to be dosage sensitive, 1 is marked as not to be evaluated and 209 are not yet evaluated; 513 regions, of which 20 have score 3. Section 6 corrected |
+| ClinGen terms of use (`www.clinicalgenome.org/docs/terms-of-use/`) | the site declines automated readers | licence not verified (11.2) |
+| DECIPHER downloads (`www.deciphergenomics.org/about/downloads/data`) | HTTP 403 to the fetch tool and to the shell | terms read from the DECIPHER paper instead (11.2) |
+| IMPC, "Is IMPC data freely available?" | read | licence confirmed with a quote (11.2) |
+| MGI statistics (`informatics.jax.org/mgihome/homepages/stats/all_stats.shtml`) | read; the page as returned shows no counts, only "last database update 09/29/2026" | nothing; no MGI count is used in this document |
+| MGI copyright notice | read | licence verified (11.2) |
+| `nsides.io` | read | the out-of-date statement is now quoted in section 3; no licence terms on the site (11.2) |
+| openFDA label fields (`open.fda.gov/apis/drug/label/searchable-fields/` and the field file behind it, `open.fda.gov/fields/druglabel.yaml`) | read | the label sections named in section 3 exist as fields, each with a `_table` twin: `pediatric_use`, `geriatric_use`, `pregnancy`, `nursing_mothers`, `labor_and_delivery`, `teratogenic_effects`, `nonteratogenic_effects`, `pregnancy_or_breast_feeding`, `use_in_specific_populations`. There is no `lactation` field and no field for hepatic or renal impairment. The fields hold the section's text, so the reading "not structured" stands |
+| ICH M12 guideline (EMA, 63 pages) | read | the scope sentence is quoted in section 2 |
+| Smith and Waters 2019, Table I (`pmc.ncbi.nlm.nih.gov/articles/PMC7089466/table/Tab1/`) | the seven tables were read through NCBI's E-utilities | none here. Table II gives the concentrations in healthy humans: albumin 35 to 50 mg/ml (500 to 750 µM), orosomucoid 0.4 to 1.0 mg/ml (9 to 24 µM). Table I gives orosomucoid in health and disease by species; for humans, 0.5 to 1.0 mg/ml healthy and up to 3.0 mg/ml in inflammation, infection and cancer, a 3 to 6-fold change. The note of the carrier review that described Table I as the albumin and orosomucoid table was wrong about which table it is |
+| Spreafico and Jacobson 2013 (`PMC4005893`) | a browser challenge at the PMC site | none. The rate pass had already read the article through NCBI's E-utilities; it has one table, of correlation coefficients, and no value per drug. The extent pass's "not retrieved" was wrong, and there is no row to add to section 10 |
+| Mandema and Danhof 1992 (`link.springer.com/article/10.2165/00003088-199223030-00003`) | read: the publisher shows the summary and the reference list only | none. The article is closed and its tables stay unread; section 10 now says so |
+
+### 11.2 Licences
+
+| source | used by the study | terms, in the provider's words | where it was read |
+| --- | --- | --- | --- |
+| Gene2Phenotype | no (candidate of section 5) | "The G2P dataset is released under the Creative Commons Attribution 4.0 (CC BY 4.0) licence. If publishing work using G2P data, we request that you cite the latest G2P publication." | the page `www.ebi.ac.uk/gene2phenotype/responsible-handover`, read in the script file the site served on 11 October 2026 (the site draws its pages with a script, so the fetch tool sees an empty page), and in the site's source, `EBI-G2P/gene2phenotype_web`, commit 30dae72 of 9 October 2026 |
+| CTD | yes (literature reports, evidence class E3) | "All aspects of CTD are freely available to non-commercial users; commercial users are asked to purchase a license in order to download CTD data files to their systems." (Davis et al. 2025, [doi:10.1093/nar/gkae883](https://doi.org/10.1093/nar/gkae883)). The header of the pinned file adds: "All forms of publication (e.g., web sites, research papers, databases, software applications, etc.) that use or rely on CTD data must cite CTD."; "You must notify CTD, and describe your use of our data"; "For quality control purposes, you must provide CTD with periodic access to your publication of our data." | the paper's data availability statement, and the first lines of `CTD_chemicals_diseases.tsv.gz` (report created 29 September 2026, the file `docs/data_sources.md` pins). The legal notice itself (`ctdbase.org/about/legal.jsp`) sits behind a check that the visitor is human and was not read; the header says its terms "include" the ones quoted, so the list may not be complete |
+| MGI | no | "MGI data and annotations are licensed under a Creative Commons Attribution 4.0 International License" | `informatics.jax.org/mgihome/other/copyright.shtml` |
+| IMPC | no (candidate of section 6) | "The IMPC makes this dataset publicly available under the Creative Commons Attribution 4.0 International license"; "You must give appropriate credit, provide a link to the license, and indicate if changes were made." | `mousephenotype.org/help/faqs/is-impc-data-freely-available/` |
+| OffSIDES and TWOSIDES | no | none stated for the data. The authors' site, the release notes and the release repository (`tatonetti-lab/nsides-release`) carry no licence. The project's code repository (`tatonetti-lab/nsides`) is under "Attribution-NonCommercial-ShareAlike 4.0 International", and the 2022 rebuild of the OffSIDES method (`tatonetti-lab/offsides`) is under the MIT licence, which covers its software | `nsides.io`; the three repositories, read on 11 October 2026 |
+| DECIPHER | no | "The openly consented patient data is available for bulk download for research purposes, subject to a data access agreement."; "DECIPHER also shares the data in bulk for display, subject to a Data Display Agreement." (Foreman et al. 2022, [doi:10.1002/humu.24340](https://doi.org/10.1002/humu.24340)) | the paper; the downloads page refused the request. The DECIPHER entries counted in section 6 come from the HPO annotation file, not from DECIPHER |
+| ClinGen dosage curation | no (candidate of section 6) | **not verified** | the terms page declines automated readers; the readme beside the download files and the two ClinGen papers read state no licence. It needs opening by hand before ClinGen data are used |
+
+Two consequences for the study, both about CTD, the one source in this table that the study uses.
+
+- `docs/data_sources.md` described the terms as "free for non-commercial research with citation". That is correct
+  and incomplete; the row now carries the notification and access terms as well.
+- The repository is public and its release directory holds a table derived from CTD
+  (`data/releases/v0.4/literature/ctd_relations_filtered.csv`, 5,191 rows). CTD is cited (reference
+  `davis2025ctd`). Whether CTD has been told of the use is not recorded anywhere in the repository; only the user
+  can send that notice (`ctdbase.org/help/contact.go`). The licence sentence of the release manifest names SIDER and
+  MedDRA and does not name CTD.
 
 ## How the counts were made
 
@@ -513,12 +571,22 @@ Downloads, under `data/raw/label_review` (not in git):
 | `fda_pharmacogenetic_associations/table_pharmacogenetic_associations.html` | https://www.fda.gov/medical-devices/precision-medicine/table-pharmacogenetic-associations, fetched 10 October 2026 | `94b93d6dc36cfdd2` |
 | `crescenddi/positive_controls.xlsx` | https://ndownloader.figshare.com/files/28584873 (doi:10.6084/m9.figshare.14847093.v1, CC0) | `9a6f2ab3db42e2e6` |
 | `crescenddi/negative_controls.xlsx` | https://ndownloader.figshare.com/files/28584876 (doi:10.6084/m9.figshare.14847099.v1, CC0) | `f66a06d89960f0e7` |
+| `clingen_dosage/ClinGen_gene_curation_list_GRCh38.tsv` | https://ftp.clinicalgenome.org/ClinGen_gene_curation_list_GRCh38.tsv, file dated 11 October 2026 | `e61cbc55bac615d8` |
+| `clingen_dosage/ClinGen_region_curation_list_GRCh38.tsv` | https://ftp.clinicalgenome.org/ClinGen_region_curation_list_GRCh38.tsv, file dated 28 April 2026 | `06bd0333e2c94585` |
+| `clingen_dosage/README` | https://ftp.clinicalgenome.org/README, dated 18 March 2026 | `db2b953aa846ce30` |
+| `ctd_terms/CTD_chemicals_diseases.header.txt` | the comment lines at the top of https://ctdbase.org/reports/CTD_chemicals_diseases.tsv.gz (first 64 kB requested, 11 October 2026) | `1dfd31a9d620d6e4` |
+| `ctd_terms/PMC11701581_fullTextXML.xml` | Europe PMC full text of Davis et al. 2025 | `2f1a859ba261356d` |
+| `gene2phenotype_licence/ResponsibleHandoverView_commit_30dae72.vue` | https://github.com/EBI-G2P/gene2phenotype_web, `src/views/ResponsibleHandoverView.vue` at commit 30dae72; the script file the live site served (`index-DQD2xSP4.js`, SHA-256 beginning `f86c6741b989f04b`, 3.1 MB) holds the same sentence and was not kept | `ee554cfdb6c9c573` |
+| `ich_m12/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf` | https://www.ema.europa.eu/en/documents/scientific-guideline/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf | `126762154af51347` |
+| `openfda_fields/druglabel.yaml` | https://open.fda.gov/fields/druglabel.yaml | `21a6aa9ae2a03a46` |
+| `smith_waters_2019/PMC7089466_efetch.xml` | NCBI E-utilities, `efetch.fcgi?db=pmc&id=7089466` | `2aee3c5b8a952a8c` |
 
 The outside sources were read by three research passes whose notes hold every quote with its source: the
 repository inventory (333 quotes checked against the files), the combined-perturbation sources and the
-single-perturbation sources. The notes are outside the repository. Limits they record: several licences were not
-retrieved (Gene2Phenotype, OffSIDES and TWOSIDES, CTD, MGI); the ClinPGx counts are keyword matches; the ClinGen and
-IMPC statistics pages could not be opened; no page read contained text addressed to an AI assistant.
+single-perturbation sources. The notes are outside the repository. Limits they record: the ClinPGx counts are
+keyword matches; no page read contained text addressed to an AI assistant. The passes also recorded several
+licences and two statistics pages as not retrieved. Section 11 replaces that: every one of them was requested again
+on 11 October 2026, and the one licence still unread (ClinGen) is named there with the reason.
 
 Sources named above and not linked there: CRESCENDDI, Kontsioti et al. 2022
 ([doi:10.1038/s41597-022-01159-y](https://doi.org/10.1038/s41597-022-01159-y)); TWOSIDES, Tatonetti et al. 2012
