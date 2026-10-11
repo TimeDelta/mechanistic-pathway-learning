@@ -31,6 +31,8 @@ NON_CAUSAL_ORPHANET_ASSOCIATION_TYPES = frozenset({
     "Biomarker tested in",
 })
 UNKNOWN_ASSOCIATION_TYPE = "unknown"
+GAIN_OF_FUNCTION_ORPHANET_ASSOCIATION_TYPE = "Disease-causing germline mutation(s) (gain of function) in"
+assert GAIN_OF_FUNCTION_ORPHANET_ASSOCIATION_TYPE in CAUSAL_ORPHANET_ASSOCIATION_TYPES
 
 
 def load_omim_association_types(genes_to_disease_path: Path) -> dict[tuple[str, str], str]:
@@ -90,3 +92,16 @@ def association_type_for(
         if omim_type and omim_type != "UNKNOWN":
             return omim_type, None
     return UNKNOWN_ASSOCIATION_TYPE, None
+
+
+def genes_with_gain_of_function_associations_only(causal_association_types_by_gene: Mapping[str, set[str]]) -> set[str]:
+    """The genes whose every causal association behind a report is Orphanet's gain-of-function type.
+
+    causal_association_types_by_gene holds, per gene, the association types of its reports with a causal association
+    (rubric_causal_association 1). A gene qualifies only when that set is the gain-of-function type alone: one causal
+    report of another type (MENDELIAN, which OMIM gives without a direction, or an Orphanet loss-of-function or
+    undirected type) leaves the gene as it was, because a gene is one perturbation with one sign and its reports would
+    then disagree about it. Non-causal reports (a candidate gene, a polygenic locus) state no mechanism and do not count.
+    """
+    return {gene for gene, association_types in causal_association_types_by_gene.items()
+            if set(association_types) == {GAIN_OF_FUNCTION_ORPHANET_ASSOCIATION_TYPE}}

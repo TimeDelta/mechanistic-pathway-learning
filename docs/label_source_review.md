@@ -5,8 +5,9 @@ want to be sure we have added all types of training examples that make sense and
 drug have yet to be added. Can you please also review the project for more potentially useful labels to add to the
 dataset?"
 
-Nothing here changes a label, a table or a configuration. Every count marked "measured" was made on the tables of
-this container by a script under `experiments/label_review/` (last section). Counts from outside sources are quoted
+Sections 1 to 8 change no label, table or configuration. Section 9, added later the same day, records the user's
+decisions on them, what was built and what the builds showed; it changes no study table either. Every count marked
+"measured" was made on the tables of this container by a script under `experiments/label_review/` (last section). Counts from outside sources are quoted
 from the source or marked as keyword counts, which are upper bounds. Article metadata and abstracts were retrieved
 through PubMed and each article is given with its DOI.
 
@@ -133,9 +134,10 @@ venlafaxine 16, olanzapine 16, duloxetine 15, quetiapine 15, bupropion 14, trazo
 buprenorphine 12, levetiracetam 11, methylphenidate 10, then pimozide, ziprasidone, nortriptyline, clozapine,
 imipramine, amitriptyline and haloperidol at 9 each. Catatonia gets its first kept drug pair and parkinsonism goes
 from 32 to 57. `docs/drug_targets_any_type.md` gave two reasons against: a drug with k targets "carries total
-magnitude k", and any cap above one "merges lockbox_v2 groups with v2 development perturbations". The first no
-longer holds with drug nodes, where the drug is one seed of magnitude 1 and its targets are edges. The second is a
-reason to settle this before the held-out set is fixed, which is now. The cost that remains is in the last columns:
+magnitude k", and any cap above one "merges lockbox_v2 groups with v2 development perturbations". The first still
+holds (corrected 10 October: an earlier version of this sentence said drug nodes removed it; the confirmatory graph has
+no drug nodes, and with them each mechanism edge still delivers magnitude 1 per target; section 9). The second is a
+reason to settle this before the held-out set is fixed, which is now; section 9 measures it. The cost that remains is in the last columns:
 the drugs fall into 17 leakage groups instead of 30, and one group holds 71 of them, so a score for drugs rests on
 few independent groups under either rule.
 
@@ -182,7 +184,7 @@ placebo arm to check.
 
 | type | source | size | reading |
 | --- | --- | --- | --- |
-| target inhibited or activated | Open Targets target-safety curation (scoped in `docs/off_target_scoping.md`) | 146 positive triples over 52 targets, 61 of them activations | the only human source here with positive-sign examples in number; a drug-like perturbation without a drug; an open decision of that document |
+| target inhibited or activated | Open Targets target-safety curation (scoped in `docs/off_target_scoping.md`) | 146 positive triples over 52 targets, 61 of them activations | a drug-like perturbation without a drug; an open decision of that document. Not the only source of positive-sign examples, as an earlier version of this row said: 388 of the 791 mechanism edges of the study's drugs are positive. Section 9 counts what it adds |
 | relief of a symptom | SIDER indications | 85 pairs over 55 drugs in the table | recorded at the level of a diagnosis; a second relation with its own link matrix |
 | copy-number syndromes | HPO entries of DECIPHER | 8 entries with a target symptom, 11 pairs | too few; each spans many genes |
 | dosage gain | ClinGen triplosensitivity | 1.5 percent of 1,461 genes at the top score | scarce and at the level of a disease |
@@ -225,6 +227,173 @@ never sits on both sides of a split) is the change this needs.
 Changes 1 to 3 alter the table that a held-out set is drawn on, so they come before it. Changes 4 to 6 add a kind of
 perturbation and can follow, because a combination inherits the groups of its parts.
 
+## 9. Decisions of 10 October, what was built and what the builds showed
+
+The user's answers, through the question prompt: "Up to three targets", "Fix gain-of-function sign", "Mask
+never-above-placebo"; combined perturbations "Build, report as checks"; "Add hormones and named central drugs". Then,
+on the Open Targets statements: "can you measure mechanistic overlap with the held out ones just to be sure they don't
+overlap and then include only the ones from that subset that pass the overlap test in training and put the others in
+the lockbox?"
+
+### 9.1 The three label changes, as flags that are off by default
+
+| change | flag | where |
+| --- | --- | --- |
+| up to three mechanism targets | `--max-drug-targets 3` (existed) | `build_onsides_reports.py` and the assembler |
+| sign +1 for a gene whose every causal association is a gain of function | `--seed-gain-of-function-genes-positive` | the assembler (`seed_monogenic_reports`) |
+| a kept drug pair never more frequent on the drug than on placebo is set aside | `--mask-never-above-placebo` | `build_label_selection.py` (`placebo_arm_comparison.py`) |
+
+Without the flags the builders reproduce the tables of the current rule byte for byte (evidence records, reports,
+OnSIDES reports and selection, compared after the change). Tests: `tests/test_label_review_changes.py`.
+
+The placebo comparison is made inside one label and one preferred term at a time. That is stricter than the count of
+section 5, which pooled the terms of a symptom within a label, and it gives the same 40 pairs on the current table.
+
+Measured on a counting build with all three (`data/processed/label_review/evidence_approved`, not a study table):
+
+| | current rule | with the three changes |
+| --- | --- | --- |
+| perturbations | 1,568 | 1,636 |
+| drugs | 154 | 222 |
+| kept pairs | 2,653 | 2,975 |
+| kept drug pairs | 754 | 1,076 |
+| drugs with a kept pair | 106 | 156 |
+| kept drug pairs set aside for placebo | 0 | 61 |
+| genes seeded +1 | 0 | 17 (18 kept pairs over 13 of them) |
+
+Apart from the seeds of the 17 genes, the evidence table equals the three-target table of section 4.
+
+**The input of a multi-target drug.** On the three-target table 46 drugs carry a total seed magnitude of 2 and 23 a
+total of 3: each target enters at magnitude 1. That is the pharmacological reading (occupancy at one target does not
+fall because the drug has others), and it makes the size of a drug's field follow its number of targets. Drug nodes
+do not change it, because each mechanism edge carries the magnitude of the seed it replaces. The user's decision
+(`docs/confirmatory_architecture_review.md`, question 6).
+
+### 9.2 The three-target rule and the held-out set
+
+`experiments/label_review/held_out_overlap.py` reads the membership of `configs/lockbox_v2.json` (never a prediction)
+and applies the user's rule: an added example that overlaps a held-out perturbation is held out with it. Overlap is
+tested on nodes, one step: an added drug is held out when it acts on a node that a held-out perturbation acts on or is.
+
+The held-out set carried to the current table by its leakage groups is 320 perturbations, 31 of them drugs. It holds
+the dopamine D2 group (bromocriptine, cabergoline, fluphenazine, perphenazine, pramipexole, prochlorperazine,
+ropinirole, rotigotine, sulpiride, benperidol, levodopa), the alpha-2 agonists (clonidine, dexmedetomidine,
+lofexidine) and two H1 antagonists (diphenhydramine, hydroxyzine).
+
+| of the 68 added drugs | drugs | kept pairs | which |
+| --- | --- | --- | --- |
+| act on a held-out node | 29 | 160 | the antipsychotics and other drugs with a D2, alpha-2 or H1 action: aripiprazole 18, olanzapine 15, quetiapine 14, mirtazapine 13, risperidone 13, asenapine 10, clozapine 9, haloperidol 9 and 21 others |
+| do not | 39 | 192 | venlafaxine 16, duloxetine 15, bupropion 11, buprenorphine 11, levetiracetam 11, methylphenidate 10, trazodone 10 and 32 others |
+
+Under the rule 349 of 1,636 perturbations are held out, 60 of 222 drugs, and 307 of 1,076 kept drug pairs.
+
+Two things the rule leaves open.
+
+- **The registered group rule chains, and chaining is not usable here.** It joins every perturbation that shares a
+  node with another. The 29 drugs act on a held-out node and on development nodes, so on the three-target table the
+  registered rule would pull 149 more perturbations into the held-out set (96 drugs, 715 kept pairs). `lockbox_v2`
+  cannot be carried over to this table under the registered rule without that.
+- **The 29 share their other targets with development drugs.** Their targets outside the held-out set are 23 nodes
+  (serotonin receptors, the serotonin and noradrenaline transporters, alpha-1 receptors, H3). 43 development drugs act
+  on one of those nodes (254 kept pairs), the reuptake inhibitors, the tricyclics and the triptans among them. A model
+  trained on those drugs has seen part of the mechanism of each of the 29.
+
+Three ways to place the 29, for the user:
+
+| | the 29 | cost |
+| --- | --- | --- |
+| a | held out and reported as their own stratum, outside the primary score | the primary score keeps the registered separation; the antipsychotics do not train and do not decide H1 |
+| b | held out and in the primary score | the primary score then includes drugs that share a target with 43 training drugs |
+| c | left out of the table | 160 kept pairs unused, among them most of the added parkinsonism pairs |
+
+Recommended: a. It keeps `lockbox_v2` and its separation as registered, uses the 29 as held-out evidence, and needs
+no redraw. None of the 68 was ever in a pilot.
+
+Catatonia's one kept pair is in the held-out set, so catatonia has no training positive under any of these.
+
+### 9.3 The Open Targets statements against the held-out set
+
+The 52 statements that no study drug label makes, in human wording, are 49 once the two whose target is not a graph
+gene (GABRG1, SCN4B) are left out. The same script places them, with the held-out set of 9.2 (the 29 included). A
+statement is held out when its target is a node of a held-out perturbation. Statements with the same direction,
+symptom and references whose targets are subunits or members of one receptor (one ChEMBL target record lists both
+genes, or the gene symbols share their stem) are one sentence of the source, so they go together.
+
+| | statements | targets | independent sentences |
+| --- | --- | --- | --- |
+| held out | 16 (14 by their own target, 2 with their receptor) | 10 | 13 |
+| train | 33 (17 activations, 16 inhibitions; 20 from acute dosing only) | 19 | 25 |
+
+Held out: AR inhibition (four symptoms; AR is a held-out gene), HTR2A activation (three), HTR2C activation (two),
+ADRA2A, DRD1, HTR3A, HTR7 and the three sodium-channel beta subunits. Training: the GABA-A subunits with insomnia
+(eight statements, one sentence), CNR1 activation (six symptoms), NR3C1, GRIN1, CCKAR, the muscarinic receptors and
+others.
+
+What the measurement says about the plan.
+
+- **The overlap test is the node rule.** A graph distance does not work as a test: on the confirmatory graph the
+  development perturbations already sit a median of 2 edges from a held-out seed (515 at one edge, 606 at two). The
+  statements that would train sit at 1 edge (17), 2 (12) or 3 (4), no closer than ordinary training examples.
+- **It is small.** 33 statements are 1.4 percent of the training kept pairs, and 25 independent sentences. What they
+  add that the table lacks is the activation direction on 17 of them.
+- **Five statements are contradicted by a study drug** that acts on the target in the statement's direction and does
+  not list the symptom; one of the five would train (CNR1 inhibition with depressed mood). The 52 are by construction
+  the statements no study drug confirms.
+- **Six of the inhibition statements that would train name a target that is also a gene perturbation**, the same node
+  lowered; the gene's own labels list the symptom in two.
+- **Eleven would train on a target that no other training example touches.**
+- **In the lockbox they would be scored against the weakest labels of the study**: review statements about a target
+  class, with no frequency and no recorded absence. Recommended: held-out statements are reported as their own
+  stratum, as in 9.2 a, and do not enter the primary score.
+
+The weight in training is a separate question from the split. The study weights every example by its evidence grade;
+these statements need a grade. The user's decision.
+
+### 9.4 Hormones and named centrally acting drugs: the draft list
+
+`configs/admitted_atc_prefixes_draft.csv`, for the user's sign-off. It changes no table until it is passed to the
+builders with `--admitted-atc-prefixes`. Each entry has its reason and source; a named drug has the sentence of its
+label that states the central action. The rule for an entry is pharmacology, not the adverse events the drug is known
+for, since admitting a drug because it causes the symptoms would select on the outcome.
+
+| entry | what it is | drugs added | kept pairs | largest |
+| --- | --- | --- | --- | --- |
+| H | systemic hormonal preparations | 31 | 45 | desmopressin 7, cortisol 6, dexamethasone 5, octreotide 5, paricalcitol 5 |
+| G03 | sex hormones and modulators of the genital system | 18 | 42 | testosterone 11, progesterone 8, norethisterone 4, levonorgestrel 4 |
+| C02A | antiadrenergic agents, centrally acting | 5 | 14 | guanfacine 8, moxonidine 3, methyldopa 2 |
+| M03B | muscle relaxants, centrally acting agents | 5 | 21 | baclofen 10, tizanidine 5, cyclobenzaprine 3 |
+| A08AA | centrally acting antiobesity products | 5 | 1 | phentermine 1 |
+| R05DA | opium alkaloids and derivatives | 3 | 8 | dextromethorphan 4, hydrocodone 3, codeine 1 |
+| named | metoclopramide 8, rimonabant 8, promethazine 7, nabilone 6, aprepitant 4, dronabinol 3 | 6 | 36 | |
+| all | | 73 | 167 | 43 of the 73 have a kept pair |
+
+With the list and the three changes the table has 295 drugs and 1,243 kept drug pairs. Against the held-out set, 13
+of the 73 act on a held-out node and would be held out (46 kept pairs: testosterone, guanfacine, metoclopramide,
+promethazine, tizanidine, danazol, methyldopa, cinacalcet, chlorzoxazone and four with no kept pair); 60 would train
+(121 kept pairs).
+
+Considered and left off the draft, each for the user to overrule (counts from the any-ATC three-target table of
+section 4, before the placebo mask):
+
+| group or drug | drugs, kept pairs | why not |
+| --- | --- | --- |
+| L02, endocrine therapy (the gonadotropin-releasing hormone agonists, anti-oestrogens, anti-androgens, aromatase inhibitors) | 24, 90 | hormone antagonists, so within "hormones" on one reading; given to cancer patients, whose fatigue, insomnia and low mood have another cause. The largest single addition available, and the one most open to that objection |
+| A10A, insulins | 3, 1 | hormones by any definition; one kept pair |
+| C07A, beta blockers | 18, 64 | not hormones and not named as centrally acting; outside the user's wording |
+| first-generation antihistamines other than promethazine (cyproheptadine, cyclizine, clemastine, carbinoxamine, chlorpheniramine, meclizine) | 6, 12 | their labels state sedation as an effect, which is close to selecting on the outcome |
+| 5-HT3 antagonists (granisetron, ondansetron, palonosetron) | 3, 13 | act at the area postrema and on vagal afferents, outside the blood-brain barrier |
+| domperidone | 1, 2 | the peripheral counterpart of metoclopramide |
+| montelukast, isotretinoin, ribavirin | 3, 31 | known for psychiatric adverse events, with no established central target: selecting on the outcome |
+
+One inconsistency found on the way and not changed: the SIDER route tests a drug's SIDER ATC codes only, the OnSIDES
+route the union of the RxNav and SIDER codes. Fampridine has a nervous-system code in RxNav and none in SIDER, so its
+OnSIDES statements qualify and its SIDER events do not (2 kept pairs).
+
+Sources of the quotations in the list: US labels through openFDA (set identifiers in the file; responses cached under
+`data/raw/label_review/openfda_pharmacology`); the 2006 label of Cesamet and the European public summary of Acomplia,
+both read through a fetch tool, which returns a model's reading of the page and not the page. No page contained text
+addressed to an AI assistant.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -238,6 +407,8 @@ Scripts, all under `experiments/label_review/`, none of which writes to a study 
 | `hpo_unused.py` | the DECIPHER entries of the HPO annotation file |
 | `fda_pgx_overlap.py` | rows of the FDA pharmacogenetic table that name a study drug |
 | `ddi_overlap.py` | CRESCENDDI controls with both drugs and a symptom in the study |
+| `open_targets_overlap.py` | the Open Targets statements a study drug label already makes |
+| `held_out_overlap.py` | which side of the held-out set each added drug and each Open Targets statement falls on (section 9) |
 
 Downloads, under `data/raw/label_review` (not in git):
 

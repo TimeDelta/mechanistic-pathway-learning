@@ -191,12 +191,37 @@ def load_onsides_events(onsides_directory: Path, crosswalk_path: Path):
     raise NotImplementedError("pin the OnSIDES release and parse its tables; keep section and confidence columns")
 
 
+NERVOUS_SYSTEM_ATC_PREFIXES: tuple[str, ...] = ("N",)
+
+
 def is_nervous_system_atc(atc_codes: list[str]) -> bool:
     """Crude version 1 proxy for a centrally acting drug: any ATC code in anatomical group N.
 
     This is not blood-brain barrier penetration; it is replaced by a measured BBB flag when one is added.
     """
     return any(code.startswith("N") for code in atc_codes)
+
+
+def has_admitted_atc_code(atc_codes: list[str], admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES) -> bool:
+    """True when one of the drug's ATC codes starts with an admitted prefix. The default, group N alone, is
+    is_nervous_system_atc. A prefix longer than a code never matches it: a seven-character entry names one substance
+    and a five-character code names its whole chemical subgroup, which the entry does not admit."""
+    return any(code.startswith(prefix) for code in atc_codes for prefix in admitted_atc_prefixes)
+
+
+def read_admitted_atc_prefixes(path: Path) -> tuple[str, ...]:
+    """The atc_prefix column of a list of admitted ATC groups and substances (configs/admitted_atc_prefixes_*.csv),
+    in file order. The list replaces the default, so it names group N itself when N is to stay admitted."""
+    with open(path, encoding="utf-8", newline="") as prefix_file:
+        prefixes = tuple(row["atc_prefix"].strip() for row in csv.DictReader(prefix_file) if (row.get("atc_prefix") or "").strip())
+    if not prefixes:
+        raise ValueError(f"{path} lists no ATC prefix")
+    if len(set(prefixes)) != len(prefixes):
+        raise ValueError(f"{path} lists an ATC prefix twice")
+    covered = sorted(prefix for prefix in prefixes if any(prefix != other and prefix.startswith(other) for other in prefixes))
+    if covered:
+        raise ValueError(f"{path}: {covered} already fall under a shorter prefix of the list")
+    return prefixes
 
 
 def drug_label_reports(event: DrugLabelEvent, model_description: str, perturbation_nodes_json: str) -> list[EvidenceReport]:

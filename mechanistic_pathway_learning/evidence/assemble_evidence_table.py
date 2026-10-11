@@ -74,7 +74,8 @@ from mechanistic_pathway_learning.evidence.evidence_reports import (
     reports_to_dataframe,
     rubric_weights_for_table,
 )
-from mechanistic_pathway_learning.evidence.load_drug_label_events import drug_label_reports, is_nervous_system_atc, load_sider_events
+from mechanistic_pathway_learning.evidence.gene_disease_association_types import genes_with_gain_of_function_associations_only
+from mechanistic_pathway_learning.evidence.load_drug_label_events import NERVOUS_SYSTEM_ATC_PREFIXES, drug_label_reports, has_admitted_atc_code, load_sider_events, read_admitted_atc_prefixes
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
     load_hpo_annotation_rows,
     load_hpo_is_a_parents_from_obo,
@@ -154,6 +155,7 @@ class AssembledEvidence:
     reports: pd.DataFrame  # evidence_reports.parquet, rubric_weight filled
     reliability_fit: ReportReliabilityFit
     reports_dropped_unknown_provenance: int = 0  # genes_to_phenotype rows whose disease prefix is neither OMIM: nor ORPHA:
+    genes_seeded_as_gain_of_function: tuple[str, ...] = ()  # genes seeded with sign +1 (seed_gain_of_function_genes_positive), sorted
 
 
 def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linking_entry: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, str]:
@@ -508,6 +510,29 @@ def sider_drug_targets(pubchem_cid: int, caches, bridge_parents_by_cid: dict[int
     return graph_compound_targets(drug_targets, int(pubchem_cid), chembl_ids, compounds_by_pubchem_cid, compounds_by_chembl_id)
 
 
+def seed_monogenic_reports(monogenic_reports: list[EvidenceReport], node_by_symbol: dict[str, str], seed_gain_of_function_genes_positive: bool = False) -> set[str]:
+    """Fill perturbation_nodes of every monogenic report with its gene's node, sign and magnitude 1; returns the genes seeded +1.
+
+    Every gene is seeded with sign -1, a loss of function. With seed_gain_of_function_genes_positive, a gene whose every
+    causal association behind these reports is Orphanet's gain-of-function type is seeded with sign +1 and its reports'
+    model_description says so; a gene with causal associations of both kinds keeps sign -1, since a gene is one
+    perturbation with one sign (docs/label_source_review.md, section 5).
+    """
+    gain_of_function_genes: set[str] = set()
+    if seed_gain_of_function_genes_positive:
+        causal_association_types_by_gene: dict[str, set[str]] = defaultdict(set)
+        for report in monogenic_reports:
+            if report.rubric_causal_association == 1.0:
+                causal_association_types_by_gene[report.perturbation_id].add(report.association_type)
+        gain_of_function_genes = genes_with_gain_of_function_associations_only(causal_association_types_by_gene)
+    for report in monogenic_reports:
+        seeded_as_gain = report.perturbation_id in gain_of_function_genes
+        report.perturbation_nodes = json.dumps([[node_by_symbol[report.perturbation_id], 1.0 if seeded_as_gain else -1.0, 1.0]])
+        if seeded_as_gain:
+            report.model_description = report.model_description.replace("human loss-of-function", "human gain-of-function", 1)
+    return gain_of_function_genes
+
+
 def drug_target_description(drug_targets) -> str:
     return ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in sorted(drug_targets, key=lambda target: target.target_chembl_id))
 
@@ -533,8 +558,15 @@ def assemble(
     onsides_bridge_path: Path | None = None,
     non_protein_targets_path: Path | None = NON_PROTEIN_TARGETS_PATH,
     drugs_acting_as_graph_compounds_path: Path | None = DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
+    seed_gain_of_function_genes_positive: bool = False,
+    admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES,
 ) -> AssembledEvidence:
-    """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations."""
+    """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
+
+    seed_gain_of_function_genes_positive seeds a gene with sign +1 when every causal association behind its reports is
+    Orphanet's gain-of-function type (genes_with_gain_of_function_associations_only); every other gene keeps sign -1,
+    as all genes do by default. admitted_atc_prefixes is the list of ATC groups and substances a SIDER drug must fall
+    under, group N alone by default; the OnSIDES reports are built apart and take the same list there."""
     if weighting not in WEIGHTINGS:
         raise ValueError(f"unknown weighting {weighting!r}; choose from {WEIGHTINGS}")
     rubric_weight_defaults = rubric_weight_defaults or RubricWeightDefaults()
@@ -563,8 +595,7 @@ def assemble(
     dropped_unknown_provenance: list[dict] = []
     report_list: list[EvidenceReport] = monogenic_evidence_reports(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded,
                                                                    hpoa_rows_by_key, publication_dates, dropped_unknown_provenance, association_types=association_types)
-    for report in report_list:
-        report.perturbation_nodes = json.dumps([[node_by_symbol[report.perturbation_id], -1.0, 1.0]])
+    gain_of_function_genes = seed_monogenic_reports(report_list, node_by_symbol, seed_gain_of_function_genes_positive)
 
     drug_targets_by_perturbation: dict[str, str] = {}
     if sider_directory is not None and chembl_directory is not None and (chembl_directory / "targets.json").exists():
@@ -574,7 +605,7 @@ def assemble(
         check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, caches.mechanisms_by_molecule)
         for event in load_sider_events(sider_directory, crosswalk_path):
             drug_targets = sider_drug_targets(event.pubchem_cid, caches, bridge_parents_by_cid, compounds_by_pubchem_cid, compounds_by_chembl_id)
-            if not (has_dominant_target(drug_targets, max_drug_targets) and is_nervous_system_atc(event.atc_codes)):
+            if not (has_dominant_target(drug_targets, max_drug_targets) and has_admitted_atc_code(event.atc_codes, admitted_atc_prefixes)):
                 continue
             perturbation_nodes = node_lookup.perturbation_nodes(drug_targets)
             targets = drug_target_description(drug_targets)
@@ -608,7 +639,7 @@ def assemble(
         if weighting == "reliability":
             observations["weight"] = reliability_weights(reliability_fit, observations, reliability_global_scale)
         observations["weighting"] = weighting
-    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance))
+    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance), tuple(sorted(gain_of_function_genes)))
 
 
 def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -> dict:
@@ -694,13 +725,19 @@ def main() -> None:
     parser.add_argument("--onsides-bridge", type=Path, default=None, help="OnSIDES ingredient identifier bridge; its ChEMBL parents are the fallback for SIDER CIDs UniChem leaves without a mechanism")
     parser.add_argument("--non-protein-targets", type=Path, default=NON_PROTEIN_TARGETS_PATH, help="ChEMBL non-protein targets -> Human-GEM metabolites (docs/drug_targets_any_type.md)")
     parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH, help="drugs with no mechanism target that are themselves a graph metabolite")
+    parser.add_argument("--seed-gain-of-function-genes-positive", action="store_true",
+                        help="seed a gene with sign +1 when every causal association behind its reports is Orphanet's gain-of-function type; without it every gene has sign -1")
+    parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
+                        help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to build_onsides_reports.py")
     arguments = parser.parse_args()
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
                          arguments.max_drug_targets or None, arguments.grade_a_policy, arguments.phenotype_hpoa, arguments.reference_publication_dates,
                          arguments.genes_to_disease, arguments.orphadata_product6, arguments.disease_cluster_max_genes or None, arguments.weighting, rubric_weight_defaults, arguments.reliability_global_scale,
                          extra_report_paths=list(arguments.extra_reports), onsides_bridge_path=arguments.onsides_bridge,
-                         non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds)
+                         non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds,
+                         seed_gain_of_function_genes_positive=arguments.seed_gain_of_function_genes_positive,
+                         admitted_atc_prefixes=read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
@@ -709,6 +746,10 @@ def main() -> None:
     summary["grade_a_policy"] = arguments.grade_a_policy
     summary["weighting"] = arguments.weighting
     summary["reliability_global_scale"] = arguments.reliability_global_scale
+    if arguments.seed_gain_of_function_genes_positive:  # recorded only when set, so a table built without it has the summary it always had
+        summary["genes_seeded_as_gain_of_function"] = list(assembled.genes_seeded_as_gain_of_function)
+    if arguments.admitted_atc_prefixes is not None:
+        summary["admitted_atc_prefixes"] = {"file": str(arguments.admitted_atc_prefixes), "prefixes": list(read_admitted_atc_prefixes(arguments.admitted_atc_prefixes))}
     summary.update(summarize_reports(assembled.reports, assembled.reliability_fit, rubric_weight_defaults, assembled.observations, assembled.reports_dropped_unknown_provenance))
     (arguments.output_dir / "evidence_summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1))

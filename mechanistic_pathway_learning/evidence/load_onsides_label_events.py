@@ -42,7 +42,7 @@ from pathlib import Path
 import pandas as pd
 
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
-from mechanistic_pathway_learning.evidence.load_drug_label_events import is_nervous_system_atc
+from mechanistic_pathway_learning.evidence.load_drug_label_events import NERVOUS_SYSTEM_ATC_PREFIXES, has_admitted_atc_code
 from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import IngredientBridge, mechanism_targets_for_parent, passes_single_target_rule
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import GraphNodeLookup, graph_compound_targets
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import DrugTarget
@@ -147,13 +147,16 @@ class OnsidesQualification:
 
 
 def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping[str, list[dict]], targets: Mapping[str, dict],
-                       compounds_by_chembl_id: Mapping[str, list[str]] | None = None, max_drug_targets: int | None = 1) -> OnsidesQualification:
+                       compounds_by_chembl_id: Mapping[str, list[str]] | None = None, max_drug_targets: int | None = 1,
+                       admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES) -> OnsidesQualification:
     """The E2 qualification of section 4.2 for one ingredient, the rule SIDER rows pass: a single mechanism target and an ATC N code.
 
     An ingredient with no mechanism target at all whose parent is listed in configs/drugs_acting_as_graph_compounds.csv
     (compounds_by_chembl_id) takes that graph compound as its one target, as a SIDER drug does.
     An ingredient with no ATC code at all fails with no_atc_code, as a SIDER drug without one does; atc_known
     is kept on the result for the rubric_atc_known feature.
+    admitted_atc_prefixes replaces group N by a written list (has_admitted_atc_code); the reason of a failure is then
+    atc_not_admitted.
     """
     missing_target_ids: set[str] = set()
     drug_targets = mechanism_targets_for_parent(bridge.chembl_parent, mechanisms_by_molecule, targets, missing_target_ids=missing_target_ids)
@@ -166,8 +169,9 @@ def qualify_ingredient(bridge: IngredientBridge, mechanisms_by_molecule: Mapping
         return OnsidesQualification(False, "no_single_mechanism_target", drug_targets, atc_known, missing)
     if not atc_known:
         return OnsidesQualification(False, "no_atc_code", drug_targets, atc_known, missing)
-    if not is_nervous_system_atc(list(bridge.atc_codes)):
-        return OnsidesQualification(False, "atc_not_nervous_system", drug_targets, atc_known, missing)
+    if not has_admitted_atc_code(list(bridge.atc_codes), admitted_atc_prefixes):
+        reason = "atc_not_nervous_system" if tuple(admitted_atc_prefixes) == NERVOUS_SYSTEM_ATC_PREFIXES else "atc_not_admitted"
+        return OnsidesQualification(False, reason, drug_targets, atc_known, missing)
     return OnsidesQualification(True, "", drug_targets, atc_known, missing)
 
 
@@ -203,6 +207,7 @@ def onsides_reports(
     node_lookup: GraphNodeLookup | Mapping[str, str],
     compounds_by_chembl_id: Mapping[str, list[str]] | None = None,
     max_drug_targets: int | None = 1,
+    admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES,
 ) -> tuple[pd.DataFrame, dict]:
     """Report rows (REPORT_COLUMNS first, then ONSIDES_EXTRA_COLUMNS) for every statement; qualifies marks the rows that enter the evidence table.
 
@@ -220,7 +225,7 @@ def onsides_reports(
         if bridge is None:
             counts["ingredients_without_bridge"] += 1
             continue
-        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id, max_drug_targets)
+        qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id, max_drug_targets, admitted_atc_prefixes)
         qualifications[bridge.ingredient_id] = qualification
         perturbation_nodes = node_lookup.perturbation_nodes(qualification.drug_targets)
         combination_only = int(statement.single_ingredient_label_count) == 0
