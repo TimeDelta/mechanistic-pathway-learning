@@ -29,7 +29,8 @@
     "allow": [
       "mcp__claude-code-remote__create_trigger",
       "mcp__claude-code-remote__update_trigger",
-      "mcp__claude-code-remote__delete_trigger"
+      "mcp__claude-code-remote__delete_trigger",
+      "WebFetch"
     ]
   }
 }
