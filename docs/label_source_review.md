@@ -65,11 +65,51 @@ systematic review of free valproate monitoring concludes: "This review demonstra
 clinical utility of free VPA serum levels" (Lin et al. 2022,
 [doi:10.1007/s40262-022-01171-w](https://doi.org/10.1007/s40262-022-01171-w)).
 
-**Evidence against a free-drug effect for the other carrier.** A study of 1,106 clozapine samples states the caveat
-itself: "if the level of the drug-binding plasma protein increases, the total amount of drug in plasma will increase,
-whereas the free concentration of the drug will remain relatively unchanged" (Espnes et al. 2026,
-[doi:10.1111/bcpt.70208](https://doi.org/10.1111/bcpt.70208)). This agrees with the pharmacokinetic reading in
-`docs/drug_entry_nodes.md`.
+**The other carrier: what is expected and what has been measured.** Rewritten on 11 October 2026, after the user
+questioned the weight put on one paper. An earlier version of this paragraph was headed "Evidence against a free-drug
+effect for the other carrier" and rested on one sentence of Espnes et al. 2026
+([doi:10.1111/bcpt.70208](https://doi.org/10.1111/bcpt.70208)): "if the level of the drug-binding plasma protein
+increases, the total amount of drug in plasma will increase, whereas the free concentration of the drug will remain
+relatively unchanged". That sentence is from the paper's introduction and states an expectation. The study measured
+total clozapine, orosomucoid and C-reactive protein in 1,106 samples of 369 patients and no unbound concentration
+("analysing free (unbound) plasma clozapine concentrations would clearly have added valuable information"). Its own
+data speak against binding as the whole account: "the unproportional high increase in clozapine concentrations compared
+to the increase in AGP levels clearly indicates that increased protein binding is not the sole explanation". The two
+markers rose together (correlation 0.591), so the study cannot separate more binding from slower clearance. It was not
+evidence for the heading it was given.
+
+What has been measured, in two small studies:
+
+- **The unbound fraction falls as orosomucoid rises.** 1.22 percent against 1.65 percent in 6 samples with raised
+  and 20 with normal orosomucoid (Man et al. 2019,
+  [doi:10.1007/s40262-019-00744-6](https://doi.org/10.1007/s40262-019-00744-6)), and in 319 samples of 44 patients "A
+  statistically significant (negative) correlation between AGP concentrations and clozapine (P = 0.000) and
+  norclozapine (P = 0.028) unbound fractions was found" (Beex-Oosterhuis et al. 2025,
+  [doi:10.1097/JCP.0000000000001979](https://doi.org/10.1097/JCP.0000000000001979)). Espnes et al. call the first "The
+  only study that has measured free clozapine concentrations"; the second appeared in March 2025.
+- **The unbound concentration has one comparison behind it**, in the same 26 samples: "7.2 ng/mL vs. 6.3 ng/mL (mean
+  difference = 0.9 ng/mL, 95% confidence interval − 4.45 to 2.54" (Man et al. 2019). An interval about as wide as the
+  mean does not show that the unbound concentration is unchanged. The authors had no doses, no smoking status and
+  several samples from one patient.
+- **Symptoms have not been studied against the carrier.** Case reports go both ways: a trough concentration "almost
+  4-fold the upper limit of the reference range" in a patient who "did not report any adverse effects" (Espnes et al.
+  2012, [doi:10.1097/FTD.0b013e3182666c62](https://doi.org/10.1097/FTD.0b013e3182666c62)) and a raised concentration
+  "Without Signs of Intoxication" (Spangemacher et al. 2024,
+  [doi:10.1097/jcp.0000000000001791](https://doi.org/10.1097/jcp.0000000000001791)), against a systematic review of 40
+  cases in which "Adverse events, typically sedation, were associated with raised clozapine levels during infection"
+  (Clark et al. 2018, [doi:10.1016/j.schres.2017.03.045](https://doi.org/10.1016/j.schres.2017.03.045)).
+
+So the statement that more orosomucoid leaves the free drug and its effects unchanged is the pharmacokinetic
+expectation for an oral drug cleared by the liver (`docs/drug_entry_nodes.md`), repeated by these authors and tested
+by none of them. The conclusion of this section does not rest on it: no dataset varies this carrier with a drug and
+records a symptom.
+
+No review of the 2026 paper exists yet. PubMed and Crossref index no comment, letter or correction (11 October 2026).
+Three works cite it; the one read in full text cites it in passing for "Inflammatory states have also been associated
+with altered clozapine levels" (Özdin and Böke 2026,
+[doi:10.1186/s12888-026-08386-2](https://doi.org/10.1186/s12888-026-08386-2)), and the other two, a systematic review
+of clozapine and B-lymphocytes and a case report of myocarditis, were not read. PubPeer declines automated readers and
+was not checked.
 
 **Displacement pairs.** No curated list exists. The classic examples were reattributed: "recent evaluation of these
 DDIs revealed that inhibition of metabolism of the victim drugs by the corresponding perpetrator drugs, rather than
@@ -143,11 +183,14 @@ magnitude k", and any cap above one "merges lockbox_v2 groups with v2 developmen
 holds (corrected 10 October: an earlier version of this sentence said drug nodes removed it; the confirmatory graph has
 no drug nodes, and with them each mechanism edge still delivers magnitude 1 per target; section 9). The second is a
 reason to settle this before the held-out set is fixed, which is now; section 9 measures it. The cost that remains is in the last columns:
-the drugs fall into 17 leakage groups instead of 30, and one group holds 71 of them, so a score for drugs rests on
-few independent groups under either rule.
+the drugs fall into 17 leakage groups instead of 30. Corrected on 11 October: an earlier version of this sentence
+said "one group holds 71 of them". That is the group with the most perturbations (241). The group with the most
+drugs is another one, of 167 perturbations and 114 drugs, so two groups hold 185 of the 222 drugs and 89 percent of
+the kept drug pairs (section 12). A score for drugs rests on few independent groups under either rule.
 
 **Any number of targets** adds 8 drugs over the three-target rule and joins 194 of the 230 drugs into one group of
-423 perturbations. That is a poor trade.
+423 perturbations. An earlier version called that a poor trade. Section 12 measures it again: the join is the work of
+one drug, and the three-target table was already concentrated in two groups.
 
 **Without the nervous-system rule.** 566 drugs enter at one target with 954 kept pairs, and the pairs are mostly
 fatigue (309 of the 1,733 kept pairs), insomnia, anxiety and somnolence. By ATC group of the entering drugs:
@@ -555,6 +598,68 @@ Two consequences for the study, both about CTD, the one source in this table tha
   can send that notice (`ctdbase.org/help/contact.go`). The licence sentence of the release manifest names SIDER and
   MedDRA and does not name CTD.
 
+## 12. The limit on a drug's targets, measured again (11 October 2026)
+
+The user, on 11 October: "I thought I had previously said to remove any limit on the number of targets", and a few
+minutes later: "Oh. Was there something about the ones having more than three targets being not so relevant and concern
+about confounds?"
+
+**The record.** No instruction to remove the limit is in this session's record, in the documents or in the user's
+other conversations that could be searched; the earliest part of the session survives only as a summary. What is
+recorded: on 8 October, "fix that bug and incorporate drugs for any type of target" (any type of target, not any
+number; `docs/drug_targets_any_type.md`, which measured the limits and left the choice to the user); on 10 October
+the answer "Up to three targets" through the question prompt, and then "please continue implementing the three target
+rule, gain of function sign, and placebo mask". The reasons given at the time match the user's second message:
+"Most of that gain comes at a cap of 3", and "Total input magnitude grows with the number of targets (up to 7). A model
+can then learn 'large input, many symptoms' from target count alone" (`docs/drug_targets_any_type.md`); and in
+section 4 of this document, that any number of targets joins the drugs into one leakage group.
+
+**Measured again**, on counting builds that carry the approved sign and placebo changes
+(`build_approved_variants.sh`, `target_limit_comparison.py`, `bridging_drugs.py`). The groups are those of the
+registered rule, which joins perturbations that share a node.
+
+| drug rule | drugs | kept drug pairs | largest total input of a drug | drugs in the group with most drugs (its share of kept drug pairs) | second group |
+| --- | --- | --- | --- | --- | --- |
+| three targets | 222 | 1,076 | 3 | 114 (58.6%) | 71 (30.6%) |
+| four targets | 224 | 1,085 | 4 | 187 (89.2%) | 6 |
+| six targets | 226 | 1,102 | 6 | 190 (89.4%) | 6 |
+| no limit | 230 | 1,112 | 7 | 194 (89.5%) | 6 |
+| no limit, orphenadrine left out | 229 | 1,111 | 7 | 116 (57.5%) | 77 (32.0%) |
+| draft list, three targets | 295 | 1,243 | 3 | 218 (84.8%) | 6 |
+| draft list, three targets, dextromethorphan left out | 294 | 1,239 | 3 | 128 (54.0%) | 89 (30.8%) |
+| draft list, no limit | 305 | 1,279 | 7 | 227 (85.2%) | 6 |
+| draft list, no limit, both left out | 303 | 1,274 | 7 | 130 (53.2%) | 95 (31.9%) |
+
+The eight drugs that enter only without a limit, with their mechanism targets and kept pairs: topiramate (6 targets,
+16 kept pairs), nefazodone (4, 8), sevoflurane (7, 6), desflurane (7, 2), isoflurane (7, 2), trimipramine (6, 1),
+orphenadrine (4, 1) and enflurane (7, 0). That is 36 kept pairs, 3.3 percent more, and 24 of them are topiramate's
+and nefazodone's.
+
+Three readings.
+
+- **The main reason I gave against lifting the limit was wrong.** The drugs do not join into one group because drugs
+  with many targets enter. They join because of one drug: orphenadrine acts on the histamine H1 receptor and the
+  noradrenaline transporter, which lie in the block of 114 drugs, and on the NMDA receptor and sodium channels, which
+  lie in the block of 71. It has one kept pair. With it left out, the table without a limit keeps the two blocks.
+  Dextromethorphan (sigma-1 receptor and NMDA receptor, 4 kept pairs) does the same to the draft list at three targets,
+  so the draft list and the limit have to be judged together. And the three-target table was never in many groups: its
+  two blocks hold 89 percent of the kept drug pairs, which section 4 misreported.
+- **What stands of the earlier reasons.** The gain is small, and four of the eight drugs are volatile anaesthetics,
+  whose label events follow anaesthesia and surgery (10 kept pairs; this is my reading of what such labels describe,
+  not a measurement). The input of a drug rises with its targets, to 7 for the anaesthetics and 6 for topiramate and
+  trimipramine, so the question of how a multi-target drug's input is scaled
+  (`docs/confirmatory_architecture_review.md`, question 6) weighs more without a limit.
+- **Against the held-out set**, under the user's overlap rule of 10 October (`held_out_overlap.py`): six of the eight
+  fall on the held-out side (the four anaesthetics, orphenadrine and trimipramine, 12 kept pairs) and topiramate and
+  nefazodone train (24 kept pairs). In all 355 of 1,644 perturbations are held out, 66 of 230 drugs and 319 of 1,112
+  kept drug pairs, against 349, 60 and 307 under three targets. The development drugs that share a target with a
+  held-out added drug rise from 43 (254 kept pairs) to 103 (555 kept pairs), because the held-out anaesthetics act on
+  the GABA-A receptor, as the benzodiazepines and many other development drugs do.
+
+**Standing.** Three targets is the recorded decision and stays the rule of the approved builds until the user says
+otherwise. The choice is now between three options, and none of them is registered: keep three; lift the limit and
+set aside, by a written rule, a drug whose targets lie in both blocks; or lift it and accept one group.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -572,6 +677,9 @@ Scripts, all under `experiments/label_review/`, none of which writes to a study 
 | `held_out_overlap.py` | which side of the held-out set each added drug and each Open Targets statement falls on (section 9) |
 | `effect_site_keyword_counts.py` | PubMed keyword counts per drug for occupancy, effect-compartment rates and unbound brain concentrations (section 10) |
 | `effect_site_coverage.py` | the study drugs named in the retrieved tables of brain exposure, equilibration rate and occupancy over time (section 10) |
+| `build_approved_variants.sh` | the four counting builds that carry the approved sign and placebo changes: three targets or no limit, with or without the draft list (sections 9 and 12) |
+| `target_limit_comparison.py` | drugs, kept drug pairs, the group that holds the most drugs and each drug's total input, by variant (section 12) |
+| `bridging_drugs.py` | the added drugs whose targets lie in both large drug blocks, and the groups with those drugs left out (section 12) |
 
 Downloads, under `data/raw/label_review` (not in git):
 
