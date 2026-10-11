@@ -9,6 +9,12 @@ for every research pass a session starts, so a session passes them on to the pas
   permission request." The fetch tool withdraws a request after five minutes without an answer. Keep a list of the
   requests that ended that way, repeat each one as soon as the owner is back, tell the owner at once which pages
   were affected, and never write "not retrieved" for that reason.
+- **Why the request appears, and how to avoid needing it.** In the Claude app a fetch "is limited to search results
+  and URLs you've shared" (support.claude.com, "Get started with Claude Cowork", read 11 October 2026). An address
+  that came from neither needs the owner's approval. The `WebFetch` allow rule in `.claude/settings.json` did not
+  remove the prompt in a test on 11 October 2026. So: search first, so that the address is a search result; use the
+  connectors and the providers' programmatic services where they exist; and before work that will run unattended,
+  send the owner the list of sites the work will need.
 - **A licence is verified.** "No. You have to verify the license." When the provider's licence page cannot be
   read, read the terms where the provider also states them: the header of the data file, the provider's source
   repository, the data availability statement of the provider's paper. Quote the sentence and say where it was
