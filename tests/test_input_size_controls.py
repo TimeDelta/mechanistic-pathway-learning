@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from experiments.run_main_model import permuted_drug_targets
+from experiments.run_main_model import permuted_drug_targets, refuse_a_negative_loss_weight
 from mechanistic_pathway_learning.evaluation.input_size_strata import GENE_PERTURBATION_STRATUM, input_size_strata, strata_of_scored_rows
 from mechanistic_pathway_learning.models.baselines.input_size_baseline import InputSizeBaseline, input_size_features
 
@@ -115,3 +115,19 @@ def test_the_permuted_target_control_is_refused_where_a_drug_is_seeded_on_its_ow
     parser = build_argument_parser()
     arguments = parser.parse_args(["--graph-dir", str(tmp_path / "graph"), "--evidence-dir", str(evidence_directory), "--permute-drug-targets"])
     assert arguments.permute_drug_targets and Path(arguments.graph_dir).exists()
+
+
+def test_a_negative_loss_weight_is_refused_because_it_inverts_the_gradient() -> None:
+    """The user wrote "-.5" for the placebo negative weight on 12 October 2026. A weight multiplies a per-pair
+    cross-entropy, so a negative one makes the optimiser maximise the loss on those pairs and train the model
+    towards the outcome the placebo-controlled comparison argues against. The run stops instead."""
+    for negative_weight, placebo_negative_weight in ((-0.5, None), (0.2, -0.5), (-1.0, -1.0)):
+        arguments = SimpleNamespace(negative_weight=negative_weight, placebo_negative_weight=placebo_negative_weight)
+        with pytest.raises(ValueError, match="inverts the gradient"):
+            refuse_a_negative_loss_weight(arguments)
+
+    # zero is allowed, because it sets the pairs aside rather than reversing them, and an unset placebo weight is
+    # the default: those pairs then take --negative-weight like any other negative
+    refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.0, placebo_negative_weight=0.0))
+    refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.2, placebo_negative_weight=None))
+    refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.2, placebo_negative_weight=0.5))

@@ -992,8 +992,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def refuse_a_negative_loss_weight(arguments) -> None:
+    """A loss weight below zero inverts the gradient for the pairs it applies to, so it is refused rather than run.
+
+    The weights multiply a per-pair cross-entropy, so a weight of -0.5 makes the optimiser maximise the loss on those
+    pairs: it would train the model to predict the symptom for exactly the pairs a placebo-controlled comparison
+    found no excess for. That is never what is meant, and a leading minus is easy to type by accident, so it stops
+    the run instead of producing a model that is wrong in a way no metric would show."""
+    for option, value in (("--negative-weight", arguments.negative_weight),
+                          ("--placebo-negative-weight", getattr(arguments, "placebo_negative_weight", None))):
+        if value is not None and value < 0:
+            raise ValueError(f"{option} is {value}; a loss weight below zero inverts the gradient for those pairs, "
+                             f"so the run would train the model towards the outcome the evidence argues against. "
+                             f"Use a weight of zero or more (zero sets the pairs aside)")
+
+
 def main() -> None:
     arguments = build_argument_parser().parse_args()
+    refuse_a_negative_loss_weight(arguments)
     signal.signal(signal.SIGUSR1, request_checkpoint)
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

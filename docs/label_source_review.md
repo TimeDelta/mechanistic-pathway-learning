@@ -1098,6 +1098,261 @@ the supplementary path in particular. Its robots file disallows the **whole host
 assistant's reader announces itself under, so every address there is refused, including the free full-text PDF. No
 other path on that host is worth trying, and the user has to open them personally.
 
+## 14. Answers of 12 October, 14:24
+
+Five points the owner pressed on after the answers of 13.1 to 13.9. Each is measured by a script in
+`experiments/label_review/` and nothing here changes a label, a table, a graph or a model input.
+
+### 14.1 The binding-site comments of ChEMBL, and a correction
+
+`experiments/label_review/chembl_binding_sites.py`, on the 222 drugs of `data/processed/evidence_full_v4`: 326
+mechanism rows over 179 drugs, 23 of them with a curated `site_id` over 21 drugs and 24 with a
+`binding_site_comment` over 22 drugs.
+
+**Correction.** The pass of 12 October reported four comments carrying explicit uncertainty. There are three. The
+fourth, gabapentin's, is not a hedge but a citation:
+
+- acamprosate, GABA-A, POSITIVE MODULATOR, no `site_id`: "Likely allosteric but unclear whether benzodiazepine or
+  barbiturate site involved"
+- propofol, GABA-A, POSITIVE ALLOSTERIC MODULATOR, no `site_id`: the same sentence
+- zolpidem, GABA-A alpha-1/beta-1/gamma-2, POSITIVE ALLOSTERIC MODULATOR, `site_id` 2619: "Not clear if allosteric,
+  but looks like benzodiazepine"
+- gabapentin, voltage-gated calcium channel, MODULATOR, `site_id` 2657: "alpha2delta-1 is binding site: 23836974,
+  23642658" — a site stated plainly with two PubMed identifiers, not an uncertainty
+
+What the uncertainty costs is unequal. Acamprosate and propofol carry no `site_id` at all, so they are already
+outside any rule that pairs drugs by site and their hedge changes nothing. Zolpidem's does cost something, and not
+because of the hedge:
+
+**`site_id` is scoped to a target record, so it misses a site two target records share.** The 20 rows on the record
+"GABA-A receptor; anion channel" split into the GABA site (2616, meprobamate), the benzodiazepine site (2617, twelve
+drugs) and the barbiturate site (2618, four drugs). Zolpidem's row sits on a different record, "GABA A receptor
+alpha-1/beta-1/gamma-2", with `site_id` 2619, its own number for what the comment calls the benzodiazepine site. A
+rule that pairs drugs on equal `site_id` therefore does not pair zolpidem with diazepam, although flumazenil
+reverses both. Guide to PHARMACOLOGY's `Receptor Site` column does not have this defect, because it holds a site
+*name*: 325 human rows carry one, over 8 names, and `[3H]zolpidem` is listed under "benzodiazepine site" beside
+alprazolam, clonazepam, diazepam, flunitrazepam and flumazenil. Its coverage of the study's drugs is thinner than
+ChEMBL's, so the two are complementary: ChEMBL for reach, Guide to PHARMACOLOGY for a site label that crosses
+records.
+
+### 14.2 The cooperativity factor: the binary is the wrong shape, and a measured value exists for no study drug
+
+The owner: "I don't like the 0 or 1 simplification for coopertivity factor alpha. Is there a better way that actually
+uses calculated or measured values?"
+
+The objection is right twice over, and the second reason is the stronger one.
+
+**The binary does not span the quantity.** In the allosteric ternary complex model alpha multiplies the orthosteric
+ligand's affinity while the modulator is bound: below 1 the modulator weakens the ligand, above 1 it strengthens it,
+and 0 is the competitive limit where the two cannot bind together. So alpha is a positive real number and its
+interesting values lie on both sides of 1. `{0, 1}` offers the competitive limit and "no interaction" and nothing
+else, which leaves out every case the parameter exists for. The measured values bear this out. ChEMBL holds 350
+activities of `standard_type` "Cooperativity", and they run from 0.2 to 3000 with a median of 0.995, 175 above 1 and
+175 below (`experiments/label_review/cooperativity_sources.py`). A parameter whose measurements are spread
+symmetrically over three orders of magnitude around 1 cannot be replaced by a choice between 0 and 1.
+
+**But no study drug has one.** Every cooperativity-style activity in ChEMBL was fetched, five `standard_type` values
+in all, 535 activities over 215 molecules, cached in `data/raw/label_review/chembl_cooperativity/`:
+
+| `standard_type` | activities | where |
+| --- | --- | --- |
+| Cooperativity | 350 | human muscarinic M1 to M5 only |
+| Alpha | 45 | human histamine H1 (41), rat NMDA GluN1 (4) |
+| Shift | 71 | rat GABA-A |
+| Dose ratio | 59 | guinea pig, mouse and rat opioid receptors |
+| Fold shift | 10 | ADMET assays (9), one human |
+
+"Schild slope", "Fold-shift" and "alpha factor" hold 0 activities in all of ChEMBL. Eight of the 535 records touch
+any of the study's 223 ChEMBL molecule ids, and not one of the eight is a cooperativity:
+
+- diazepam at rat GABA-A, "Shift" = 1.0, from inhibition of [35S]-TBPS binding to rat brain membranes;
+- naltrexone, five "Dose ratio" records on mu, kappa and delta receptors in guinea pig ileum and mouse vas deferens;
+- morphine, two "Dose ratio" records in guinea pig ileum after an irreversible antagonist.
+
+The dose ratios are Gaddum relations in animal tissue, which is evidence of competition rather than a value of alpha,
+and the study is restricted to human measurements. Guide to PHARMACOLOGY adds nothing: one human row in 19,594 has
+"cooperativity" in its `Action comment`, for an unnamed research compound at the beta-2 adrenoceptor, and the
+`Ligand Context` column, which looked like a field for assay conditions, is topological (extracellular, cytosolic,
+luminal) and holds 78 values in all.
+
+Two routes that were considered and are not recommended. Deriving alpha from the overlap of PDBe-KB residue sets
+would require a function from a shared-site fraction to a cooperativity, which no measurement calibrates; it is the
+same error as the occupancy threshold grid the owner rejected in 13.8, a plausible number standing in for an
+unmeasured one. Fitting alpha as a parameter of the model needs a label in which two drugs at one target vary with
+dose, and the study has none.
+
+**What is recommended instead: do not carry alpha at all.** A competition statement is made only for a pair that
+shares a site, where alpha is 0 by the definition of a shared site, and the strength is then the Gaddum factor
+1 + [B]/K_B, which the study already has from the affinity and exposure tables. A pair at different sites on one
+target gets no competition term and is reported as such. That removes the parameter rather than guessing it, and the
+cost is coverage of the different-site pairs, which no source quantifies for these drugs anyway. The scoping document
+should say this in place of the binary.
+
+### 14.3 What the measured concentration costs, and whether a mixed input is sound
+
+The owner: "Why does the concentration per target cost 67 drugs? We can still keep the drugs that don't specify and
+train them the old way. Or are you saying because this allows the off targets to include additional mechanisms, which
+grows the leakage group?"
+
+Measured by `experiments/label_review/measured_occupancy_leakage.py`.
+
+**The number is 68, not 67, and it is pure coverage.** Of the 222 drugs, 183 have an affinity at a mechanism gene,
+which is all the placeholder needs. 128 have a measured unbound concentration. 115 have both. So 68 drugs have an
+affinity but no concentration and lose their reading. (My message of 12 October said 67; the decision log's 68 was
+right.) Nothing about off-targets or leakage is in that number.
+
+**The leakage hypothesis is wrong, and the truth is worse.** Admitting off-targets merges the leakage groups
+catastrophically, and it does so under every scheme alike:
+
+| scheme, threshold 0.25 | off-target pairs | drugs | largest leakage group | drugs in it |
+| --- | --- | --- | --- | --- |
+| no off-targets (registered rule) | 0 | 0 | 241 perturbations, 14.7% | 71 of 222 |
+| placeholder C = 9 K_primary | 540 | 117 | 437 perturbations, 26.7% | 209 of 222 |
+| measured C at each target's site | 374 | 81 | 434 perturbations, 26.5% | 207 of 222 |
+| mixed, measured where there is one | 540 | 125 | 438 perturbations, 26.8% | 209 of 222 |
+
+So the measured concentration does not grow the leakage group: it admits fewer off-targets (374 pairs against 540)
+and leaves a group two drugs smaller. What grows the group is admitting off-targets at all, which takes 203 to 209 of
+the 222 drugs into one group at every threshold from 0.1 to 0.5 and under every scheme. That is the argument against
+off-targets entering a registered input, and it is independent of how C is computed.
+
+**The mixed input is not free, and the reason is the one the owner already asked to control for.** "Train them the
+old way" means a unit input per seed for the drugs without a concentration, so the two groups carry input on
+different scales. Over the same seeds: the 115 drugs with a measured occupancy carry a total input with median 1.00
+(quartiles 0.87 and 1.97, maximum 12.7), and the 107 drugs that would keep the unit rule carry a median of 3.0
+(quartiles 1 and 10, maximum 23). Three times the input at the median, and which group a drug falls in is "does this
+drug have a published therapeutic range and fraction unbound", which follows how long and how widely it has been
+studied. That is the input-size confound of 13.1 reintroduced through the back door, and it correlates with label
+count by the same route. The input-size baseline and the strata of 13.1 would measure it rather than remove it.
+
+There is also a hole inside the covered drugs: among the 115, the number of seeds whose gene has no affinity, and so
+no occupancy, has a median of 0 and a third quartile of 1, reaching 21 for one drug. A mixed rule has to say what
+those seeds carry too.
+
+**Recommendation.** If an occupancy input is wanted, use it for every drug or for none, and take the coverage loss
+openly: 115 drugs with a reading, 107 without. A mixed column trades a stated 68-drug gap for an unstated confound,
+which is the worse trade for a preregistered study. The question stays the owner's; nothing is built either way.
+
+### 14.4 Options for representing tissue type
+
+The owner: "The tissue type of a particular mechanism matters and if that isn't represented in the graph, I can't
+calculate when the tissue type is fully saturated regardless of measuring per-class spread per propagation so I would
+be relegated to only the steady state measurement. Can you please look into options for tissue type representation?"
+
+Measured by `experiments/label_review/tissue_representation_options.py` on
+`data/processed/graph_full_neuronal_split_binders` (49,574 nodes: 13,793 reaction, 12,810 gene, 12,709 protein, 8,580
+metabolite, 1,681 protein entity, 1 membrane potential).
+
+**What the graph has today.** One number per gene, `brain_median_tpm_max`, on 12,460 nodes, and the boolean
+`brain_expressed` derived from it. No node carries a tissue. The `compartment` column is subcellular and sits on
+24,055 nodes, none of which has a gene symbol.
+
+**What is already on disk, and what it covers.** All three sources were downloaded on 10 October and only the first
+is used, collapsed to one scalar:
+
+| source | granularity | graph gene and protein nodes covered |
+| --- | --- | --- |
+| GTEx v10 gene median TPM | 68 tissues, 13 of them brain regions; 59,033 genes | 25,249 of 25,519 (98.9%) |
+| HPA `rna_brain_region_hpa` | 13 brain regions; 20,162 genes | 25,248 (98.9%) |
+| HPA `rna_single_nuclei_cluster_type` | 34 brain cell types; 19,580 genes | 25,104 (98.4%) |
+| the node descriptor table's brain cell classes | 11 classes, continuous weights | as measured in 13.8 |
+
+Matching is by gene symbol for almost all of it: only 5,667 nodes match GTEx by Ensembl id, where 25,247 match by
+symbol. So a 68-dimensional tissue vector on nearly every gene and protein node needs no new download.
+
+**The metabolic layer can inherit one.** A reaction node has no gene of its own but 7,759 of 13,793 carry a gene
+reaction rule naming their catalysing genes, and 6,996 of 8,580 metabolite nodes (81.5%) take part in at least one
+reaction that has such a rule. So a tissue weight can be propagated genes to reactions to metabolites, which is what
+tissue-specific extraction from a Human-GEM model does. 6,034 reaction nodes and 1,584 metabolite nodes would still
+have none.
+
+**The finding that decides the saturation question.** A tissue partition of the nodes does not exist. Of the 25,271
+matched genes, the median is expressed at 1 TPM or above in **67 of the 68 tissues**; 11,376 are expressed in all 68,
+73.7% in more than half and only 615 in exactly one. The largest tissue takes a median of 7.4% of a gene's total
+expression, against 1.5% for an even spread, so there is specificity in degree but not in kind. This is the same
+shape as the 11 brain cell classes of 13.8, now at 68 tissues: "how much of tissue T has moved" is well defined as an
+expression-weighted average over all nodes, and is not well defined as a fraction of a set of nodes belonging to T.
+A weighted reading is buildable; a per-tissue saturation point in the sense of "every node of this tissue is at its
+ceiling" is not.
+
+**The part that is worth building anyway, and it is not the saturation reading.** The mechanism targets are far more
+tissue-specific than genes at large. Over the 148 mechanism target genes, all 148 found in GTEx, the largest tissue
+takes a median of 17.0% of the gene's expression, above 25% for 38 genes and above 50% for 11; the 13 brain regions
+together take a median of 47%, above half for 69 genes and below a tenth for 26. Some are nearly single-tissue:
+CACNA1S 95% skeletal muscle, CACNG1 93% skeletal muscle, SLC6A3 68% substantia nigra, DRD3 61% nucleus accumbens,
+GABRA6 58% cerebellar hemisphere with a brain share of 1.00. Others are spread so widely that no tissue label would
+say much: COMT 3%, SIGMAR1 4%, MAOA 5%.
+
+This bears directly on the only place a tissue label touches a number today, the site a target's concentration is
+read at (13.5). That choice is the boolean `brain_expressed`, a threshold on the maximum brain median TPM. Of the
+148 mechanism targets, 131 are flagged brain-expressed, and **42 of those hold under a quarter of their expression in
+brain**: ADORA3, the five alpha-adrenoceptors and ADRA2C, ALDH2, BCHE, five calcium channel subunits, CACNG1, CALCRL,
+CHRM3, COMT, DRD4, FAAH, GABRE, HCRTR1, HRH1, HTR1B, HTR3A, HTR4, HTR7, four potassium channel subunits, MAOA, MAOB,
+PTGS1, PTGS2, SCN7A, SCN9A, SIGMAR1, SLC18A2, TRPV1. One target runs the other way, HCRTR2, not flagged yet over half
+in brain. A threshold answers "is any of it in the brain" where the share answers "is this mainly a brain target",
+and those differ for 42 of 148 targets. Replacing the boolean with the GTEx share would change the site for them.
+
+**So, three options, ordered by what they cost.**
+
+1. **A tissue share on the mechanism targets, for the site a concentration is read at.** 148 genes, data on disk,
+   changes no encoder and no input; it corrects the site for up to 42 targets. The limit is that a concentration can
+   only be read where a tissue has a partition coefficient, and the study has Kp,uu for brain alone, on 89 drugs. So
+   the honest form is a three-way choice, brain, plasma and unknown, rather than 68 concentrations.
+2. **A 68-dimensional tissue weight on every gene and protein node, propagated to reactions and metabolites.** A
+   measurement, reported per propagation step, which is what 13.8 recommended at 11 classes. It is a new readout and
+   not a new model, so it does not add a confirmatory variant.
+3. **A tissue-specific extraction of the metabolic layer**, a different graph per tissue. This is a different study:
+   it changes the node set, so every registered count, the held-out set and the leakage groups would be redrawn.
+   Not recommended before the confirmatory run.
+
+### 14.5 Enzymes: the claim is already supported, and a curated table would not be what supports it
+
+The owner: "I can't realistically claim physiological mechanistic pathways without enzymes and without carriers. I
+could probably live without carriers but a lot of very important meds act on enzymes themselves … keep thinking on
+that. Even if we have to curate our own enzymes data table, I think it would be worth it but I'm willing to hear a
+dissenting opinion if you have one."
+
+Here is the dissent, and it rests on a distinction that the exchange of 12 October ran together. "Enzymes" named four
+different things, and three of them are already in the study. `experiments/label_review/enzymes_in_the_graph.py`
+counts each, taking an enzyme to be a gene whose reviewed UniProt entry carries an EC number (4,613 gene symbols).
+
+1. **Enzymes as the graph's own structure.** 3,825 of the 12,810 gene nodes are enzymes (29.9%), as are 3,815 of the
+   12,709 protein nodes; 2,831 gene nodes are named in a Human-GEM gene reaction rule, so they catalyse a reaction
+   the graph holds; and 7,759 of the 13,793 reaction nodes name their catalysing enzymes. The metabolic layer is
+   made of enzyme-catalysed reactions. There is no version of this graph without enzymes.
+2. **Enzymes as drug mechanism targets.** 11 of the 148 mechanism target genes are enzymes: ABAT, ACHE, ALDH2,
+   ALDH5A1, BCHE, COMT, FAAH, MAOA, MAOB, PTGS1, PTGS2. 20 of the 222 drugs act on one: acetaminophen, aspirin,
+   deprenyl, diflunisal, disulfiram, donepezil, entacapone, galantamine, isocarboxazid, moclobemide, neostigmine,
+   opicapone, phenelzine, pyridostigmine, rasagiline, rivastigmine, tolcapone, tranylcypromine, valproate,
+   vigabatrin. The owner's "a lot of very important meds act on enzymes themselves" is right, and those drugs train
+   the mechanism edges like every other drug perturbation.
+3. **Enzymes as labelled gene perturbations**, which is what trains the graph around an enzyme directly: **603 of
+   the 1,663 labelled gene symbols are enzymes (36.3%), and 345 of those catalyse a reaction the graph holds.** Over
+   a third of the study's gene labels are enzyme perturbations.
+4. **The `clears` relation**, an enzyme that metabolises a drug. `configs/drug_clearing_enzymes.csv` gives 23 edges
+   over 22 drugs through four enzymes: CYP2C19, CYP2C9, CYP2D6, NAT2. All four are gene nodes and all four carry an
+   EC number. **None of the four has a labelled gene perturbation of its own**, which is why 13.7 found that nothing
+   trains the relation.
+
+A curated enzyme table would add to the fourth only. The first three need nothing: 345 labelled enzyme perturbations
+on the metabolic layer, 20 drugs acting on enzyme targets and 7,759 enzyme-catalysed reactions already support the
+sentence "mechanistic pathways including enzymes", and they can be stated with these counts. The fourth is drug
+metabolism, that is pharmacokinetics rather than pathway physiology, and curating more rows of it would not make it
+trainable, because what is missing is not the enzyme list but a perturbation that moves the enzyme and a symptom
+recorded against it.
+
+**The constructive form, which costs a curation the study can do.** The fourth becomes trainable if the four
+clearing genes get labelled perturbations of their own, and such a label exists in kind: a poor-metaboliser genotype
+is a loss of function of CYP2D6 or CYP2C19, so a symptom reported in poor metabolisers is a gene perturbation of
+sign -1 with an outcome. That is exactly what the FDA Table of Pharmacogenetic Associations records, and it is thin
+(23 statements, 12 of them on the development side, 75 development pairs against the 2,048 weights of the relation in
+the message-passing encoder). ClinPGx and the CPIC guidelines are the larger source of the same kind and were not
+retrieved. So the recommendation is: if the owner wants the `clears` relation trained, curate **CYP and NAT gene
+perturbation labels**, not a drug-clearing enzyme table. The table already exists and is not the limit.
+
+The carrier edge, which the owner said he could live without, is in the same position for the same reason, and 13.7
+holds the measurement.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -1130,6 +1385,16 @@ Scripts of section 13, under `experiments/`:
 | `scope_label_plasma_binder_coverage.py --evidence-dir`, `tabulate_drug_routes.py` | the carrier and route tables of the v4 drugs |
 | `run_baselines.py --with-input-size`, `run_main_model.py --permute-drug-targets` | the first and third controls of 13.1; the second is reported without a flag by `run_baselines.py` and `aggregate_main_model_runs.py` |
 
+Scripts of section 14, under `experiments/label_review/`:
+
+| script | what it does |
+| --- | --- |
+| `chembl_binding_sites.py` | every ChEMBL mechanism row of a study drug with its `site_id` and `binding_site_comment`, and the comments marked where they hedge (14.1) |
+| `cooperativity_sources.py` | every cooperativity-style activity in ChEMBL and every site and cooperativity field of Guide to PHARMACOLOGY, against the study's drugs (14.2); `--fetch` writes the ChEMBL cache |
+| `measured_occupancy_leakage.py` | the coverage of each concentration scheme, the two scales of a mixed input and the leakage groups each scheme produces (14.3) |
+| `tissue_representation_options.py` | the tissue sources on disk, what each covers of the graph's nodes, how many tissues a gene reaches and the tissue spread of the mechanism targets (14.4) |
+| `enzymes_in_the_graph.py` | enzymes as graph structure, as drug mechanism targets, as labelled gene perturbations and in the `clears` relation (14.5) |
+
 Downloads, under `data/raw/label_review` (not in git):
 
 | file | source | SHA-256, first 16 |
@@ -1144,6 +1409,7 @@ Downloads, under `data/raw/label_review` (not in git):
 | `ctd_terms/PMC11701581_fullTextXML.xml` | Europe PMC full text of Davis et al. 2025 | `2f1a859ba261356d` |
 | `gene2phenotype_licence/ResponsibleHandoverView_commit_30dae72.vue` | https://github.com/EBI-G2P/gene2phenotype_web, `src/views/ResponsibleHandoverView.vue` at commit 30dae72; the script file the live site served (`index-DQD2xSP4.js`, SHA-256 beginning `f86c6741b989f04b`, 3.1 MB) holds the same sentence and was not kept | `ee554cfdb6c9c573` |
 | `ich_m12/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf` | https://www.ema.europa.eu/en/documents/scientific-guideline/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf | `126762154af51347` |
+| `chembl_cooperativity/cooperativity_activities.json` | the ChEMBL activity API, every activity of standard_type Cooperativity, Alpha, Fold shift, Shift and Dose ratio, fetched 12 October 2026 (535 activities) | `17dda554a91e3985` |
 | `openfda_fields/druglabel.yaml` | https://open.fda.gov/fields/druglabel.yaml | `21a6aa9ae2a03a46` |
 | `smith_waters_2019/PMC7089466_efetch.xml` | NCBI E-utilities, `efetch.fcgi?db=pmc&id=7089466` | `2aee3c5b8a952a8c` |
 | `openfda_carrier_statements/{depakote,phenytoin,diazepam,carbamazepine}.json` | openFDA label queries of 11 October 2026 (the query is stored in each file); Depakote set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 2026-03-31; Phenytoin Sodium Injection set_id 035a8d4e-2063-4240-83cb-d7eebcabe301, effective 2024-04-09 | `ddddd55f984d389c` (Depakote), `71300476c1318504` (phenytoin) |

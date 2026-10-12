@@ -71,7 +71,14 @@ Each line gives the owner's words and where they are recorded (`docs/research_su
   unlabelled pair. The amendment has to name the number, because it is a free parameter of the loss.
 - **The occupancy anchor, if off-targets ever enter the input.** The measured unbound concentration at each target's
   own site, not the 90-percent placeholder. No off-target enters any registered input today, so this binds nothing
-  yet; it is written here so the anchor is not re-chosen later by default.
+  yet; it is written here so the anchor is not re-chosen later by default. Measured on 12 October and worth stating in
+  the amendment as the reason none does: admitting off-targets merges the leakage groups whatever the concentration
+  scheme, taking the largest group from 241 perturbations and 71 drugs to between 429 and 449 perturbations and
+  between 203 and 209 of the 222 drugs, at every threshold from 0.1 to 0.5 (`docs/label_source_review.md`, 14.3). The
+  measured concentration is not what grows the group; it admits fewer off-targets than the placeholder and leaves a
+  group two drugs smaller. A mixed input, measured where there is one and a unit per target otherwise, is not
+  recommended: the two groups then carry a median total input of 1.00 against 3.0, and which group a drug falls in
+  follows whether its pharmacokinetics have been published.
 - **The comparative checks.** Named in advance, reported after scoring, testing no hypothesis. The amendment should
   state which of them can test a model at all: the two-drug kind, because a second drug enters through the mechanism
   edges that every drug perturbation trains. The carrier, displacement and enzyme kinds go through relations no label
@@ -98,7 +105,15 @@ reads either is a separate decision.
    counted as evidence against a label?"). Both selections are built; the second is
    `better_v2_full_v4_placebo_negative.parquet`, SHA-256 first 16 `3f4decacd783ab08`. On 12 October the owner asked
    that a placebo-controlled absence count for more than silence in the loss share; `--placebo-negative-weight` does
-   that and needs a number.
+   that and needs a number. **The number is read as 0.5**, from the owner's "I think -.5 is best unless you
+   disagree" (12 October). The leading minus is read as a typing slip, because the weight multiplies a per-pair
+   cross-entropy: at -0.5 the optimiser would maximise the loss on those pairs and train the model to predict the
+   symptom for exactly the pairs a placebo-controlled comparison found no excess for. `run_main_model.py` now refuses
+   a weight below zero rather than run it (`refuse_a_negative_loss_weight`, `tests/test_input_size_controls.py`).
+   0.5 sits where the owner put it, above the 0.2 of a pair that is a negative on no evidence and below the weight of
+   a reported event. One caveat belongs in the amendment beside the number: 48 of the 61 pairs rest on a single label
+   entry carrying both arms and SIDER gives no arm sizes, so the evidence behind a 0.5 is thinner than the evidence
+   behind a positive at its evidence weight. The owner confirms the value.
 3. **The draft list of admitted drug groups** (`configs/admitted_atc_prefixes_draft.csv`): its rows need the owner's
    sign-off, and one drug of the list joins the two large drug groups in the same way.
 4. **The other questions of `docs/confirmatory_architecture_review.md`, section 8.** Question 6, the input of a
