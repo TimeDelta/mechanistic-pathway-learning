@@ -1,9 +1,14 @@
 # Draft of an amendment to the pre-registration: the evidence table v4 and the checks
 
-**A draft for the owner. It is not applied.** `docs/preregistration.md` is unchanged, no registered configuration reads
-anything named here, no held-out set has been drawn on the new table and no model has been trained on it. The draft
-states what the decisions of 10 and 11 October 2026 would change when the owner applies them, and which decisions are
-still missing. Written on 11 October 2026.
+**Superseded on 12 October 2026 by the amendment in `docs/preregistration.md`** (the owner: "Let's lock in everything
+you have no objections to"). That amendment registers eleven items of this draft and names what it leaves open:
+off-targets in a model input, the enzyme statements as training labels, the weight of the Open Targets class, the
+rows of the admitted-groups list, the electrical layer and the held-out set itself. This file is kept as the working
+record of how the draft was built, and the registered text is the preregistration's own.
+
+Still true of both: no held-out set has been drawn on the new table and no model has been trained on it. The code for
+the propagation and encoder items is not written, so those are registered and have been read on no run. Written on
+11 October 2026, superseded 12 October 2026.
 
 The registered state it would amend: the evidence table `evidence_full_v2`, the `better_v2` label selection,
 `configs/lockbox_v2.json`, and the graph `data/processed/graph_full_neuronal_split_binders` (amendment of 9 October

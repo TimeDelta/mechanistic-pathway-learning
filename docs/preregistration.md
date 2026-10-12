@@ -1067,6 +1067,122 @@ started, so no finished run changes meaning and nothing is re-scored.
   of the two split configurations are not re-run here (the user, the same message: "No new pilots yet"), so the
   carriage edges are registered but not yet read on any run.
 
+Amendment, 12 October 2026, written before any lockbox run, before the held-out set has been redrawn and before any
+model has been trained on the evidence table it registers. Each item names the decision it comes from; the decisions
+are in docs/research_summary.md under their dates and the measurements behind them in docs/label_source_review.md.
+The code for items 7 to 9 is not written at the time of this amendment, so those are registered and have been read on
+no run.
+
+**1. The evidence table.** `data/processed/evidence_full_v4` replaces `evidence_full_v2`, carrying four changes.
+(a) **No limit on a drug's mechanism targets.** The dominant-target admission test is removed (user, 12 October: "I
+really don't like having a target limit"; "I meant drop orphenadrine and the target limit"). (b) **A drug whose
+target set joins two otherwise separate leakage blocks is set aside**, found by removing each drug in turn and
+measuring the largest block. Applied to this table the procedure names orphenadrine and nothing else. Measured: with
+the limit, 222 drugs and 5,732 kept positive pairs in blocks of 114 and 71; without it and without the exclusion, 230
+drugs with the largest block taking 194 of them and half the kept positive pairs; without the limit and with
+orphenadrine set aside, 229 drugs and 5,799 kept positive pairs in blocks of 116 and 77, the largest block holding 51
+percent of drugs and 27 percent of kept positive pairs, which is what the three-target rule held to two figures
+(docs/label_source_review.md 26.1). (c) **Sign +1 for the 17 genes whose every causal association is a gain of
+function**, replacing the disclosure in the registered text that the signed encoder reads the wrong sign for them.
+(d) **A kept drug pair whose frequency never exceeds its placebo arm becomes a labelled negative** rather than being
+masked (user, 11 October: "Why would working no better than the placebo not be counted as evidence against a
+label?"). The table also carries two earlier unregistered changes, drugs with a target of any type with the salt-form
+fix, and parkinsonism as the 24th symptom; this amendment registers them together.
+
+**2. The held-out set.** Its membership is redrawn on the table of item 1 by the registered leakage groups. An added
+drug that acts on a node of a held-out perturbation is held out as its own stratum, outside the primary score, and
+does not train, validate or enter H1 or H2 (user, 11 October: "I accept put the three mechanism target pairs being
+mostly in the held out set"). The registered group rule chains; for added perturbations a one-step rule is used
+instead, because chaining would pull 149 further perturbations into the held-out set.
+
+**3. The loss.** `--equal-drug-shares` is on in every confirmatory configuration and its ablations: each drug's
+positives and, apart, its negatives are rescaled to the mean counts over the training drugs (user, 12 October: "let's
+do the control version and the equal loss per share version"). The negatives of item 1(d) take a weight of **0.5 by
+default**, and where the drug's label states the trial arm sizes the weight is `n_effective / (n_effective + 214)`
+with `n_effective = 1 / (1/n_drug + 1/n_placebo)` and 214 the median effective size over the pairs that have one, so
+a comparison of typical size weighs exactly the default (user, 12 October: "I think -.5 is best unless you disagree"
+and "look for placebo arm sizes for those specific studies and then calculate negative weight based on that then use
+.5 as default for nothing found"). 41 of the 61 pairs carry a measured weight and 20 the default
+(`configs/placebo_negative_weights.csv`). A loss weight below zero is refused by the trainer.
+
+**4. Reported beside the score, changing no model.** The input-size baseline, macro AUPRC within strata of a drug's
+number of targets, and the permuted-target negative control. All three were named before any run on this table.
+
+**5. The occupancy anchor.** Where an off-target ever enters a model input, its occupancy is read from the measured
+unbound concentration at each target's own site and not from the placeholder that fixes the best-bound target at 90
+percent (user, 12 October). No registered input reads an off-target, so this binds nothing yet and is written here so
+the anchor is not chosen by default later.
+
+**6. The comparative checks.** `configs/comparative_checks.csv`, 214 statements named in advance, read after scoring,
+testing no hypothesis of the study and changing no decision rule. Only the two-drug kind is a test of a model; the
+carrier, displacement and enzyme kinds go through relations no label varies and are reported without a verdict.
+
+**7. The propagation runs to a fixed point.** Both encoders iterate until the relative change falls below **1e-3**,
+in place of the registered fixed counts of three message-passing layers and eight linear-response steps (user, 12
+October: "Use the convergence instead of 8 steps. 8 steps is arbitrary, not physiological"; "Propagation window is
+settled. It goes to a fixed point to simulate steady state"). The perturbation is held on at every round and the
+update is bounded so that it is a contraction, without which the iteration has no fixed point. Measured on the
+structural propagation at the contraction bound, 1e-3 is reached at 23 steps, and at gains of 0.7 and 0.5 at 14 and
+11 (docs/label_source_review.md 17.2). **The claim this supports is the subthreshold steady state**: a fixed-point
+model cannot represent excitability, and the electrical layer's seven voltage-gated feedback loops are therefore read
+at their settled value and not as an action potential.
+
+**8. The encoder parameterisation.** One set of relation transforms applied at every round, in place of one set per
+layer. Each relation owns a diagonal gain of 32 parameters; the nine relations that 2,100 or more development
+training pairs reach — `encodes`, `catalyzed_by`, `substrate_of`, `activates`, `product_of`, `binds`,
+`regulates_transcription_of`, `inhibits`, `member_of` — additionally own a rank-2 factorisation of 128 parameters.
+1,792 parameters in all against the registered 61,440, 0.60 per kept pair against 20.65. The rank follows the number
+of training examples that reach a relation rather than its edge count or its flow magnitude, because the flow is
+distorted by in-degree; the counts break cleanly at nine relations with 2,100 to 2,468 pairs and eleven with 451 or
+fewer, and they are measured on development perturbations only. **Rank 4 is named now as the only step up that may be
+taken** if the development runs show the nine underfitting, so that it cannot be chosen after a result is seen. The
+factors carry an explicit norm bound, for the same reason as item 7 (user, 12 October: "set the reduced rank bases
+with the example share flow through each edge type and 1 repeated layer regardless of depth", and "just do what you
+think makes sense instead"; docs/label_source_review.md 26.2).
+
+**9. Message passing reads the edge signs.** Its relation adjacencies take the value `sign / in_degree` in place of
+`1 / in_degree`, as the linear-response encoder already does (user, 12 October: "The edge signs are also settled: the
+MP has to adhere to the edge signs the same way the linear encoder does"). Twelve relations have a constant sign that
+the relation index already carried; the change affects the eight whose sign varies within the relation, 42,903 edges,
+of which 7,321 are negative and were read as positive, 7,087 of them transcriptional repressions among
+`regulates_transcription_of`'s 41,638 edges. One consequence is registered with it: with signs in the values the
+in-degree mean can cancel, so a node with one activator and one repressor of equal weight receives zero.
+
+**10. The Open Targets statements are their own evidence class**, kept apart from gene loss (user, 11 October: "I
+accept all the suggestions under section 8 of the label review", whose row 7 states it). The weight that class
+carries is not in this amendment and is named in "what is still open" below.
+
+**11. A reading at the peak of the unbound tissue concentration** is for the confirmation stage only, is not trained
+on and is not selected on (user, 11 October: "Peak tissue unbound concentration can be relegated to confirmation
+only"). Nothing is built for it.
+
+**What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
+one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
+stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
+sigmoid head was dropped from the confirmatory family on 8 October because only the noisy-OR head has modules to read
+as pathways.
+
+**What is still open, and is deliberately not registered here.**
+- **Off-targets in a model input.** The user asked for them on 12 October ("Occupancy input should be included as
+  well as off targets") and the measurement argues against: admitting off-targets at any threshold from 0.1 to 0.5,
+  under any concentration scheme, takes the largest leakage group from 241 perturbations and 71 drugs to between 203
+  and 209 of the 222 drugs, which ends the drug split that item 2 depends on (docs/label_source_review.md 14.3). The
+  objection is recorded and the decision is the user's.
+- **The enzyme statements as training labels.** The user asked for them on 12 October. They cannot be registered yet
+  because the combined perturbation type, a drug and a gene perturbation carried in one example, does not exist in
+  the trainer. 12 development statements and 75 development pairs are what they would bring
+  (docs/label_source_review.md 16.2).
+- **The weight of the Open Targets evidence class.** Grades today are monogenic 1.0, pharmacological 0.6 and C masked
+  at 0.0; 0.3 is recommended and not decided.
+- **The rows of `configs/admitted_atc_prefixes_draft.csv`**, which have never been signed off.
+- **The electrical layer.** `VM_c` carries none of the 138 descriptor columns and its 405 incoming messages are
+  divided by 405, so no training pair reaches the relation. Either it is fixed, by computing the potential from the
+  ion pools, or the registration discloses that the layer is present in the graph and carries no fitted behaviour
+  (docs/label_source_review.md 22 and 23). Not settled.
+- **The held-out set itself**, which is drawn only on the user's go-ahead ("Don't finalize the lockbox until I've
+  given the go ahead").
+
+
 To fill in: Phase 1 counts per symptom and grade (docs/phase1_counts.md); final symptom set after
 go/no-go; B5 language model and prompt; power statement for the
 GWAS enrichment test; the open questions 8 to 10 of design section 11 (frequency as weight or target;
