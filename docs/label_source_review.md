@@ -2408,6 +2408,98 @@ the relation is gone, the featureless hub stops mattering because its state is c
 electrical layer earns its place in the confirmatory graph instead of needing a disclosure that it carries no fitted
 behaviour.
 
+## 24. Equations that would give real concentrations (12 October, 17:45)
+
+The owner: "What about other equations that can used, especially to get at the actual ion concentrations?"
+
+23.2 got round the units problem by linearising. This is the other way: give the nodes real units. Four families do
+it for the ions and two more for metabolites generally, and they differ in what they demand rather than in how
+correct they are.
+
+### 24.1 For the ions
+
+**Nernst, inverted, gives a ratio and only for an ion at equilibrium.** Take the resting potential as known and
+assume an ion is at equilibrium, and the Nernst equation returns that ion's concentration *ratio* across the
+membrane. It is the standard treatment of chloride, which sits near equilibrium at rest in many neurons. It gives no
+absolute concentration and it is false for sodium and potassium by construction, since those are the ions the pump
+holds away from equilibrium. Useful as one closing equation in a larger system, not on its own.
+
+**The pump-leak steady state is the equation family that actually yields absolute concentrations.** The classical
+Tosteson and Hodgkin treatment closes a small algebraic system: zero net flux for each ion at steady state, leak
+influx balanced against the sodium-potassium pump at its 3:2 stoichiometry; electroneutrality inside the cell;
+osmotic balance across the membrane; and conservation of the impermeant intracellular anion. The unknowns are the
+intracellular sodium, potassium and chloride concentrations, the membrane potential and the cell volume, and they
+come out together. It needs per-ion leak permeabilities, the pump rate, the impermeant anion's amount and charge,
+and the extracellular concentrations.
+
+The graph already has the mechanism this rests on: the sodium-potassium pump is a Human-GEM reaction and the leak
+channels are among the 57 Reactome and curated channel reactions of 23.4. What is missing is quantitative, the
+permeabilities and the pump rate, not structural.
+
+**The GHK current equation plus conservation gives concentrations that move.** The flux form, with the ion current a
+function of the potential and the two concentrations, together with the rate of change of an intracellular
+concentration as that current divided by charge and volume, is a closed dynamical system when paired with the voltage
+equation of 23.2. This is what a perturbation would need if the point is for ion concentrations to *change* rather
+than sit at a resting value. It needs everything the pump-leak model needs plus the cell volume and membrane area.
+
+**Conductance-based gating (Hodgkin and Huxley) adds voltage-dependent channels** and is the only family that
+produces excitability. 23.3 already rules that out: a fixed-point model represents the subthreshold steady state, so
+gating variables would be solved at their steady-state values and the dynamics discarded, which makes this family
+more machinery than the claim can use.
+
+### 24.2 For metabolites in general, which is the bigger prize and the bigger job
+
+**Measured concentrations.** Human-GEM carries a cross-reference per metabolite, and the coverage is the first thing
+to know:
+
+| cross-reference | metabolites carrying it, of 8,374 |
+| --- | --- |
+| PubChem | 5,622 (67 percent) |
+| ChEBI | 5,015 (60 percent) |
+| KEGG | 4,191 (50 percent) |
+| **HMDB** | **4,130 (49 percent)** |
+
+HMDB publishes normal concentration ranges per biofluid with literature references, so the HMDB identifier is the
+bridge from this graph to measured values. Two limits: the identifier coverage is an upper bound, since many HMDB
+entries carry no quantified concentration, and HMDB's own site serves no robots file to an automated reader, which
+this project's reader takes as a refusal (`hmdb.ca`, 12 October 2026). Retrieving it is the owner's to do, and the
+licence has to be verified before anything is redistributed.
+
+**Thermodynamic feasibility, which gives ranges rather than values and may be the better fit.** Given a standard
+transformed Gibbs energy per reaction and the stoichiometry, the directions the network has to run constrain the
+concentrations that are possible: thermodynamics-based flux analysis and the max-min driving force method return a
+feasible concentration *range* per metabolite instead of a point value. eQuilibrator supplies the energies by
+component contribution and maps through KEGG and ChEBI, which this graph carries for 50 and 60 percent of its
+metabolites. Human-GEM itself holds no thermodynamic column: `reactions.tsv` carries identifiers and a `spontaneous`
+flag and nothing energetic.
+
+Ranges suit this study better than point values would, because the model is a constrained one and a bound is a
+constraint. The licence is unverified: PyPI records none for `equilibrator-api` 0.8.1 and the project's source is on
+GitLab rather than GitHub, so it was not read from here.
+
+**Kinetic constants** (Michaelis constants and turnover numbers from the enzyme databases) give concentrations only
+inside a full kinetic simulation, which is a different study.
+
+### 24.3 The choice is architectural, and units are worth most where a law needs them
+
+Putting units into one layer creates an interface with the abstract rest of the model, so there are three coherent
+designs and the middle one is the only new thing worth building.
+
+| design | what carries units | what it needs | what it buys |
+| --- | --- | --- | --- |
+| A, as proposed in 23 | nothing; the voltage equation is linearised at rest | the resting constants only | the 405-way mean replaced by physiological weights, no free parameters |
+| **B** | the five ion nodes and `VM_c` | per-ion permeabilities, the pump rate, the impermeant anion, cell volume; and a stated interface, the reaction nodes' abstract states read as fractional changes in conductance | a real potential and real ion concentrations, and the pump-leak and GHK equations usable as written |
+| C | every metabolite | measured concentrations or thermodynamic ranges for 8,374 metabolites | interpretability everywhere, at the cost of redrawing the registered graph, counts and splits |
+
+**A caution that cuts against all of this.** The readout is a noisy-OR over pathway modules reading how far nodes have
+moved from rest. What predicts a symptom in that model is *that* a pathway moved, not the molarity it moved to, so
+absolute concentrations buy physiological interpretability and the ability to apply a law as written, and they do not
+obviously buy accuracy. That is why B is the one worth considering: the electrical layer is the one place where a law
+the study wants to state cannot be written without units. Everywhere else the units would be decoration bought at the
+price of the registration.
+
+Nothing here is built, and C in particular is a different study rather than an amendment.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
