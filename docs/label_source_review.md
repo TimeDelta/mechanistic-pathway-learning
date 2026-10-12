@@ -2593,6 +2593,73 @@ The three target-limit, occupancy and off-target questions still need the owner'
 written, and those are decisions rather than designs: 19.1's point stands that neither the head nor the stopping rule
 is reopened by any of this.
 
+## 26. Two settled items (12 October, 18:33)
+
+### 26.1 No target limit, with orphenadrine set aside: viable, and better on every number
+
+The owner: "I meant drop orphenadrine and the target limit. Is that viable?"
+
+Yes. Measured on the approved-changes table with and without the limit, grouping by the registered chained rule:
+
+| scheme | drugs | kept positive pairs | drug-holding groups | two largest blocks, by drugs | largest block's share of drugs / of kept positive pairs |
+| --- | --- | --- | --- | --- | --- |
+| three targets (the current rule) | 222 | 5,732 | 17 | 114, 71 | 51 percent / 27 percent |
+| no limit, every drug | 230 | 5,805 | 15 | **194**, 6 | **84 percent / 50 percent** |
+| **no limit, orphenadrine set aside** | **229** | **5,799** | **16** | **116, 77** | **51 percent / 27 percent** |
+
+The split is not degraded at all. The largest block holds 51 percent of the drugs and 27 percent of the kept positive
+pairs under both the three-target rule and the no-limit rule with orphenadrine out — the same to two figures — and the
+two-block structure survives at 116 and 77 against 114 and 71. What the change buys is 7 more drugs and 67 more kept
+positive pairs. Setting aside dextromethorphan as well changes nothing on this table; it was the bridge on the
+variant with the admitted-groups list, not on this one.
+
+Two conditions on it.
+
+**The exclusion has to be a rule, not an exception.** Written before any run: *a drug whose target set joins two
+otherwise separate leakage blocks is set aside, found by removing each drug in turn and measuring the largest block.*
+Applied to this table that procedure names orphenadrine and nothing else, and the registration should say so with the
+measurement, so that the drug is excluded by a stated criterion rather than by name.
+
+**The numbers will move slightly on the final table.** These are measured on
+`data/processed/label_review/evidence_approved_no_cap`, the approved changes without a limit. The v4 build has to be
+rebuilt with the limit lifted and the exclusion applied, and the held-out set redrawn from its leakage groups, before
+the counts are final.
+
+### 26.2 The rank rule, decided: count the examples, not the flow
+
+The owner, on the rank per relation: "just do what you think makes sense instead."
+
+**Size the rank by the number of training examples that reach a relation, not by the flow magnitude.** 21.1 measured
+both and the flow magnitude is distorted: `encodes` tops it at 33.7 percent partly because a protein has exactly one
+gene, so its in-degree divisor is 1 and nothing is averaged away. That is an artefact of the aggregation, not a sign
+that the relation is better identified. The example count carries no such artefact, and it is also what the owner
+asked for in the first place.
+
+The example counts have a natural break in them, which makes the rule simple:
+
+| group | relations | training pairs reaching each |
+| --- | --- | --- |
+| above the break | 9: `encodes`, `catalyzed_by`, `substrate_of`, `activates`, `product_of`, `binds`, `regulates_transcription_of`, `inhibits`, `member_of` | 2,100 to 2,468 |
+| below it | 11 | 451 down to 0 |
+
+The nine are within 15 percent of one another, so there is nothing in the evidence to rank them against each other,
+and the eleven fall off a cliff. So one threshold, not a proportional split:
+
+- **every relation gets a diagonal gain**, 32 parameters, which is the least that lets it scale and sign its
+  messages;
+- **the nine above the break additionally get a rank-2 correction**, 2 x 32 x 2 = 128 parameters each.
+
+That is 640 + 1,152 = **1,792 parameters** for the relation transforms, 0.60 per kept pair, against the registered
+61,440 and 20.65.
+
+Rank 2 rather than 4 because 2,468 pairs also have to pay for the heads and the feature projection. **The fallback is
+stated now so it cannot be chosen later**: if the development runs show the nine underfitting, rank 4 is the one
+step up that may be taken, and no other. Both numbers belong in the registration before any run.
+
+Two things carry over from 19.2 and 21: the factors need an explicit norm bound, because a weight-tied iteration
+converges only if the update is a contraction; and the ranks are measured on development perturbations only, since
+measuring them on the held-out side would leak.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
