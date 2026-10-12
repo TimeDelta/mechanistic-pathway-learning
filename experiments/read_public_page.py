@@ -42,6 +42,8 @@ CHALLENGE_STATUS_CODES = frozenset({401, 403, 407, 429, 503})
 CHALLENGE_MARKERS = (
     "verify you are a human", "verify you are human", "are you a robot", "captcha", "altcha-widget", "cf-chl",
     "challenge-platform", "enable javascript and cookies to continue", "unusual traffic", "access denied",
+    # proof-of-work gates that answer with status 200 (a research pass of 11 October 2026 found two saved as pages)
+    "anubis", "making sure you're not a bot", "making sure you&#39;re not a bot", "checking your browser", "checking if the site connection is secure", "proof-of-work", "proof of work",
 )
 DEFAULT_OUTPUT_DIRECTORY = Path("data/raw/public_pages")
 

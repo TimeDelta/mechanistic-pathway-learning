@@ -56,6 +56,9 @@ def test_a_web_page_served_in_place_of_the_robots_file_is_not_a_robots_file():
 def test_a_human_check_is_recognised_and_an_ordinary_page_is_not():
     assert read_public_page.looks_like_challenge(403, "Forbidden")
     assert read_public_page.looks_like_challenge(200, "<html><body>To continue, we need to verify you are a human.</body></html>")
+    # a proof-of-work gate answers with status 200 and a short page of its own
+    assert read_public_page.looks_like_challenge(200, "<html><head><title>Making sure you're not a bot!</title></head><body><script src='/.within.website/x/cmd/anubis/static/js/main.mjs'></script></body></html>")
+    assert read_public_page.looks_like_challenge(200, "<html><body>Checking your browser before accessing the site.</body></html>")
     long_article_that_mentions_a_captcha = "<html><body>" + "A study of captcha design. " * 2000 + "</body></html>"
     assert not read_public_page.looks_like_challenge(200, long_article_that_mentions_a_captcha)
     assert not read_public_page.looks_like_challenge(200, "<html><body>Release 24.0, 16 March 2026.</body></html>")

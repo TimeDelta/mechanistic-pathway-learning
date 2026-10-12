@@ -27,6 +27,12 @@ through PubMed and each article is given with its DOI.
 - **Two corrections to labels already in use cost nothing.** 17 genes whose only causal association is a gain of
   function are seeded as a loss of function, and 40 kept drug pairs are never more frequent on the drug than on
   placebo in any label that reports both arms.
+- **Built on the user's decisions of 11 October (section 13):** the evidence table v4 with the three label changes; the
+  carrier, displacement, enzyme and two-drug statements as 214 checks that train nothing; a clearance edge from an
+  enzyme to its drug; a table per drug of clearance, extraction and unbound concentration in plasma and brain; and
+  CTD's terms beside the data derived from it. Section 13 also records three findings that differ from what was
+  expected: the labels do not reward a drug for having many targets, so that confound is small; displacement is not
+  shown to raise unbound concentrations; and no source supports competitive against non-competitive binding as a label.
 
 ## 1. What the dataset uses now
 
@@ -660,6 +666,205 @@ Three readings.
 otherwise. The choice is now between three options, and none of them is registered: keep three; lift the limit and
 set aside, by a written rule, a drug whose targets lie in both blocks; or lift it and accept one group.
 
+## 13. Decisions of 11 October, 20:00, and what was built on them
+
+The user's message of 11 October, 20:00, in the order of its lines, with what each led to. Nothing here draws or
+registers a held-out set and nothing was trained.
+
+| the user | what was done | where |
+| --- | --- | --- |
+| "'large input, many symptoms' from target count alone is counterable … What options did you come up with?" | the options and a measurement of the confound | 13.1 |
+| "Sounds like phenytoin and valproate can be added for the carrier variance labels but not much else?" | confirmed: five statements over the two drugs, albumin only | 13.3 |
+| "Add the valproate, etc displacements as checks then since those are important and survived" | five displacement statements, as checks | 13.3 |
+| "Add the enzyme labels as the carrier twin instead then" | a clearance edge from an enzyme to its drug, and 23 statements as checks; read as a check, as row 4 of section 8 recommends, with training use left to the user | 13.3 |
+| "Sounds like one of the label options you found can be used for competitive vs non competitive? That would be huge!" | no source supports it as a label; what exists is counted | 13.4 |
+| "I accept all the suggestions under section 8 of the label review." "Please do the recommended label fixes" | the evidence table `evidence_full_v4` and its selection | 13.2 |
+| "I accept put the three mechanism target pairs being mostly in the held out set" | the placement of 9.2, option a, as a draft table | 13.2 |
+| "Why would working no better than the placebo not be counted as evidence against a label?" | an option that counts those pairs as negatives; the mask stays the default until the user chooses | 13.2 |
+| "Has selectivity been modeled (different binding affinities for receptor subtypes, etc)?" | it has not; a first measurement of occupancy per target | 13.5 |
+| "Can you please add the CTD reference to be compliant?" | citation, terms and links beside the derived table; a draft of the notice only the user can send | 13.6 |
+| "Peak tissue unbound concentration can be relegated to confirmation only" | recorded; nothing built | section 10 |
+| "Were you able to find clearance per drug?" "Seems worth adding data on a drug's concentration at its site of action." | a table per drug of clearance, extraction ratio and unbound concentration in plasma and brain | 13.5 |
+
+### 13.1 The input of a multi-target drug
+
+The question is number 6 of section 8 of `docs/confirmatory_architecture_review.md`; this review only pointed to it.
+
+| option | what it does | cost |
+| --- | --- | --- |
+| 1 per target (as built) | a drug with three targets carries a total input of 3 | the size of the input follows the number of targets curated for the drug |
+| a total of 1 (`--normalise-drug-input`) | each of k targets gets 1/k | says that a drug engages a target less because it has others, which pharmacology does not support |
+| occupancy per target | the input at a target is C / (C + K) at the therapeutic unbound concentration | both numbers exist for 115 of the 222 drugs in plasma and 66 in brain (13.5), so the other drugs would sit on another scale |
+| 1 per target, countered in the evaluation | a baseline that sees the number of targets and the total input only; results by number of targets; a permutation that exchanges target sets among drugs with the same number | adds no model; it shows the size of the confound and does not remove it |
+| equal loss share per drug (`--equal-drug-shares`) | acts on the loss | does not change the input |
+
+Measured on `evidence_full_v4` and the confirmatory graph: 155 drugs carry a total input of 1 (one of them 1.3), 45
+carry 2 and 22 carry 3. Their kept positive pairs average 4.7, 5.1 and 5.6, and the rank correlation between a drug's
+total input and its number of kept positive pairs is 0.06 (p = 0.41). Without a limit the eight further drugs carry 4,
+6 or 7 and the correlation is 0.05. So the labels do not reward "large input, many symptoms": a model that read the
+size of the input alone would gain almost nothing on them. The user's reading holds, and on stronger grounds than
+the argument of section 12 gave. Occupancy does not remove the count either: the summed occupancy of a drug's
+mechanism genes correlates 0.84 with their number.
+
+Recommended, for the user: 1 per target with the three evaluation controls, and occupancy reported as a sensitivity
+analysis on the drugs that have it.
+
+### 13.2 The evidence table v4
+
+`scripts/rebuild_data_layer.sh` builds it with the study's builders: `--max-drug-targets 3` and
+`--seed-gain-of-function-genes-positive` for `data/processed/evidence_full_v4`, and `--mask-grades C
+--mask-never-above-placebo` for `data/processed/label_selection/better_v2_full_v4.parquet`. The records, the reports and
+the selection equal the counting build of 9.1 byte for byte (SHA-256, first 16: records `e0206dbe181747e8`, reports
+`50d847913fa8ef9f`, selection `1d0cde3b1292217c`): 1,636 perturbations, 222 drugs, 2,975 kept pairs, 1,076 of them
+drug pairs.
+
+**Still open on this table**, each for the user: the limit on a drug's targets (section 12; three stays until the user
+decides), the rows of the draft list of admitted drug groups (9.4; not in v4), and the placebo pairs below.
+
+**Placebo pairs as negatives.** The objection is sound. An unlabelled pair is a weak negative in training and a
+negative in scoring, on no evidence at all; a pair set aside is neither. So the 61 pairs for which a label shows no
+excess over placebo count for less than pairs that no source mentions. `build_label_selection.py
+--never-above-placebo-as-negative` writes the same 61 rows with `counts_as_negative`, and the loader turns each into a
+labelled negative with the weight of any other negative (`better_v2_full_v4_placebo_negative.parquet`; drug negatives
+go from 3,066 to 3,127 and nothing else changes). Two limits on reading them as evidence of absence: 48 of the 61
+rest on one label entry with both arms, and SIDER gives percentages without the sizes of the arms; 7 of the 61 are
+the drug's own recorded indication (fluoxetine, bupropion and buspirone with depressed mood, cabergoline and tolcapone
+with parkinsonism, risperidone with irritability, hydroxybutyrate with somnolence). Recommended: count them as ordinary
+negatives. The mask stays the default until the user says so.
+
+**Held-out placement.** `held_out_overlap.py` on v4 gives the counts of 9.2: 29 of the 68 added drugs act on a held-out
+node and are held out (160 of their 352 kept pairs), 39 train (192). Under the rule 349 of 1,636 perturbations are held
+out, 60 of 222 drugs and 307 of 1,076 kept drug pairs. `configs/held_out_additions_v4_draft.csv` lists the 68 with the
+nodes that place each one. It is a draft: no held-out set is drawn or registered on v4. The user's wording was
+"mostly in the held out set"; by kept pairs it is 45 percent, the antipsychotics among them.
+
+**Drug nodes.** `configs/drug_plasma_carriers_v4.csv` names a carrier for 62 of the 222 drugs (13 more than before:
+five by the database alone, eight with a sentence of their label), and `graph_full_neuronal_split_binders_drugs_v4` holds 222 drug nodes
+and 101 sequestration edges. Reading the labels of the added drugs showed two kinds of sentence the carrier reading
+took wrongly, both now refused with a test: another ingredient's binding in a combination label (naloxone under
+buprenorphine) and a sentence that names albumin without a word for binding (a dose rule of a radioligand). The table
+of the earlier 154 drugs is reproduced unchanged.
+
+### 13.3 Carrier, displacement, enzyme and two-drug statements, as checks
+
+`configs/comparative_checks.csv` (214 rows; `experiments/build_comparative_checks.py`) holds every statement with its
+quotation and where it was read. `mechanistic_pathway_learning/evaluation/comparative_checks.py` defines what each kind
+compares, and `experiments/run_comparative_checks.py` puts them to a graph or to a finished run. Nothing is trained on
+a check, and a check is reported apart from every score.
+
+| kind | statements | source | what is compared | development, held out |
+| --- | --- | --- | --- | --- |
+| carrier level | 5 (valproate 3, phenytoin 2; albumin) | two drug labels and two hospital cohorts (`configs/carrier_and_displacement_statements.csv`) | the drug with its carrier lowered, against the drug | 5, 0 |
+| displacement | 5 (valproate on phenytoin, diazepam and carbamazepine; aspirin on valproate and phenytoin) | the valproate label and the epilepsy guideline of Patsalos et al. 2008 | the two drugs with the carrier lowered, against the two drugs | 5, 0 |
+| enzyme activity | 23 over 22 drugs (CYP2D6 16, CYP2C19 4, CYP2C9 2, NAT2 1) | FDA Table of Pharmacogenetic Associations (`configs/drug_clearing_enzymes.csv`) | the drug with the enzyme lowered, against the drug | 12, 11 |
+| second drug | 80 positive triples, each asked with either drug as the reference, and 21 negative controls | CRESCENDDI | the two drugs, against one of them | 22 of 160 rows, 138; negative controls 15, 6 |
+
+All 214 can be expressed on the graph with drug nodes and clearance edges (`docs/comparative_checks.md`). A finished
+run is asked the development checks only, because its data have the lockbox removed.
+
+**What these statements can and cannot carry.**
+
+- **The carrier and displacement statements show a higher unbound fraction, and the sources say that the unbound
+  concentration need not follow.** The guideline of the International League Against Epilepsy: "Although unbound drug
+  concentrations will not be affected by changes in serum proteins, changes in protein binding need to be taken into
+  account when interpreting total serum drug concentrations", and of displacement, "the unbound concentration remains
+  unchanged or may even increase when the displacing drug also inhibits phenytoin metabolism" (Patsalos et al. 2008,
+  [doi:10.1111/j.1528-1167.2008.01561.x](https://doi.org/10.1111/j.1528-1167.2008.01561.x)). Every displacement
+  statement names inhibition of metabolism in the same sentence, and for valproate with phenytoin the rise in unbound
+  drug is attributed to it (Lai and Huang 1993, [doi:10.1002/bdd.2510140409](https://doi.org/10.1002/bdd.2510140409)).
+  So "survived" means that displacement is documented for these pairs. It does not mean that displacement is what
+  raises the effect. Valproate is the exception with support of its own: its binding and metabolism are saturable,
+  and in 41 patients "high unbound VPA concentrations are associated with clinically significant neurologic adverse
+  symptoms" (Doré et al. 2017, [doi:10.1002/phar.1965](https://doi.org/10.1002/phar.1965)).
+- **Displacement is written as a lowered carrier.** The graph has no edge from a drug to the carrier it occupies. Such
+  an edge would make every drug with a known carrier move the carrier when taken alone, which is the extra input the
+  change-carrying edges were built to avoid. A displacement check therefore tests the same edge as a carrier check,
+  with two drugs present.
+- **The enzyme rows are the better twin.** 23 of the 44 rows that name a study drug give an edge. Left out: 12 that
+  state no direction ("May alter systemic concentrations."), 6 on an immune gene, 2 in which the enzyme forms the
+  active compound (tramadol, where a clearance edge would have the wrong sign) and 1 about another ingredient. A row
+  names concentrations or adverse reactions as a whole and no symptom, so a check reads the drug's own kept positive
+  symptoms.
+- **In the linear-response encoder a carrier or an enzyme reaches its drug through one signed edge with one gain per
+  relation.** The comparison then holds or fails for every drug at once. There the checks test one learned sign per
+  relation and not each statement.
+- **The two-drug statements are mostly weak.** 74 of the 80 positive triples carry the evidence level "Theoretical"
+  in the reference set (5 "Probable", 1 "Established"). In 31 the two drugs share a target with the same sign, which
+  any encoder that is monotone in its input passes; the 47 that share no target are the informative ones, and most
+  of them include a held-out drug.
+
+**The clearance edge.** Relation `clears`, sign -1, from the enzyme's protein node to the drug's node
+(`graph/drug_entry_nodes.py`; `experiments/build_drug_entry_node_variant.py --clearing-enzymes`). In the
+message-passing encoder it carries the enzyme's change from its unperturbed state, as the carrier's edge does, each
+relation through its own weights; a drug taken alone hears neither. The variant
+`graph_full_neuronal_split_binders_drugs_v4_enzymes` is the v4 drug graph with 23 edge rows and one relation
+appended; its node table is the same. No registered configuration reads it.
+
+### 13.4 Competitive against non-competitive binding
+
+No source found supports this as a label. What was counted:
+
+- Guide to PHARMACOLOGY, release 2026.3 (24,934 interaction rows), marks 98 rows "Competitive" and 4
+  "Non-competitive". None of the 647 human rows of the study's drugs carries either. What those rows do hold is the
+  action (antagonist 226, inhibition 99, full agonist 92, partial agonist 60, agonist 56, positive 28, inverse agonist
+  24 and others) and, for 40 rows over 19 drugs, a mode of binding (allosteric modulator 31, pore blocker 7,
+  irreversible inhibition 3).
+- Of the 80 positive two-drug triples, 2 have opposing actions at one target (aripiprazole with loxapine at the D2
+  receptor, a partial agonist with an antagonist).
+- The displacement pairs are competition at a carrier, not at a target, and 13.3 says what they can carry.
+
+Competition at a target depends on the two concentrations and affinities, θ_A = (A/K_A) / (1 + A/K_A + B/K_B). The
+table of 13.5 holds those numbers for about half the drugs, so the quantity could be computed for a pair of drugs
+at one target. That would be a model input built from pharmacology, not a label, and no outcome data exist to test
+it on beyond the two triples.
+
+### 13.5 Clearance, concentration at the site of action and occupancy
+
+`docs/drug_exposure_table.md` (`experiments/build_drug_exposure_table.py`), for the 222 drugs of v4:
+
+| quantity | drugs |
+| --- | --- |
+| intravenous plasma clearance (Lombardo et al. 2018) | 137 |
+| hepatic extraction ratio, computed | 101 (low 45, intermediate 29, high 27; above 1 for 15, where an assumption fails) |
+| fraction unbound in plasma | 163 (125 from Lombardo et al.; 38 from the drug's FDA label, read by hand and checked against the cached sentence) |
+| therapeutic total plasma concentration (Schulz et al. 2020) | 161 |
+| unbound plasma concentration at therapeutic levels | 128 |
+| unbound brain concentration (× Kp,uu,brain) | 69; the ratio is from humans for 12, from a non-human primate for 1, from other animals for 53 and of unstated species for 3 |
+
+Two results.
+
+- **The carrier edge's direction holds on pharmacokinetic grounds for few drugs.** More carrier lowers unbound
+  exposure for a drug of high hepatic extraction given past the first pass (`docs/drug_entry_nodes.md`). Of the 62
+  drugs with a sequestration edge, 45 have an extraction ratio, and 6 of those are of that kind (chlorpromazine,
+  cocaine, diphenhydramine, lidocaine, morphine, sufentanil).
+- **Occupancy** (`docs/target_occupancy_measured.md`). At the upper end of the therapeutic range the best-bound
+  mechanism gene of a drug has a median occupancy of 0.92 in plasma (115 drugs; below 0.5 for 19) and 0.85 in brain
+  (66 drugs; below 0.5 for 11). The placeholder of `docs/off_target_scoping.md`, 0.9 for every drug, is close to the
+  median; in plasma 63 of the 115 drugs are at or above it and 19 are below 0.5. Within a drug the occupancies of its mechanism genes differ by a median
+  of 0.17 in plasma and 0.33 in brain. Selectivity among a drug's targets is therefore measurable for about half the
+  drugs and is not in the model: every mechanism target enters at 1.
+
+Limits: active metabolites are not added to the parent's concentration; an EC50 or IC50 is pooled with Ki and Kd;
+the concentrations are at steady state, not at a peak; local anaesthetics act at the site of injection, so their
+plasma occupancy says little. The joined table stays out of git because the tables of Lombardo et al. and Benet et
+al. are not licensed for redistribution; the licence of the copy of Lombardo's table that was read (the US EPA's
+`httk` repository, MIT for the package) does not settle whether the table may be redistributed, which is the user's
+call. The consensus guideline of Hiemke et al. 2018 would be the better source of therapeutic ranges for
+psychotropic drugs and could not be read (`docs/exposure_sources/hiemke2018_agnp.md`).
+
+### 13.6 CTD
+
+- `data/releases/v0.4/literature/CTD_TERMS.md` quotes the four terms of the data file and the non-commercial term of
+  Davis et al. 2025, cites the paper and gives the form of the links to CTD's chemical and disease pages. The fetch
+  script writes the same file beside every table it derives, so a later release carries it
+  (`mechanistic_pathway_learning/evidence/ctd_terms.py`). The release manifest lists the file and its licence sentence
+  now names CTD; no table of the release changed and the release verifies.
+- `README.md` carries the citation and the terms in short. `docs/experiment_design.md` called CTD "public"; corrected.
+- `docs/ctd_notice_draft.md` is the notice for the user to send through CTD's contact form. It asks CTD whether a
+  derived table may be redistributed in a public repository, because CTD's legal notice, citation guidelines and
+  linking instructions decline automated readers and could not be read. The form of the links is the one the
+  Bioregistry records for CTD.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -681,6 +886,16 @@ Scripts, all under `experiments/label_review/`, none of which writes to a study 
 | `target_limit_comparison.py` | drugs, kept drug pairs, the group that holds the most drugs and each drug's total input, by variant (section 12) |
 | `bridging_drugs.py` | the added drugs whose targets lie in both large drug blocks, and the groups with those drugs left out (section 12) |
 
+Scripts of section 13, under `experiments/`:
+
+| script | what it does |
+| --- | --- |
+| `read_label_protein_binding.py` | the percentage bound to plasma proteins of 123 drugs, read by hand from the cached label sentences and checked against them (`configs/drug_label_protein_binding.csv`) |
+| `build_drug_exposure_table.py`, `measure_target_occupancy.py` | the exposure table and the occupancies of 13.5; the transcription scripts of the source tables are in `experiments/exposure_sources/` and the notes on each source in `docs/exposure_sources/` |
+| `build_drug_clearing_enzymes.py` | the rows of the FDA pharmacogenetic table that give a clearance edge (`configs/drug_clearing_enzymes.csv`) |
+| `build_comparative_checks.py`, `run_comparative_checks.py` | the table of checks and the report of what a graph can express (`docs/comparative_checks.md`) |
+| `scope_label_plasma_binder_coverage.py --evidence-dir`, `tabulate_drug_routes.py` | the carrier and route tables of the v4 drugs |
+
 Downloads, under `data/raw/label_review` (not in git):
 
 | file | source | SHA-256, first 16 |
@@ -697,6 +912,8 @@ Downloads, under `data/raw/label_review` (not in git):
 | `ich_m12/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf` | https://www.ema.europa.eu/en/documents/scientific-guideline/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf | `126762154af51347` |
 | `openfda_fields/druglabel.yaml` | https://open.fda.gov/fields/druglabel.yaml | `21a6aa9ae2a03a46` |
 | `smith_waters_2019/PMC7089466_efetch.xml` | NCBI E-utilities, `efetch.fcgi?db=pmc&id=7089466` | `2aee3c5b8a952a8c` |
+| `openfda_carrier_statements/{depakote,phenytoin,diazepam,carbamazepine}.json` | openFDA label queries of 11 October 2026 (the query is stored in each file); Depakote set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 2026-03-31; Phenytoin Sodium Injection set_id 035a8d4e-2063-4240-83cb-d7eebcabe301, effective 2024-04-09 | `ddddd55f984d389c` (Depakote), `71300476c1318504` (phenytoin) |
+| `../public_pages/9513d9ed909c7063.html` | https://www.fda.gov/about-fda/about-website/website-policies, content current as of 01/19/2024, read 11 October 2026: "Unless otherwise noted, the contents of the FDA website (www.fda.gov) — both text and graphics — are not copyrighted. They are in the public domain and may be republished, reprinted and otherwise used freely by anyone without the need to obtain permission from FDA." | `9513d9ed909c7063` |
 
 The outside sources were read by three research passes whose notes hold every quote with its source: the
 repository inventory (333 quotes checked against the files), the combined-perturbation sources and the

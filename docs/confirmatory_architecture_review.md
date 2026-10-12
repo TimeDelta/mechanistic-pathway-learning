@@ -297,6 +297,10 @@ Each question has the option I would take and why. None is acted on until you an
    at 1? Pharmacology favours 1 per target: occupancy at one target does not fall because the drug has others. The
    cost is that the size of the field then tracks the number of targets. I would keep 1 per target and report
    results by number of targets.
+   Measured on 11 October 2026 after the user asked for the options ("'large input, many symptoms' from target count
+   alone is counterable"): on the v4 table a drug's total input and its number of kept positive pairs have a rank
+   correlation of 0.06 (222 drugs, p = 0.41), so the labels do not reward a large input. The options, with occupancy
+   per target among them, and the three evaluation controls are in `docs/label_source_review.md`, section 13.1.
 7. **Per-node module gates.** Keep them, or build membership from node features so that it transfers to a node no
    training example reached? Your design sentence excludes per-node parameters. This is the largest change on the
    list and would need its own pilots.
