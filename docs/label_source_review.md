@@ -2500,6 +2500,99 @@ price of the registration.
 
 Nothing here is built, and C in particular is a different study rather than an amendment.
 
+## 25. What I would do (12 October, 18:12)
+
+The owner asked for a recommendation rather than another menu. Here it is, with the reasoning and the costs.
+
+### 25.1 The thing that worries me most is not any of the choices
+
+Twelve registered changes are open at once: the propagation window, the encoder's parameterisation, the edge signs,
+the per-relation rank, the electrical layer, the enzyme statements and the combined perturbation type, the occupancy
+input, the off-targets, the target limit, the placebo weights, the Open Targets grade, the lockbox. The amendment
+draft now carries fourteen items and seven things still missing. Every one of them is defensible and several are
+improvements. But "No new pilots yet" and "don't rerun the same pilots until we've completely nailed down the design
+options" mean none of them can be tested, and a design that keeps improving until the day it is run has spent the
+thing preregistration buys.
+
+So the recommendation is shaped by closing the design, not by optimising it. Three categories, and they should be
+treated differently:
+
+- **Defects.** Things that are simply wrong, where the fix is determined by physiology and not by any result. Fixing
+  these is not a researcher degree of freedom and should not wait.
+- **Choices.** Changes that improve the model in expectation but cannot be validated without development runs.
+- **Scope.** Additions that make the study bigger.
+
+### 25.2 Drop the message-passing encoder
+
+This is the single decision that closes the most. The owner raised it himself and I argued around it; on the
+evidence I should have agreed.
+
+1. **It barely propagates.** At its registered three layers it reaches a median of **0.9 percent** of the nodes a
+   gene knockout can reach and 35 percent of what a drug can, where the linear response at 8 steps reaches 96 and 98
+   percent (10 October). A mechanistic-pathway claim rests on reach.
+2. **It has a defect the other does not.** It discards the sign of every ordinary edge, so 7,087 transcriptional
+   repressions are modelled as activations (20.2).
+3. **It is the parameter problem.** 69,184 parameters, 23.3 per labelled pair, against the linear response's 4,816
+   and 1.6 (18).
+4. **The comparison it was in was never clean.** The decision log of 10 October says it plainly: "the two registered
+   encoders differ in reach, form and sign handling at once". A pair of models differing in three things does not
+   test nonlinearity, so dropping it does not cost a test the study was making.
+5. **The multiplicity is already handled** by the one-sided sequence of H1 then H2, so two models were never needed
+   for rigour.
+
+Dropping it closes items 2, 3, 4 and most of 6 of the twelve at once, because every one of those was a question about
+that encoder. The remaining changes land on the linear response, where they are cheap or already done: it converges
+by construction, it reads edge signs, and its relations cost 80 parameters in total.
+
+**If a nonlinear arm is still wanted**, the right one is not this encoder repaired. It is the linear-response
+propagation with a non-expansive activation in the update: same gains, same signs, same convergence, one thing
+different. That is a comparison that tests nonlinearity, which the current pair does not, and it costs no extra
+parameters.
+
+### 25.3 Fix the two defects, disclose the third
+
+- **Edge signs**: not applicable once message passing is dropped, since the linear response already reads them. If
+  the encoder is kept, this fix is mandatory and is one line.
+- **The propagation window**: take convergence. For the linear response it is a stopping rule, not an architecture,
+  and 8 steps is arbitrary where a tolerance is not. Register the tolerance at 1e-3, which costs 23 steps at the
+  contraction bound (17.2).
+- **The electrical layer: disclose it, do not fix it now.** It carries 0.5 percent of the flow and no training pair
+  reaches its main relation, so it changes nothing in this study's results. Computing `VM_c` from the ion pools (23)
+  is the right answer and it is a project: three new nodes, 57 reactions rewired, constants with citable sources, and
+  a statement about excitability. Doing it now would be a fifth structural change arriving after five days of
+  changes. The honest action today is one sentence in the registration saying the layer is present in the graph and
+  carries no fitted behaviour.
+
+### 25.4 Freeze, then run development
+
+With the above, the design is closed. Then, in order:
+
+1. Write the amendment from the decided items and apply it.
+2. **Run development on v4.** This is the step everything else is waiting on, and it is currently blocked by the
+   owner's own instruction. Nothing else can be decided until the frozen design has been through development runs:
+   not the rank, not the nonlinearity, not the weights.
+3. Draw and finalise the lockbox.
+4. Run the confirmation.
+
+### 25.5 Everything else is version 2, and should be written down as such
+
+Not abandoned, deferred, and listed so the deferral is a decision rather than a drift: the enzyme statements and the
+combined perturbation type; the CPIC clearance table; off-targets in the input; the occupancy input and the measured
+concentration; the tissue share for the target's site; per-pair placebo weights; a computed membrane potential;
+units for the metabolic layer. Each has a measurement in this document saying what it would cost, so version 2 starts
+from evidence rather than from scratch.
+
+### 25.6 What this costs, stated plainly
+
+The study becomes one encoder, one head, a converged propagation, the v4 table with the three accepted label changes,
+and a disclosed gap where the electrical layer is. It tests less than the version that has been discussed today. It
+is also a study that can actually be run, registered and defended, and the alternative on the current trajectory is
+not a better study but an unfinished one.
+
+The three target-limit, occupancy and off-target questions still need the owner's answers before the amendment can be
+written, and those are decisions rather than designs: 19.1's point stands that neither the head nor the stopping rule
+is reopened by any of this.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
