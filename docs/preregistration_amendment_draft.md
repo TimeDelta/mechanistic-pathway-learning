@@ -147,7 +147,14 @@ reads either is a separate decision.
   to keep the transition a contraction, since a raw sum would take the row sum to 405 and break the convergence item
   above); whether `VM_c` is given descriptor columns of its own; and, if neither is changed, a disclosure that the
   electrical layer is present in the registered graph and carries no fitted behaviour
-  (`docs/label_source_review.md` 22).
+  (`docs/label_source_review.md` 22). **One change would settle all three**: compute `VM_c` from the ion pools
+  through a linearised Goldman-Hodgkin-Katz voltage equation instead of learning it. The 405 direct edges and their
+  mean go, since 348 of those reactions already change an ion pool; `VM_c` takes eight edges with weights fixed by
+  the voltage equation and no free parameters; and the featureless hub stops mattering because its state is computed.
+  It needs three missing neuronal extracellular pools, the 57 Reactome potassium and sodium channels wired to the
+  pools, the constants recorded with a citable source, and one statement in the registration: all seven reactions
+  `VM_c` gates feed back into it, an excitable membrane is not contractive, so the claim is the subthreshold steady
+  state and not an action potential (23).
 
 ## 4. What is still missing before this can be applied
 

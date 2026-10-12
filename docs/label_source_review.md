@@ -2301,6 +2301,113 @@ Three things are now tangled together and they should be decided apart.
 None of this is a parameter-count question, and none of it is fixed by a rank. A relation whose messages are divided
 by 405 into a featureless node will not be identified at rank 8 any more than at rank 1.
 
+## 23. Computing the membrane potential instead of learning it (12 October, 17:37)
+
+The owner: "Why not just change the VM_c to e.g. the Nernst equation".
+
+It is the right move and the graph already holds what it needs. Three things have to be settled for it to work, and one
+of them limits what the model can then claim.
+
+### 23.1 The graph has the ions, and the causal chain is already there
+
+The five ion nodes of the electrical layer are exactly the ions a voltage equation takes:
+
+| node | ion | compartment |
+| --- | --- | --- |
+| `NEURON_MAM02519c` | Na+ | cytosol |
+| `NEURON_MAM02200c` | K+ | cytosol |
+| `NEURON_MAM02200e` | K+ | extracellular |
+| `NEURON_MAM01442c` | Cl- | cytosol |
+| `NEURON_MAM01413c` | Ca2+ | cytosol |
+
+Potassium already has both sides as neuronal-pool nodes. The other three have extracellular nodes in the graph under
+their base metabolite (Na+ in 8 compartments, Cl- in 6, Ca2+ in 8, each including `e`), as general rather than
+neuronal-pool nodes, so the pairs a voltage equation needs exist or can be made by adding the three missing neuronal
+pools.
+
+And the causal chain is already built. Of the 405 reactions with a `changes_membrane_potential` edge, **348 also have
+a `changes_ion_pool` edge**: the same transport reaction tells `VM_c` directly and changes the ion pool. Under a
+computed potential the direct edge is redundant, because the reaction moves the ion and the ions set the potential.
+That deletes 405 edges and the 405-way mean of 22.3 with them.
+
+The other 8 reactions that change an ion pool and not the potential are chloride co-transporters and neurotransmitter
+symporters, which carry no net charge, so their having no voltage edge is correct and is a small check that the
+existing wiring is sane.
+
+### 23.2 Nernst gives one ion, Goldman gives the potential, and the node states are not concentrations
+
+Two corrections to make the idea precise.
+
+**Nernst is the wrong member of the family.** The Nernst equation gives the equilibrium potential of a *single* ion,
+E = (RT/zF) ln([ion]outside / [ion]inside), which is a reversal potential and not a membrane potential. The membrane
+potential across several permeant ions is the Goldman-Hodgkin-Katz voltage equation, in which each ion enters
+weighted by its permeability. Calcium is a further exception: GHK in its usual form is derived for monovalent ions
+and calcium's contribution to the resting potential is small, so `NEURON_MAM01413c` should stay a signalling node and
+not enter the voltage equation, even though it enters the layer.
+
+**The harder obstacle is that the encoder's node state is not a concentration.** It is an abstract vector standing
+for a deviation from the unperturbed state, with no units, so there is nothing to put inside a logarithm. Applying
+GHK literally would need the ion nodes to carry a concentration, which no node in this graph does.
+
+The way through is to linearise, and it is exact to first order. V_m is a smooth function of the log concentrations,
+so near the resting state
+
+    change in V_m  =  sum over ions of  (dV_m / d ln[ion]) x (fractional change in that ion)
+
+and each coefficient `dV_m / d ln[ion]` is a **fixed number** computable from the resting concentrations and the
+permeabilities. Under GHK those coefficients come out as each ion's fractional share of the membrane's conductance,
+which is why potassium dominates at rest. So the proposal becomes: replace the 405 edges and their mean with eight
+edges, one per ion and side, carrying weights derived from the voltage equation. **It adds no free parameters**, it
+replaces a learned aggregation with a stated physical law, and it is the kind of constraint this study is built on.
+
+The constants it needs — resting intracellular and extracellular concentrations for Na+, K+ and Cl-, and their
+relative permeabilities — are textbook but are not in this repository and are not quoted here from memory. They have
+to be read from a citable source and recorded in `docs/data_sources.md` with the sentence they were read from, as
+every other constant in this project is.
+
+### 23.3 What it cannot do, and this is the part to decide knowingly
+
+The seven reactions `VM_c` gates all feed back into it: every one of the 7 `voltage_gates` targets is also a
+`changes_membrane_potential` source, so the layer is seven two-cycles through the potential. That is the physiology,
+and the signs are right — voltage-gated sodium entry gated at +1 feeding back positively is the upstroke of an action
+potential.
+
+Which is exactly what a steady-state model cannot have. An excitable membrane is not contractive; regenerative
+sodium current is textbook positive feedback and its fixed point is unstable by construction. The contraction bound
+of 17.2 and 19.2, which the convergence change depends on, would be suppressing real physiology here rather than
+only keeping the arithmetic bounded. Today the 405-way mean hides this by dividing the feedback into silence; a
+computed potential with honest weights would not.
+
+So the amendment has to say which claim is being made. **The defensible one is the subthreshold steady state**: the
+model represents where the membrane settles under a sustained perturbation, not an action potential, and the
+contraction bound is part of that statement rather than a numerical convenience. A model run to a fixed point cannot
+show excitability and should not be read as showing it.
+
+### 23.4 The loose end, which is a wiring gap and not a physics exception
+
+57 reactions move the potential without touching a tracked ion pool. They are not counter-examples: 52 are Reactome
+potassium channels ("Activation of voltage gated Potassium channels", "Activation of GIRK/Kir3 Channels", the TASK,
+TREK and THIK families), 4 are the curated sodium currents and 1 is magnesium transport. They move potassium and
+sodium; they are simply wired to the generic metabolites rather than to the `NEURON_` pools. Under a computed
+potential they would have to be connected to the pools, which is a change to the graph build and not to the model.
+
+### 23.5 What this would change, in order
+
+1. Add the three missing neuronal extracellular pools (Na+, Cl-, and Ca2+ if it is kept) so every ion in the voltage
+   equation has both sides.
+2. Wire the 57 potassium and sodium channel reactions to the neuronal pools.
+3. Delete the 405 `changes_membrane_potential` edges and give `VM_c` eight edges with weights from the linearised
+   voltage equation, fixed and not learned.
+4. Record the constants and their source.
+5. State in the amendment that `VM_c` is computed rather than fitted, and that the claim is the subthreshold steady
+   state.
+
+This is a change to the registered graph and to the encoder, so it is an amendment and nothing here is applied. It
+would, however, settle all three of the open decisions in 22.4 at once: the aggregation stops being a mean because
+the relation is gone, the featureless hub stops mattering because its state is computed rather than learned, and the
+electrical layer earns its place in the confirmatory graph instead of needing a disclosure that it carries no fitted
+behaviour.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
