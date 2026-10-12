@@ -21,10 +21,11 @@ import pandas as pd
 
 from mechanistic_pathway_learning.graph.drug_entry_nodes import (
     CARRIAGE_EVIDENCE_PREFIX,
+    CHANGE_CARRYING_RELATIONS,
+    CLEARANCE_EVIDENCE_PREFIX,
     DRUG_ENTRY_FILE,
     DRUG_MECHANISM_RELATION,
     ENTRY_NODE_TYPES,
-    SEQUESTERS_RELATION,
 )
 
 DRUG_ENTRY_MODES: tuple[str, ...] = ("targets", "nodes")
@@ -307,16 +308,18 @@ def drop_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: l
 
     Three kinds of row go: the entry nodes, every edge that touches one, and a drug's carriage edge that touches none,
     which exists for a drug that is itself a graph compound (its carrier sequesters the compound's own node). The last
-    is known by its evidence_source, so a sequestration edge another build gave the source graph would stay. The
-    builder appends rows and changes none (graph/drug_entry_nodes.py), so what is left is the source graph row for
-    row. The sequestration relation is taken off the relation list when no edge of it is left, because the builder put
-    it there; the mechanism relation stays, since the source graph already listed it."""
+    is known by its evidence_source, so a sequestration edge another build gave the source graph would stay. A clearing
+    enzyme's edge is treated as a carrier's is. The builder appends rows and changes none (graph/drug_entry_nodes.py),
+    so what is left is the source graph row for row. The sequestration and clearance relations are taken off the
+    relation list when no edge of them is left, because the builder put them there; the mechanism relation stays, since
+    the source graph already listed it."""
     is_entry_node = nodes.node_type.isin(ENTRY_NODE_TYPES)
     entry_node_ids = set(nodes.node_id[is_entry_node])
     kept_nodes = nodes[~is_entry_node].reset_index(drop=True)
-    is_drug_carriage = edges.evidence_source.astype(str).str.startswith(CARRIAGE_EVIDENCE_PREFIX) if "evidence_source" in edges.columns else False
+    # a carrier's or a clearing enzyme's edge to a drug that is a graph compound ends on the compound's own node
+    is_drug_carriage = edges.evidence_source.astype(str).str.startswith((CARRIAGE_EVIDENCE_PREFIX, CLEARANCE_EVIDENCE_PREFIX)) if "evidence_source" in edges.columns else False
     kept_edges = edges[~(edges.source_id.isin(entry_node_ids) | edges.target_id.isin(entry_node_ids) | is_drug_carriage)].reset_index(drop=True)
-    kept_relations = [relation for relation in relation_types if relation != SEQUESTERS_RELATION or bool((kept_edges.relation_type == relation).any())]
+    kept_relations = [relation for relation in relation_types if relation not in CHANGE_CARRYING_RELATIONS or bool((kept_edges.relation_type == relation).any())]
     return kept_nodes, kept_edges, kept_relations
 
 
@@ -333,7 +336,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     it zero weight and the metrics leave it out, so it is neither a positive nor a negative. Keeping outcome 1 means a
     code path that ignores the mask behaves as it did before the selection, never as if the pair were negative. A row
     with masks_a_negative True (build_label_selection.py --mask-grades) masks a pair that is not a positive (grade C
-    evidence only) in the same way.
+    evidence only) in the same way. A row with counts_as_negative True (build_label_selection.py
+    --never-above-placebo-as-negative) is the one case in which a selection changes an outcome: the pair's outcome becomes
+    0 and it stays labelled, so it trains and scores as any other negative.
 
     drug_entry matters only on a graph with drug entry nodes (graph/drug_entry_nodes.py; a drug_entry_nodes.parquet in
     the graph directory). "targets", the default, drops those nodes and seeds a drug on its targets, so the arrays are
@@ -420,8 +425,16 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         label_mask = np.ones_like(outcomes, dtype=bool)
         perturbation_row = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
         masks_a_negative = selection.masks_a_negative.astype(bool) if "masks_a_negative" in selection.columns else pd.Series(False, index=selection.index)
-        set_aside = selection[~selection.keep.astype(bool) & ~masks_a_negative]
-        masked, not_positive, masked_negatives = 0, 0, 0
+        counts_as_negative = selection.counts_as_negative.fillna(False).astype(bool) if "counts_as_negative" in selection.columns else pd.Series(False, index=selection.index)
+        set_aside = selection[~selection.keep.astype(bool) & ~masks_a_negative & ~counts_as_negative]
+        masked, not_positive, masked_negatives, relabelled_as_negative = 0, 0, 0, 0
+        for row in selection[counts_as_negative].itertuples(index=False):  # a positive the selection relabels: it becomes a labelled negative
+            position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
+            if position is None or column is None or outcomes[position, column] == 0:
+                not_positive += 1
+                continue
+            outcomes[position, column], weights[position, column], frequencies[position, column] = 0.0, 0.0, np.nan
+            relabelled_as_negative += 1
         for row in set_aside.itertuples(index=False):
             position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
             if position is None or column is None or outcomes[position, column] == 0:
@@ -434,6 +447,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             if position is not None and column is not None and outcomes[position, column] == 0:
                 label_mask[position, column] = False
                 masked_negatives += 1
+        positive_pairs_before_relabelling = int(outcomes.sum()) + relabelled_as_negative
         selection = selection[~masks_a_negative]
         selected_pairs = set(zip(selection.perturbation_id, selection.symptom))
         positive_rows, positive_columns = np.nonzero(outcomes)
@@ -441,11 +455,13 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         if without_a_row:  # kept, as before, but the selection did not judge them
             warnings.warn(f"{without_a_row} positive pairs have no row in {label_selection} and are kept unjudged")
         label_selection_summary = {"path": str(label_selection), "sha256": hashlib.sha256(Path(label_selection).read_bytes()).hexdigest(),
-                                   "positive_pairs": int(outcomes.sum()), "masked_pairs": masked,
+                                   "positive_pairs": positive_pairs_before_relabelling, "masked_pairs": masked,
                                    "selection_rows_not_matching_a_positive": not_positive, "kept_positive_pairs": int((outcomes * label_mask).sum()),
                                    "positive_pairs_without_a_selection_row": int(without_a_row)}
         if masks_a_negative.any():
             label_selection_summary["masked_negative_pairs"] = masked_negatives
+        if counts_as_negative.any():
+            label_selection_summary["positive_pairs_relabelled_as_negatives"] = relabelled_as_negative
     edge_weight, entry_node_mask = None, None
     if entry_table is not None:
         # a mechanism edge replaces one seed, so it carries that seed's magnitude; every other edge has weight 1

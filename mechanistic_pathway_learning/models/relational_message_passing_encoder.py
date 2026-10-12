@@ -107,9 +107,12 @@ class RelationalMessagePassingEncoder(nn.Module):
         entry_before_first_layer: bool = False,
         change_only_edge_index: Tensor | None = None,
         change_only_relation_index: int | None = None,
+        change_only_edge_relation: Tensor | None = None,
     ) -> None:
         super().__init__()
-        if (change_only_edge_index is None) != (change_only_relation_index is None):
+        if change_only_edge_relation is not None and change_only_relation_index is not None:
+            raise ValueError("give the relation of the change-only edges once: one index for all of them, or one index per edge")
+        if (change_only_edge_index is None) != (change_only_relation_index is None and change_only_edge_relation is None):
             raise ValueError("change-only edges need both their edge index and the index of their relation")
         if conjunction_aggregation not in CONJUNCTION_AGGREGATIONS:
             raise ValueError(f"conjunction_aggregation must be one of {CONJUNCTION_AGGREGATIONS}")
@@ -139,19 +142,32 @@ class RelationalMessagePassingEncoder(nn.Module):
         self.entry_relation_indices = tuple(sorted(set(entry_relation_indices)))
         # edges that carry how far their source has moved from its unperturbed state, not the state itself (a carrier's
         # sequestration of a drug: silent while the carrier is at rest, so it cannot mark which drugs have a known carrier)
+        # They may be of several relations (a carrier's sequestration and an enzyme's clearance): change_only_edge_relation
+        # names each edge's relation, and each relation is averaged into its targets apart from the others.
         self.change_only_relation_index = change_only_relation_index
         if change_only_edge_index is None:
             self.register_buffer("change_only_edge_source", None, persistent=False)
             self.register_buffer("change_only_edge_target", None, persistent=False)
             self.register_buffer("change_only_edge_scale", None, persistent=False)
+            self.register_buffer("change_only_edge_relation", None, persistent=False)
+            self.change_only_relation_indices: tuple[int, ...] = ()
         else:
-            if not 0 <= change_only_relation_index < num_relation_types:
-                raise ValueError("change_only_relation_index must name one of the relation types")
             change_only_target = change_only_edge_index[1].long()
-            in_degree = torch.zeros(num_graph_nodes).index_add(0, change_only_target, torch.ones(len(change_only_target)))
+            edge_relation = (torch.full((len(change_only_target),), int(change_only_relation_index), dtype=torch.long) if change_only_edge_relation is None
+                             else change_only_edge_relation.long())
+            if edge_relation.shape != change_only_target.shape:
+                raise ValueError("change_only_edge_relation must have one entry per change-only edge")
+            relation_indices = tuple(sorted({int(index) for index in edge_relation.tolist()})) or ((int(change_only_relation_index),) if change_only_relation_index is not None else ())
+            if any(not 0 <= index < num_relation_types for index in relation_indices):
+                raise ValueError("change_only_relation_index must name one of the relation types")
+            # the in-degree is counted within a relation, so each relation's messages are a mean, as for every other relation
+            relation_and_target = edge_relation * num_graph_nodes + change_only_target
+            in_degree = torch.zeros(num_relation_types * num_graph_nodes).index_add(0, relation_and_target, torch.ones(len(change_only_target)))
             self.register_buffer("change_only_edge_source", change_only_edge_index[0].long(), persistent=False)
             self.register_buffer("change_only_edge_target", change_only_target, persistent=False)
-            self.register_buffer("change_only_edge_scale", 1.0 / in_degree[change_only_target], persistent=False)  # the mean, as for every other relation
+            self.register_buffer("change_only_edge_scale", 1.0 / in_degree[relation_and_target], persistent=False)
+            self.register_buffer("change_only_edge_relation", edge_relation, persistent=False)
+            self.change_only_relation_indices = relation_indices
         # with "mean" the conjunction relations are left in the stacked product, so the encoder is the one it was
         # before this option existed and the member edges are averaged like any other relation
         self.conjunction_relation_indices = () if conjunction_aggregation == "mean" else tuple(sorted(set(conjunction_relation_indices)))
@@ -343,7 +359,13 @@ class RelationalMessagePassingEncoder(nn.Module):
         source's own state is."""
         source_state = node_major_state[self.change_only_edge_source]  # [num_edges, batch_size, node_state_dim]
         change = (source_state - source_state[:, reference_row]) * self.change_only_edge_scale[:, None, None]
-        return torch.zeros_like(node_major_state).index_add(0, self.change_only_edge_target, change @ self.relation_weight[layer_index, self.change_only_relation_index])
+        if len(self.change_only_relation_indices) == 1:
+            return torch.zeros_like(node_major_state).index_add(0, self.change_only_edge_target, change @ self.relation_weight[layer_index, self.change_only_relation_indices[0]])
+        messages = torch.zeros_like(node_major_state)
+        for relation_index in self.change_only_relation_indices:  # each relation through its own weight
+            of_relation = self.change_only_edge_relation == relation_index
+            messages = messages.index_add(0, self.change_only_edge_target[of_relation], change[of_relation] @ self.relation_weight[layer_index, relation_index])
+        return messages
 
     def stacked_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor]:
         """All present relation adjacencies stacked vertically into one sparse matrix of shape
@@ -359,7 +381,7 @@ class RelationalMessagePassingEncoder(nn.Module):
             return cached[1], cached[2]
         present_relations = [index for index, adjacency in enumerate(relation_adjacencies)
                              if adjacency is not None and index not in self.conjunction_relation_indices and index not in self.entry_relation_indices
-                             and index != self.change_only_relation_index]
+                             and index not in self.change_only_relation_indices]
         indices, values = [], []
         for stack_position, relation_index in enumerate(present_relations):
             adjacency = relation_adjacencies[relation_index].coalesce()

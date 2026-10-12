@@ -11,7 +11,9 @@ Inputs:
   - the evidence table, whose drug rows name each drug perturbation and its seeds (perturbation_nodes);
   - configs/drug_plasma_carriers.csv, the carrier of each drug the labels or the fraction-unbound database name one for
     (experiments/scope_label_plasma_binder_coverage.py); pass --carrier-table none to add no sequestration edge;
-  - configs/drugs_acting_as_graph_compounds.csv, the drugs that are themselves a graph metabolite and get no node.
+  - configs/drugs_acting_as_graph_compounds.csv, the drugs that are themselves a graph metabolite and get no node;
+  - with --clearing-enzymes, configs/drug_clearing_enzymes.csv (experiments/build_drug_clearing_enzymes.py): each row
+    marked gives_an_edge adds a clearance edge, relation clears and sign -1, from the enzyme to the drug's node.
 
 Outputs in the new directory: nodes.parquet, edges.parquet and relation_types.json with rows appended and none changed;
 drug_entry_nodes.parquet, one row per mechanism edge with its sign and magnitude, which the loader reads
@@ -86,6 +88,8 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=None, help="default: <graph-dir>_drugs")
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--carrier-table", default="configs/drug_plasma_carriers.csv", help="per-drug plasma carrier; none adds no sequestration edge")
+    parser.add_argument("--clearing-enzymes", default="none",
+                        help="per-drug clearing enzymes (configs/drug_clearing_enzymes.csv); the rows with gives_an_edge add a clearance edge, relation clears. none, the default, adds none")
     parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH)
     parser.add_argument("--descriptor-table", type=source_and_destination, action="append", default=[])
     parser.add_argument("--cell-class-weights", type=source_and_destination, action="append", default=[])
@@ -108,11 +112,16 @@ def main() -> None:
         carriers = pd.read_csv(arguments.carrier_table, dtype=str).fillna("")
         carriers = carriers.assign(evidence=carriers.source)
     carrier_nodes_of_gene = None
-    if protein_of_gene:  # binding is the protein's property on a split graph, as for the plasma carriage edges
+    if protein_of_gene:  # binding is the protein's property on a split graph, as for the plasma carriage edges; so is catalysis
         carrier_nodes_of_gene = {gene_node.removeprefix("GENE:"): proteins for gene_node, proteins in protein_of_gene.items()}
+    clearing_enzymes = None
+    if str(arguments.clearing_enzymes).lower() != "none":
+        clearing_enzymes = pd.read_csv(arguments.clearing_enzymes, dtype=str).fillna("")
+        clearing_enzymes = clearing_enzymes[clearing_enzymes.gives_an_edge.str.lower() == "true"]
+        clearing_enzymes = clearing_enzymes.assign(evidence="FDA Table of Pharmacogenetic Associations, section " + clearing_enzymes.fda_table_section)
 
     new_nodes, new_edges, new_relations, entry_table, summary = add_drug_entry_nodes(
-        nodes, edges, relation_types, drug_seeds, graph_compound_base_ids(arguments.drugs_acting_as_graph_compounds), carriers, carrier_nodes_of_gene)
+        nodes, edges, relation_types, drug_seeds, graph_compound_base_ids(arguments.drugs_acting_as_graph_compounds), carriers, carrier_nodes_of_gene, clearing_enzymes)
     if not new_nodes.iloc[: len(nodes)].reset_index(drop=True).equals(nodes) or not new_edges.iloc[: len(edges)].reset_index(drop=True).equals(edges):
         raise SystemExit("an existing node or edge row changed; the variant must only append")
 
@@ -141,6 +150,7 @@ def main() -> None:
         evidence_records_sha256=file_sha256(arguments.evidence_dir / "evidence_records.parquet"),
         carrier_table=None if carriers is None else str(arguments.carrier_table),
         carrier_table_sha256=None if carriers is None else file_sha256(Path(arguments.carrier_table)),
+        **({} if clearing_enzymes is None else {"clearing_enzymes": str(arguments.clearing_enzymes), "clearing_enzymes_sha256": file_sha256(Path(arguments.clearing_enzymes))}),
         nodes=int(len(new_nodes)), edges=int(len(new_edges)),
         source_nodes_sha256=file_sha256(arguments.graph_dir / "nodes.parquet"), source_edges_sha256=file_sha256(arguments.graph_dir / "edges.parquet"),
         nodes_sha256=file_sha256(output_directory / "nodes.parquet"), edges_sha256=file_sha256(output_directory / "edges.parquet"),

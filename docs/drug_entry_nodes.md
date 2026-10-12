@@ -415,3 +415,34 @@ stops mattering, because one hop is then a small share of the depth.
 No amendment is drafted yet. A, B and F decide what it would say, and they were open with the user when this was
 written; the draft follows those decisions and will be a file of its own, for the user, outside
 `docs/preregistration.md`.
+
+## The clearance edge, 11 October 2026
+
+The user, after reading that a carrier varied with a drug has four to six sources behind it: "Add the enzyme labels as
+the carrier twin instead then". An enzyme that clears a drug stands to the drug as its carrier does: more of it leaves
+less free drug. Unlike the carrier's statement, the enzyme's holds for every route (section "What the literature says
+about the sign of a carrier edge"), and a regulator has reviewed each pair.
+
+- **The edge.** Relation `clears`, sign -1, from the enzyme's node (its protein node on a split graph) to the drug's
+  node; for a drug that is itself a graph compound, to the compound's plasma node, as for a carrier. Built only when a
+  table of clearing enzymes is passed (`build_drug_entry_node_variant.py --clearing-enzymes
+  configs/drug_clearing_enzymes.csv`). The edges are appended after every other row and a drug node's degree does not
+  count them, so the graph without them is this graph with its last rows dropped and the same node table.
+- **The table.** `configs/drug_clearing_enzymes.csv`, from the FDA Table of Pharmacogenetic Associations
+  (`experiments/build_drug_clearing_enzymes.py`). A row gives an edge when it is about a metabolising enzyme and says
+  that poor metabolisers have higher concentrations or a higher risk of adverse reactions: 23 of the 44 rows that name
+  a drug of the v4 table (CYP2D6 16, CYP2C19 4, CYP2C9 2, NAT2 1). Left out, with the reason in the table: 12 rows that
+  state no direction, 6 on an immune gene, 2 in which the enzyme forms the active compound (tramadol) and 1 about
+  another ingredient of a combination.
+- **In the encoders.** The message-passing encoder carries the enzyme's change from its unperturbed state, as it
+  carries the carrier's (`change_only_edge_relation`; `run_main_model.py`, `sequestration_inputs`), each relation
+  through its own weights and each averaged into its targets apart from the other. A drug taken alone hears neither
+  edge. An enzyme that a perturbation moves indirectly is heard as one that is seeded: in the toy graph of the tests
+  the carrier activates the enzyme, and lowering the carrier reaches the drug through both edges. In the
+  linear-response encoder `clears` is one more signed relation with its own gain, and the change is carried by
+  construction. With sequestration alone both encoders are the ones they were (`tests/test_clearance_edges.py`).
+- **What reads it.** The comparative checks (`docs/comparative_checks.md`), and nothing else:
+  `graph_full_neuronal_split_binders_drugs_v4_enzymes` is the v4 drug graph with 23 edge rows and one relation
+  appended, and no registered configuration reads either graph. Whether the enzyme statements also train a model is
+  the user's decision (`docs/label_source_review.md`, section 13.3).
+

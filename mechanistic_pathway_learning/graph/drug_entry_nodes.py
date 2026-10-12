@@ -13,6 +13,11 @@ What is added to a graph:
   - for a drug whose plasma carrier is known, one sequestration edge, relation sequesters, sign -1, from the carrier's
     node to the drug node. The existing carriage edges use binds, whose rows all carry sign 0, which reads as moving a
     cargo without acting on it; a carriage edge that is to lower free drug needs a sign.
+  - for a drug with a known clearing enzyme, one clearance edge, relation clears, sign -1, from the enzyme's node to the
+    drug node (the user, 11 October 2026: "Add the enzyme labels as the carrier twin instead then"). It is the carrier's
+    edge with another relation name: more enzyme, less drug. Added only when a table of clearing enzymes is passed
+    (configs/drug_clearing_enzymes.csv, experiments/build_drug_clearing_enzymes.py), so a build without one is the build
+    it was.
 
 A drug that is itself a graph compound gets no node (the user: "it just has to interact with the endogenous and
 exogenous drug nodes consistently"). Its perturbation stays seeded on the compound's own metabolite nodes, and a
@@ -42,6 +47,12 @@ DRUG_NODE_PREFIX = "DRUG:"
 DRUG_MECHANISM_RELATION = "targets"
 SEQUESTERS_RELATION = "sequesters"
 SEQUESTRATION_SIGN = -1.0
+CLEARS_RELATION = "clears"
+CLEARANCE_SIGN = -1.0
+# relations whose edges end on a drug's node and say "more of the source, less of the drug". The message-passing encoder
+# sends along them how far the source has moved from its unperturbed state, so they are silent in a perturbation that
+# leaves the carrier or the enzyme at rest (experiments/run_main_model.py, change_carrying_inputs)
+CHANGE_CARRYING_RELATIONS: tuple[str, ...] = (SEQUESTERS_RELATION, CLEARS_RELATION)
 # relations whose edges leave an entry node: added without an in-degree divisor, and silent unless their source is seeded
 ENTRY_RELATIONS: tuple[str, ...] = (DRUG_MECHANISM_RELATION,)
 ENTRY_NODE_TYPES: tuple[str, ...] = (DRUG_NODE_TYPE,)
@@ -49,6 +60,7 @@ DRUG_ENTRY_FILE = "drug_entry_nodes.parquet"  # one row per mechanism edge; read
 DRUG_ENTRY_COLUMNS: tuple[str, ...] = ("perturbation_id", "drug_node_id", "target_node_id", "sign", "magnitude")
 MECHANISM_EVIDENCE = "drug mechanism (ChEMBL), moved from the perturbation's seeds"
 CARRIAGE_EVIDENCE_PREFIX = "plasma carrier of the drug"
+CLEARANCE_EVIDENCE_PREFIX = "enzyme that clears the drug"
 PLASMA_COMPARTMENT = "e"
 CARRIER_GENES: dict[str, tuple[str, ...]] = {"albumin": ("ALB",), "orosomucoid": ("ORM1", "ORM2"), "both": ("ALB", "ORM1", "ORM2")}
 
@@ -74,8 +86,10 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
                          drug_seeds: dict[str, tuple[str, list[tuple[str, float, float]]]],
                          graph_compound_base_ids: list[frozenset[str]] | None = None,
                          carriers: pd.DataFrame | None = None,
-                         carrier_nodes_of_gene: dict[str, list[str]] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, list[str], pd.DataFrame, dict]:
-    """The graph with drug entry nodes, their mechanism edges and the carriers' sequestration edges appended.
+                         carrier_nodes_of_gene: dict[str, list[str]] | None = None,
+                         clearing_enzymes: pd.DataFrame | None = None) -> tuple[pd.DataFrame, pd.DataFrame, list[str], pd.DataFrame, dict]:
+    """The graph with drug entry nodes, their mechanism edges, the carriers' sequestration edges and, when
+    clearing_enzymes is given, the enzymes' clearance edges appended.
 
     drug_seeds: perturbation id -> (drug name, [(node id, sign, magnitude)]), the seeds the loader would place for that
     drug on this graph (on a gene and protein split graph, the protein nodes of its target).
@@ -84,6 +98,9 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
     "orosomucoid" or "both") and, optionally, evidence (a short source label kept in evidence_source).
     carrier_nodes_of_gene: which node carries the binding, GENE:<symbol> by default and the symbol's protein nodes on a
     split graph, as for the plasma carriage edges (plasma_binding.add_plasma_carriage).
+    clearing_enzymes: one row per drug and enzyme, columns perturbation_id and enzyme_gene and, optionally, evidence.
+    The enzyme's node is found as a carrier's is, through carrier_nodes_of_gene on a split graph. None adds no
+    clearance edge and leaves the summary as it was.
 
     Returns (nodes, edges, relation types, entry table, summary). The entry table has one row per mechanism edge with
     its sign and magnitude, which is what lets the ablation arm rebuild the seeds exactly."""
@@ -98,6 +115,17 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
             if carrier not in CARRIER_GENES:
                 raise ValueError(f"carrier of {perturbation_id} is {carrier!r}; expected one of {sorted(CARRIER_GENES)}")
             carrier_of_perturbation[str(perturbation_id)] = (str(carrier), str(evidence))
+
+    enzymes_of_perturbation: dict[str, list[tuple[str, str]]] = {}
+    if clearing_enzymes is not None:
+        evidence_column = clearing_enzymes["evidence"] if "evidence" in clearing_enzymes.columns else pd.Series("", index=clearing_enzymes.index)
+        for perturbation_id, enzyme_gene, evidence in zip(clearing_enzymes.perturbation_id, clearing_enzymes.enzyme_gene, evidence_column):
+            entry = (str(enzyme_gene), str(evidence))
+            if entry not in enzymes_of_perturbation.setdefault(str(perturbation_id), []):
+                enzymes_of_perturbation[str(perturbation_id)].append(entry)
+    clearance_edges_by_enzyme: dict[str, int] = {}
+    clearance_edge_rows: list[dict] = []
+    enzymes_without_a_node, drugs_with_clearance = [], []
 
     blank_node = {column: None for column in nodes.columns}
     node_rows, edge_rows, entry_rows = [], [], []
@@ -144,9 +172,27 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
                         carriage_degree += 1
             if carriage_degree:
                 drugs_with_carriage.append(perturbation_id)
+        clearance_degree = 0
+        if perturbation_id in enzymes_of_perturbation and cargo_nodes:
+            for enzyme_gene, evidence in enzymes_of_perturbation[perturbation_id]:
+                evidence_source = f"{CLEARANCE_EVIDENCE_PREFIX} ({enzyme_gene}{'; ' + evidence if evidence else ''})"
+                enzyme_nodes = [node for node in (carrier_nodes_of_gene or {}).get(enzyme_gene, [f"GENE:{enzyme_gene}"]) if node in node_ids]
+                if not enzyme_nodes:
+                    enzymes_without_a_node.append(enzyme_gene)
+                for enzyme_node in enzyme_nodes:
+                    for cargo_node in cargo_nodes:
+                        clearance_edge_rows.append({"source_id": enzyme_node, "target_id": cargo_node, "relation_type": CLEARS_RELATION,
+                                                    "sign": CLEARANCE_SIGN, "evidence_source": evidence_source})
+                        clearance_edges_by_enzyme[enzyme_gene] = clearance_edges_by_enzyme.get(enzyme_gene, 0) + 1
+                        clearance_degree += 1
+            if clearance_degree:
+                drugs_with_clearance.append(perturbation_id)
         if perturbation_id not in attached_to_compound:
+            # the degree does not count clearance edges, so the node table is the one a build without them writes
             node_rows.append({**blank_node, "node_id": drug_node_id(perturbation_id), "node_type": DRUG_NODE_TYPE, "display_name": drug_name,
                               "degree": mechanism_degree + carriage_degree})
+    # after every other appended row, so the graph without clearance edges is this one with its last rows dropped
+    edge_rows += clearance_edge_rows
 
     # column by column, so each keeps the type the source table gave it: concatenating frames would let the appended
     # rows, which are missing in most columns, decide the type of a column
@@ -154,7 +200,7 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
         {column: pd.Series(list(nodes[column]) + [row[column] for row in node_rows], dtype=nodes[column].dtype) for column in nodes.columns})
     new_edges = edges if not edge_rows else pd.concat([edges, pd.DataFrame(edge_rows, columns=edges.columns)], ignore_index=True).astype(edges.dtypes.to_dict())
     new_relations = list(relation_types)
-    for relation in (DRUG_MECHANISM_RELATION, SEQUESTERS_RELATION):
+    for relation in (DRUG_MECHANISM_RELATION, *CHANGE_CARRYING_RELATIONS):
         if relation not in new_relations and any(row["relation_type"] == relation for row in edge_rows):
             new_relations.append(relation)
     entry_table = pd.DataFrame(entry_rows, columns=list(DRUG_ENTRY_COLUMNS))
@@ -175,6 +221,15 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
         "relation_types_added": [relation for relation in new_relations if relation not in relation_types],
         "existing_rows_unchanged": True,
     }
+    if clearing_enzymes is not None:  # recorded only when a table was passed, so a build without one has the summary it always had
+        summary.update({
+            "drugs_with_a_known_clearing_enzyme": len(enzymes_of_perturbation),
+            "drugs_given_a_clearance_edge": len(drugs_with_clearance),
+            "known_enzymes_of_drugs_absent_from_this_graph": sorted(set(enzymes_of_perturbation) - set(drug_seeds)),
+            "clearance_edges_added": int(sum(clearance_edges_by_enzyme.values())),
+            "clearance_edges_by_enzyme_gene": dict(sorted(clearance_edges_by_enzyme.items())),
+            "enzyme_genes_without_a_node": sorted(set(enzymes_without_a_node)),
+        })
     return new_nodes, new_edges, new_relations, entry_table, summary
 
 

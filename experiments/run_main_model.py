@@ -70,7 +70,7 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
-from mechanistic_pathway_learning.graph.drug_entry_nodes import ENTRY_RELATIONS, SEQUESTERS_RELATION
+from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
 from mechanistic_pathway_learning.models.linear_response_encoder import (
@@ -295,12 +295,12 @@ def array_sha256(values) -> str:
 def rewiring_fixed_relations(relation_types: list[str], rewire_encodes: bool, has_entry_nodes: bool = False) -> list[int]:
     """Relation indices the rewiring leaves as they are: encodes on a split graph unless --rewire-encodes (an open
     decision of the user, docs/gene_protein_split.md); none on a merged graph. With drug entry nodes, also a drug's
-    mechanism edges and its carriers' sequestration edges: they are how the perturbation enters, as its seeds are
+    mechanism edges, its carriers' sequestration edges and its enzymes' clearance edges: they are how the perturbation enters, as its seeds are
     without the nodes, and seeds are not rewired. A rewiring that moved them would give a drug other targets, which
     tests something else than whether the graph beyond the targets carries the signal."""
     fixed = [relation_types.index(ENCODES_RELATION)] if ENCODES_RELATION in relation_types and not rewire_encodes else []
     if has_entry_nodes:
-        fixed += [relation_types.index(relation) for relation in (*ENTRY_RELATIONS, SEQUESTERS_RELATION) if relation in relation_types]
+        fixed += [relation_types.index(relation) for relation in (*ENTRY_RELATIONS, *CHANGE_CARRYING_RELATIONS) if relation in relation_types]
     return fixed
 
 
@@ -316,21 +316,28 @@ SEQUESTRATION_MODES = ("change", "presence")
 
 
 def sequestration_inputs(data, arguments) -> dict:
-    """The message-passing keywords for a carrier's sequestration edges. Under "change" (the default on a graph that
-    holds the relation) an edge carries how far the carrier has moved from its unperturbed state, so it is silent in a
-    perturbation that leaves the carrier at rest; under "presence" it is averaged like any other relation and carries
-    the carrier's state itself, which gives every drug with a known carrier the same extra input
-    (docs/drug_entry_nodes_measured.md, section 6). Empty on a graph without the relation."""
-    if SEQUESTERS_RELATION not in data.relation_types:
+    """The message-passing keywords for the edges that end on a drug and say "more of the source, less of the drug": a
+    carrier's sequestration edges and, on a graph that holds them, an enzyme's clearance edges (drug_entry_nodes.py,
+    CHANGE_CARRYING_RELATIONS). Under "change" (the default on a graph that holds such a relation) an edge carries how
+    far its source has moved from its unperturbed state, so it is silent in a perturbation that leaves the carrier or
+    the enzyme at rest; under "presence" it is averaged like any other relation and carries the source's state itself,
+    which gives every drug with a known carrier the same extra input (docs/drug_entry_nodes_measured.md, section 6).
+    Empty on a graph without the relations. With sequestration alone the keywords are the ones they always were."""
+    present = [relation for relation in CHANGE_CARRYING_RELATIONS if relation in data.relation_types]
+    if not present:
         return {}
-    relation_index = data.relation_types.index(SEQUESTERS_RELATION)
-    is_sequestration = np.asarray(data.edge_relation) == relation_index
+    relation_indices = [data.relation_types.index(relation) for relation in present]
+    edge_relation = np.asarray(data.edge_relation)
+    carries_change = np.isin(edge_relation, relation_indices)
     mode = getattr(arguments, "sequestration_carries", None) or "change"
-    print(f"sequestration edges: {int(is_sequestration.sum())}, carrying the carrier's {'change from its unperturbed state' if mode == 'change' else 'state (presence)'}")
-    if mode == "presence" or not is_sequestration.any():
+    counts = ", ".join(f"{relation} {int((edge_relation == index).sum())}" for relation, index in zip(present, relation_indices))
+    print(f"edges from a carrier or a clearing enzyme to a drug ({counts}), carrying the source's {'change from its unperturbed state' if mode == 'change' else 'state (presence)'}")
+    if mode == "presence" or not carries_change.any():
         return {}
-    return {"change_only_edge_index": torch.as_tensor(np.stack([np.asarray(data.edge_source)[is_sequestration], np.asarray(data.edge_target)[is_sequestration]]), dtype=torch.long),
-            "change_only_relation_index": relation_index}
+    edge_index = torch.as_tensor(np.stack([np.asarray(data.edge_source)[carries_change], np.asarray(data.edge_target)[carries_change]]), dtype=torch.long)
+    if present == [SEQUESTERS_RELATION]:
+        return {"change_only_edge_index": edge_index, "change_only_relation_index": relation_indices[0]}
+    return {"change_only_edge_index": edge_index, "change_only_edge_relation": torch.as_tensor(edge_relation[carries_change], dtype=torch.long)}
 
 
 def entry_edge_arrays(data) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -918,9 +925,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="on a graph with drug entry nodes (docs/drug_entry_nodes.md): nodes seeds each drug on its own node, which is the default there; "
                              "targets drops the nodes and seeds the drug's targets, the ablation arm and the inputs of the source graph. No effect on a graph without drug nodes")
     parser.add_argument("--sequestration-carries", choices=SEQUESTRATION_MODES, default=None,
-                        help="message passing on a graph with sequestration edges (a plasma carrier to the drug it binds): change, the default there, sends how far the "
-                             "carrier has moved from its unperturbed state, so the edge is silent while the carrier is at rest; presence averages the carrier's state "
-                             "in like any other relation, which marks every drug that has a known carrier. The linear-response encoder carries the change by construction")
+                        help="message passing on a graph with sequestration edges (a plasma carrier to the drug it binds) or clearance edges (an enzyme to the drug it clears): "
+                             "change, the default there, sends how far the carrier or enzyme has moved from its unperturbed state, so the edge is silent while its source is at rest; "
+                             "presence averages the source's state in like any other relation, which marks every drug that has a known carrier. The linear-response encoder carries the change by construction")
     parser.add_argument("--drug-mechanism-before-first-layer", action="store_true",
                         help="message passing with drug entry nodes: also deliver each drug's mechanism edges once before the first layer, so the drug's signal reaches as far "
                              "beyond its targets as a seed on the targets does (docs/drug_entry_nodes_measured.md, the hop)")
