@@ -1859,6 +1859,72 @@ class from three independent layers, and the head choice and stopping rule were 
 development runs that chose them would have to be redone. And a convergent model has no "3 edges" story, so the
 disclosure in the preregistration about reach would be rewritten rather than amended.
 
+## 18. The message-passing encoder's parameter count, and whether to keep it
+
+The owner, 12 October 2026: "there's gotta be a way to parameterize that up-projection so that it doesn't require
+that many params. Otherwise, I think I'm gonna drop the MP encoder variant because its just getting too parameter
+hungry."
+
+**The instinct is right and the number is 14 to 1.** `experiments/count_encoder_parameters.py`, on the confirmatory
+graph's 20 relations with the registered node state of 32, three layers and four propagation channels, against the
+2,975 kept pairs:
+
+| encoder | parameters | per labelled pair | where they are |
+| --- | --- | --- | --- |
+| message passing | 69,184 | 23.3 | relation transforms 61,440 (89 percent) |
+| linear response | 4,816 | 1.6 | the shared feature projection 4,448 (92 percent); relation gains are 80 |
+
+Almost all of the difference is one tensor, `[layers, relations, 32, 32]`. The linear response spends nearly nothing
+on relations: 80 numbers, four per relation.
+
+**There is a standard way to parameterise it down, and it is the method the architecture was named for.**
+Schlichtkrull et al. 2018 introduced basis decomposition for exactly this problem, a relational graph network whose
+parameters grow with the number of relations. Each relation's matrix becomes a mixture of B shared bases,
+W_r = sum_b a_rb V_b, so the bases carry the capacity and a relation owns only its B coefficients. Priced on this
+graph, with the matrices also shared across layers, which convergence needs anyway (17.2):
+
+| scheme | relation transforms | one relation owns | per labelled pair |
+| --- | --- | --- | --- |
+| registered: a full matrix per relation per layer | 61,440 | 3,072 | 20.65 |
+| the same matrices shared across layers | 20,480 | 1,024 | 6.88 |
+| **basis decomposition, 4 bases, shared across layers** | **4,176** | **4** | **1.40** |
+| basis decomposition, 8 bases | 8,352 | 8 | 2.81 |
+| block diagonal, 4 blocks | 5,120 | 256 | 1.72 |
+| diagonal, shared across layers | 640 | 32 | 0.22 |
+
+Basis decomposition at four bases cuts the relation transforms by a factor of 15 and brings the whole encoder to
+about 9,800 parameters, 3.3 per labelled pair, against the linear response's 1.6. Two further things fall out of it:
+
+- **It removes the asymmetry of 16.2.** Under four bases the `clears` relation owns four coefficients, the same count
+  as the linear-response gain. The enzyme statements would then be as trainable in message passing as in the linear
+  response, and the reason for training them in one model only disappears.
+- **It is defensible in a preregistration**, being a published method for this exact problem rather than a choice
+  made to fit this dataset.
+
+**Where the spectrum ends matters for whether two models are worth running.** The last row is not a reduction of
+message passing, it is a change of identity: a diagonal relation weight at 32 channels *is* one gain per relation per
+channel, which is what the linear-response encoder already does. Shrink that far and the two confirmatory models
+differ only in the nonlinearity and in the sign treatment. That is not necessarily bad — a pair of models that differ
+in one thing is a sharper comparison than a pair that differ in a dozen, and the registered choice was "Linear + one
+nonlinear" — but it should be chosen knowingly rather than arrived at by shrinking.
+
+**If the owner drops message passing instead.** What is lost is the only nonlinear model, so nothing in the study
+tests whether nonlinearity matters, and the owner's own choice of 10 October of one linear and one nonlinear model is
+abandoned. What is gained is half the compute and no architecture-selection surface; the multiplicity itself is
+already controlled by the one-sided sequence of H1 then H2, so two models were never needed for rigour. Dropping it
+is a defensible study, and a smaller one.
+
+**Recommended, and the owner's to decide.** Basis decomposition at four bases with the matrices shared across layers.
+It answers the parameter objection, it is what convergence needs anyway, it removes the enzyme asymmetry and it keeps
+a nonlinear arm. Two costs to weigh: it is a registered change, so the head choice and the stopping rule would have
+to be selected again on development runs, which the instruction "No new pilots yet" currently blocks; and basis
+decomposition assumes the relations share a low-dimensional space of transforms, which is an assumption about
+physiology and not only about parameters, though a mild one where relations such as `activates` and `inhibits` should
+plausibly differ mainly by sign.
+
+A fourth option, not recommended on its own: halve the node state from 32 to 16, which quarters the relation
+transforms to 15,360. It costs capacity everywhere, including in the heads, where the parameters are not the problem.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
