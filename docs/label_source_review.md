@@ -1641,14 +1641,23 @@ the dynamics the study uses is the **increment**, how much of a tissue fills at 
 
 **What it shows**, over the 217 drug perturbations with 24 steps at the registered damping of 0.5:
 
-- the step of fastest filling runs from 1 to 20 with a median of 3, over 15 distinct steps;
-- the normalised curves separate: median pairwise correlation 0.183, quartiles -0.669 and 0.795, against 0.998 for
-  the level curves;
+- the step of fastest filling runs from 1 to 11 with a median of 2;
+- the normalised curves separate, though not sharply: median pairwise correlation 0.901, against 0.985 for an
+  impulse and effectively 1 for the level curves;
 - the order is physiological. The brain tissues fill first (amygdala, frontal cortex BA9, cortex and cerebellum at
-  step 1), and liver last (liver 20, liver mixed cell 20, hepatocyte 19), with whole blood and lymphocytes at 18;
-- **42 of the 68 tissues fill fastest within the registered 8 propagation steps and 26 do not**, so the registered
-  window cuts off before the liver, the blood and 24 other tissues have reached their fastest step. That is a measured
-  version of the concern recorded in the architecture review, that the linear response is cut off before it settles.
+  step 1), then kidney cortex, liver and skin at 6 and 7, and whole blood at 10 with EBV-transformed lymphocytes at
+  11;
+- 66 of the 68 tissues fill fastest within the registered 8 propagation steps; only whole blood and lymphocytes do
+  not. **But the level is not settled there**: at step 8 a tissue has reached a median of 0.727 of its settled level,
+  the lowest being whole blood at 0.393 and the highest 0.953. So the window is not short of the fastest step, it is
+  short of the steady state, which is the concern recorded in the architecture review.
+
+**A correction of the first run of this measurement, made the same day.** It gave every relation a gain of 1. With an
+adjacency whose rows sum to one that makes the transition non-contracting, so the iteration has no fixed point and
+grows without limit, and the peak steps it produced (1 to 20, 26 tissues past step 8, correlation 0.183) were partly
+reading the divergence. The gain is now the encoder's contraction bound of 0.9, which is the fastest spread a
+registered model can have and does converge. The ordering survived the correction; the spread of peak steps and the
+separation of the curves did not.
 
 Nothing is changed by this: it is a measurement, and whether the propagation window moves is a registered decision
 the owner has not made.
