@@ -65,6 +65,7 @@ class ExperimentData:
     edge_sign: np.ndarray | None = None  # +1 activating, -1 inhibiting or repressing, 0 unsigned (binds); +1 where the graph has no sign column
     node_base_metabolite_id: np.ndarray | None = None  # metabolite id without compartment ("" for other node types)
     node_display_name: np.ndarray | None = None
+    evidenced_negative: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a negative rests on a controlled comparison, not on silence (a label selection's counts_as_negative rows)
     label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
     label_selection_summary: dict | None = None
     node_descriptor_table: pd.DataFrame | None = None  # set by a rewired run whose reaction expression follows the rewiring; None: read --node-descriptors
@@ -338,7 +339,9 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     with masks_a_negative True (build_label_selection.py --mask-grades) masks a pair that is not a positive (grade C
     evidence only) in the same way. A row with counts_as_negative True (build_label_selection.py
     --never-above-placebo-as-negative) is the one case in which a selection changes an outcome: the pair's outcome becomes
-    0 and it stays labelled, so it trains and scores as any other negative.
+    0 and it stays labelled, so it trains and scores as a negative. Such a pair is marked in evidenced_negative, because
+    its absence rests on a controlled comparison and not on silence, and the trainer can weigh it above an unlabelled
+    pair (experiments/run_main_model.py --placebo-negative-weight).
 
     drug_entry matters only on a graph with drug entry nodes (graph/drug_entry_nodes.py; a drug_entry_nodes.parquet in
     the graph directory). "targets", the default, drops those nodes and seeds a drug on its targets, so the arrays are
@@ -425,6 +428,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         label_mask = np.ones_like(outcomes, dtype=bool)
         perturbation_row = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
         masks_a_negative = selection.masks_a_negative.astype(bool) if "masks_a_negative" in selection.columns else pd.Series(False, index=selection.index)
+        evidenced_negative = np.zeros_like(outcomes, dtype=bool)
         counts_as_negative = selection.counts_as_negative.fillna(False).astype(bool) if "counts_as_negative" in selection.columns else pd.Series(False, index=selection.index)
         set_aside = selection[~selection.keep.astype(bool) & ~masks_a_negative & ~counts_as_negative]
         masked, not_positive, masked_negatives, relabelled_as_negative = 0, 0, 0, 0
@@ -434,6 +438,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
                 not_positive += 1
                 continue
             outcomes[position, column], weights[position, column], frequencies[position, column] = 0.0, 0.0, np.nan
+            evidenced_negative[position, column] = True  # the trainer may weigh it above an unlabelled pair (--placebo-negative-weight)
             relabelled_as_negative += 1
         for row in set_aside.itertuples(index=False):
             position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
@@ -462,6 +467,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             label_selection_summary["masked_negative_pairs"] = masked_negatives
         if counts_as_negative.any():
             label_selection_summary["positive_pairs_relabelled_as_negatives"] = relabelled_as_negative
+        else:
+            evidenced_negative = None
     edge_weight, entry_node_mask = None, None
     if entry_table is not None:
         # a mechanism edge replaces one seed, so it carries that seed's magnitude; every other edge has weight 1
@@ -511,6 +518,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_base_metabolite_id=nodes.base_metabolite_id.fillna("").to_numpy().astype(str) if "base_metabolite_id" in nodes.columns else None,
         node_display_name=nodes.display_name.fillna("").to_numpy().astype(str) if "display_name" in nodes.columns else None,
         label_mask=label_mask,
+        evidenced_negative=None if label_selection is None else evidenced_negative,
         label_selection_summary=label_selection_summary,
         edge_weight=edge_weight,
         entry_node_mask=entry_node_mask,

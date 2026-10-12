@@ -244,3 +244,51 @@ def test_never_above_placebo_pairs_can_be_relabelled_as_negatives_in_place_of_be
     both = subprocess.run([sys.executable, "experiments/build_label_selection.py", "--evidence-dir", str(evidence_directory), "--output", str(tmp_path / "both.parquet"),
                            "--mask-never-above-placebo", "--never-above-placebo-as-negative"], capture_output=True, text=True, check=False)
     assert both.returncode != 0 and "exclude each other" in both.stderr
+
+
+def test_a_placebo_controlled_negative_can_carry_more_loss_weight_than_an_unlabelled_pair(tmp_path: Path) -> None:
+    """--placebo-negative-weight: the user, 11 October 2026, "shouldn't better evidenced absence via placebo control
+    should count more (just in terms of loss share)?" The weight applies to the never-above-placebo pairs only."""
+    from types import SimpleNamespace
+
+    from experiments.run_main_model import loss_pair_weights
+
+    outcomes = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    evidenced = np.array([[False, True, False], [False, False, False]])
+    data = SimpleNamespace(outcomes=outcomes, weights=np.full_like(outcomes, 0.8), evidenced_negative=evidenced,
+                           perturbation_types=["drug", "drug"])
+    fit_indices = np.array([0, 1])
+    plain = loss_pair_weights(data, None, SimpleNamespace(negative_weight=0.2, placebo_negative_weight=None, equal_drug_shares=False), fit_indices)
+    np.testing.assert_allclose(plain, [[0.8, 0.2, 0.2], [0.2, 0.8, 0.2]])  # unset: every negative alike, as before
+    weighted = loss_pair_weights(data, None, SimpleNamespace(negative_weight=0.2, placebo_negative_weight=1.0, equal_drug_shares=False), fit_indices)
+    np.testing.assert_allclose(weighted, [[0.8, 1.0, 0.2], [0.2, 0.8, 0.2]])  # the placebo-controlled absence weighs 5 times an unlabelled pair
+    # a pair that is still a positive is never touched by the flag, whatever the mask says
+    positive_too = SimpleNamespace(outcomes=outcomes, weights=np.full_like(outcomes, 0.8), evidenced_negative=np.ones_like(outcomes, dtype=bool), perturbation_types=["drug", "drug"])
+    np.testing.assert_allclose(loss_pair_weights(positive_too, None, SimpleNamespace(negative_weight=0.2, placebo_negative_weight=1.0, equal_drug_shares=False), fit_indices),
+                               [[0.8, 1.0, 1.0], [1.0, 0.8, 1.0]])
+    # a selection that only masks never-above-placebo pairs leaves evidenced_negative unset, so the flag has nothing to act on
+    assert loss_pair_weights(SimpleNamespace(outcomes=outcomes, weights=np.full_like(outcomes, 0.8), evidenced_negative=None, perturbation_types=["drug", "drug"]),
+                             None, SimpleNamespace(negative_weight=0.2, placebo_negative_weight=1.0, equal_drug_shares=False), fit_indices).max() == 0.8
+
+
+def test_the_loader_marks_the_relabelled_pairs_as_evidenced_negatives(tmp_path: Path) -> None:
+    from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+
+    graph_directory, evidence_directory = tmp_path / "graph", tmp_path / "evidence"
+    graph_directory.mkdir()
+    evidence_directory.mkdir()
+    pd.DataFrame({"node_id": ["GENE:A", "R1"], "node_type": ["gene", "reaction"], "degree": [1, 1], "is_currency": [False, False]}).to_parquet(graph_directory / "nodes.parquet")
+    pd.DataFrame({"source_id": ["GENE:A"], "target_id": ["R1"], "relation_type": ["catalyzed_by"]}).to_parquet(graph_directory / "edges.parquet")
+    (graph_directory / "relation_types.json").write_text(json.dumps(["catalyzed_by"]))
+    rows = [{"perturbation_id": "CID1", "perturbation_type": "drug", "perturbation_label": "one", "group_id": "g", "symptom": symptom, "relation": "induces", "grade": "B",
+             "weight": 0.9, "in_metabolic_layer": True, "label_frequency": 0.05, "source": "SIDER-label", "positive_report_count": 1,
+             "perturbation_nodes": json.dumps([["GENE:A", -1.0, 1.0]])} for symptom in ("anxiety", "insomnia")]
+    pd.DataFrame(rows).to_parquet(evidence_directory / "evidence_records.parquet")
+    selection = tmp_path / "selection.parquet"
+    pd.DataFrame({"perturbation_id": ["CID1", "CID1"], "symptom": ["anxiety", "insomnia"], "perturbation_type": ["drug", "drug"], "label_frequency": [0.05, 0.05],
+                  "keep": [True, False], "reason": ["kept", "never above placebo, counted as a negative"], "counts_as_negative": [False, True]}).to_parquet(selection)
+    data = load_experiment_data(graph_directory, evidence_directory, label_selection=selection)
+    insomnia, anxiety = data.symptoms.index("insomnia"), data.symptoms.index("anxiety")
+    assert data.evidenced_negative[0, insomnia] and not data.evidenced_negative[0, anxiety]
+    assert data.outcomes[0, insomnia] == 0 and data.label_mask[0, insomnia]
+    assert load_experiment_data(graph_directory, evidence_directory).evidenced_negative is None  # no selection: nothing marked
