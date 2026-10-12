@@ -2136,6 +2136,89 @@ answers the parameter objection as well as the shared basis does, it assumes not
 are a stated rule rather than a fitted choice. The amendment still records the owner's "use the 4 bases" until he
 says otherwise.
 
+## 21. The rank each relation's evidence supports (12 October, 17:18)
+
+The owner: "I was actually thinking that the rank of each relation type should be estimated based on the number of
+training examples that pass through the relation type and how much that can support."
+
+That is the better criterion and it replaces the edge-count tiers of 20.3. An edge is structure; what identifies a
+parameter is gradient, and gradient reaches a relation only through labelled examples whose perturbation actually
+sends signal along its edges. `experiments/measure_relation_flow.py` measures it: the 896 development perturbations
+that hold a kept pair, 2,468 kept pairs behind them, propagated to the settled state at the contraction bound, with
+each relation's flow taken as the encoder takes it, the sum over that relation's edges of the source's magnitude
+divided by the target's in-degree **within** the relation.
+
+### 21.1 Edge count is a bad proxy, which is the owner's point measured
+
+| relation | edges | training pairs reaching it | flow share |
+| --- | --- | --- | --- |
+| `encodes` | 12,736 | 2,468 | **33.69 percent** |
+| `catalyzed_by` | 24,266 | 2,357 | 13.73 |
+| `substrate_of` | 36,562 | 2,333 | 10.63 |
+| `activates` | **69,740** | 2,144 | **8.69** |
+| `product_of` | 37,343 | 2,331 | 8.10 |
+| `binds` | 31,177 | 2,113 | 8.02 |
+| `regulates_transcription_of` | 41,638 | 2,100 | 7.26 |
+| `inhibits` | 18,157 | 2,110 | 4.72 |
+| `member_of` | 6,767 | 2,204 | 4.66 |
+| the other 11 | 1,398 | 0 to 451 | 0.51 in total |
+
+`activates` has five and a half times the edges of `encodes` and carries a quarter of its flow. The edge-count tiers
+of 20.3 would have given both rank 8. On this measure `encodes` deserves four times what `activates` does.
+
+Why `encodes` dominates is worth stating, because it is arithmetic rather than biology: every gene perturbation is
+seeded on a gene node and `encodes` is the gene-to-protein edge, so all 896 development perturbations send their
+whole signal through it at the first step, and a protein has exactly one gene, so the in-degree divisor is 1 and
+nothing is averaged away. `activates` targets have many incoming activations, so each message is divided down. That
+is faithful to what the encoder does, and it is a reason to read the measure as "how much signal this relation
+carries" rather than as "how well this relation is identified". The two differ, and the second needs a trained model.
+
+The bottom of the table is the firmer half of the finding: `changes_membrane_potential` is reached by **no** training
+pair at all, `driving_force` by one and `changes_ion_pool` by eleven, while 9 relations carry 99.5 percent of the
+flow. Whatever budget is chosen, almost all of it belongs to those nine.
+
+### 21.2 What that evidence can support, and the honest limit of the calculation
+
+Parameters have to come out of one budget rather than be allocated per relation independently, because the same 2,468
+pairs flow through every relation at once. Taking the budget as kept pairs divided by a stated number of pairs per
+parameter, split by flow share, and converting to a rank at 2 x 32 parameters per rank:
+
+| pairs per parameter | budget | ranks it buys |
+| --- | --- | --- |
+| 5 | 494 parameters | `encodes` 2, `catalyzed_by` 1, everything else 0 |
+| 10 | 247 | `encodes` 1, everything else 0 |
+| 20 | 123 | nothing |
+
+**This is austere and the austerity is the point, but the rule is cruder than the numbers look.** Pairs per parameter
+is a rule of thumb from regression with independent predictors; here the parameters are shared across every example
+rather than fitted per predictor, early stopping and weight decay regularise on top, and the heads and the feature
+projection are consumers of the same evidence. So the calculation should be read as a bound of the right order rather
+than a precise allocation: it says the registered 61,440 relation parameters are two to three orders of magnitude
+beyond what 2,468 pairs identify, and it does not establish that rank 0 is correct.
+
+The firm conclusions are the two that do not depend on the budget constant: the flow is concentrated in nine
+relations, and the ordering within those nine is not the ordering by edge count.
+
+### 21.3 What to build from it
+
+A floor and a budget above it, which is the shape the measurement supports:
+
+- **Floor: a diagonal gain for every relation**, 32 parameters each, 640 in all. That is one gain per relation per
+  channel, which is what the linear-response encoder gives every relation, and it is the least that lets a relation
+  scale and sign its messages. Below this a relation is not a relation.
+- **Above the floor, rank bought by flow share** out of a budget the owner names. At 5 pairs per parameter that is
+  rank 2 on `encodes` and rank 1 on `catalyzed_by`, for 832 parameters in all against the registered 61,440.
+- **The ranks are fixed before any run and recorded in the registration**, with the flow measured on development
+  perturbations only, which this script does. Measuring them on the held-out side would be a leak.
+
+Two things the owner should weigh. The measure is the encoder's own aggregation, so a relation whose targets have a
+low in-degree scores high for that reason alone; if the intent is identifiability rather than throughput, the
+rigorous version is the gradient variance per relation, which needs a development run and so is blocked by "No new
+pilots yet". And a relation that no training pair reaches, `changes_membrane_potential` among them, cannot be
+identified at any rank, so its parameters are decoration whatever the scheme: the honest options for those eleven
+relations are a diagonal gain held at its initialisation, or dropping them from the encoder and recording that the
+study does not model them.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -2188,6 +2271,15 @@ Scripts of section 15:
 | `label_review/target_rule_options.py` | the alternatives to the target limit, the leakage group each leaves and the drugs that bridge the blocks (15.7) |
 | `label_review/enzymes_in_the_graph.py` | also the enzyme descriptor columns of 15.8 |
 | `measure_tissue_saturation.py` (under `experiments/`) | the per-tissue saturation curves and the step each tissue fills fastest (`docs/tissue_saturation.md`; 15.9) |
+
+Scripts of sections 16 to 21, under `experiments/`:
+
+| script | what it does |
+| --- | --- |
+| `label_review/cooperativity_sources.py` | also the SIGNOR and OmniPath survey of 16.3 |
+| `measure_propagation_convergence.py` | the steps the linear response needs to settle, at several gains (17.2) |
+| `count_encoder_parameters.py` | where each encoder's parameters go, and what each reduction scheme would cost (18, 20.3) |
+| `measure_relation_flow.py` | the training evidence that passes through each relation and the rank it supports (21) |
 
 Downloads, under `data/raw/label_review` (not in git):
 

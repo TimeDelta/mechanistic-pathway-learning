@@ -119,9 +119,14 @@ reads either is a separate decision.
   on 8 October and the stopping rule is preregistered as validation loss with patience 8 and at most 60 epochs
   (`docs/label_source_review.md` 18, 19). **Open on the owner's challenge of 17:09**: four shared bases assume all 20
   relation matrices lie near one four-dimensional subspace, which nothing tests. A per-relation low-rank
-  factorisation assumes only that each transform is low rank and costs 5,120 against 4,176, and a rank set by each
-  relation's edge count costs 5,248 and spends it where the evidence is. The draft keeps "use the 4 bases" until the
-  owner chooses (20.3). The loss of depth-specialised transforms is withdrawn as a cost (20.1).
+  factorisation assumes only that each transform is low rank and costs 5,120 against 4,176. The owner's later
+  criterion supersedes the edge count: the rank follows the training evidence that passes through each relation, and
+  measured on the 896 development perturbations with a kept pair, nine relations carry 99.5 percent of the flow and
+  the ordering is not the ordering by edge count (`encodes` 33.7 percent on 12,736 edges against `activates` 8.7
+  percent on 69,740). The shape the amendment would register is a diagonal gain for every relation as the floor, 640
+  parameters, with rank above it bought by flow share out of a budget the owner names, and the ranks fixed before any
+  run and measured on development perturbations only (21). The draft keeps "use the 4 bases" until the owner
+  chooses (20.3, 21.3). The loss of depth-specialised transforms is withdrawn as a cost (20.1).
 
 - **The message-passing encoder's edge signs.** Verified on 12 October: `build_relation_adjacencies` gives every
   entry of every relation's adjacency the positive value `1 / in_degree`, and the encoder is passed no edge sign for
