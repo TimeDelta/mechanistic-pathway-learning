@@ -684,6 +684,13 @@ registers a held-out set and nothing was trained.
 | "Has selectivity been modeled (different binding affinities for receptor subtypes, etc)?" | it has not; a first measurement of occupancy per target | 13.5 |
 | "Can you please add the CTD reference to be compliant?" | citation, terms and links beside the derived table; a draft of the notice only the user can send | 13.6 |
 | "Peak tissue unbound concentration can be relegated to confirmation only" | recorded; nothing built | section 10 |
+| (12 October) "let's do the control version and the equal loss per share version" | the three controls built, equal loss shares turned on in the amendment draft | 13.1 |
+| (12 October) "Is there any other sources / ways to deal with ligand binding competition?" | ten sources surveyed and measured against this study; one route remains | 13.4 |
+| (12 October) "shouldn't better evidenced absence via placebo control should count more" | a loss weight for those negatives alone | 13.2 |
+| (12 October) the placeholder for C "wouldn't work" | a concentration per target, measured, replacing the anchor | 13.5 |
+| (12 October) the threshold grid is "a poorly correlated replacement for dispersion level" | accepted; what tissue labels the graph has, and what can be built without a new model variant | 13.8 |
+| (12 October) "If you think there's enough enzyme statements to train on, include them" | not enough, and the checks on them test nothing; what is kept instead | 13.7 |
+| (12 October) "Can you please do a deeper check for the Lombardo clearance table license?" | permission is required; two routes remain, both the user's | 13.9 |
 | "Were you able to find clearance per drug?" "Seems worth adding data on a drug's concentration at its site of action." | a table per drug of clearance, extraction ratio and unbound concentration in plasma and brain | 13.5 |
 
 ### 13.1 The input of a multi-target drug
@@ -706,8 +713,25 @@ size of the input alone would gain almost nothing on them. The user's reading ho
 the argument of section 12 gave. Occupancy does not remove the count either: the summed occupancy of a drug's
 mechanism genes correlates 0.84 with their number.
 
-Recommended, for the user: 1 per target with the three evaluation controls, and occupancy reported as a sensitivity
-analysis on the drugs that have it.
+**Decided by the user, 12 October 2026: "let's do the control version and the equal loss per share version."** So the
+input stays 1 per target, the three controls are built, and `--equal-drug-shares` is turned on. What each is:
+
+| control | what it is | where |
+| --- | --- | --- |
+| the input-size baseline | a model given a perturbation's number of seeds and its total input magnitude and nothing else: no graph, no node identity, no target identity. Per symptom a logistic regression on those two numbers. Whatever it scores is the part of a score that input size alone explains | `models/baselines/input_size_baseline.py`; `run_baselines.py --with-input-size` |
+| results by number of targets | macro AUPRC inside strata of how many mechanism targets a drug has (1, 2, 3, 4 or more; gene perturbations their own stratum, since they outnumber the drugs six to one). An advantage that sits only in the many-target stratum is a reading of input size | `evaluation/input_size_strata.py`; reported by `run_baselines.py` and `aggregate_main_model_runs.py` without a flag |
+| the permuted-target control | every drug's seeds exchanged with those of another drug that has the same number of them, inside groups of equal count, as a derangement. Each drug keeps its input size and loses which targets it acts on, so a run that scores as well here is reading size | `run_main_model.py --permute-drug-targets`; a negative control, never a result of the study |
+| equal loss shares per drug | each drug's positives and, apart, its negatives rescaled to the mean counts over the training drugs, so a drug with many labels does not take a larger share of the gradient | `run_main_model.py --equal-drug-shares`, which existed and was off |
+
+Two notes on the baseline, because they decide how to read it. Under the input rule as built the two features are the
+same number (total magnitude = number of targets for every drug but one), so the fit carries a small ridge on the
+slopes; it is kept at two features so the same baseline reads correctly under `--normalise-drug-input` (total 1, count
+varying) and under an occupancy input (both varying, not proportional). And a gene perturbation has one seed of
+magnitude 1, so for the genes this baseline is the popularity baseline: its reading is about the drugs.
+
+`--equal-drug-shares` changes training, so turning it on in the confirmatory configurations is a registered change;
+it is written into `docs/preregistration_amendment_draft.md` and not applied here. Nothing was trained
+("No new pilots yet").
 
 ### 13.2 The evidence table v4
 
@@ -731,6 +755,21 @@ rest on one label entry with both arms, and SIDER gives percentages without the 
 the drug's own recorded indication (fluoxetine, bupropion and buspirone with depressed mood, cabergoline and tolcapone
 with parkinsonism, risperidone with irritability, hydroxybutyrate with somnolence). Recommended: count them as ordinary
 negatives. The mask stays the default until the user says so.
+
+**And they should count for more than silence.** The user, 12 October 2026: "shouldn't better evidenced absence via
+placebo control should count more (just in terms of loss share)?" Yes, and the asymmetry was in the build. An
+unlabelled pair is a negative at `--negative-weight` 0.2, on no evidence at all; a relabelled placebo pair was taking
+the same 0.2 although a controlled comparison stands behind it. `--placebo-negative-weight` now sets the weight of
+those pairs alone (the loader marks them in `evidenced_negative`, which only a selection built with
+`--never-above-placebo-as-negative` fills). Unset, they weigh what any negative weighs, so nothing changes until it is
+set. The weight is in the loss only: a negative is a negative in every metric, which have no weights.
+
+What the weight should be is the user's. The case for 1.0, the weight of a well-evidenced positive: a placebo-arm
+comparison is evidence of the same kind as the label statement that makes a positive. The case against: 48 of the 61
+pairs rest on one label entry with both arms, SIDER gives percentages without the sizes of the arms, so the comparison
+can be two small numbers; and the seven pairs that are the drug's own indication are the strongest of the 61 as
+evidence of absence but also the most confounded by the treated condition. A middle value (0.5) says the absence is
+better evidenced than silence and weaker than a reported event.
 
 **Held-out placement.** `held_out_overlap.py` on v4 gives the counts of 9.2: 29 of the 68 added drugs act on a held-out
 node and are held out (160 of their 352 kept pairs), 39 train (192). Under the rule 349 of 1,636 perturbations are held
@@ -761,6 +800,10 @@ a check, and a check is reported apart from every score.
 
 All 214 can be expressed on the graph with drug nodes and clearance edges (`docs/comparative_checks.md`). A finished
 run is asked the development checks only, because its data have the lockbox removed.
+
+**Corrected on 12 October 2026:** only the two-drug kind is a test of a model. The other three go through a relation
+that no label of the study trains, so they are reported without a verdict. Section 13.7 gives the reason and what is
+kept in their place.
 
 **What these statements can and cannot carry.**
 
@@ -819,6 +862,41 @@ table of 13.5 holds those numbers for about half the drugs, so the quantity coul
 at one target. That would be a model input built from pharmacology, not a label, and no outcome data exist to test
 it on beyond the two triples.
 
+**Other sources, surveyed on 12 October 2026** after the user asked whether any exist. A research pass measured each
+against this study's 222 drugs and 148 mechanism targets; the counts below are that pass's, and any the study adopts
+should be re-derived in code here before use. The family split of the targets decides how far a family-specific
+resource reaches: voltage-gated channels 44, G-protein-coupled receptors 42, Cys-loop ligand-gated channels 20,
+ionotropic glutamate receptors 10, SLC6 transporters 4, other 28, protein kinases 0.
+
+| source | what it would give | reach into this study | licence, as read | verdict |
+| --- | --- | --- | --- | --- |
+| ChEMBL `drug_mechanism.site_id` and `binding_site_comment` | the name of the pocket a drug's mechanism acts at | **the best label found**: 23 rows over 21 drugs, separating the benzodiazepine site (13 drugs), the barbiturate site (4), the GABA site and the α2δ-1 site. Whole database: 251 of 7,561 mechanism rows carry a site | "The ChEMBL data is made available on a Creative Commons Attribution-Share Alike 3.0 Unported License." | **usable, for GABA-A.** Already on disk (`data/raw/chembl/mechanisms.json`). Three of its 24 comments are statements of uncertainty and must stay uncertain |
+| DrugCentral `ACT_COMMENT` | the displaced radioligand of an assay, so two drugs displacing the same tracer at one gene occupy one site | **the widest reach, and already on disk**: a tracer for 278 drug-gene records over 54 genes and 59 tracers, giving 1,021 of 1,307 same-gene drug pairs a shared tracer | CC BY-SA 4.0 (already in `docs/data_sources.md`) | **usable as evidence, not as a label.** A negative allosteric modulator can also displace a tracer |
+| ChEMBL assay descriptions | the same, as free text, at a larger scale | 11,027 of 56,741 assays on the study's 126 ChEMBL targets contain "Displacement of"; 675 of 1,345 drug pairs share a tracer at the 14 targets sampled | as ChEMBL above | usable, with tracer-name normalisation; the text also needs filtering, since "competitive" in an assay description usually names the assay format and not the mechanism |
+| PDBe-KB ligand binding sites | the residues a ligand contacts, as UniProt positions, so two ligands' pockets can be compared | pockets definable on 107 of 148 targets; only 22 of 222 drugs are co-crystallised with one of their own targets | the PDB archive is CC0 1.0 | **usable to define the pockets** that the two sources above assign drugs to. The pass demonstrated it: on GABRA1 it separates the benzodiazepine-site ligands from propofol's transmembrane site, and on the dopamine transporter it puts bupropion in dopamine's own site |
+| UniProt binding features | where the endogenous ligand binds | 85 of 147 targets, naming glutamate, dopamine, serotonin, GABA, histamine, noradrenaline, adenosine and glycine | CC BY 4.0 | **usable for the drug-against-endogenous-ligand half** of the question |
+| GPCRdb | residue contacts with a generic numbering that is comparable across receptors | 42 of 148 targets | "The data in GPCRdb is freely available under the Creative Commons Attribution 4.0 International license." | usable for the aminergic receptors |
+| pA2, pKB and KB (the Schild output, a typed field in ChEMBL, GtoPdb and DrugCentral) | the measurement that settles competition experimentally | **4 pA2 activities in all of ChEMBL for this study's molecules**, 5 pKB rows in GtoPdb, 0 in DrugCentral | as above | **empty.** Schild analysis belongs to isolated-tissue pharmacology; this drug set was characterised by radioligand binding |
+| Allosteric Database (ASD) | curated allosteric sites, which is the other half | not measured | "Copyright © 2009-2023 Molecular Design Laboratory, SJTU All Rights Reserved." | **unusable.** Named here so it is not re-explored |
+| KLIFS | separates orthosteric from allosteric ligands outright, which is exactly what this needs | **0 of 148 targets**: it covers kinases | no licence sentence found on its pages | not applicable |
+| DrugBank, PDSP Ki database, Drug Target Commons | affinities and action vocabularies | not measured | **unverified**: DrugBank's terms page answered HTTP 403, the other two could not be reached. Addresses for the user to open: `go.drugbank.com/legal/terms_of_use`, `pdsp.unc.edu/databases/kidb.php`, `drugtargetcommons.fimm.fi` | PDSP's values already reach the study through DrugCentral (356 rows over 57 drugs) |
+
+So the answer to the user's question is: **no source labels competition for these drugs, and one route computes it.**
+The route in order of reach: take ChEMBL's site name where it exists (21 drugs, and it is the GABA-A split, which this
+study's benzodiazepines, barbiturates and Z-drugs need); treat a shared displaced tracer as evidence of a shared site
+(about 1,000 drug pairs, no download); use structures to define the pockets that the first two assign drugs to; and
+take the mode of binding already counted above as the switch for the pairs that do not compete.
+
+Once the site is shared, the strength of the competition needs nothing new. With both ligands at one site the loss of
+A's occupancy caused by B is θ_A(alone) / θ_A(with B) = 1 + ([B]/K_B) / (1 + [A]/K_A), so B costs A a factor that is
+entirely [B]/K_B, and 13.5 holds both numbers. For a pair at different sites the ternary-complex form needs a
+cooperativity factor α, which no resource tabulates at scale; α ∈ {0, 1} chosen from the mode of binding is the
+defensible simplification, and it is an assumption to register, not a label derived from data.
+
+One caution for the Cheng-Prusoff conversion this study already makes: the correct correction from IC50 to K_i depends
+on knowing whether the binding is competitive. So the absence of a competition label is not an alternative to fixing
+the pooling of IC50 with K_i (section "Rules" of `docs/off_target_scoping.md`) but a prerequisite for it.
+
 ### 13.5 Clearance, concentration at the site of action and occupancy
 
 `docs/drug_exposure_table.md` (`experiments/build_drug_exposure_table.py`), for the 222 drugs of v4:
@@ -845,12 +923,38 @@ Two results.
   of 0.17 in plasma and 0.33 in brain. Selectivity among a drug's targets is therefore measurable for about half the
   drugs and is not in the model: every mechanism target enters at 1.
 
+**A concentration per target, which is what the user asked for.** The user, 12 October 2026, on the scoping's
+placeholder: it "is biased towards the drugs best-bound mechanism, which precludes some dose-dependent changes to
+concentration modifying the effect via i.e. saturation of highest affinity target. Thus, this wouldn't work." That is
+right, and it is not a limitation of the placeholder's accuracy but of its form: the placeholder *defines* C as nine
+times the best target's dissociation constant, so the best target is 90 percent occupied by construction, for every
+drug and at every dose. Nothing about saturation can be read from it, because saturation is what it assumes.
+
+The measured concentration has no such anchor, so each target's occupancy is its own. `measure_target_occupancy.py`
+now also reads each target at its own site: the unbound brain concentration for a target the graph records as
+expressed in a brain tissue, the unbound plasma concentration otherwise and for a drug with no brain value. On the v4
+table that is 305 mechanism pairs over 115 drugs, 122 of them read in brain. What the anchor hid:
+
+| | placeholder | measured, at each target's own site |
+| --- | --- | --- |
+| drugs covered | 183 (an affinity at a mechanism gene is enough) | 115 with a mechanism pair, 121 with any pair |
+| occupancy of the best-bound mechanism target | 0.90 for every drug, by construction | median 0.90, quartiles 0.65 and 0.98; at or above 0.9 (saturated) for 59 drugs, below 0.5 for 21 |
+| off-target pairs at occupancy ≥ 0.25 | 540 over 117 drugs | 374 over 81 drugs |
+| off-target pairs at ≥ 0.1 / ≥ 0.5 | 743 / 357 | 510 / 252 |
+
+So the measured route costs 68 drugs of coverage and buys the thing the placeholder cannot express: at a therapeutic
+dose a third of the drugs do not saturate their best target, and a fifth are below half occupancy there. The two can be
+combined, measured where there is a measurement and the placeholder otherwise, at the cost of two scales in one
+column; recommended instead is the measured concentration alone, with the drugs that lack one reported as their own
+stratum, since that is what the measurement-coverage strata already do (section "Stratified evaluation by measurement
+coverage" of `docs/off_target_scoping.md`). The user's decision 3 of that document.
+
 Limits: active metabolites are not added to the parent's concentration; an EC50 or IC50 is pooled with Ki and Kd;
 the concentrations are at steady state, not at a peak; local anaesthetics act at the site of injection, so their
 plasma occupancy says little. The joined table stays out of git because the tables of Lombardo et al. and Benet et
 al. are not licensed for redistribution; the licence of the copy of Lombardo's table that was read (the US EPA's
-`httk` repository, MIT for the package) does not settle whether the table may be redistributed, which is the user's
-call. The consensus guideline of Hiemke et al. 2018 would be the better source of therapeutic ranges for
+`httk` repository, MIT for the package) does not settle whether the table may be redistributed. **Checked again on
+12 October 2026 at the user's request, and the answer is now negative rather than unknown** (13.9). The consensus guideline of Hiemke et al. 2018 would be the better source of therapeutic ranges for
 psychotropic drugs and could not be read (`docs/exposure_sources/hiemke2018_agnp.md`).
 
 ### 13.6 CTD
@@ -865,6 +969,134 @@ psychotropic drugs and could not be read (`docs/exposure_sources/hiemke2018_agnp
   derived table may be redistributed in a public repository, because CTD's legal notice, citation guidelines and
   linking instructions decline automated readers and could not be read. The form of the links is the one the
   Bioregistry records for CTD.
+
+### 13.7 What a check can test, and the enzyme statements
+
+The user, 12 October 2026: "If you think there's enough enzyme statements to train on, include them. Otherwise checks
+are fine I guess but they're almost certain to fail without having trained any enzymes so I don't see the point in
+checking them."
+
+The objection is right, and it is sharper than the enzyme statements. It applies to the carrier edge too, which was the
+original design (`docs/drug_entry_nodes.md`). No label of this study varies a carrier or an enzyme, so neither
+relation is trained, and a check that goes through one reads something other than carriage or clearance:
+
+- **in the message-passing encoder** the relation has its own weight matrix per layer, 32 x 32 x 2 = 2,048 parameters
+  at the registered state dimension, and no gradient ever reaches them. The check reads the random initialisation;
+- **in the linear-response encoder** a signed relation's gain is `sigmoid(...)`, strictly positive, and the edge carries
+  the sign, so the direction in which a lowered carrier or enzyme moves the drug's node is built into the graph. What
+  the check then reads is whether the head is monotone in that node's field, which is a property of the head.
+
+So the three kinds that go through `sequesters` or `clears` are not tests of a model, and
+`experiments/run_comparative_checks.py` no longer reports a verdict for them: it reports the difference and says why
+there is no verdict. Only the two-drug kind is judged, because a second drug enters through its mechanism edges, the
+relation every drug perturbation trains.
+
+**Is there enough to train on? No, and the reason is the same arithmetic.** The 23 enzyme statements cover 22 drugs
+and 133 kept positive pairs, of which 12 statements, 12 drugs and 75 pairs are on the development side. Against 2,048
+untrained parameters in the message-passing encoder, 75 ordering constraints fit nothing. In the linear-response
+encoder the relation has four parameters, one gain per channel, which 75 constraints could fit — but the direction is
+already built in, so training would set a magnitude against constraints that any positive magnitude satisfies. Neither
+encoder learns anything about clearance from these statements. Training them would need a comparative loss and a
+constrained gain, which is a new model variant, and the user's instruction stands: "I don't want to add extra
+confirmatory model variations because that starts increasing probability of winning by luck."
+
+What is kept, then:
+
+- the **edges** stay. They are how the design represents a carrier and an enzyme, and the drug-node ablation the user
+  asked for on 10 October reads them;
+- the **direction** of each edge is checked once, against the literature, not per run: the sign is -1, the sources say
+  more carrier or more enzyme means less free drug, and `tests/test_clearance_edges.py` checks that the field moves
+  that way. That is a design check, and it is done;
+- the **statements** stay in `configs/comparative_checks.csv` with their quotations, because they are the evidence the
+  edge's direction rests on and the file is where a reader finds it;
+- the **two-drug statements** stay as the only per-run check: 160 rows over 80 triples, 22 rows on the development side,
+  and 21 negative controls.
+
+The honest summary of what this buys: one real check (the two-drug comparison, mostly on held-out drugs), one design
+check already passed, and a documented reason not to read the other 33 rows as tests.
+
+### 13.8 Dispersion, and whether the graph has tissues
+
+The user, on the occupancy threshold grid of `docs/off_target_scoping.md`: "I'm not convinced on the occupancy
+threshold grid based on the number of nodes touched. It's a poorly correlated replacement for dispersion level. What
+about replacing it with the reading at different points of maximum spread based on node tissue type".
+
+The first half is accepted: the number of off-target nodes a threshold admits (median 1, maximum 31 per drug) is a
+count of what was measured about a drug, not of how far its effect spreads, and the stratification by measurement
+coverage exists precisely because that count tracks research attention. Choosing a threshold by it is choosing by
+coverage.
+
+The second half needs a label the graph does not carry, and the measurement is worth stating plainly:
+
+- **there is no tissue label.** The confirmatory graph's 49,574 nodes carry 43 *subcellular* compartment strings (10
+  single compartments over 18,928 nodes: cytosol 8,098, extracellular 3,713, mitochondrion 2,104, endoplasmic
+  reticulum 1,909 and six smaller), and no gene or protein node carries one at all;
+- **the nearest thing to a tissue is a brain cell class**, and it is a weight, not a partition: the cell-class table
+  gives 11 classes (astrocyte, excitatory neuron, dopaminergic neuron, medium spiny neuron, oligodendrocyte lineage,
+  vascular and five others) with a weight per node. 32,234 nodes have weights that differ between classes; a node is
+  active in a median of 11 of the 11 classes, and only 311 in exactly one. The classes do discriminate (median
+  pairwise correlation of the class weightings 0.36, none above 0.9; the largest class takes a median 23 percent of a
+  node's weight against 9 percent for an even split), but they cover genes, proteins and 7,681 of the 13,793
+  reactions, and no metabolite or protein entity;
+- so "peak distribution per tissue type" resolves either to **11 weighted spread curves over one shared node set** (the
+  cell classes, covering the neuronal layer) or to **10 compartment partitions** (covering the metabolic layer). Neither
+  is a tissue, and the first is 11 readings of overlapping subsets.
+
+The memory cost the user anticipated is not the obstacle. The linear-response encoder propagates 8 steps over 4
+channels, so storing every step is 49,574 x batch x 4 x 8 floats, about 200 MB at a batch of 32 — affordable. The
+obstacle is that reading the field at a per-class peak is a new encoder variant, and the instruction against new
+confirmatory variants stands.
+
+**What can be done without a new variant, and is the useful half of the idea:** compute the spread per step per cell
+class as a *measurement*, not a readout, and use it to choose the occupancy threshold. That gives a dispersion
+statistic defined on the propagation itself rather than on the off-target count: for each candidate threshold, how far
+and into which cell classes a drug's field reaches, and at which step it peaks. It needs no change to any model, it
+answers the question the threshold grid was standing in for, and it can be read on the development perturbations
+before any threshold is fixed. Not built; recommended as the next measurement if the user wants the threshold decided
+on evidence rather than by default.
+
+### 13.9 The licence of the clearance table, checked again
+
+The user, 12 October 2026: "Can you please do a deeper check for the Lombardo clearance table license?" A research pass
+tried the routes `docs/exposure_sources/lombardo2018.md` had not: the publisher's author-rights and permissions pages,
+whether supplementary material is licensed apart from the article, author and repository deposits, the licence fields
+of Crossref and OpenAlex, and whether anyone has reused the table with a stated permission. **The position changed from
+"no licence found" to "the stated terms require permission".**
+
+- The copyright holder is the journal's society, confirmed in three records (Crossref assertion, PubMed, OpenAlex).
+  OpenAlex reports the article as open access of the "bronze" kind with `license: null`: **free to read at the
+  publisher, under no licence.**
+- The only licence Crossref records for the article is a text-and-data-mining licence, and it says: "Substantially or
+  systematically reproduce, retain or redistribute the Dataset" is not allowed, and text mining is "provided to
+  subscribers for non-commercial research purposes" (`elsevier.com/tdm/userlicense/1.0/`, read 12 October 2026). The
+  publisher's copyright policy says the same in its own words: a user may mine subscription articles "without sharing
+  any adaptation of the original content with others".
+- The journal is not in the publisher's open-archive programme, so **no post-embargo licence will attach** to a 2018
+  article. That closes the "wait and it becomes reusable" route permanently.
+- The data-as-facts route is narrower than it looks. The publisher's permissions policy allows "Creating an original
+  figure or table from data or factual information that was not previously in figure or table format" — and Table S1
+  was already a table.
+- **The US EPA route does not carry.** A whole-repository search of the `httk` package finds the table named in eight
+  files, every one a citation or build code, and no permission, provenance or rights statement anywhere. The EPA's own
+  data licence covers data "produced by the U.S EPA", which this is not. The one EPA deposit that is licensed CC0
+  (doi:10.23645/epacomptox.6062791) contains a single 0-byte `index.html`: a metadata stub, not a copy of the table.
+  Recorded so that a later pass does not read that CC0 as covering it.
+- **Two routes remain, and both are requests the user would make.** The publisher's permissions route is the Copyright
+  Clearance Center, `marketplace.copyright.com/rs-ui-web/mp/search/journal/1521009X`, and the society states: "ASPET
+  handles all permissions requests through the Copyright Clearance Center's Republication Service." The shorter route
+  is the authors: the publisher's own copyright policy says authors retain "the right to use their research data freely
+  and without restriction", so a deposit of Table S1 by its authors under CC BY or CC0 would settle it for everyone. No
+  such deposit exists today (Zenodo, figshare and Dryad all searched).
+
+**What this changes here: nothing, which is the point.** The joined exposure table was already kept out of git, the
+transcription script and the source address are committed, and that posture is exactly what the terms permit. What
+changes is the record: `docs/exposure_sources/lombardo2018.md` and `docs/data_sources.md` now say that redistribution
+needs permission rather than that a licence was not found, and they carry the sentence that says so.
+
+One correction the pass found in that file, and it matters for every future retrieval: the journal host is not blocking
+the supplementary path in particular. Its robots file disallows the **whole host** for the user agents an AI
+assistant's reader announces itself under, so every address there is refused, including the free full-text PDF. No
+other path on that host is worth trying, and the user has to open them personally.
 
 ## How the counts were made
 
@@ -896,6 +1128,7 @@ Scripts of section 13, under `experiments/`:
 | `build_drug_clearing_enzymes.py` | the rows of the FDA pharmacogenetic table that give a clearance edge (`configs/drug_clearing_enzymes.csv`) |
 | `build_comparative_checks.py`, `run_comparative_checks.py` | the table of checks and the report of what a graph can express (`docs/comparative_checks.md`) |
 | `scope_label_plasma_binder_coverage.py --evidence-dir`, `tabulate_drug_routes.py` | the carrier and route tables of the v4 drugs |
+| `run_baselines.py --with-input-size`, `run_main_model.py --permute-drug-targets` | the first and third controls of 13.1; the second is reported without a flag by `run_baselines.py` and `aggregate_main_model_runs.py` |
 
 Downloads, under `data/raw/label_review` (not in git):
 
@@ -923,6 +1156,17 @@ keyword matches; no page read contained text addressed to an AI assistant. The p
 licences and two statistics pages as not retrieved. Section 11 replaces that: every one of them was requested again
 on 11 October 2026. Every licence named there is now quoted from the provider; the ClinGen terms page declines
 automated readers and was read by the user.
+
+Two research passes ran on 12 October 2026, for sections 13.4 and 13.9. Both followed the source rules of `CLAUDE.md`:
+no permission request was made or left waiting, every page was read with `experiments/read_public_page.py` or through a
+programmatic service, and a refusal was recorded rather than worked around. Refused and still unread, for the user to
+open: `go.drugbank.com/legal/terms_of_use` (HTTP 403), `pdsp.unc.edu/databases/kidb.php` and
+`drugtargetcommons.fimm.fi` (both unreachable through the proxy's certificate chain), every address on
+`dmd.aspetjournals.org` (the host disallows an AI assistant's user agents), and
+`marketplace.copyright.com/rs-ui-web/mp/search/journal/1521009X` (served, but a script application with no text).
+Text addressed to an AI assistant, reported as the rules require and not acted on: BindingDB's download pages advise AI
+data users to cite an archived release when training a model, which is advice about reproducible versioning and not an
+instruction to an assistant. Nothing else of the kind was seen.
 
 Sources named above and not linked there: CRESCENDDI, Kontsioti et al. 2022
 ([doi:10.1038/s41597-022-01159-y](https://doi.org/10.1038/s41597-022-01159-y)); TWOSIDES, Tatonetti et al. 2012

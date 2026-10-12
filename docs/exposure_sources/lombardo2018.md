@@ -74,7 +74,66 @@ Each `.html` file saved by `read_public_page.py` has a `.json` record beside it 
 The doi.org redirect page embeds the network address of the proxy that made the request (not the owner's).
 `lombardo2018.csv`: 860771 bytes, SHA-256 `3d9e0507b284a61d6f7536fd81682e1f727fcfacc33a95904e2829cd33c79a13`.
 
-## Licence
+## Licence: checked again on 12 October 2026, and permission is required
+
+The sections below were written on 11 October 2026 and concluded "not verified". A second pass on 12 October 2026
+tried the routes they had not, and the position is now negative rather than unknown. The additions, each quoted with
+where it was read; `docs/label_source_review.md` section 13.9 is the summary.
+
+- **The only licence the article has forbids this use.** Crossref records two licence URLs for the DOI, both with
+  `"content-version": "tdm"`, and no article user licence. From the first: "The TDM click-through agreement does not
+  allow you to: ... Substantially or systematically reproduce, retain or redistribute the Dataset." and "Text mining
+  access for subscription content is provided to subscribers for non-commercial research purposes."
+  (`https://www.elsevier.com/tdm/userlicense/1.0/`, read with `experiments/read_public_page.py`, 12 October 2026).
+  The publisher's copyright policy: a user may mine subscription articles "without sharing any adaptation of the
+  original content with others", and "additional uses/sharing beyond those listed would require permissions to be
+  requested from Elsevier" (`https://www.elsevier.com/about/policies-and-standards/copyright`, same date).
+- **Free to read is not free to redistribute.** OpenAlex reports `is_oa: true`, `oa_status: "bronze"` and
+  `license: null`, with the publisher's own PDF as the open location (`api.openalex.org`, curl, 12 October 2026). The
+  note below that records Europe PMC's `isOpenAccess: N` should be read with this beside it: the full text is free to
+  read at the publisher and was unread here only because of the robots refusal.
+- **No post-embargo licence will attach.** The journal is not among the titles in the publisher's open-archive
+  programme, whose page states that articles in it "are free for everyone to read and download, subject to Elsevier's
+  user license" after an embargo (`https://www.elsevier.com/open-access/open-archive`, 12 October 2026). The society's
+  journals "will remain hybrid" under the partnership announcement (same date).
+- **The data-as-facts route is narrower than it looks.** "Creating an original figure or table from data or factual
+  information that was not previously in figure or table format typically does not require permission, subject to
+  proper acknowledgement" — and Table S1 was already a table
+  (`https://www.elsevier.com/about/policies-and-standards/copyright/permissions`, 12 October 2026). The same page:
+  "As a general rule, permission should be sought from the rights holder to reproduce any substantial part of a
+  copyrighted work. This includes any text, illustrations, charts, tables, photographs, or other material from
+  previously published sources."
+- **The authors keep the data.** "Elsevier does not require, nor ever request, rights to the underlying research
+  itself. Authors (and institutions or employers) will continue to retain patent, trademark and other intellectual
+  property rights relating to the research, as well as the right to use their research data freely and without
+  restriction." (copyright page, as above). That is the shorter of the two routes: a deposit of Table S1 by its
+  authors under CC BY or CC0. No deposit exists today; Zenodo, figshare and Dryad were all searched on 12 October 2026.
+- **The httk route does not carry.** A search of the whole `USEPA/CompTox-ExpoCast-httk` repository finds the table
+  named in eight files, every one a citation or build code, with no permission, provenance or rights statement; the
+  per-dataset R documentation lists the citation under `\references` and nothing else. The EPA's data licence covers
+  data "produced by the U.S EPA" (`pasteur.epa.gov/license/sciencehub-license.html`, 12 October 2026), which this is
+  not, and the package's own `LICENSE` names a package author as copyright holder, which speaks to the package.
+- **A warning for a later pass.** The httk team's figshare deposit, doi:10.23645/epacomptox.6062791, is licensed
+  "Creative Commons Zero v1.0 Universal" (DataCite and figshare APIs, curl, 12 October 2026) but its file list holds
+  one 0-byte `index.html`. It is a metadata stub and does not contain this table. Do not read that CC0 as covering it.
+- **The permissions route, if it is wanted.** "ASPET handles all permissions requests through the Copyright Clearance
+  Center's Republication Service." (`https://www.aspet.org/aspet/journals/permissions-request`, 12 October 2026); the
+  journal's link from that page is `https://marketplace.copyright.com/rs-ui-web/mp/search/journal/1521009X`. A request
+  has to name the revised supplement explicitly, the whole of it rather than an excerpt, and ask for non-exclusive
+  worldwide electronic redistribution for non-commercial research with the society's credit line. Worth asking
+  outright whether the society considers the factual values themselves, as distinct from the selection and
+  arrangement of the table, to fall within its claim.
+- **No precedent found.** A full-text search of the open-access literature for a paper reusing this table with a
+  stated permission returns nothing, though 29 articles carry the society's conventional permission credit line for
+  other material, so the route is used.
+
+**Correction to the "Route" and "Refused" sections below, and it matters for every future retrieval of anything on
+this host.** Those sections say the robots file disallows the supplementary-file address. It is broader than that: the
+host's robots file carries `Disallow: /` for the user agents an AI assistant's reader announces itself under, so
+**every address on `dmd.aspetjournals.org` is refused**, the article landing page and the free full-text PDF included.
+Trying another path there is futile; the user has to open them personally.
+
+## Licence (the first pass, 11 October 2026)
 
 **The article and its supplement carry no open licence that could be verified. The copy used comes from a repository
 whose stated licence is MIT; whether that licence can cover a publisher's supplementary file is not established.**

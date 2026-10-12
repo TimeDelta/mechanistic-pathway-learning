@@ -24,6 +24,13 @@ Each line gives the owner's words and where they are recorded (`docs/research_su
    instead then").
 4. **A reading at the peak of the unbound tissue concentration** (11 October: "Peak tissue unbound concentration can
    be relegated to confirmation only").
+5. **The input of a multi-target drug, and the loss shares** (12 October: "let's do the control version and the equal
+   loss per share version"). The input stays 1 per target; `--equal-drug-shares` is turned on; three controls are
+   reported beside the score.
+6. **The occupancy anchor** (12 October): the placeholder that fixes the best-bound target at 90 percent occupancy is
+   rejected; where a drug has a measured unbound concentration, occupancy is read at each target's own site.
+7. **What the comparative checks test** (12 October): only the two-drug kind is a test of a model; the three kinds that
+   go through a lowered carrier or enzyme are reported without a verdict, and the enzyme statements do not train.
 
 ## 2. What would change
 
@@ -49,6 +56,26 @@ Each line gives the owner's words and where they are recorded (`docs/research_su
 - **Checks.** `configs/comparative_checks.csv` (214 statements) is read by `experiments/run_comparative_checks.py`
   after scoring. The checks are named in advance, test no hypothesis of the study, change no decision rule and are
   reported apart from every score. A finished development run is asked the development checks only.
+- **The loss and its shares.** The four confirmatory configurations and their four no-descriptor ablations gain
+  `--equal-drug-shares`: each drug's positives and, apart, its negatives are rescaled to the mean counts over the
+  training drugs, so a drug with many labels does not take a larger share of the gradient. Gene rows are unchanged and
+  the evidence weights still differ between drugs. This changes training, which is why it belongs in the amendment and
+  not in a commit; it is the one item here that does.
+- **What is reported beside the score.** Three controls for the input-size objection, none of which changes a model:
+  the input-size baseline (`run_baselines.py --with-input-size`), macro AUPRC inside strata of a drug's number of
+  targets (reported without a flag), and the permuted-target control (`run_main_model.py --permute-drug-targets`), a
+  negative control whose run is never a result of the study. The amendment should say that the controls were named
+  before any v4 run, which they were.
+- **Optionally, the weight of a placebo-controlled negative.** If the owner takes the never-above-placebo pairs as
+  negatives (point 2 of section 4 below), `--placebo-negative-weight` sets their loss weight above that of an
+  unlabelled pair. The amendment has to name the number, because it is a free parameter of the loss.
+- **The occupancy anchor, if off-targets ever enter the input.** The measured unbound concentration at each target's
+  own site, not the 90-percent placeholder. No off-target enters any registered input today, so this binds nothing
+  yet; it is written here so the anchor is not re-chosen later by default.
+- **The comparative checks.** Named in advance, reported after scoring, testing no hypothesis. The amendment should
+  state which of them can test a model at all: the two-drug kind, because a second drug enters through the mechanism
+  edges that every drug perturbation trains. The carrier, displacement and enzyme kinds go through relations no label
+  varies and are reported without a verdict.
 - **The peak reading.** Not built. The owner's sentence is read here as: a reading at the peak concentration would be
   reported at the confirmation stage, if at all, and is not trained on or selected on. The owner should correct this
   reading if it is wrong.
@@ -66,14 +93,16 @@ reads either is a separate decision.
 1. **The limit on a drug's targets.** Three stays the rule until the owner decides (`docs/label_source_review.md`,
    section 12). Without a limit eight drugs enter and one of them joins the two large drug groups into one unless a
    written rule sets it aside.
-2. **The placebo pairs.** Set aside, as decided on 10 October, or counted as negatives, as the owner's question of
-   11 October suggests ("Why would working no better than the placebo not be counted as evidence against a label?").
-   Both selections are built; the second is `better_v2_full_v4_placebo_negative.parquet`, SHA-256 first 16
-   `3f4decacd783ab08`.
+2. **The placebo pairs**, and if they become negatives, their weight. Set aside, as decided on 10 October, or counted
+   as negatives, as the owner's question of 11 October suggests ("Why would working no better than the placebo not be
+   counted as evidence against a label?"). Both selections are built; the second is
+   `better_v2_full_v4_placebo_negative.parquet`, SHA-256 first 16 `3f4decacd783ab08`. On 12 October the owner asked
+   that a placebo-controlled absence count for more than silence in the loss share; `--placebo-negative-weight` does
+   that and needs a number.
 3. **The draft list of admitted drug groups** (`configs/admitted_atc_prefixes_draft.csv`): its rows need the owner's
    sign-off, and one drug of the list joins the two large drug groups in the same way.
-4. **The input of a multi-target drug** and the other questions of `docs/confirmatory_architecture_review.md`,
-   section 8.
+4. **The other questions of `docs/confirmatory_architecture_review.md`, section 8.** Question 6, the input of a
+   multi-target drug, was answered on 12 October and is item 5 of section 1 above; the other eleven are open.
 5. **The Open Targets statements**: their evidence grade, and whether held-out statements enter the primary score
    (`docs/label_source_review.md`, section 9.3).
 6. **Development runs on v4.** The registered head choice and the stopping rule were made on `evidence_full_v2`. A new
