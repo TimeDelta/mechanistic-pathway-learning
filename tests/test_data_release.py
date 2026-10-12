@@ -64,3 +64,44 @@ def test_extra_directories_drop_article_text_but_keep_metadata(tmp_path: Path) -
     released = pd.read_parquet(release / "literature" / "documents.parquet")
     assert list(released.columns) == ["pmid", "year", "species_ids", "publication_types"]
     assert verify_release(release) == []
+
+
+def test_ctd_terms_are_added_to_an_existing_release_without_touching_its_tables(tmp_path: Path) -> None:
+    from mechanistic_pathway_learning.data_release import RELEASE_LICENSE, add_ctd_terms_to_release
+
+    graph, evidence = write_inputs(tmp_path)
+    literature = tmp_path / "literature"
+    literature.mkdir()
+    pd.DataFrame({"chemical_mesh_id": ["D000077443"], "mesh_descriptor": ["D001008"], "source": ["CTD-curated"]}).to_parquet(literature / "ctd_relations_filtered.parquet", index=False)
+    (literature / "ctd_relations_summary.json").write_text(json.dumps({"ctd_pin": {"report_created": "Tue Sep 29 13:17:30 EDT 2026", "sha256": "abc", "checked_at": "2026-10-06T19:03:55Z"}}))
+    release = build_release("vctd", tmp_path / "releases", {"graph": graph}, {"evidence": evidence}, None, None, extra_directories={"literature": literature})
+    checksums_before = {name: entry["sha256"] for name, entry in json.loads((release / "MANIFEST.json").read_text())["files"].items()}
+
+    notice = add_ctd_terms_to_release(release, today="2026-10-11")
+    manifest = json.loads((release / "MANIFEST.json").read_text())
+    text = notice.read_text()
+    assert notice == release / "literature" / "CTD_TERMS.md" and "literature/CTD_TERMS.md" in manifest["files"]
+    assert "You must notify CTD, and describe your use of our data" in text and "10.1093/nar/gkae883" in text
+    assert "report created Tue Sep 29 13:17:30 EDT 2026" in text and "on 2026-10-06" in text and "It holds 1 rows" in text
+    assert "http://ctdbase.org/detail.go?type=chem&acc=D000077443" in text and "http://ctdbase.org/detail.go?type=disease&db=MESH&acc=D001008" in text
+    assert manifest["license"] == RELEASE_LICENSE and "CTD" in manifest["license"]
+    assert manifest["amendments"][0]["date"] == "2026-10-11" and "previous_license" in manifest["amendments"][0]
+    assert {name: entry["sha256"] for name, entry in manifest["files"].items() if name != "literature/CTD_TERMS.md"} == checksums_before
+    assert verify_release(release) == []
+    add_ctd_terms_to_release(release, today="2026-10-11")  # running it twice records one amendment
+    assert len(json.loads((release / "MANIFEST.json").read_text())["amendments"]) == 1
+
+
+def test_a_release_without_ctd_data_gets_no_ctd_notice(tmp_path: Path) -> None:
+    from mechanistic_pathway_learning.data_release import add_ctd_terms_to_release
+
+    graph, evidence = write_inputs(tmp_path)
+    release = build_release("vplain", tmp_path / "releases", {"graph": graph}, {"evidence": evidence}, None, None)
+    assert add_ctd_terms_to_release(release) is None and verify_release(release) == []
+
+
+def test_ctd_page_addresses_drop_the_mesh_prefix() -> None:
+    from mechanistic_pathway_learning.evidence.ctd_terms import ctd_chemical_page, ctd_disease_page
+
+    assert ctd_chemical_page("MESH:D000077443") == "http://ctdbase.org/detail.go?type=chem&acc=D000077443"
+    assert ctd_disease_page("D001008") == "http://ctdbase.org/detail.go?type=disease&db=MESH&acc=D001008"

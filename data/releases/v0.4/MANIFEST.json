@@ -2,7 +2,7 @@
  "version": "v0.4",
  "created": "2026-10-06",
  "git_commit": "b1c9d02133545bd0c31009355236c4e43f1ddf61",
- "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
+ "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; rows derived from the Comparative Toxicogenomics Database (CTD; the tables named ctd_relations_filtered and the report rows of source CTD-curated) are for non-commercial use under CTD's terms, which also ask for a citation, links to CTD and a notice to CTD (literature/CTD_TERMS.md); MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4, docs/data_sources.md and docs/alternative_sources.md",
  "licensed_term_labels_blanked": 8830,
  "notes": "Design version 0.4 tables: graph_full with GTEx brain expression and the regulon restriction; evidence_full from the report-level assembler with gene-disease association types and the OnSIDES v3.1.1 label statements appended after the OnSIDES review of 5 October 2026 (3,910 observations; 7,488 reports from five sources; 876 drug pairs over 142 drugs); evidence_slice_sweeps is the monogenic slice table the slice sweeps of section 12 trained on; evidence_two_entries is the version 0.3 grade-A proxy ablation table; onsides holds the OnSIDES identifier bridge and report table (MedDRA term names blanked; 1,144 qualifying statements, no ATC waiver, combination-only statements excluded, LLT events matched through their PT, name unification with SIDER); literature holds the E3 tables rebuilt on 6 October 2026 after the literature review, on the PubTator3 bulk file published that day: 209,184 PubTator3 relation reports, 5,191 CTD reports, 214,375 appraised literature reports over 134,747 papers, publication dates, document metadata for 32,647 papers without article text, gene identifier map, SIDER chemical map.",
  "source_pins": [
@@ -238,6 +238,11 @@
    "bytes": 121,
    "rows": null
   },
+  "literature/CTD_TERMS.md": {
+   "sha256": "8f0af30b1c14b1b39343366de9bee0174faec82c69038f4edf25ee72b46739a4",
+   "bytes": 3446,
+   "rows": null
+  },
   "literature/ctd_relations_filtered.csv": {
    "sha256": "abb9f7a0debfcfa7b65c31e0f472a04f515b6f6a25fe931bc14be78f59acea33",
    "bytes": 3822827,
@@ -328,5 +333,12 @@
    "bytes": 2660,
    "rows": null
   }
- }
+ },
+ "amendments": [
+  {
+   "date": "2026-10-11",
+   "change": "added literature/CTD_TERMS.md and named CTD's terms in the licence sentence; no table changed",
+   "previous_license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md"
+  }
+ ]
 }

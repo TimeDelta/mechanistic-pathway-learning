@@ -9,9 +9,12 @@ the source pins copied from docs/data_sources.md and a license statement.
 
 Licensing. The report table carries MedDRA term names on rows derived from drug labels
 (SIDER, OnSIDES); MedDRA terms may not be redistributed, so those names are blanked
-before copying (the term identifier and the target symptom stay). Everything else in a
-release is derivable from CC BY, CC BY-SA or public sources, and the SIDER-derived
-rows make the release CC BY-NC-SA as a whole (design section 4.4).
+before copying (the term identifier and the target symptom stay). The SIDER-derived
+rows make the release CC BY-NC-SA as a whole (design section 4.4). Rows derived from
+the Comparative Toxicogenomics Database (CTD) come under CTD's own terms: non-commercial
+use, a citation, links to CTD's pages and a notice to CTD. The notice file CTD_TERMS.md
+(mechanistic_pathway_learning/evidence/ctd_terms.py) is written beside the derived table
+and is copied into the release with it.
 
 Raw downloads are never part of a release; they are two gigabytes, several contain
 licensed term tables, and docs/data_sources.md pins them for re-download.
@@ -34,6 +37,10 @@ GRAPH_FILES = ("nodes.parquet", "edges.parquet", "relation_types.json", "graph_s
 EVIDENCE_FILES = ("evidence_records.parquet", "evidence_reports.parquet", "evidence_summary.json", "unmapped_records.parquet")
 CSV_TWIN_MAX_ROWS = 10_000  # tables up to this size also get a CSV twin for readable diffs (evidence tables; not the node and edge tables)
 MANIFEST_NAME = "MANIFEST.json"
+RELEASE_LICENSE = ("Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; "
+                   "rows derived from the Comparative Toxicogenomics Database (CTD; the tables named ctd_relations_filtered and the report rows of source CTD-curated) "
+                   "are for non-commercial use under CTD's terms, which also ask for a citation, links to CTD and a notice to CTD (literature/CTD_TERMS.md); "
+                   "MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4, docs/data_sources.md and docs/alternative_sources.md")
 
 
 def sha256_of_file(path: Path) -> str:
@@ -168,7 +175,7 @@ def build_release(
         "version": version,
         "created": date.today().isoformat(),
         "git_commit": git_commit_hash(repository_root) if repository_root is not None else None,
-        "license": "Derived data; non-commercial and share-alike (CC BY-NC-SA) because SIDER-derived rows are included; MedDRA term names removed from label-derived report rows; see docs/experiment_design.md section 4.4 and docs/alternative_sources.md",
+        "license": RELEASE_LICENSE,
         "licensed_term_labels_blanked": stripped_rows_total,
         "notes": notes,
         "source_pins": source_pins_from_table(data_sources_path) if data_sources_path is not None else [],
@@ -179,6 +186,34 @@ def build_release(
     }
     (release_directory / MANIFEST_NAME).write_text(json.dumps(manifest, indent=1))
     return release_directory
+
+
+def add_ctd_terms_to_release(release_directory: Path, today: str | None = None) -> Path | None:
+    """Add CTD's terms to a release built before the notice existed: write literature/CTD_TERMS.md, list it in the manifest,
+    replace the manifest's licence sentence and record the amendment. No other file of the release is touched.
+
+    Returns the path of the notice, or None when the release holds no table derived from CTD."""
+    from mechanistic_pathway_learning.evidence.ctd_terms import write_ctd_terms
+
+    manifest_path = release_directory / MANIFEST_NAME
+    manifest = json.loads(manifest_path.read_text())
+    derived_tables = sorted(release_directory.glob("*/ctd_relations_filtered.parquet"))
+    if not derived_tables:
+        return None
+    directory = derived_tables[0].parent
+    summary_path = directory / "ctd_relations_summary.json"
+    pin = json.loads(summary_path.read_text()).get("ctd_pin", {}) if summary_path.exists() else {}
+    notice_path = write_ctd_terms(directory, pin.get("report_created"), pin.get("sha256"), row_count(derived_tables[0]), str(pin.get("downloaded_at") or pin.get("checked_at") or "")[:10] or None)
+    relative_path = str(notice_path.relative_to(release_directory))
+    manifest["files"][relative_path] = {"sha256": sha256_of_file(notice_path), "bytes": notice_path.stat().st_size, "rows": None}
+    manifest["files"] = dict(sorted(manifest["files"].items()))
+    previous_license = manifest.get("license")
+    manifest["license"] = RELEASE_LICENSE
+    amendment = {"date": today or date.today().isoformat(), "change": f"added {relative_path} and named CTD's terms in the licence sentence; no table changed",
+                 "previous_license": previous_license}
+    manifest["amendments"] = [entry for entry in manifest.get("amendments", []) if entry.get("change") != amendment["change"]] + [amendment]
+    manifest_path.write_text(json.dumps(manifest, indent=1))
+    return notice_path
 
 
 def verify_release(release_directory: Path) -> list[str]:

@@ -30,6 +30,7 @@ from pathlib import Path
 import pandas as pd
 
 from mechanistic_pathway_learning.evidence.cached_http import USER_AGENT, CachedRateLimitedClient
+from mechanistic_pathway_learning.evidence.ctd_terms import write_ctd_terms
 from mechanistic_pathway_learning.evidence.load_ctd_relations import ctd_rows_to_reports, filter_ctd_rows, iterate_ctd_rows
 from mechanistic_pathway_learning.evidence.load_pubtator_relations import summarize_reports
 from mechanistic_pathway_learning.evidence.mesh_symptom_descriptors import descriptor_lookup, load_symptom_mesh_descriptors
@@ -132,6 +133,8 @@ def main() -> None:
     summary["output"]["rows_by_direct_evidence"] = {key: int(value) for key, value in reports.direct_evidence.value_counts().sort_index().items()} if not reports.empty else {}
     summary["run_finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     (arguments.output_dir / "ctd_relations_summary.json").write_text(json.dumps(summary, indent=2, default=str))
+    # CTD's terms ask for a citation and links wherever its data are used; the notice travels with the table (and into a release)
+    write_ctd_terms(arguments.output_dir, pin.get("report_created"), pin.get("sha256"), len(reports), str(pin.get("downloaded_at") or pin.get("checked_at") or "")[:10] or None)
     print(json.dumps(summary["output"], indent=2))
 
 
