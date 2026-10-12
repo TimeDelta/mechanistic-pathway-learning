@@ -126,6 +126,13 @@ where it was read; `docs/label_source_review.md` section 13.9 is the summary.
 - **No precedent found.** A full-text search of the open-access literature for a paper reusing this table with a
   stated permission returns nothing, though 29 articles carry the society's conventional permission credit line for
   other material, so the route is used.
+- **A possible second copy, unverified.** Lombardo, Bentzien, Berellini and Muegge 2024,
+  doi:10.1021/acs.molpharmaceut.3c00812 (PMID 38285644), reports models built on "1340 compounds with human
+  intravenous pharmacokinetic (PK) data, the largest data set publicly available today" (abstract), which is close to
+  the same set under a different publisher and so under a different rights holder. Europe PMC reports that article
+  closed with no supplement listed (`isOpenAccess` N, `hasSuppl` N, read by curl on 12 October 2026) and the
+  publisher's site was not read, so whether its supporting information carries the values is an open question. Worth
+  settling before a request is made, and the authors are the people who can answer it.
 
 **Correction to the "Route" and "Refused" sections below, and it matters for every future retrieval of anything on
 this host.** Those sections say the robots file disallows the supplementary-file address. It is broader than that: the
