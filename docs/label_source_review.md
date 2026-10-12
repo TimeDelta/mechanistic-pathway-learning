@@ -1919,11 +1919,112 @@ It answers the parameter objection, it is what convergence needs anyway, it remo
 a nonlinear arm. Two costs to weigh: it is a registered change, so the head choice and the stopping rule would have
 to be selected again on development runs, which the instruction "No new pilots yet" currently blocks; and basis
 decomposition assumes the relations share a low-dimensional space of transforms, which is an assumption about
-physiology and not only about parameters, though a mild one where relations such as `activates` and `inhibits` should
-plausibly differ mainly by sign.
+capacity that the development runs have to test. (The reason first given here, that `activates` and `inhibits`
+plausibly differ mainly by sign, was withdrawn on the owner's challenge; see 19.3, which gives the argument that does
+hold.)
 
 A fourth option, not recommended on its own: halve the node state from 32 to 16, which quarters the relation
 transforms to 15,360. It costs capacity everywhere, including in the heads, where the parameters are not the problem.
+
+## 19. Answers of 12 October, 16:51
+
+### 19.1 Two things I said would need redoing, and neither does
+
+**The head choice is settled and I should not have reopened it.** The owner: "Head choice is never recoded. Only the
+noisy or is defensible for mechanistic pathways due to the stoichiometric requirements of the graph." The decision
+log for 8 October 2026 records exactly that: "Sigmoid head dropped from the confirmatory family: the noisy-OR head of
+each encoder is tested", with the reason given as "only the noisy-OR head has modules to read as pathways". So both
+confirmatory models already use the noisy-OR head, the four-model family of the preregistration is down to two, and
+there is no head choice left for a change of encoder to invalidate. My statement in 17.2 and 18 that it would have to
+be selected again was wrong.
+
+**The training stopping rule is a rule, not a fitted value.** The preregistration fixes it: validation loss with
+patience 8, at most 60 epochs. Those numbers were set in advance and are not read off a development run, so a change
+of encoder does not invalidate them. A smaller model will stop at a different epoch, which is an outcome and not a
+parameter. The owner's reading — "Oh you're just saying the max number of steps needs recalculated?" — is nearly
+right, with one distinction: the 60-epoch cap does not need recalculating either. What changes is the **propagation**
+budget, which under 17.2 stops being a step count at all and becomes a tolerance, and the step count then follows
+from the learned gains rather than being registered.
+
+So the cost of changing the encoder is development runs for their own sake, not for re-selecting a head or a stopping
+rule.
+
+### 19.2 One layer, repeated: yes, with one requirement
+
+The owner: "use the 4 bases and I think just the 1 layer, repeated. Does the one repeated layer make sense to do?"
+
+It does, and it is the same object as the convergence of 17.2 rather than a second change. A single set of relation
+transforms applied repeatedly is a fixed-point iteration, h <- f(h, u) until the change falls below a tolerance,
+which is what a steady-state reading means. Three things follow.
+
+**The parameter count stops growing with reach.** At four bases shared across the rounds the relation transforms are
+4,176 whatever the depth, so there is no longer a trade between how far a perturbation travels and how many
+parameters the model holds. That is the whole of the owner's objection answered: depth becomes free.
+
+**It needs an explicit contraction bound, and this is the one requirement.** A linear iteration converges when the
+transition's spectral radius is below one, which is what the linear-response encoder's contraction of 0.9 already
+buys it. With a nonlinearity the same argument works only if the activation is non-expansive, which tanh, ReLU and
+the sigmoid all are, and if the linear part is a contraction. Under basis decomposition the linear part is
+sum_b a_rb V_b, so the bound has to be placed on the bases and the coefficients together — normalising each basis and
+bounding the coefficients is the direct way, and it is the same device the codebase already uses for the gains. Built
+without that bound, a weight-tied iteration can diverge or oscillate, and the 10 October probe recorded that at the
+registered scale both encoders grow without limit, which is what that failure looks like. This belongs in the
+amendment as a stated constraint, not as an implementation detail.
+
+**What is lost is depth-specialised transforms, and it is a real loss.** With three independent layers the model can
+use the first round for one kind of step and later rounds for another, and the architecture review records that it
+does: "A knockout spends one layer on gene to protein, so it reaches 2 edges past its protein". A repeated layer
+applies the same transform at every round, so that specialisation is not available; gene-to-protein and
+signalling-to-signalling steps must share one transform per relation. Whether it matters is empirical and would show
+in a development run. It is worth naming, because it is the one thing the registered encoder can do that the
+repeated one cannot.
+
+The family is a recognised one — weight-tied layers run to a fixed point, with the gradient taken through the last
+rounds or through the fixed point itself. The canonical references could not be verified from this workspace: the
+arXiv API is unreachable through the proxy and Crossref does not hold the conference records, so none is cited here
+rather than cited from memory. The owner should add them.
+
+### 19.3 The activates and inhibits assumption, withdrawn
+
+The owner: "I don't think I agree that activates and inhibits should mainly differ by sign. Double check your
+assumptions there."
+
+**The objection is right and the sentence should not have been written.** Three reasons, in increasing order of how
+badly it was wrong.
+
+1. Mechanistically they are not negatives of one another. Activation and inhibition proceed by different mechanisms
+   — phosphorylation at an activating against an inhibitory site, proteolysis, sequestration, competitive
+   displacement, degradation — and their kinetics are asymmetric, since inhibition is bounded below by the absence of
+   the target and saturates there while activation is not bounded in the same way.
+2. The model cannot express the claim anyway. The architecture review records that the message-passing encoder
+   "reads no edge sign and treats the perturbation's sign as a feature", so `activates` and `inhibits` are two
+   relations with two independent matrices and nothing in that encoder relates them by negation.
+3. The claim is not what basis decomposition assumes. Basis decomposition says the 20 relation matrices lie near a
+   four-dimensional subspace of the 1,024-dimensional space of 32 by 32 matrices. Whether any two of them are
+   negatives of each other has no bearing on whether four bases span the set. I offered a physiological-sounding
+   reason for a purely numerical constraint, which is the kind of dressing this project exists to avoid.
+
+**The argument that does hold is about data support, not physiology.** A full matrix gives every relation 1,024
+parameters per layer whatever its size, and the relations are nothing like equal:
+
+| | relations | edges |
+| --- | --- | --- |
+| relations with more edges than 1,024 | 9 | 278,386 |
+| relations with fewer edges than 1,024 | **11** | **1,398** |
+
+Eleven of the twenty relations have fewer edges in the entire graph than the parameters a full matrix would give
+them: `changes_membrane_potential` 405, `changes_ion_pool` 395, `changes_redox_pool` 324, `regulates_release` 89,
+`cofactor_of` 83, `oxidatively_modifies` 41, `produces_oxidant` 28, `redox_capacity` 19, `voltage_gates` 7,
+`driving_force` 4 and `catalyzes_reverse_transport` 3. That last one owns 3,072 parameters under the registered
+encoder and has three edges. Three relations carry 53.2 percent of all edges.
+
+So the case for basis decomposition is that the registered parameterisation spends capacity in inverse proportion to
+the evidence: the relations that could support a free matrix are a minority, and the rest are given one anyway. Under
+four bases every relation owns four coefficients, which is proportionate to what the small ones can identify and is a
+constraint on the large ones that the development runs will show the cost of. **B is a capacity knob and should be
+chosen like one**: compare 2, 4, 8 and the full matrix on development folds and read the underfitting. If the
+relations genuinely need distinct transforms, too small a B shows as underfitting, which is testable rather than
+assumed in either direction.
 
 ## How the counts were made
 

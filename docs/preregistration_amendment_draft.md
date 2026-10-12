@@ -106,6 +106,19 @@ reads either is a separate decision.
   the registered head choice and stopping rule invalid, because both were selected on three independent layers, so it
   needs its own development runs before any held-out run (`docs/label_source_review.md` 17.2).
 
+- **The message-passing encoder, if the owner applies his decision of 12 October.** "use the 4 bases and I think
+  just the 1 layer, repeated." One set of relation transforms, each a mixture of four shared bases, applied
+  repeatedly until the change falls below the tolerance of the item above. The relation transforms fall from 61,440
+  to 4,176 and stay there at any depth, and the `clears` relation owns four coefficients, the same as the
+  linear-response gain. Three things the amendment has to state, not leave to the implementation: the number of
+  bases, because it is a capacity choice and should be read off development folds against 2, 4, 8 and the full
+  matrix; the norm bound on the bases and their coefficients, because a weight-tied iteration converges only if the
+  update is a contraction and a non-expansive activation alone does not give that; and the loss of depth-specialised
+  transforms, since a repeated layer applies one transform per relation at every round where three independent
+  layers do not. Neither the noisy-OR head nor the training stopping rule is reopened by this: the head was settled
+  on 8 October and the stopping rule is preregistered as validation loss with patience 8 and at most 60 epochs
+  (`docs/label_source_review.md` 18, 19).
+
 ## 4. What is still missing before this can be applied
 
 1. **The limit on a drug's targets.** Three stays the rule until the owner decides (`docs/label_source_review.md`,
