@@ -138,6 +138,17 @@ reads either is a separate decision.
   cancel, so a node with one activator and one repressor of equal weight receives zero. Reported in the architecture
   review of 10 October and not acted on (20.2).
 
+- **The electrical layer, which is a separate decision from every parameter question.** Measured on 12 October:
+  `VM_c`, the single membrane-potential node, carries none of the 138 descriptor columns, and the in-degree mean
+  divides each of its 405 incoming `changes_membrane_potential` messages by 405 while its seven `voltage_gates`
+  outputs pass undivided. A membrane potential is the integral of its currents, so the mean is the wrong
+  aggregation for that relation, and the layer is nearly silent whatever the label count. The amendment has to
+  settle three things apart: the aggregation for `changes_membrane_potential` and `changes_ion_pool` (a sum scaled
+  to keep the transition a contraction, since a raw sum would take the row sum to 405 and break the convergence item
+  above); whether `VM_c` is given descriptor columns of its own; and, if neither is changed, a disclosure that the
+  electrical layer is present in the registered graph and carries no fitted behaviour
+  (`docs/label_source_review.md` 22).
+
 ## 4. What is still missing before this can be applied
 
 1. **The limit on a drug's targets.** Three stays the rule until the owner decides (`docs/label_source_review.md`,

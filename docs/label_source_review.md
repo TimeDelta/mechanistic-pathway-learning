@@ -2219,6 +2219,88 @@ identified at any rank, so its parameters are decoration whatever the scheme: th
 relations are a diagonal gain held at its initialisation, or dropping them from the encoder and recording that the
 study does not model them.
 
+## 22. The electrical layer: why no training evidence reaches it (12 October, 17:29)
+
+The owner, on the three relations of 21.3 that no training pair identifies: "How do the node descriptors look for the
+node types involved in those three edge types?"
+
+They look like the explanation. The three relations all belong to the electrical layer, and between the descriptors
+and the aggregation there are two structural reasons the layer is silent that have nothing to do with how many
+labels the study holds.
+
+### 22.1 What the three relations connect
+
+| relation | edges | sources | targets |
+| --- | --- | --- | --- |
+| `changes_membrane_potential` | 405 | 405 reaction nodes | **1**: `VM_c` |
+| `driving_force` | 4 | 4 metabolite nodes | **1**: `VM_c` |
+| `changes_ion_pool` | 395 | 356 reaction nodes | 5 ion metabolites |
+
+`VM_c`, the graph's single `membrane_potential` node, is the target of every edge of the first two. It is not a dead
+end: it feeds seven voltage-gated channel reactions through `voltage_gates`, with the signs the physiology asks for
+(potassium and calcium channels at +1, the two HCN currents at -1). So the loop is built as intended, currents into a
+potential and a potential into channels.
+
+### 22.2 The hub carries no descriptors at all
+
+The descriptor table has 138 columns in four groups: 10 metabolite, 35 reaction, 66 protein, 27 gene. A node's state
+before anything propagates is the projection of its row.
+
+| nodes | non-zero descriptor columns |
+| --- | --- |
+| every node, graph-wide | median 27 (quartiles 9 and 65) |
+| the 405 reaction sources of `changes_membrane_potential` | median 27, and better filled than reactions generally: 23.3 of the 35 reaction columns active against 16.0 graph-wide |
+| the 5 ion metabolites of `changes_ion_pool` | 9 of the 10 metabolite columns, all five |
+| the 4 metabolite sources of `driving_force` | 9 of 10, all four |
+| **`VM_c`** | **0 of 138** |
+
+The sources are well described, several of them better than their node type at large, because they are annotated
+transport reactions. The sink is blank. `VM_c` belongs to none of the four groups the descriptor table has — it is
+not a metabolite, a reaction, a protein or a gene — so every column is zero and its initial state is the projection
+bias alone, the same vector every featureless node gets. The one quantity the electrical layer exists to represent
+enters the model with no identity of its own and can be distinguished only by what arrives along its edges.
+
+### 22.3 And almost nothing arrives, because the mean divides by 405
+
+The encoder averages a relation's messages over the target's in-degree **within** that relation. For these targets
+that is not a mild normalisation:
+
+| relation | edges | targets | in-degree of the target |
+| --- | --- | --- | --- |
+| `changes_membrane_potential` | 405 | 1 | **405** |
+| `changes_ion_pool` | 395 | 5 | 338 for the largest, then 32, 9, 9, 7 |
+| `driving_force` | 4 | 1 | 4 |
+| `voltage_gates` | 7 | 7 | 1 each |
+| `encodes`, for comparison | 12,736 | 12,709 | median 1 |
+
+So one perturbed transport reaction moves the membrane potential by one four-hundred-and-fifth of its own magnitude,
+while `VM_c`'s output to each channel passes undivided. That asymmetry is the opposite of the physiology: a membrane
+potential is the integral of the currents crossing the membrane, which is a sum, and the channels then each read the
+one potential. Averaging the currents and not the readout turns the layer into a near-silent node with a loud output.
+
+This is why 21 found `changes_membrane_potential` reached by no training pair at the 0.1 percent threshold and
+carrying 0.001 percent of the flow. It is not that perturbations fail to reach those reactions; it is that whatever
+reaches them is divided by 405 before it is heard. The relation would be nearly silent at any label count.
+
+### 22.4 What follows
+
+Three things are now tangled together and they should be decided apart.
+
+1. **The aggregation is wrong for an additive quantity.** A sum, or a sum scaled to keep the transition a
+   contraction, is what a membrane potential wants. Summing 405 messages raw would take the row sum to 405 and break
+   the contraction that 17.2 depends on, so the scaled forms are the real options: divide by the square root of the
+   in-degree, or give the relation a learned scalar inside the contraction bound. This is a registered change and
+   it is independent of every parameter question in 18 to 21.
+2. **The hub has no features.** `VM_c` could carry a small group of its own columns, which costs almost nothing, or
+   it could be left featureless and the amendment could say that the model distinguishes it only by position.
+3. **Whether the electrical layer should be in the confirmatory graph at all.** It is in it today: these relations
+   are part of `graph_full_neuronal_split_binders`, which is registered. If the aggregation and the descriptors are
+   not fixed, the honest alternative is to disclose that the layer is present in the graph and carries no fitted
+   behaviour, rather than to leave a reader to infer that a membrane potential was modelled.
+
+None of this is a parameter-count question, and none of it is fixed by a rank. A relation whose messages are divided
+by 405 into a featureless node will not be identified at rank 8 any more than at rank 1.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
