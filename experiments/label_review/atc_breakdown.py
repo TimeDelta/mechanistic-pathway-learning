@@ -9,6 +9,7 @@ Usage:
 import json
 from collections import defaultdict
 from pathlib import Path
+
 import pandas as pd
 
 root = Path("data/processed/label_review")

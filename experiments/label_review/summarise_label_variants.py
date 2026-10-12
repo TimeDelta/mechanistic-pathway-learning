@@ -6,11 +6,14 @@ configuration of the study is changed.
 Usage:
   PYTHONPATH=. python experiments/label_review/summarise_label_variants.py    (after build_label_variants.sh)
 """
-import json, sys
+import json
+import sys
 from collections import Counter
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
 sys.path.insert(0, ".")
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
 

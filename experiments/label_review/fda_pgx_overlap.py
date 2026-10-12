@@ -7,9 +7,12 @@ configuration of the study is changed.
 Usage:
   python experiments/label_review/fda_pgx_overlap.py data/raw/label_review/fda_pharmacogenetic_associations/table_pharmacogenetic_associations.html data/processed/label_review/fda_pharmacogenetic_rows.csv
 """
-import re, sys
+import re
+import sys
 from html.parser import HTMLParser
+
 import pandas as pd
+
 
 class TableRows(HTMLParser):
     def __init__(self):

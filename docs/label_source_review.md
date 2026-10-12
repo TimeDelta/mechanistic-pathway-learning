@@ -1353,6 +1353,306 @@ perturbation labels**, not a drug-clearing enzyme table. The table already exist
 The carrier edge, which the owner said he could live without, is in the same position for the same reason, and 13.7
 holds the measurement.
 
+## 15. Answers of 12 October, 15:30
+
+Seven points, each measured by a script in `experiments/label_review/`. Nothing here changes a label, a table, a
+graph or a model input.
+
+### 15.1 Binding sites matched by name, over both sources
+
+The owner: "Why can't you match on name for ChEMBL? Would it be better to replace ChEMBL with Guide to
+PHARMACOLOGY's receptor site?"
+
+Nothing stopped it. `experiments/label_review/binding_site_names.py` reads the site out of ChEMBL's
+`binding_site_comment` and out of Guide to PHARMACOLOGY's `Receptor Site`, normalises both into one vocabulary of
+nine site names and matches on the name. That removes the defect of 14.1 at once: zolpidem joins the fourteen other
+drugs at the benzodiazepine site, where its `site_id` 2619 had kept it apart.
+
+The second question answers itself on coverage:
+
+| source | drug-gene-site rows | drugs | sites |
+| --- | --- | --- | --- |
+| ChEMBL `binding_site_comment` | 317 | 20 | 4 |
+| Guide to PHARMACOLOGY `Receptor Site` | 15 | 5 | 1 |
+| either | | 21 | 4 |
+
+ChEMBL reaches four times as many of the study's drugs, so it is not replaced. The two are used together as a union,
+and Guide to PHARMACOLOGY earns its place twice over: it corroborates, since 11 drug-gene-site assignments are named
+by both sources and every one agrees, and it supplies a label of its own, since flunitrazepam is named at the
+benzodiazepine site there and nowhere in ChEMBL's comments, which is 1 drug and 4 rows the union would otherwise
+lose. The owner's point stands and the script already takes the union; my earlier description of the second source as
+corroboration alone was wrong. The sites, with the study's drugs at each: benzodiazepine (alprazolam,
+clobazam, clonazepam, diazepam, estazolam, flunitrazepam, flurazepam, lorazepam, midazolam, oxazepam, quazepam,
+temazepam, triazolam, zolpidem, zopiclone), barbiturate (methohexital, pentobarbital, primidone, secobarbital), GABA
+(meprobamate) and alpha2delta-1 (gabapentin).
+
+Two comments yield no site, and that is the right answer rather than a gap: acamprosate's and propofol's "Likely
+allosteric but unclear whether benzodiazepine or barbiturate site involved" names two sites and settles neither, so
+pairing on it would be a guess. A hedge about the *mechanism* is different and keeps its site, which is why
+zolpidem's "Not clear if allosteric, but looks like benzodiazepine" still counts.
+
+The table is `configs/binding_sites.csv`.
+
+### 15.2 Competition without a cooperativity factor
+
+The owner, on the recommendation of 14.2: "Do that then". So the rule is settled and written here for the
+amendment: **a competition statement is made only for a pair of drugs named at the same site on one target**, where
+the shift in occupancy is the Gaddum factor 1 + [B]/K_B that the affinity and exposure tables already give. A pair
+named at different sites gets no competition term and is reported as such. No cooperativity factor is carried,
+estimated or fitted.
+
+What that covers, over the drugs that share a mechanism gene:
+
+| | triples (drug, drug, gene) | drug pairs |
+| --- | --- | --- |
+| share a mechanism gene | 9,908 | 2,241 |
+| both named at the same site: competition applies | 1,184 | 111 |
+| named at different sites: no competition term | 932 | 79 |
+| at least one site unknown | 7,792 | 2,070 |
+
+### 15.3 What a refusal of the Lombardo permission would cost, which is less than it looks
+
+The owner: "Have to allow off-targets. Unless we can't without the Lombardo clearances table and they deny
+permission."
+
+**The premise is wrong in the owner's favour.** Permission governs redistribution, not use. The repository already
+downloads the workbook in the build and keeps the joined table out of git, which is what the stated terms permit
+(13.9); a refusal would stop the table and any derived copy being published, and would leave every occupancy the
+study computes exactly where it is. Off-targets are not waiting on the authors' answer.
+
+The dependency measured anyway, from `data/processed/exposure/drug_exposure_v4.csv`:
+
+| | with Lombardo | with the drug labels alone |
+| --- | --- | --- |
+| drugs with an unbound plasma concentration | 128 | 76 |
+| drugs with an unbound brain concentration | 69 | 46 |
+
+So the table is worth 52 drugs in plasma and 23 in brain. The cheapest way to narrow that further: 33 drugs have a
+therapeutic range from Schulz but no fraction unbound from any source, and the 38 that have one from a label were
+read by hand from the label sentences (`experiments/read_label_protein_binding.py`), so most of those 33 are
+probably readable the same way.
+
+### 15.4 What a per-tissue saturation reading would be
+
+The owner: "what do you mean my saturation reading doesn't survive in the strict form?"
+
+A correction of my own wording. What 14.4 rules out is the literal reading only: "tissue T is fully saturated"
+taken as "every node belonging to T is at its ceiling". There is no set of nodes that is T, because the median gene
+is expressed at 1 TPM or above in 67 of GTEx's 68 tissues, so almost every node belongs to almost every tissue and
+68 such curves would be near-copies of the global one.
+
+The weighted reading is well defined and is what the owner should build:
+
+    saturation of tissue T at step t  =  sum over nodes v of w(v, T) * x_v(t)  /  sum over nodes v of w(v, T)
+
+with x_v(t) how far node v has moved from its unperturbed state at propagation step t, and w(v, T) the share of
+v's expression that sits in T. Those curves do separate, because the weights are concentrated where membership is
+not: the largest tissue takes a median 7.4 percent of a gene's expression against 1.5 percent for an even spread.
+The peak per tissue is then a well-defined step and the owner's "work backwards to find the peak distribution point
+for each tissue type" applies to it unchanged. How far the 68 curves separate is a measurement to make before
+relying on it, the same measurement recommended in 13.8 for the 11 brain cell classes, where the median pairwise
+correlation was 0.36.
+
+The owner also accepted the narrower option as a fallback: "The only splitting out brain tissue option is a
+reasonable fallback." That is option 1 of 14.4, the GTEx brain share in place of the `brain_expressed` boolean,
+which would change the site for up to 42 of the 148 mechanism targets.
+
+### 15.5 Enzymes: a correction, and where a CYP and NAT table would come from
+
+**Correction of the owner's reading, not of the record.** "I don't see anything acting on AChE in that list" — ACHE
+is in it. ACHE and BCHE are two of the 11 enzyme mechanism targets of 14.5, and five study drugs act on them:
+donepezil, galantamine, neostigmine and pyridostigmine on ACHE, rivastigmine on ACHE and BCHE. Each of the five has
+ACHE as its only mechanism target, so nothing dilutes them. The four-name list that holds no cholinesterase is the
+`clears` relation (CYP2C19, CYP2C9, CYP2D6, NAT2), which is drug metabolism.
+
+**A table for CYP and NAT: the edges are easy and the labels are not.** The Clinical Pharmacogenetics
+Implementation Consortium publishes its database through an API at `api.cpicpgx.org`, which its robots file permits
+(the web pages at `www.clinpgx.org` do not; see "Refused" below). Queried on 12 October 2026:
+
+- `v1/pair` holds 138 gene-drug pairs for the four genes that are not marked removed: CYP2D6 79, CYP2C19 27,
+  CYP2C9 25, NAT2 7, with a CPIC evidence level, a ClinPGx level, a testing category and PubMed citations.
+- **56 of those pairs name a study drug, over 45 of the study's 222 drugs**, against the 23 edges over 22 drugs that
+  the FDA Table of Pharmacogenetic Associations gives. A curated clearance table from this source would more than
+  double the relation's edges, and with a graded evidence level per edge.
+- But it carries no outcome. `v1/recommendation` holds 2,115 rows, 1,640 of them naming one of the four genes and
+  1,150 of those on a study drug over 15 drugs; **none of the 1,150 names any symptom term of the study's crosswalk**.
+  CPIC recommendations are dosing advice ("use standard dosing", "avoid", "consider an alternative"), not symptom
+  frequencies.
+
+So the position is sharper than it was. Curating a CYP and NAT table is worth doing and is nearly free, and it would
+grow the `clears` relation from 23 edges to about 56 with evidence levels; it would not make the relation trainable,
+because what is missing is a symptom recorded against a metaboliser phenotype, and the FDA table's 23 statements
+remain the only source of that kind found. Training would need either primary-literature curation of
+poor-metaboliser outcomes or a cohort carrying genotypes and symptoms together.
+
+**The CPIC licence is verified and it is permissive**, which the Lombardo table is not: "All curated content
+published by CPIC is available free of restriction under the CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+read in `LICENSE.md` of `github.com/cpicpgx/cpic-data` at commit `82aa2518f1051bb2db9c42c1023a9f08db5a5f80` on
+12 October 2026, because the licence page on the website declines automated readers. The same file asks for
+attribution to CPIC, the primary source `www.clinpgx.org`, the relevant publications, and for the URL, date accessed
+and version number when content comes from the API. One thing the owner has to open personally: item 6 binds the
+database and API to a further data-usage policy at `www.clinpgx.org/page/dataUsagePolicy`, which is behind the same
+robots rule and was not read.
+
+**Refused, and respected.** `www.clinpgx.org` disallows automated readers for its pages, so the CPIC licensing page
+(`cpicpgx.org/?p=1245`, which redirects there), the API documentation page (`?p=2871`), the data-usage policy and the
+ClinPGx downloads page were all left unread. `api.pharmgkb.org` is unreachable from this workspace (the proxy returns
+502). No cache, mirror or other user agent was tried. The repository of the data model,
+`github.com/cpicpgx/cpic-data`, carries agent-instruction files of its own; they were not read, since a third party's
+instructions to an assistant have no standing here.
+
+### 15.6 Placebo arm sizes, and the weight they give
+
+The owner: "can you please look for placebo arm sizes for those specific studies and then calculate negative weight
+based on that then use .5 as default for nothing found?"
+
+Where the sizes are. SIDER gives frequencies with no arm sizes and OnSIDES v3.1.1 gives neither, so they are read
+from each drug's own label, whose adverse-reaction tables head their columns "Placebo (n=385)".
+`experiments/label_review/placebo_arm_sizes.py` queries openFDA, parses the table headers, falls back to the
+adverse-reactions text and caches every label under `data/raw/label_review/placebo_arm_sizes/`.
+
+The weight. With n_drug and n_placebo the effective size of a two-arm comparison is
+n_effective = 1 / (1/n_drug + 1/n_placebo), which is the quantity the standard error of a difference in proportions
+turns on. Then
+
+    weight = n_effective / (n_effective + n_reference),   capped at 1.0,   and 0.5 where no size was found
+
+with n_reference the median effective size over the pairs that have one, 214. That makes the owner's 0.5 both the
+default and the weight of a comparison of typical size, so a pair with no sizes found is not an outlier: a larger
+comparison earns more and a smaller one less, and nothing reaches the weight of a grade A positive.
+
+What it gives over the 61 pairs:
+
+| | pairs | drugs |
+| --- | --- | --- |
+| total | 61 | 39 |
+| arm sizes from an adverse-reactions table | 13 | 6 |
+| arm sizes from the adverse-reactions text | 28 | 19 |
+| no arm size stated in the label | 17 | 11 |
+| no United States label found | 3 | 3 (pergolide, reboxetine, rotigotine) |
+
+41 of the 61 pairs get a measured weight and 20 take the default. The weights run from 0.057 to 0.772, median 0.500,
+mean 0.467. The extremes are worth seeing, because they are what the flat 0.5 was hiding: pimozide's pairs rest on 20
+placebo and 36 drug patients and earn 0.057, while fluoxetine's rest on 975 and 2,869 and earn 0.772. The table is
+`configs/placebo_negative_weights.csv`, one row per pair with its arm sizes, its source and the caption of the table
+the sizes came from.
+
+This needs a flag that reads a weight per pair rather than one number, which `--placebo-negative-weight` does not
+have yet; it is not built, because the owner's instruction against new pilots stands and the amendment is not
+applied.
+
+### 15.7 The target limit: one drug, not a count
+
+The owner: "I really don't like having a target limit. Can you present another option if leakage changes are
+needed?"
+
+**What the current rule actually is, which matters.** `has_dominant_target` is an admission test: a drug with more
+than three distinct ChEMBL mechanism targets is dropped from the study, not truncated to three. Its own docstring
+says "Affinity margins are not yet used", so the rule is named after a dominance it does not measure. Eight drugs
+are excluded by it: desflurane, enflurane, isoflurane, nefazodone, orphenadrine, sevoflurane, topiramate,
+trimipramine.
+
+`experiments/label_review/target_rule_options.py` compares the alternatives on the approved table with no limit (230
+drugs), reporting the largest leakage group under the registered chained rule:
+
+| rule | drugs admitted | largest group |
+| --- | --- | --- |
+| no limit | 230 | 194 drugs (84%) |
+| three targets (the current rule) | 222 | 71 drugs (31%) |
+| targets within 0.5 to 2.0 log units of the drug's best-bound gene | 187 | 59 to 60 drugs (26%) |
+| the same pruning, every drug admitted | 230 | 171 to 190 drugs |
+| only targets a curator flags as the mechanism (DrugCentral MOA, GtoPdb primary) | 213 | 170 drugs (74%) |
+
+A measured dominance rule does beat the count on leakage, 59 drugs against 71, but it admits 35 fewer drugs, because
+only 187 of the 230 have a measured affinity at a seeded gene. Pruning without an admission test keeps all 230 and
+loses the split. The curator rule is the worst of both.
+
+**But none of that is the answer, because the problem is one drug.** Removing one drug at a time from the no-limit
+table and asking how large the biggest group is without it:
+
+| drug removed | drugs the largest group loses |
+| --- | --- |
+| orphenadrine | 117 |
+| tapentadol | 19 |
+| agomelatine | 4 |
+| topiramate, levetiracetam, fenfluramine, betahistine | 2 each |
+
+With **orphenadrine alone set aside, and no limit on targets at all, the largest group holds 77 drugs** — against 71
+under the three-target rule, which excludes eight drugs to get there. Setting aside tapentadol and agomelatine as
+well changes nothing further; a fourth drug takes it to 75.
+
+Why orphenadrine. It carries 18 target genes: the NMDA receptor subunits GRIN1, GRIN2A to GRIN2D and GRIN3A, ten
+sodium channel subunits, HRH1 and SLC6A2. The NMDA and sodium-channel block and the monoamine block are otherwise
+separate, and orphenadrine is in both. It holds 6 evidence rows over 6 symptoms, so setting it aside costs 6 rows
+where the count rule costs eight drugs.
+
+**The option, then, stated so that it can be registered before anything is run.** No limit on a drug's targets. A
+drug is set aside when its target set joins two leakage blocks that are otherwise separate, which is measured on the
+evidence table by removing each drug in turn, and the drugs set aside are named in the registration with their
+measured effect. On the current table that rule names orphenadrine and nothing else. It is a rule about the
+*structure of the split* rather than about pharmacology, which is the honest way to describe what the three-target
+count was doing anyway, and it keeps 229 drugs instead of 222.
+
+Two things the owner should weigh against it. The rule is defined by its effect on the split, so it has to be fixed
+and published before any model is run, or it becomes a choice made on results. And 77 is worse than 71: the question
+is whether seven more drugs are worth six more drugs in the largest group.
+
+### 15.8 Enzyme descriptor columns, and the enzyme-targeting drugs
+
+The owner: "Are there enzyme descriptor columns? If so, how many? I'll probably want the 11 enzyme targeting drugs in
+the training actually even though it's not much training data."
+
+**There are eight.** The node descriptor table `full_neuronal_split_descriptors_brain_expression.parquet` holds 138
+columns over the 49,574 nodes, and eight of them are enzymatic: `reaction_has_ec` and `reaction_ec_class_1` to
+`reaction_ec_class_7`, the seven top-level Enzyme Commission classes. 5,780 of the 13,793 reaction nodes carry an EC
+number, split oxidoreductases 1,796, transferases 1,990, hydrolases 1,225, lyases 371, isomerases 145, ligases 341
+and translocases 155. The other descriptor groups are 66 protein columns, 35 reaction columns in all, 27 gene and 10
+metabolite.
+
+So the model already sees what kind of enzyme catalyses each reaction, as one of seven indicators plus a presence
+flag. What it does not see is an enzyme's identity beyond its protein descriptor, and the EC class sits on the
+reaction rather than on the gene.
+
+**The enzyme-targeting drugs are already in the training set.** The 11 of 14.5 are target genes, not drugs; the drugs
+that act on them are 20, and nothing excludes any of them. They are ordinary drug perturbations: acetaminophen,
+aspirin, deprenyl, diflunisal, disulfiram, donepezil, entacapone, galantamine, isocarboxazid, moclobemide,
+neostigmine, opicapone, phenelzine, pyridostigmine, rasagiline, rivastigmine, tolcapone, tranylcypromine, valproate
+and vigabatrin, and they train the mechanism edges like every other drug. Nothing has to be added for them. If the
+owner meant the 23 enzyme *statements* of the FDA pharmacogenetic table, that is the separate decision of 13.7,
+where they are reported as checks and do not train.
+
+### 15.9 The per-tissue saturation reading, built
+
+The owner: "For saturation, sure that works. Do it." Built as `experiments/measure_tissue_saturation.py`, reported in
+`docs/tissue_saturation.md`. It is a structural measurement with every relation's gain at 1, because the gains are
+learned and no model has been trained on this table, so peak steps read off untrained gains would measure the
+initialisation.
+
+Weights, which is where the coverage sits: a gene or protein node takes its gene's share of its own GTEx median
+expression per tissue (25,180 nodes), a reaction node the mean over the genes of its Human-GEM reaction rule (7,755),
+a metabolite node the mean over the reactions it touches (7,006). 9,633 nodes carry no weight and enter no tissue's
+mean.
+
+**Which reading has a peak.** Three were computed and only one is informative. Under the registered recurrence the
+saturation *level* rises monotonically to a fixed point, so every tissue "peaks" at the last step computed and the
+curves correlate at 0.998; that is the dynamics, not a finding. Under an impulse with a mean-aggregating adjacency
+the field contracts from the first step, so 67 of 68 tissues peak at step 0. The quantity that does have a peak under
+the dynamics the study uses is the **increment**, how much of a tissue fills at each step.
+
+**What it shows**, over the 217 drug perturbations with 24 steps at the registered damping of 0.5:
+
+- the step of fastest filling runs from 1 to 20 with a median of 3, over 15 distinct steps;
+- the normalised curves separate: median pairwise correlation 0.183, quartiles -0.669 and 0.795, against 0.998 for
+  the level curves;
+- the order is physiological. The brain tissues fill first (amygdala, frontal cortex BA9, cortex and cerebellum at
+  step 1), and liver last (liver 20, liver mixed cell 20, hepatocyte 19), with whole blood and lymphocytes at 18;
+- **42 of the 68 tissues fill fastest within the registered 8 propagation steps and 26 do not**, so the registered
+  window cuts off before the liver, the blood and 24 other tissues have reached their fastest step. That is a measured
+  version of the concern recorded in the architecture review, that the linear response is cut off before it settles.
+
+Nothing is changed by this: it is a measurement, and whether the propagation window moves is a registered decision
+the owner has not made.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
@@ -1395,6 +1695,17 @@ Scripts of section 14, under `experiments/label_review/`:
 | `tissue_representation_options.py` | the tissue sources on disk, what each covers of the graph's nodes, how many tissues a gene reaches and the tissue spread of the mechanism targets (14.4) |
 | `enzymes_in_the_graph.py` | enzymes as graph structure, as drug mechanism targets, as labelled gene perturbations and in the `clears` relation (14.5) |
 
+Scripts of section 15:
+
+| script | what it does |
+| --- | --- |
+| `label_review/binding_site_names.py` | binding sites matched by name over ChEMBL and Guide to PHARMACOLOGY, and the drug pairs a site settles (`configs/binding_sites.csv`; 15.1, 15.2) |
+| `label_review/measured_occupancy_leakage.py` | also the Lombardo dependency of 15.3, through `data/processed/exposure/drug_exposure_v4.csv` |
+| `label_review/placebo_arm_sizes.py` | the arm sizes of the 61 placebo-controlled pairs from openFDA and the weight each gives (`configs/placebo_negative_weights.csv`; 15.6) |
+| `label_review/target_rule_options.py` | the alternatives to the target limit, the leakage group each leaves and the drugs that bridge the blocks (15.7) |
+| `label_review/enzymes_in_the_graph.py` | also the enzyme descriptor columns of 15.8 |
+| `measure_tissue_saturation.py` (under `experiments/`) | the per-tissue saturation curves and the step each tissue fills fastest (`docs/tissue_saturation.md`; 15.9) |
+
 Downloads, under `data/raw/label_review` (not in git):
 
 | file | source | SHA-256, first 16 |
@@ -1410,6 +1721,8 @@ Downloads, under `data/raw/label_review` (not in git):
 | `gene2phenotype_licence/ResponsibleHandoverView_commit_30dae72.vue` | https://github.com/EBI-G2P/gene2phenotype_web, `src/views/ResponsibleHandoverView.vue` at commit 30dae72; the script file the live site served (`index-DQD2xSP4.js`, SHA-256 beginning `f86c6741b989f04b`, 3.1 MB) holds the same sentence and was not kept | `ee554cfdb6c9c573` |
 | `ich_m12/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf` | https://www.ema.europa.eu/en/documents/scientific-guideline/ich-m12-guideline-drug-interaction-studies-step-5_en.pdf | `126762154af51347` |
 | `chembl_cooperativity/cooperativity_activities.json` | the ChEMBL activity API, every activity of standard_type Cooperativity, Alpha, Fold shift, Shift and Dose ratio, fetched 12 October 2026 (535 activities) | `17dda554a91e3985` |
+| `placebo_arm_sizes/*.json` | openFDA label queries of 12 October 2026, one file per drug, for the arm sizes of 15.6 | one file per drug |
+| CPIC API, `api.cpicpgx.org/v1/{pair,recommendation,drug}` | read 12 October 2026 for 15.5; CC0, quoted in docs/data_sources.md | not cached in the repository |
 | `openfda_fields/druglabel.yaml` | https://open.fda.gov/fields/druglabel.yaml | `21a6aa9ae2a03a46` |
 | `smith_waters_2019/PMC7089466_efetch.xml` | NCBI E-utilities, `efetch.fcgi?db=pmc&id=7089466` | `2aee3c5b8a952a8c` |
 | `openfda_carrier_statements/{depakote,phenytoin,diazepam,carbamazepine}.json` | openFDA label queries of 11 October 2026 (the query is stored in each file); Depakote set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 2026-03-31; Phenytoin Sodium Injection set_id 035a8d4e-2063-4240-83cb-d7eebcabe301, effective 2024-04-09 | `ddddd55f984d389c` (Depakote), `71300476c1318504` (phenytoin) |

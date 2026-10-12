@@ -9,10 +9,15 @@ Usage:
 """
 import sys
 from pathlib import Path
+
 import pandas as pd
+
 sys.path.insert(0, ".")
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
-    expand_symptom_terms, load_hpo_is_a_parents_from_obo, read_crosswalk_hpo_terms)
+    expand_symptom_terms,
+    load_hpo_is_a_parents_from_obo,
+    read_crosswalk_hpo_terms,
+)
 
 parents = load_hpo_is_a_parents_from_obo(Path("data/raw/hpo/hp.obo"))
 crosswalk_terms = read_crosswalk_hpo_terms(Path("docs/symptom_crosswalk.csv"))

@@ -57,10 +57,10 @@ ALIASES = {
     "adrenaline": "epinephrine", "glibenclamide": "glyburide", "salbutamol": "albuterol", "esketamine": "esketamine", "s-ketamine": "esketamine", "(s)-ketamine": "esketamine",
     "levothyroxine": "thyroxine", "norethindrone": "norethisterone", "liothyronine": "triiodothyronine", "ezogabine": "retigabine", "vortioxetine": "lu", "etonogestrel": "implanon", "l-t3": "triiodothyronine",
 }
-PERMEABILITY = re.compile(r"\bPS\b|logPS|PcS|PoS|\bPc\b|\bPo\b|\bKin\b|CLin|\bK1\b|Q_PL_ECF|permeab", re.I)
-BRAIN_BINDING = re.compile(r"fu,b\b|fu,brain|fu\(brain\)|Vu,br|Vu\(brain\)|Vu,brain|free fraction in brain", re.I)
-EQUILIBRATION = re.compile(r"equilibration half-life|equilibrium half-life|brain entry time|Tmax brain|displacement half-time", re.I)
-EFFECT_COMPARTMENT = re.compile(r"ke0|keo\b|tPeak|effect-site|effect site", re.I)
+PERMEABILITY = re.compile(r"\bPS\b|logPS|PcS|PoS|\bPc\b|\bPo\b|\bKin\b|CLin|\bK1\b|Q_PL_ECF|permeab", re.IGNORECASE)
+BRAIN_BINDING = re.compile(r"fu,b\b|fu,brain|fu\(brain\)|Vu,br|Vu\(brain\)|Vu,brain|free fraction in brain", re.IGNORECASE)
+EQUILIBRATION = re.compile(r"equilibration half-life|equilibrium half-life|brain entry time|Tmax brain|displacement half-time", re.IGNORECASE)
+EFFECT_COMPARTMENT = re.compile(r"ke0|keo\b|tPeak|effect-site|effect site", re.IGNORECASE)
 # Depot esters (decanoate, enanthate, pamoate) are not in SALT_WORDS: an occupancy followed for weeks after a depot injection says
 # nothing about the peak and trough of an oral dose, so "haloperidol decanoate" is not counted for haloperidol.
 # Occupancy time courses that are not a course within hours to days of a dose, by my reading of the times each study states:

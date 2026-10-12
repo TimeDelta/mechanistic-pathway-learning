@@ -1,0 +1,62 @@
+perturbation_id,symptom,drug,placebo_arm,drug_arm,effective_size,weight,arm_size_source
+CID100002118,insomnia,alprazolam,,,,0.5,no arm size in the label
+CID100002159,fatigue,amisulpride,416.0,748.0,267.3264604810996,0.5549482748026632,adverse reactions text
+CID100002159,irritability_or_aggression,amisulpride,416.0,748.0,267.3264604810996,0.5549482748026632,adverse reactions text
+CID100002476,cognitive_impairment,buprenorphine,,,,0.5,no arm size in the label
+CID100000444,depressed_mood,bupropion,511.0,537.0,261.8387404580153,0.5498197920301168,adverse reactions table
+CID100000444,parkinsonism,bupropion,511.0,537.0,261.8387404580153,0.5498197920301168,adverse reactions table
+CID100000444,psychosis,bupropion,511.0,537.0,261.8387404580153,0.5498197920301168,adverse reactions table
+CID100002477,depressed_mood,buspirone,464.0,477.0,235.20510095642933,0.5231513567906222,adverse reactions text
+CID100002477,fatigue,buspirone,464.0,477.0,235.20510095642933,0.5231513567906222,adverse reactions text
+CID100002477,insomnia,buspirone,464.0,477.0,235.20510095642933,0.5231513567906222,adverse reactions text
+CID100002512,depressed_mood,cabergoline,20.0,168.0,17.872340425531913,0.07694968911892143,adverse reactions table
+CID100002512,insomnia,cabergoline,20.0,168.0,17.872340425531913,0.07694968911892143,adverse reactions table
+CID100002512,parkinsonism,cabergoline,20.0,168.0,17.872340425531913,0.07694968911892143,adverse reactions table
+CID100002801,emotional_lability,clomipramine,319.0,322.0,160.2464898595944,0.42774119444751935,adverse reactions text
+CID100002801,irritability_or_aggression,clomipramine,319.0,322.0,160.2464898595944,0.42774119444751935,adverse reactions text
+CID100002802,emotional_lability,clonazepam,294.0,574.0,194.4193548387097,0.47557726062396616,adverse reactions table
+CID100005195,anxiety,deprenyl,,,,0.5,no arm size in the label
+CID100005195,somnolence_or_hypersomnia,deprenyl,,,,0.5,no arm size in the label
+CID104659568,depressed_mood,entacapone,1003.0,603.0,376.59339975093405,0.6372342178806568,adverse reactions text
+CID100003261,anxiety,estazolam,433.0,685.0,265.2996422182469,0.5530678022040143,adverse reactions table
+CID100003261,depressed_mood,estazolam,433.0,685.0,265.2996422182469,0.5530678022040143,adverse reactions table
+CID100003386,depressed_mood,fluoxetine,975.0,2869.0,727.6990114464099,0.7724331288280296,adverse reactions text
+CID100003404,abnormal_dreams,fluvoxamine,,,,0.5,no arm size in the label
+CID100003446,anxiety,gabapentin,128.0,119.0,61.66801619433199,0.22338971903443733,adverse reactions table
+CID100003648,anxiety,hydromorphone,,,,0.5,no arm size in the label
+CID100010413,somnolence_or_hypersomnia,hydroxybutyrate,213.0,258.0,116.67515923566879,0.35242596515772895,adverse reactions text
+CID100003878,irritability_or_aggression,lamotrigine,419.0,956.0,291.31927272727273,0.576063352044741,adverse reactions text
+CID100004054,insomnia,memantine,335.0,341.0,168.98668639053253,0.4407875902876806,adverse reactions table
+CID100004054,psychomotor_agitation,memantine,335.0,341.0,168.98668639053253,0.4407875902876806,adverse reactions table
+CID100004054,psychosis,memantine,335.0,341.0,168.98668639053253,0.4407875902876806,adverse reactions table
+CID100055480,anxiety,milnacipran,652.0,1557.0,459.55817111815304,0.6818917786740025,adverse reactions text
+CID100004428,depressed_mood,naltrexone,,,,0.5,no arm size in the label
+CID100004428,suicidality,naltrexone,,,,0.5,no arm size in the label
+CID100000942,cognitive_impairment,nicotine,,,,0.5,no arm size in the label
+CID100004585,insomnia,olanzapine,118.0,532.0,96.57846153846154,0.31057543653483954,adverse reactions text
+CID100115237,anxiety,paliperidone,,,,0.5,no arm size in the label
+CID100004745,depressed_mood,pergolide,,,,0.5,HTTP 404
+CID100016362,depressed_mood,pimozide,20.0,36.0,12.857142857142858,0.05657836209876322,adverse reactions text
+CID100016362,insomnia,pimozide,20.0,36.0,12.857142857142858,0.05657836209876322,adverse reactions text
+CID100125889,depressed_mood,pregabalin,174.0,1517.0,156.0958013010053,0.4213299295505569,adverse reactions text
+CID100005002,insomnia,quetiapine,404.0,719.0,258.6607301869991,0.5467954141136209,adverse reactions text
+CID100065856,somnolence_or_hypersomnia,reboxetine,,,,0.5,HTTP 404
+CID100005070,depressed_mood,riluzole,,,,0.5,no arm size in the label
+CID100005070,insomnia,riluzole,,,,0.5,no arm size in the label
+CID100005073,insomnia,risperidone,225.0,448.0,149.777117384844,0.41128933044944327,adverse reactions text
+CID100005073,irritability_or_aggression,risperidone,225.0,448.0,149.777117384844,0.41128933044944327,adverse reactions text
+CID100005073,suicidality,risperidone,225.0,448.0,149.777117384844,0.41128933044944327,adverse reactions text
+CID100005077,insomnia,rivastigmine,1189.0,987.0,539.3120404411765,0.7155528761250767,adverse reactions text
+CID100057537,insomnia,rotigotine,,,,0.5,HTTP 404
+CID100005391,abnormal_dreams,temazepam,783.0,1076.0,453.2049488972566,0.6788644653496654,adverse reactions text
+CID100005391,depressed_mood,temazepam,783.0,1076.0,453.2049488972566,0.6788644653496654,adverse reactions text
+CID100005466,somnolence_or_hypersomnia,tiagabine,91.0,494.0,76.84444444444443,0.2638597327566422,adverse reactions text
+CID104659569,parkinsonism,tolcapone,892.0,298.0,223.37478991596637,0.5102647630867001,adverse reactions text
+CID100005533,abnormal_dreams,trazodone,,,,0.5,no arm size in the label
+CID100005533,insomnia,trazodone,,,,0.5,no arm size in the label
+CID100005533,irritability_or_aggression,trazodone,,,,0.5,no arm size in the label
+CID100005533,psychomotor_agitation,trazodone,,,,0.5,no arm size in the label
+CID100005719,fatigue,zaleplon,344.0,569.0,214.38773274917855,0.5,adverse reactions text
+CID116129690,insomnia,ziconotide,,,,0.5,no arm size in the label
+CID100060853,anxiety,ziprasidone,273.0,702.0,196.56,0.4783090021814773,adverse reactions text
+CID100060853,insomnia,ziprasidone,273.0,702.0,196.56,0.4783090021814773,adverse reactions text

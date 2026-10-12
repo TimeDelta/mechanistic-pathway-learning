@@ -28,8 +28,9 @@ import pandas as pd
 
 sys.path.insert(0, ".")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData, load_experiment_data  # noqa: E402
-from target_limit_comparison import CONFIRMATORY_GRAPH, REVIEW_DIRECTORY, load_variant  # noqa: E402
+from target_limit_comparison import CONFIRMATORY_GRAPH, REVIEW_DIRECTORY, load_variant
+
+from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData, load_experiment_data
 
 
 def seed_nodes_of(data: ExperimentData, position: int) -> set[str]:

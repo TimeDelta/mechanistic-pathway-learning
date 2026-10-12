@@ -46,7 +46,11 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, ".")
-from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData, load_experiment_data, merge_drugs_with_their_targets  # noqa: E402
+from mechanistic_pathway_learning.evaluation.experiment_data import (
+    ExperimentData,
+    load_experiment_data,
+    merge_drugs_with_their_targets,
+)
 
 STATEMENT_ROWS = Path("data/processed/off_target_scoping/open_targets_symptom_rows.parquet")
 

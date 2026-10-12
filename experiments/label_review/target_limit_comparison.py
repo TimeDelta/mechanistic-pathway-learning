@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, ".")
-from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData, load_experiment_data  # noqa: E402
+from mechanistic_pathway_learning.evaluation.experiment_data import ExperimentData, load_experiment_data
 
 REVIEW_DIRECTORY = Path("data/processed/label_review")
 CONFIRMATORY_GRAPH = Path("data/processed/graph_full_neuronal_split_binders")
