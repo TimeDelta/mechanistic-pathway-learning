@@ -70,6 +70,7 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
+from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE, DRUG_ROW_KINDS
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
@@ -588,8 +589,28 @@ def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, freq
     if label_mask is not None:
         weights = weights * label_mask
     if getattr(arguments, "equal_drug_shares", False):
-        weights = equal_drug_loss_shares(weights, positive, np.array([kind == "drug" for kind in data.perturbation_types]), fit_indices)
+        weights = equal_drug_loss_shares(weights, positive, np.array([kind in DRUG_ROW_KINDS for kind in data.perturbation_types]), fit_indices,
+                                         drug_loss_slots(data))
     return weights
+
+
+def drug_loss_slots(data) -> np.ndarray | None:
+    """One slot id per perturbation for the equal drug shares, or None for a table with no combination in it.
+
+    A combination of a drug and a lowered gene carries that drug's labels, so on its own slot it would give the drug
+    two shares of the loss where every drug without a statement has one (models/soft_constraint_losses.py). The first
+    drug part is the drug the statement is about, which for every kind built so far is the only drug part. None leaves
+    every row its own drug, which is the rule the shares were registered with."""
+    if getattr(data, "perturbation_parts", None) is None:
+        return None
+    slots = list(data.perturbation_ids)
+    for position, kind in enumerate(data.perturbation_types):
+        if kind != COMBINATION_PERTURBATION_TYPE:
+            continue
+        drug_parts = [part.part_id for part in data.perturbation_parts[position] if part.part_kind == "drug"]
+        if drug_parts:
+            slots[position] = drug_parts[0]
+    return np.array(slots, dtype=object)
 
 
 def permuted_drug_targets(perturbation_types: list[str], perturbation_seeds: list[np.ndarray], perturbation_signs: list[np.ndarray],
@@ -605,6 +626,11 @@ def permuted_drug_targets(perturbation_types: list[str], perturbation_seeds: lis
     A count whose group holds one drug cannot be exchanged and is left as it is; the returned number of drugs moved
     says how many were. The permutation is a derangement where the group allows one (a cycle of the group, so no drug
     keeps its own targets), seeded by random_seed.
+
+    A combination is left as it is as well, and for a reason rather than an omission: its seeds are its drug part's
+    targets together with its lowered gene, and exchanging the whole list would move the lowered gene too, which is not
+    an input-size confound and is the part of the example the statement is about. The control is a control of a drug's
+    target identity, so it is applied where a row is a drug.
 
     Returns (seeds, signs, magnitudes, drugs moved); the three lists are new and the caller's are not modified."""
     generator = np.random.default_rng(random_seed)
@@ -626,13 +652,32 @@ def permuted_drug_targets(perturbation_types: list[str], perturbation_seeds: lis
     return seeds, signs, magnitudes, moved
 
 
-def drug_input_normalised(perturbation_types: list[str], perturbation_magnitudes: list[np.ndarray]) -> list[np.ndarray]:
+def drug_input_normalised(perturbation_types: list[str], perturbation_magnitudes: list[np.ndarray],
+                          perturbation_parts: list[list] | None = None, perturbation_seed_parts: list[np.ndarray] | None = None) -> list[np.ndarray]:
     """Seed magnitudes with every drug's rescaled to sum to 1 in absolute value; genes are unchanged. A drug's magnitude is
     otherwise 1 per target (map_drug_targets_to_graph_nodes.py), so a drug with k targets pushes k times the field of a
-    drug with one, and a model could learn the count of targets instead of what the targets do."""
+    drug with one, and a model could learn the count of targets instead of what the targets do.
+
+    In a combination the rescaling is per part: each drug part's seeds are rescaled to sum to 1 among themselves and
+    each gene part is left alone, which is what makes the combination's drug input the same size as that drug's input
+    on its own. Without the parts a combination is left unchanged rather than rescaled as a whole, because rescaling
+    the whole list would make the lowered gene's magnitude depend on how many targets the drug has."""
     normalised = []
-    for kind, magnitudes in zip(perturbation_types, perturbation_magnitudes):
+    for position, (kind, magnitudes) in enumerate(zip(perturbation_types, perturbation_magnitudes)):
         magnitudes = np.asarray(magnitudes, dtype=float)
+        if kind == COMBINATION_PERTURBATION_TYPE:
+            if perturbation_parts is None or perturbation_seed_parts is None:
+                normalised.append(magnitudes)
+                continue
+            rescaled = magnitudes.copy()
+            seed_part = np.asarray(perturbation_seed_parts[position], dtype=int)
+            for part_position, part in enumerate(perturbation_parts[position]):
+                of_this_part = seed_part == part_position
+                total = np.abs(magnitudes[of_this_part]).sum()
+                if part.part_kind == "drug" and total > 0:
+                    rescaled[of_this_part] = magnitudes[of_this_part] / total
+            normalised.append(rescaled)
+            continue
         total = np.abs(magnitudes).sum()
         normalised.append(magnitudes / total if kind == "drug" and total > 0 else magnitudes)
     return normalised
@@ -855,6 +900,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
+    parser.add_argument("--combined-perturbations", type=Path, default=None,
+                        help="parquet of combination rows from experiments/build_combined_perturbations.py: a drug carried with a lowered gene, or with a second drug, "
+                             "in one example (mechanistic_pathway_learning/evidence/combined_perturbations.py). Without it the table holds no combination and the run is unchanged")
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
@@ -1014,12 +1062,20 @@ def main() -> None:
     torch.manual_seed(arguments.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by, label_grades=tuple(arguments.label_grades) if arguments.label_grades else None,
-                                label_selection=arguments.label_selection, drug_entry=arguments.drug_entry or "nodes")
+                                label_selection=arguments.label_selection, drug_entry=arguments.drug_entry or "nodes",
+                                combined_perturbations=arguments.combined_perturbations)
     if data.drug_entry == "nodes":
         if arguments.normalise_drug_input:
             raise ValueError("--normalise-drug-input rescales seed magnitudes, and a drug seeded on its entry node has one seed of magnitude 1; "
                              "its targets' shares are the mechanism edges' weights. Use --drug-entry targets with it")
         print(f"drug entry: {int(np.asarray(data.entry_node_mask).sum())} drug nodes in the graph, each drug perturbation seeded on its own")
+    combined_perturbations_summary = None
+    if arguments.combined_perturbations is not None:
+        is_combination = np.array([kind == COMBINATION_PERTURBATION_TYPE for kind in data.perturbation_types])
+        combined_perturbations_summary = {"path": str(arguments.combined_perturbations), "sha256": file_sha256(arguments.combined_perturbations),
+                                          "combinations": int(is_combination.sum()),
+                                          "positive_pairs": int((data.outcomes[is_combination] > 0).sum())}
+        print(f"combined perturbations: {combined_perturbations_summary}")
     if data.label_selection_summary is not None:
         print(f"label selection: {data.label_selection_summary}")
         if arguments.time_split_cutoff is not None:
@@ -1061,7 +1117,7 @@ def main() -> None:
                                          "seeds_sha256": array_sha256(np.concatenate([np.asarray(group, dtype=np.int64) for group in seeds]))}
         print(f"permuted drug targets: {permuted_drug_targets_summary}")
     if arguments.normalise_drug_input:
-        data.perturbation_magnitudes = drug_input_normalised(data.perturbation_types, data.perturbation_magnitudes)
+        data.perturbation_magnitudes = drug_input_normalised(data.perturbation_types, data.perturbation_magnitudes, data.perturbation_parts, data.perturbation_seed_parts)
     if arguments.encoder == "linear_response":  # its input is sign x magnitude, so a perturbation whose seeds all have sign 0 gives a zero field
         zero_input = perturbations_with_a_zero_signed_input(data)
         if zero_input:
@@ -1448,6 +1504,7 @@ def main() -> None:
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
         "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
+        "combined_perturbations": combined_perturbations_summary,
         "laboratory_labels": laboratory_results,
         "lockbox": lockbox_summary, "rewiring": rewiring_summary, "refit": refit_summary,
     }

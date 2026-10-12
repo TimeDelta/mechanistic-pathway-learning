@@ -411,3 +411,99 @@ def test_a_curated_reaction_defaults_to_ordinary_catalysis():
     _, edges, relation_types, _ = run_import(curated_reactions=[plain])
     assert (edges[edges.source_id == "GENE:SLC6A3"].relation_type == "catalyzed_by").all()
     assert "catalyzes_reverse_transport" not in relation_types
+
+
+# The computed membrane potential (graph/membrane_potential.py; the owner, 12 October 2026: "Why not just change the
+# VM_c to e.g. the Nernst equation", then "Fix the electrical layer"). The registered build is unchanged by default, so
+# every test above runs on it; these name the other build explicitly.
+
+
+def test_the_computed_build_replaces_the_reaction_edges_with_six_weighted_pool_edges():
+    _, edges, relation_types, summary = run_import(membrane_potential_build="computed_from_the_pools")
+    assert summary["membrane_potential_build"] == "computed_from_the_pools"
+    assert not (edges.relation_type == "changes_membrane_potential").any()
+    assert "changes_membrane_potential" not in relation_types  # an empty relation would cost the encoder parameters
+    assert "driving_force" in relation_types and "voltage_gates" in relation_types  # the gating is unchanged
+    driving = edges[edges.relation_type == "driving_force"].set_index("source_id")
+    expected = {neuronal_pool_id(SODIUM, "c"): -1.0, neuronal_pool_id(SODIUM, "e"): 1.0,
+                neuronal_pool_id(POTASSIUM, "c"): -1.0, neuronal_pool_id(POTASSIUM, "e"): 1.0,
+                neuronal_pool_id(CHLORIDE, "c"): 1.0, neuronal_pool_id(CHLORIDE, "e"): -1.0}
+    assert driving.sign.to_dict() == expected  # both sides of each of the three ions, and no calcium
+    assert driving.target_id.unique().tolist() == [MEMBRANE_POTENTIAL_NODE]
+    # potassium carries 3.5 times sodium or chloride, its share of the resting leak conductance, and the six sum to 1
+    weights = driving.weight.to_dict()
+    assert weights[neuronal_pool_id(POTASSIUM, "c")] == pytest.approx(weights[neuronal_pool_id(SODIUM, "c")] * 3.5)
+    assert weights[neuronal_pool_id(CHLORIDE, "e")] == pytest.approx(weights[neuronal_pool_id(SODIUM, "e")])
+    assert sum(weights.values()) == pytest.approx(1.0)
+    assert (edges[edges.relation_type != "driving_force"].weight == 1.0).all()  # only these edges carry a weight of their own
+
+
+def test_the_registered_build_keeps_every_edge_at_weight_one():
+    _, edges, relation_types, summary = run_import()
+    assert summary["membrane_potential_build"] == "learned_from_reactions"
+    assert (edges.weight == 1.0).all()
+    assert (edges.relation_type == "changes_membrane_potential").any() and "changes_membrane_potential" in relation_types
+
+
+def test_the_computed_build_moves_an_extracellular_ion_of_a_curated_reaction_onto_its_pool():
+    curated = [CuratedReaction(reaction_id="MAR_TEST_SODIUM", display_name="sodium entry for the test",
+                               substrates=(f"{SODIUM}e",), products=(neuronal_pool_id(SODIUM, "c"),), catalysts=("SCN1A",),
+                               evidence="test")]
+    _, registered, _, _ = run_import(curated_reactions=curated)
+    _, computed, _, _ = run_import(curated_reactions=curated, membrane_potential_build="computed_from_the_pools")
+    # the registered build draws the current from the generic extracellular sodium, a currency metabolite that passes
+    # nothing on; the computed build draws it from the neuronal extracellular pool, which feeds the potential
+    assert ((registered.source_id == f"{SODIUM}e") & (registered.target_id == "MAR_TEST_SODIUM")).any()
+    assert not ((computed.source_id == f"{SODIUM}e") & (computed.target_id == "MAR_TEST_SODIUM")).any()
+    assert ((computed.source_id == neuronal_pool_id(SODIUM, "e")) & (computed.target_id == "MAR_TEST_SODIUM")
+            & (computed.relation_type == "substrate_of")).any()
+
+
+def test_the_potential_reaches_every_reaction_it_did_through_the_pools_it_moves():
+    """No reaction that told the potential directly loses its route to it: it moves a pool, and the pools feed VM_c."""
+    _, registered, _, _ = run_import()
+    _, computed, _, _ = run_import(membrane_potential_build="computed_from_the_pools")
+    told_the_potential = set(registered[registered.relation_type == "changes_membrane_potential"].source_id)
+    pools = set(computed[computed.relation_type == "driving_force"].source_id)
+    reaches_a_pool = set(computed[computed.target_id.isin(pools) | computed.source_id.isin(pools)].source_id) | set(
+        computed[computed.target_id.isin(pools)].source_id) | set(computed[computed.source_id.isin(pools)].target_id)
+    assert told_the_potential and told_the_potential <= reaches_a_pool
+
+
+def test_the_constants_reproduce_the_reversal_potentials_of_their_source():
+    from mechanistic_pathway_learning.graph.membrane_potential import (
+        REPORTED_RESTING_POTENTIAL_MILLIVOLTS,
+        conductance_share,
+        driving_force_coefficients_millivolts,
+        nernst_potential_millivolts,
+        passive_resting_potential_millivolts,
+        thermal_voltage_millivolts,
+    )
+
+    assert thermal_voltage_millivolts() == pytest.approx(26.73, abs=0.01)  # RT/F at 37 degrees Celsius
+    # Düsterwald et al. 2018, Table 1, reports E_K -95.1 mV and E_Cl -83.8 mV at these concentrations
+    assert nernst_potential_millivolts("K+") == pytest.approx(-95.1, abs=0.1)
+    assert nernst_potential_millivolts("Cl-") == pytest.approx(-83.8, abs=0.2)
+    assert nernst_potential_millivolts("Na+") > 0  # sodium's equilibrium potential is above rest
+    assert conductance_share("K+") == pytest.approx(0.6364, abs=1e-4)
+    # the passive potential is 8.2 mV above the reported steady state, which is the source's electrogenic pump current
+    assert passive_resting_potential_millivolts() == pytest.approx(-64.38, abs=0.05)
+    assert -10.0 < passive_resting_potential_millivolts() - REPORTED_RESTING_POTENTIAL_MILLIVOLTS < 10.0
+    coefficients = driving_force_coefficients_millivolts()
+    assert coefficients[("K+", "e")] == -coefficients[("K+", "c")] > coefficients[("Na+", "e")] > 0
+    assert coefficients[("Cl-", "c")] > 0 > coefficients[("Cl-", "e")]  # chloride is the reverse, its charge is negative
+
+
+def test_the_law_can_be_built_beside_the_reaction_edges():
+    """Deleting the reaction edges costs reach, because a reaction edge is a one-hop route to the potential and a pool
+    is two hops away behind its own in-degree, so the third build keeps both routes (see MEMBRANE_POTENTIAL_BUILDS)."""
+    _, edges, relation_types, summary = run_import(membrane_potential_build="computed_beside_the_reactions")
+    assert summary["membrane_potential_build"] == "computed_beside_the_reactions"
+    into_the_potential = edges[edges.target_id == MEMBRANE_POTENTIAL_NODE]
+    assert set(into_the_potential.relation_type) == {"changes_membrane_potential", "driving_force"}
+    assert "changes_membrane_potential" in relation_types
+    law = into_the_potential[into_the_potential.relation_type == "driving_force"]
+    assert len(law) == 6 and law.weight.sum() == pytest.approx(1.0)
+    assert (into_the_potential[into_the_potential.relation_type == "changes_membrane_potential"].weight == 1.0).all()
+    with pytest.raises(ValueError, match="membrane_potential_build must be one of"):
+        run_import(membrane_potential_build="nernst")

@@ -74,3 +74,13 @@ def test_a_refused_address_makes_no_request(tmp_path):
 def test_text_of_page_drops_scripts_and_tags():
     page_source = "<html><head><style>p {color: red}</style><script>var a = 1;</script></head><body><p>Dose &amp; effect</p></body></html>"
     assert read_public_page.text_of_page(page_source) == "Dose & effect"
+
+
+def test_a_proof_of_work_gate_whose_challenge_is_only_in_its_script_is_a_refusal():
+    """PubMed Central's scanned-PDF gate answers 200 with a short interstitial whose only challenge markers are in its
+    script, so the prose markers missed it and a research pass of 12 October 2026 saved it as if it were the document."""
+    interstitial = ('<!DOCTYPE html><html><head><title>Preparing to download</title></head><body>'
+                    '<p>Preparing to download ...</p><script>var POW_CHALLENGE="ab12"; var POW_DIFFICULTY=4;'
+                    'window.ncbi.pmc.pow.init(POW_CHALLENGE, POW_DIFFICULTY);</script></body></html>')
+    assert read_public_page.looks_like_challenge(200, interstitial)
+    assert not read_public_page.looks_like_challenge(200, "<!DOCTYPE html><html><body><p>" + "the article itself. " * 2000 + "</p></body></html>")

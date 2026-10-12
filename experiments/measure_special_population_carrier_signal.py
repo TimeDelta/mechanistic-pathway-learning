@@ -43,10 +43,12 @@ CARRIERS = ("albumin", "orosomucoid")
 # matter and are not touched by this.
 SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE = ("neonate", "neonatal", "newborn", "preterm", "premature", "infant", "baby",
                                        "toddler")
-# A band between toddler and adult (preschool, 3 to 5 years) is the user's call rather than this script's, because
-# their remark puts the line at five while naming toddler as the last band to drop. No such row exists in the pinned
-# database, so the question has not arisen; if a source brings one, it stays in until they decide.
-SUBGROUPS_TO_DECIDE = ("preschool", "preschooler")
+# The band between toddler and adult (preschool, 3 to 5 years) was left to the user, because their remark of 10 October
+# put the line at five while naming toddler as the last band to drop. They closed it on 12 October 2026: "As long as
+# the admitted groups rows exclude only things toddler and earlier, it's fine". So the exclusion is toddler and
+# earlier, and a preschool band stays in. No row of the pinned database carries that band, so no reading changes; the
+# rule is written down for a source that brings one.
+SUBGROUPS_KEPT_BY_THE_DECISION_OF_12_OCTOBER = ("preschool", "preschooler")
 
 
 def measurement_rows(database_path: Path) -> pd.DataFrame:
@@ -132,7 +134,7 @@ def main() -> int:
     excluded_rows = every_row[is_excluded]
     excluded = sorted(set(excluded_rows.subgroup.astype(str)))
     undecided = sorted({str(name) for name in every_row.subgroup.astype(str)
-                        if str(name).strip().lower() in SUBGROUPS_TO_DECIDE})
+                        if str(name).strip().lower() in SUBGROUPS_KEPT_BY_THE_DECISION_OF_12_OCTOBER})
     readings = population_readings(rows)
     excluded_readings = population_readings(excluded_rows) if len(excluded_rows) else None
     predictions = leave_one_drug_out_predictions(rows)

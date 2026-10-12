@@ -2768,3 +2768,215 @@ Sources named above and not linked there: CRESCENDDI, Kontsioti et al. 2022
 ([doi:10.1126/scitranslmed.3003377](https://doi.org/10.1126/scitranslmed.3003377)); ClinGen dosage curation,
 [doi:10.1002/humu.24291](https://doi.org/10.1002/humu.24291); IMPC,
 [doi:10.1093/nar/gkaf1148](https://doi.org/10.1093/nar/gkaf1148).
+
+## 27. Answers of 12 October, 19:40
+
+The owner, after the amendment: "Build the combined perturbation type. Also, did you add all the other label types?
+Fix the electrical layer. Why .3 for open targets weight? As long as the admitted groups rows exclude only things
+toddler and earlier, it's fine."
+
+### 27.1 The combined perturbation type, built
+
+`mechanistic_pathway_learning/evidence/combined_perturbations.py` and
+`experiments/build_combined_perturbations.py`. A combination is an ordinary row of an evidence table whose
+`perturbation_type` is `combination`, whose `perturbation_id` is its part ids joined by `+`, and which carries a new
+column `perturbation_parts` holding one entry per part with that part's id, its kind and its own node triples.
+
+The parts column is what the union of the triples cannot replace, and three things read it per part rather than per
+row:
+
+- on the gene/protein split graph a drug acts on proteins and a gene perturbation on its gene node, so the routing
+  follows each part's kind;
+- on a graph with drug entry nodes a drug part is seeded on the drug's own node, with its mechanism edges carrying its
+  sign and magnitude on, while a gene part keeps its own nodes;
+- the leakage group is formed from the part ids, which makes section 8's promise exact: "a combination inherits the
+  groups of its parts". `merge_drugs_with_their_targets` joins a combination to every part that is a perturbation of
+  the table, to the target nodes of each drug part, and to any gene perturbation sitting on a part's node, so a
+  combination cannot fall in a fold that none of its parts falls in. Checked on the built table: of the 106
+  combinations, none has a group different from any part of it.
+
+What the builder wrote, from the statements already curated with their quotations in `configs/comparative_checks.csv`:
+
+| kind | combinations | positive pairs |
+| --- | --- | --- |
+| `enzyme_activity` | 17 | 140 |
+| `carrier_level` | 2 | 29 |
+| `displacement` | 5 | 40 |
+| `second_drug` | 82 | 108 |
+| all | **106** | **317** |
+
+135 of the 214 statements wrote a row; 79 wrote none: 21 are negative controls (expectation `none`), and 58 name a drug
+with no kept positive symptom to carry. Loaded on the enzyme graph with the registered chained grouping, the table goes
+from 1,636 perturbations and 5,671 positive pairs to 1,742 and 5,976.
+
+**The label rule, and the two things it does not claim.** A statement says the drug's effects are *at least as large*
+when the second factor is present. The row asserts the weaker thing: the combination is a positive on the symptoms the
+statement reads, at that drug's own weight and grade for each. So the row says the symptom still occurs under the
+combination, not that it occurs more; the ordering is what `experiments/run_comparative_checks.py` reads and is not a
+label. A pair the selection does not keep as a positive is not a positive of a combination either, which includes the
+never-above-placebo pairs it turns into negatives: 3 pairs were dropped for that reason.
+
+**The double-counting problem, and what was done about it.** A combination of a drug and a lowered gene carries labels
+that drug already carries, so under `--equal-drug-shares` the drug would take two drugs' share of the loss where a drug
+with no statement takes one. `equal_drug_loss_shares` now takes a slot id per row: rows sharing a slot are equalised
+together, and a combination's slot is its first drug part (`drug_loss_slots` in `experiments/run_main_model.py`).
+Without a combination the slots are absent and the rule is the one that was registered, unchanged.
+
+**Nothing trains on these by default.** `--combined-perturbations <path>` is a path with no default, so a run without
+it loads no combination and is unchanged. Whether they train is the owner's decision, and the asymmetry 16.2 named is
+unchanged by the build: 3,072 `clears` weights in message passing against four bounded gains in the linear response.
+
+**One correction to 16.2, in the build's favour.** I said the information in these examples is confined to the four
+`clears` gains. It is not. Lowering `PROTEIN:CYP2D6` also moves the 61 reactions it catalyses, through `catalyzed_by`,
+a relation with 24,266 edges that every reaction-touching label trains; `CYP2C19` has 81 such reactions, `CYP2C9` 103
+and `NAT2` 1. So a combination constrains the *net* of two routes, one of which is already well identified by the rest
+of the data, rather than only an unidentified gain. That raises what the examples can say and does not change the
+parameter arithmetic.
+
+### 27.2 The other label types: what is built and what is not
+
+Section 8's nine rows against the code and the tables, today:
+
+| | change | state |
+| --- | --- | --- |
+| 1 | the limit on a drug's mechanism targets | **registered, not built.** The amendment of 12 October registers no limit with orphenadrine set aside by the stated bridging rule. `data/processed/evidence_full_v4` is still the three-target table (222 drugs). 26.1 said so: "The v4 build has to be rebuilt with the limit lifted and the exclusion applied, and the held-out set redrawn" |
+| 2 | sign +1 for the gain-of-function genes | **built.** 17 genes in the v4 summary (`genes_seeded_as_gain_of_function`), seeded +1 by `seed_monogenic_reports` |
+| 3 | kept drug pairs never above placebo | **built, and stronger than the row asked.** The row asked for a mask; the selection relabels them as negatives on the owner's later instruction. 612 drug pairs have a label entry giving both arms, 65 are never above placebo, 61 kept pairs become labelled negatives, marked `evidenced_negative` so `--placebo-negative-weight` can weigh them above silence |
+| 4 | enzyme-to-drug clearance edges and the pharmacogenetic rows | **edges built, labels now buildable.** 23 `clears` edges in the enzyme graph; 17 combinations and 140 pairs from `build_combined_perturbations.py`. Not registered as training labels |
+| 5 | carrier statements for valproate and phenytoin | **edges built, labels now buildable.** 101 `sequesters` edges; 2 combinations and 29 pairs. Not registered |
+| 6 | two-drug examples | **statements built, labels now buildable.** 181 `second_drug` rows, of which 82 combinations and 108 pairs; the 21 negative controls write nothing. Not registered |
+| 7 | target-level labels from Open Targets | **class decided, weight open.** 27.3 below |
+| 8 | drugs outside the nervous-system code | **drafted, never signed off.** `configs/admitted_atc_prefixes_draft.csv`, 73 drugs and 167 kept pairs, read only when passed with `--admitted-atc-prefixes`, which no build passes. 27.4 below |
+| 9 | relieves, mouse knockouts, spontaneous reports, genetics | **as the row recommended: tests, not labels.** 132 `relieves` rows are in the table and the loader takes `induces` only; the rodent readouts are mapped by `experiments/map_rodent_readout_human_evidence.py` and never graded as labels; the 806 grade C rows are masked by the selection; the GWAS route is a test (`evaluation/gwas_gene_set_enrichment.py`) |
+
+So: two of the nine are not built (1 and 8), three are built as edges and statements with their labels now expressible
+but not registered (4, 5, 6), three are built (2, 3, 9) and one is a decision with a number still open (7). The one
+that blocks the held-out set is row 1, and it blocks it because the lockbox is drawn on the table row 1 changes.
+
+### 27.3 Why 0.3, and what the measurement says instead
+
+**0.3 was my recommendation and it rests on nothing measured.** The record is honest about where it came from: "0.3 is
+recommended and not decided" in the amendment, and in the decision log "recommended 0.3, below pharmacological, because
+these are target-level associations rather than an observation of a perturbation in a person and five of the 49 are
+contradicted by a study drug". That is a judgment, and the number is half of grade B's 0.6 because halving looked
+proportionate. The owner is right to ask.
+
+The whole weight scale is ordinal by design — `assign_evidence_grades.py` says "Grades are deliberately coarse; the
+weights are the initial values from the design" — so 0.6 is not calibrated either. But this class, unlike the others,
+can be measured against the study's own labels, because some of its triples name a target a study drug acts on in the
+same direction. Measured on `evidence_full_v4` with the placebo selection, over the 118 human-worded triples:
+
+| | triples |
+| --- | --- |
+| a study drug acts on the target in the same direction (testable) | 71 |
+| of those: the symptom is on a kept label of that drug | **54 (0.761)** |
+| on a label the selection masked | 9 (0.887 cumulative) |
+| contradicted by a placebo comparison | 3 (0.042) |
+| the label is silent | 5 |
+
+So where the class can be checked it agrees with grade B evidence in three cases out of four and is contradicted in one
+in twenty-five. **0.3 is too low on that evidence.** The derivation that replaces the judgment is grade B's weight times
+the measured agreement: 0.6 x 0.761 = 0.457, which rounds to **0.45**.
+
+**The limitation, which is severe enough to state in the registration.** The testable triples are the ones whose target
+already has a study drug, and the statements that would actually train are by construction the ones no study drug label
+makes (9.3). So the 0.761 is measured on a subset disjoint from the subset that trains, and whether it carries over is
+not something this measurement can say. Two defensible choices follow and they should not be mixed:
+
+- **0.45, derived**, with the extrapolation disclosed. Preferred, because it replaces a judgment with arithmetic on a
+  measured number and the class is 1.4 percent of training pairs, so the exposure is small either way.
+- **0.0, the class out of training**, reported as a held-out stratum only. The honest choice if the owner would rather
+  not extrapolate from the testable subset at all.
+
+Registering 0.45 with 0.0 as a declared secondary makes the insensitivity checkable instead of assumed. Registering
+0.3 would keep a number whose only support is that it looked proportionate.
+
+### 27.4 The admitted-groups rows: what the condition means is not clear enough to register on
+
+The owner: "As long as the admitted groups rows exclude only things toddler and earlier, it's fine."
+
+"Toddler and earlier" has one referent in this project, and it is not the admitted-groups list. On 10 October the owner
+ruled, on the special-population fractions unbound: "I didn't say PEDIATRIC is irrelevant. Only NEWBORN through
+TODDLER. At the age of five, per much everything should be diagnosable other than I.e. bipolar disorder". That rule is
+`SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE` in `experiments/measure_special_population_carrier_signal.py`, and it left one
+band undecided, recorded there as the owner's call: "A band between toddler and adult (preschool, 3 to 5 years) is the
+owner's call rather than this script's".
+
+That open band is settled by the sentence and is now closed: the exclusion is toddler and earlier, so a preschool band
+stays in. Nothing changes in any table, because no row of the pinned database carries that band.
+
+`configs/admitted_atc_prefixes_draft.csv` is a different thing: ATC groups and six named drugs, each with the sentence
+of its label that states a central action. Its exclusions are the seven groups left off in 9.4 (endocrine cancer
+therapy, insulins, beta blockers, the other first-generation antihistamines, the 5-HT3 antagonists, domperidone, and
+three drugs known only for their psychiatric adverse events) and not an age band, and the label statements it brings in
+carry no population at all: SIDER and OnSIDES events have no population field, so there is no paediatric exclusion in
+force on them to narrow. On the two readings available the condition therefore either has no referent in the list or
+asks for the seven left-off groups to be admitted, which is 60 more drugs and a change to the table the lockbox is
+drawn on.
+
+So this one is **not registered**, and the question is put plainly rather than guessed: does the sentence sign off the
+list as drafted, with its seven exclusions, or does it ask that the only exclusion be the age rule, which would admit
+those seven groups? The list still changes no table until a build passes `--admitted-atc-prefixes`, and no build
+passes it.
+
+### 27.5 The electrical layer: fixed in physics, and the reach diagnosis in 22.3 was wrong
+
+Built: `mechanistic_pathway_learning/graph/membrane_potential.py`, and a `--membrane-potential` choice in
+`experiments/build_neuronal_graph_variant.py` with three builds. The registered build is the default and the rebuild
+reproduces the pinned `graph_full_neuronal` edge for edge, so nothing is changed by a default.
+
+**The law.** Not Nernst, which is one ion's equilibrium potential, and not Goldman-Hodgkin-Katz either, for a reason
+the source hunt turned up: no measured permeability ratio for a mammalian central neuron could be found
+(`docs/membrane_potential_constants.md` names the routes tried), and the one source with a complete, internally
+consistent set for a rodent central neuron — Düsterwald et al. 2018, eLife 7:e39575, Table 1, CC BY 4.0 — states
+*conductances*, saying so itself: "Leak currents were calculated using Ohm's Law, I=g(Vm-E)". Putting its conductances
+into GHK as if they were permeabilities gives -33.2 mV against the -72.6 mV it reports, a 39 mV error. So the law is the
+parallel-conductance equation the constants were measured under, linearised around rest, which is exact to first order:
+
+    change in V_m = sum over ions of (g_ion / g_total) x (RT / z F) x (fractional change in [ion]_out - in [ion]_in)
+
+Each ion pool gets one edge into `VM_c` whose weight is that ion's conductance share times RT/zF. The six weights are
+fixed, add no free parameter, and their signs are the four the graph already carried plus the two sides it lacked. The
+checks: the constants reproduce their source's own E_K (-95.11 against -95.1) and E_Cl (-83.67 against -83.8); the
+passive potential is -64.38 mV against the source's -72.6 mV, and the 8.2 mV between them is its electrogenic
+Na+/K+-ATPase, a baseline rather than a response coefficient, so the coefficients are unaffected. Potassium carries
+0.318 of the total on each side against 0.091 for sodium and chloride — the 3.5-fold conductance share that a weight of
+1 on every edge threw away.
+
+Also built: the two neuronal extracellular pools the voltage equation needed (Na+ and Cl-; no extracellular calcium,
+because calcium does not enter the equation), and the remapping that moves a curated reaction's extracellular ion onto
+its pool, so a sodium current's outside is no longer a currency metabolite that passes nothing on.
+
+**And then the measurement contradicted 22.3.** The field reaching `VM_c`, median over 400 perturbations with the
+registered encoder settings:
+
+| build | `VM_c` in-degree | median field at `VM_c`, in_degree normalisation | with spectral |
+| --- | --- | --- | --- |
+| registered, learned from 405 reaction edges | 409 | 3.72e-07 | 3.56e-08 |
+| the law alone, reaction edges deleted (23.5 as written) | 6 | **1.44e-08** | 3.49e-11 |
+| the law beside the reaction edges | 411 | 3.51e-07 | 3.55e-08 |
+
+**Deleting the 405 edges lowers what reaches the potential by a factor of 26, and section 22.3 had the wrong divisor.**
+A reaction edge is a one-hop route to `VM_c`. Through the pools it becomes two hops, and the binding divisor is not the
+405 at `VM_c` but the in-degree at the pool: cytosolic sodium has in-degree 364 (338 of them `changes_ion_pool`) and the
+new extracellular sodium pool 339. So 338 x 6 replaces 409, and the signal falls. Keeping both routes restores the
+registered magnitude and no more, because the pools' own states are small for the same reason.
+
+What follows, stated so the owner can decide knowingly:
+
+1. **Take the law, in the `computed_beside_the_reactions` form.** It settles two of the three problems 22.4 named:
+   `VM_c`'s value is a stated physical law with fixed weights rather than a learned mean over a featureless hub, and
+   the voltage equation has both sides of each of its ions. Deleting the reaction edges is the part to decline, and the
+   measurement is the reason.
+2. **The reach is an aggregation problem, not a wiring problem, and no wiring change will fix it.** The in-degree mean
+   divides at every hop; the electrical layer is simply where it was noticed. The two alternatives the encoder already
+   carries were measured above and both are worse in magnitude, which is consistent with what `NORMALISATIONS` in
+   `linear_response_encoder.py` already records. So the disclosure 22.4 offered is still needed, in a narrower form:
+   the layer's direction is a stated law, its magnitude is damped as every long path in this graph is damped.
+3. **The claim stays the subthreshold steady state** (23.3). The seven `voltage_gates` targets all feed back into the
+   potential, so the layer is seven two-cycles; an excitable membrane is not contractive and a model run to a fixed
+   point under a contraction bound cannot show excitability. That is now a stated limit of the claim rather than
+   something a 405-way mean was hiding.
+
+Nothing here touches the message-passing encoder's adjacency, which reads neither signs nor weights; that is the change
+item 9 of the amendment registers and whose code is not written.

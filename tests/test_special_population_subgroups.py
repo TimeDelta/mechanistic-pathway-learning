@@ -9,7 +9,7 @@ import math
 
 import pandas as pd
 
-from experiments.measure_special_population_carrier_signal import (SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE, SUBGROUPS_TO_DECIDE,
+from experiments.measure_special_population_carrier_signal import (SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE, SUBGROUPS_KEPT_BY_THE_DECISION_OF_12_OCTOBER,
                                                                    leave_one_drug_out_predictions, population_readings)
 
 EXCLUDED = {name.lower() for name in SUBGROUPS_BELOW_THE_DIAGNOSABLE_AGE}
@@ -40,10 +40,11 @@ def test_an_older_child_stays():
         assert subgroup.lower() not in EXCLUDED, subgroup
 
 
-def test_preschool_is_left_for_the_user_to_decide_rather_than_dropped():
-    """The line sits between toddler and five, so a 3-to-5 band is neither excluded nor silently kept."""
+def test_preschool_is_kept_by_the_decision_of_12_october():
+    """The user closed the band the 10 October remark left open ("exclude only things toddler and earlier"), so a 3-to-5
+    band stays in rather than being dropped with the younger ones."""
     assert "preschool" not in EXCLUDED
-    assert "preschool" in SUBGROUPS_TO_DECIDE
+    assert "preschool" in SUBGROUPS_KEPT_BY_THE_DECISION_OF_12_OCTOBER
 
 
 def test_a_school_age_row_survives_the_rule_while_an_infant_row_does_not():

@@ -44,6 +44,10 @@ CHALLENGE_MARKERS = (
     "challenge-platform", "enable javascript and cookies to continue", "unusual traffic", "access denied",
     # proof-of-work gates that answer with status 200 (a research pass of 11 October 2026 found two saved as pages)
     "anubis", "making sure you're not a bot", "making sure you&#39;re not a bot", "checking your browser", "checking if the site connection is secure", "proof-of-work", "proof of work",
+    # The markers a gate puts in its script rather than in its prose, which the words above miss. A research pass of
+    # 12 October 2026 found PubMed Central's scanned-PDF gate saved as if it were the document: 200, 1,816 bytes,
+    # "Preparing to download ...", and the challenge only in POW_CHALLENGE, POW_DIFFICULTY and pow.init.
+    "pow_challenge", "pow_difficulty", "pow.init", "preparing to download",
 )
 DEFAULT_OUTPUT_DIRECTORY = Path("data/raw/public_pages")
 

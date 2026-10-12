@@ -10,14 +10,18 @@ control (experiments/run_main_model.py --permute-drug-targets).
 
 A gene perturbation has one seed of magnitude 1 and no choice of target count, so it is its own stratum rather than
 being pooled with the one-target drugs; otherwise the gene rows, which outnumber the drugs six to one, would decide
-every stratum they fell in.
+every stratum they fell in. A combination (evidence/combined_perturbations.py) is its own stratum for the same reason
+read the other way: its seed count is a drug's targets plus a lowered gene, which is not a target count.
 """
 from __future__ import annotations
 
 import numpy as np
 
+from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE
+
 GENE_PERTURBATION_STRATUM = "gene_perturbation"
 DRUG_STRATUM_PREFIX = "drug_targets_"
+COMBINATION_STRATUM = "combined_perturbation"  # a drug carried with a lowered gene or a second drug: its own stratum
 
 
 def target_count_of(perturbation_seeds, perturbation_types) -> np.ndarray:
@@ -36,14 +40,18 @@ def input_size_strata(perturbation_types: list[str], target_counts: np.ndarray, 
     are few (8 of 230 without the limit of three) and a stratum of one or two drugs scores nothing."""
     labels: list[str] = []
     for kind, count in zip(perturbation_types, np.asarray(target_counts, dtype=int)):
-        if kind != "drug":
+        if kind == COMBINATION_PERTURBATION_TYPE:
+            # Its input is a drug's targets together with a lowered gene, so it belongs in neither the gene stratum nor
+            # a drug's target-count stratum: a count of 2 there would read as a two-target drug.
+            labels.append(COMBINATION_STRATUM)
+        elif kind != "drug":
             labels.append(GENE_PERTURBATION_STRATUM)
         elif count <= largest_named_count:
             labels.append(f"{DRUG_STRATUM_PREFIX}{count}")
         else:
             labels.append(f"{DRUG_STRATUM_PREFIX}{largest_named_count + 1}_or_more")
     present = set(labels)
-    order = [GENE_PERTURBATION_STRATUM] + [f"{DRUG_STRATUM_PREFIX}{count}" for count in range(1, largest_named_count + 1)] + [f"{DRUG_STRATUM_PREFIX}{largest_named_count + 1}_or_more"]
+    order = [GENE_PERTURBATION_STRATUM] + [f"{DRUG_STRATUM_PREFIX}{count}" for count in range(1, largest_named_count + 1)] + [f"{DRUG_STRATUM_PREFIX}{largest_named_count + 1}_or_more", COMBINATION_STRATUM]
     return labels, [label for label in order if label in present]
 
 

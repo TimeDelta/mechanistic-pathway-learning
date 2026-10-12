@@ -49,12 +49,15 @@ cytosol by exocytosis, which is what makes a vesicular transporter defect, or a 
 """
 from __future__ import annotations
 
+import dataclasses
 import re
 import xml.etree.ElementTree as ElementTree
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 import pandas as pd
+
+from mechanistic_pathway_learning.graph.membrane_potential import driving_force_edge_weights
 
 SBML_NAMESPACE = {"sbml": "http://www.sbml.org/sbml/level3/version1/core"}
 SMALL_MOLECULE_KINDS = {"SimpleEntity", "ChemicalDrug"}
@@ -80,7 +83,31 @@ HYPERPOLARISATION_ACTIVATED_PATTERN = re.compile(r"^HCN[1-4]$")
 # E = (RT/zF) ln([out]/[in]), so a cytosolic rise lowers it and an extracellular rise raises it; chloride the
 # reverse). Cytosolic Ca2+ is a signal (release, Ca2+-activated channels) rather than a driving force here: E_Ca lies so
 # far from rest that its relative change is small.
+#
+# Two builds of this layer exist and the sign of every edge is the same in both; what differs is the weight and what
+# else reaches the potential (membrane_potential_build below):
+#   "learned_from_reactions", the build registered up to 12 October 2026: every pool edge has weight 1 and VM_c also
+#     receives one edge from each of the 405 reactions that move net charge, which the encoder averages, so each
+#     arrives divided by 405 and nothing reaches the node (docs/label_source_review.md 22);
+#   "computed_from_the_pools": the pool edges carry the weights of the linearised parallel-conductance equation
+#     (graph/membrane_potential.py) and the 405 reaction edges are not made, so the potential is a stated law over six
+#     edges instead of a learned mean over 409. The reactions still reach the potential, through the pools they move;
+#   "computed_beside_the_reactions": the same six weighted pool edges, with the 405 reaction edges kept.
+# Measured on the full neuronal graph, deleting the reaction edges LOWERS what reaches the potential rather than
+# raising it, which is the opposite of what docs/label_source_review.md 22.3 expected, and the reason is structural:
+# a reaction edge is a one-hop route to the potential, and through the pools it becomes two hops, each divided by its
+# destination's in-degree. The cytosolic sodium pool has in-degree 364 and the new extracellular one 339, so the
+# divisor becomes about 338 x 6 against 409. Keeping both routes is the arm that raises it: the encoder divides an
+# entry by the in-degree within its relation times the number of relations feeding the node, so with two relations the
+# law arrives at 1/12 instead of 1/409 and the reactions keep a one-hop route at 1/810.
+# A pool with a driving force of 0 is still built as a node; it simply gets no edge into the potential.
 NEURONAL_POOL_DRIVING_FORCE = {("Na+", "c"): -1.0, ("K+", "c"): -1.0, ("K+", "e"): 1.0, ("Cl-", "c"): 1.0, ("Ca2+", "c"): 0.0}
+MEMBRANE_POTENTIAL_BUILDS: tuple[str, ...] = ("learned_from_reactions", "computed_from_the_pools", "computed_beside_the_reactions")
+DEFAULT_MEMBRANE_POTENTIAL_BUILD = "learned_from_reactions"  # the registered build; the other is chosen explicitly
+# The pools the computed build needs that the registered build does not: the extracellular side of sodium and of
+# chloride. Potassium already has both sides. No extracellular calcium pool is added, because calcium does not enter
+# the voltage equation (graph/membrane_potential.py).
+POOLS_ADDED_BY_THE_COMPUTED_BUILD = {("Na+", "e"): 1.0, ("Cl-", "e"): -1.0}
 COMPARTMENT_WORDS = {"c": "cytosol", "e": "extracellular"}
 
 
@@ -249,7 +276,8 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
                           map_chebi_to_human_gem, ion_bases: dict[str, str], ion_charges: dict[str, int], human_gem_participants: dict[str, list],
                           brain_expressed_genes: set[str], transmitter_bases: set[str], vesicular_transporter_genes: set[str] = frozenset(),
                           curated_reactions: list[CuratedReaction] = (),
-                          replaced_human_gem_reactions: dict[str, str] = ()) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
+                          replaced_human_gem_reactions: dict[str, str] = (),
+                          membrane_potential_build: str = DEFAULT_MEMBRANE_POTENTIAL_BUILD) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
     """The graph with the Reactome entities and reactions, the curated reactions, the neuronal ion pools, the membrane
     potential node and their edges.
 
@@ -259,7 +287,12 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     base ids of the transmitters whose release is Ca2+-triggered. vesicular_transporter_genes: genes whose Human-GEM
     cytosol-to-extracellular shortcuts lose their catalysis. replaced_human_gem_reactions: {reaction id: why}, the
     Human-GEM reactions the curated set replaces, deleted with every edge they carry (a reaction that lumps channel
-    families whose voltage dependence differs)."""
+    families whose voltage dependence differs). membrane_potential_build is one of MEMBRANE_POTENTIAL_BUILDS and
+    defaults to the registered one."""
+    if membrane_potential_build not in MEMBRANE_POTENTIAL_BUILDS:
+        raise ValueError(f"membrane_potential_build must be one of {MEMBRANE_POTENTIAL_BUILDS}, not {membrane_potential_build!r}")
+    potential_is_computed = membrane_potential_build in ("computed_from_the_pools", "computed_beside_the_reactions")
+    reactions_tell_the_potential = membrane_potential_build != "computed_from_the_pools"
     species: dict[str, ReactomeSpecies] = {}
     reactions: dict[str, ReactomeReaction] = {}
     for text in sbml_texts:
@@ -279,7 +312,12 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     unmapped_small_molecules = set()
     ion_names = {base: name for name, base in ion_bases.items()}
     ion_set = set(ion_bases.values())
-    pools = {(ion_bases[name], letter): sign for (name, letter), sign in NEURONAL_POOL_DRIVING_FORCE.items() if name in ion_bases}
+    driving_force_of_pool = dict(NEURONAL_POOL_DRIVING_FORCE)
+    if potential_is_computed:
+        driving_force_of_pool.update(POOLS_ADDED_BY_THE_COMPUTED_BUILD)
+    pools = {(ion_bases[name], letter): sign for (name, letter), sign in driving_force_of_pool.items() if name in ion_bases}
+    # (ion, compartment) -> (sign, weight) of the pool's edge into the potential under the computed build
+    computed_edge = driving_force_edge_weights() if potential_is_computed else {}
 
     def add_node(node_id: str, **values) -> None:
         if node_id not in existing and node_id not in new_nodes:
@@ -288,11 +326,14 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
             letter_of_node[node_id] = values.get("compartment")
             name_of_node[node_id] = values.get("display_name")
 
-    def add_edge(source: str, target: str, relation: str, sign: float, evidence: str) -> bool:
-        """True when the edge was added; a reaction the curated set replaces gets no edges of its own."""
+    def add_edge(source: str, target: str, relation: str, sign: float, evidence: str, weight: float = 1.0) -> bool:
+        """True when the edge was added; a reaction the curated set replaces gets no edges of its own.
+
+        weight is the edge's own strength, read by the encoder as sign x weight. It is 1 for every edge but the
+        driving-force edges of the computed membrane-potential build, whose weights come from a physical law."""
         if source in deleted_nodes or target in deleted_nodes:
             return False
-        new_edges.append({"source_id": source, "target_id": target, "relation_type": relation, "sign": sign, "evidence_source": evidence})
+        new_edges.append({"source_id": source, "target_id": target, "relation_type": relation, "sign": sign, "evidence_source": evidence, "weight": weight})
         return True
 
     add_node(MEMBRANE_POTENTIAL_NODE, node_type="membrane_potential", display_name="neuronal membrane potential", compartment="c", is_currency=False)
@@ -300,7 +341,16 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         pool = neuronal_pool_id(base, letter)
         add_node(pool, node_type="metabolite", display_name=f"{ion_names[base]} (neuronal pool, {COMPARTMENT_WORDS[letter]})", compartment=letter,
                  base_metabolite_id=base, is_currency=False, in_metabolic_layer=False)
-        if driving_force_sign:
+        if not driving_force_sign:
+            continue
+        if potential_is_computed:
+            sign, weight = computed_edge[(ion_names[base], letter)]
+            if sign != driving_force_sign:
+                raise ValueError(f"the computed weight of the {ion_names[base]} {letter} pool has sign {sign}, and the table says {driving_force_sign}")
+            add_edge(pool, MEMBRANE_POTENTIAL_NODE, "driving_force", sign,
+                     "share of the resting leak conductance times RT/zF, linearised parallel-conductance equation "
+                     "(docs/membrane_potential_constants.md)", weight)
+        else:
             add_edge(pool, MEMBRANE_POTENTIAL_NODE, "driving_force", driving_force_sign, "Nernst potential of the ion")
 
     for species_id, entity in species.items():
@@ -351,6 +401,20 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         catalyst_genes = set().union(*(genes_of_node.get(node_of_species.get(s), set()) for s in reaction.catalysts)) if reaction.catalysts else set()
         reaction_records[node_id] = (participants, catalyst_genes, reactant_nodes, product_nodes, "Reactome")
 
+    def on_a_pool(node: str) -> str:
+        """A curated reaction's metabolite id, moved to the neuronal pool when one exists for that ion and side.
+
+        A curated reaction names graph node ids, and the set was written when the only pools were cytosolic Na+, K+,
+        Cl-, Ca2+ and extracellular K+, so its other extracellular ions name the generic metabolite. That node is a
+        currency metabolite, which receives a signal and does not pass it on, so the extracellular side of a sodium
+        current went nowhere. Under the computed build, where extracellular sodium and chloride are pools of their own,
+        the id moves to the pool."""
+        base, letter = str(node)[:-1], str(node)[-1]
+        return neuronal_pool_id(base, letter) if (base, letter) in pools else node
+
+    curated_reactions = [dataclasses.replace(curated, substrates=tuple(on_a_pool(node) for node in curated.substrates),
+                                             products=tuple(on_a_pool(node) for node in curated.products))
+                         for curated in curated_reactions] if potential_is_computed else list(curated_reactions)
     curated_membrane_signs: dict[str, float] = {}
     for curated in curated_reactions:
         for node in curated.substrates + curated.products:  # a compartment copy of a metabolite the base graph lacks (a transmitter in the vesicle lumen)
@@ -405,7 +469,11 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         sign = curated_sign if curated_sign is not None else (1.0 if inward_charge > 0 else -1.0)
         evidence = ("net current of a channel permeable to more than one ion (curated)" if curated_sign is not None
                     else f"net charge across the plasma membrane ({source})")
-        if (curated_sign is not None or inward_charge) and add_edge(reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", sign, evidence):
+        # Under the computed build the reaction does not tell the potential directly: it moves an ion, and the ions
+        # set the potential. 348 of the 405 reactions that carried such an edge already move a tracked pool, and the
+        # rest reach a pool through their own substrate and product edges, so nothing is lost but the 405-way mean.
+        if reactions_tell_the_potential and (curated_sign is not None or inward_charge) and add_edge(
+                reaction_node, MEMBRANE_POTENTIAL_NODE, "changes_membrane_potential", sign, evidence):
             membrane_edges[source] += 1
         # Reactome and curated reactions reach the pools through their own substrate and product edges, since their
         # ion species are the pool nodes; only Human-GEM, whose ions are currency nodes, needs these edges
@@ -443,18 +511,25 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     node_table = pd.concat([nodes[~nodes.node_id.isin(deleted_nodes)], pd.DataFrame(list(new_nodes.values()), columns=nodes.columns)], ignore_index=True)
     kept = (~pd.Series(list(zip(edges.source_id, edges.target_id, edges.relation_type))).isin(removed_edges).to_numpy()
             & ~edges.source_id.isin(deleted_nodes).to_numpy() & ~edges.target_id.isin(deleted_nodes).to_numpy())
-    edge_table = pd.concat([edges[kept], pd.DataFrame(new_edges, columns=edges.columns)], ignore_index=True).astype(edges.dtypes.to_dict())
+    # The weight column exists only when an edge carries a weight other than 1, which today is the computed
+    # driving-force build alone. Every other edge is written 1 so a reader never has to know which build made the file.
+    edge_columns = list(edges.columns) + ([] if "weight" in edges.columns else ["weight"])
+    kept_edges = edges[kept].assign(**({} if "weight" in edges.columns else {"weight": 1.0}))
+    edge_table = pd.concat([kept_edges, pd.DataFrame(new_edges, columns=edge_columns)], ignore_index=True).astype(
+        {**edges.dtypes.to_dict(), "weight": "float64"})
     edge_table = edge_table.drop_duplicates(["source_id", "target_id", "relation_type"], ignore_index=True)
     counts = edge_table.source_id.value_counts().add(edge_table.target_id.value_counts(), fill_value=0)
     node_table["degree"] = counts.reindex(node_table.node_id).fillna(0).astype("int64").to_numpy()
     # a curated catalysis relation may be the default "catalyzed_by", which the literal list already names, so the
     # relations are deduplicated rather than concatenated; dict.fromkeys keeps the order the encoder indexes them by
     added_relations = ("substrate_of", "product_of", "catalyzed_by", "activates", "inhibits", "member_of",
-                       "changes_membrane_potential", "voltage_gates", "changes_ion_pool", "driving_force"
+                       *(("changes_membrane_potential",) if reactions_tell_the_potential else ()),  # no edge of it exists without the reaction route
+                       "voltage_gates", "changes_ion_pool", "driving_force"
                        ) + tuple(sorted({curated.catalysis_relation for curated in curated_reactions}))
     new_relations = list(relation_types) + [relation for relation in dict.fromkeys(added_relations)
                                             if relation not in relation_types]
-    summary = {"reactome_reactions": len(reactions), "reactome_species": len(species), "curated_reactions": len(curated_reactions),
+    summary = {"membrane_potential_build": membrane_potential_build,
+               "reactome_reactions": len(reactions), "reactome_species": len(species), "curated_reactions": len(curated_reactions),
                "nodes_added": len(node_table) - len(nodes) + len(deleted_nodes), "nodes_deleted": len(deleted_nodes),
                "edges_added": len(edge_table) - len(edges) + int((~kept).sum()), "edges_removed": int((~kept).sum()),
                "membrane_potential_edges": dict(membrane_edges), "ion_pool_edges_from_human_gem": pool_edges, "voltage_gating_edges": dict(gating_edges),

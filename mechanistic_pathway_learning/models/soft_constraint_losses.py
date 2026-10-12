@@ -28,7 +28,8 @@ from torch import Tensor
 PROBABILITY_EPSILON = 1e-6
 
 
-def equal_drug_loss_shares(pair_weights: np.ndarray, is_positive: np.ndarray, is_drug: np.ndarray, fit_indices: np.ndarray) -> np.ndarray:
+def equal_drug_loss_shares(pair_weights: np.ndarray, is_positive: np.ndarray, is_drug: np.ndarray, fit_indices: np.ndarray,
+                           slot_ids: np.ndarray | None = None) -> np.ndarray:
     """Loss weights [perturbations, symptoms] in which every drug holds the same number of positive pairs and the same
     number of negative pairs: each drug's positives are scaled by (mean count of weighted positives over the drugs among
     fit_indices that have one) / (its own count), and its negatives likewise. Gene rows are unchanged, and so is the
@@ -39,20 +40,31 @@ def equal_drug_loss_shares(pair_weights: np.ndarray, is_positive: np.ndarray, is
     negatives are scaled apart so a drug with no kept positive cannot take a large share through its negatives alone.
     Counts, not weight sums, are equalised, so a drug whose positives rest on weak evidence still weighs less than one
     whose positives rest on strong evidence. A drug with no weighted pair of a kind keeps zero weight of that kind.
+
+    slot_ids names what counts as one drug. Without it each row is its own drug, which is what a table of single
+    perturbations means. With it the rows that share a slot id are equalised together: their counts are summed and the
+    share is split among them. That is how a combination enters without double counting, since a drug given with a
+    lowered enzyme carries the same labels as that drug alone (evidence/combined_perturbations.py), and two rows of one
+    drug's labels would otherwise take twice the share of a drug with no statement.
     """
     is_positive = np.asarray(is_positive, dtype=bool)
     is_drug = np.asarray(is_drug, dtype=bool)
     fit_indices = np.asarray(fit_indices, dtype=int)
+    slot_of_row = np.arange(len(pair_weights)) if slot_ids is None else np.unique(np.asarray(slot_ids, dtype=object), return_inverse=True)[1]
     rescaled = pair_weights.astype(np.float64)
     for of_this_kind in (is_positive, ~is_positive):
         weighted = of_this_kind & (pair_weights > 0)
-        counts = weighted.sum(axis=1)
+        row_counts = weighted.sum(axis=1)
+        slot_counts = np.zeros(slot_of_row.max() + 1, dtype=np.float64)
+        np.add.at(slot_counts, slot_of_row[is_drug], row_counts[is_drug])
+        counts = slot_counts[slot_of_row]  # the slot's count, shared by every row of it
         drugs_with_some = is_drug & (counts > 0)
         fitted = fit_indices[drugs_with_some[fit_indices]]
         if not len(fitted):
             continue
+        fitted_slots = np.unique(slot_of_row[fitted])
         scale = np.ones(len(pair_weights), dtype=np.float64)
-        scale[drugs_with_some] = counts[fitted].mean() / counts[drugs_with_some]
+        scale[drugs_with_some] = slot_counts[fitted_slots].mean() / counts[drugs_with_some]
         rescaled = np.where(of_this_kind, rescaled * scale[:, None], rescaled)
     return rescaled.astype(pair_weights.dtype)
 

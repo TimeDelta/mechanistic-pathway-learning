@@ -31,6 +31,8 @@ from mechanistic_pathway_learning.graph.neurotransmission_regulation import add_
 from mechanistic_pathway_learning.graph.node_descriptors import metabolite_charges_from_sbml
 from mechanistic_pathway_learning.graph.oxidative_regulation import add_oxidative_regulation
 from mechanistic_pathway_learning.graph.reactome_import import (
+    DEFAULT_MEMBRANE_POTENTIAL_BUILD,
+    MEMBRANE_POTENTIAL_BUILDS,
     CuratedReaction,
     import_reactome_layer,
     read_human_gem_participants,
@@ -128,6 +130,11 @@ def main() -> None:
     parser.add_argument("--oxidant-source-table", type=Path, default=Path("docs/curated_oxidant_sources.csv"))
     parser.add_argument("--without-curated-layers", action="store_true",
                         help="leave out the curated receptor and oxidant edges, for the ablation that separates them from the Reactome layer")
+    parser.add_argument("--membrane-potential", choices=MEMBRANE_POTENTIAL_BUILDS, default=DEFAULT_MEMBRANE_POTENTIAL_BUILD,
+                        help="how VM_c gets its value. learned_from_reactions (the default, and the build registered up to 12 October 2026): one edge "
+                             "from each of the 405 reactions that move net charge, which the encoder averages. computed_from_the_pools: the six ion "
+                             "pools feed it with the weights of the linearised parallel-conductance equation and the 405 edges are not made "
+                             "(mechanistic_pathway_learning/graph/membrane_potential.py, docs/membrane_potential_constants.md)")
     arguments = parser.parse_args()
 
     nodes = pd.read_parquet(arguments.base_graph_dir / "nodes.parquet")
@@ -152,7 +159,7 @@ def main() -> None:
     new_nodes, new_edges, new_relations, summary = import_reactome_layer(
         sbml_texts, nodes, edges, relation_types, gene_of_uniprot, map_chebi_to_human_gem, INORGANIC_IONS, ion_charges,
         read_human_gem_participants(human_gem_sbml, set(INORGANIC_IONS.values())), brain_expressed_genes, set(TRANSMITTER_BASES),
-        VESICULAR_TRANSPORTER_GENES, CURATED_REACTIONS, REPLACED_HUMAN_GEM_REACTIONS)
+        VESICULAR_TRANSPORTER_GENES, CURATED_REACTIONS, REPLACED_HUMAN_GEM_REACTIONS, arguments.membrane_potential)
 
     release_reactions_of_transmitter: dict[str, list[str]] = {}
     for reaction, released in summary["release_reactions"].items():

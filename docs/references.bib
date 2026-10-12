@@ -3150,3 +3150,65 @@
   doi       = {10.1007/978-3-319-93417-4_38},
   note      = {Introduces basis decomposition and block-diagonal decomposition of the per-relation weight matrices of a relational graph network, as a way to keep the parameter count from growing with the number of relations. Cited in docs/label_source_review.md 18 for the reduction of the message-passing encoder's relation transforms}
 }
+
+@article{dusterwald2018chloride,
+  author  = {Düsterwald, Kira M. and Currin, Christopher B. and Burman, Richard J. and Akerman, Colin J. and Kay, Alan R. and Raimondo, Joseph V.},
+  title   = {Biophysical models reveal the relative importance of transporter proteins and impermeant anions in chloride homeostasis},
+  journal = {eLife},
+  year    = {2018},
+  volume  = {7},
+  pages   = {e39575},
+  doi     = {10.7554/eLife.39575},
+  pmid    = {30260315},
+  note    = {Table 1 gives the physical constants of the membrane-potential node: "T | 310.15 K | Absolute temperature (=37°C)", "[Na+]o | 145 mM", "[K+]o | 3.5 mM", "[Cl-]o | 119 mM", "[Na+]i | 14.0 mM", "[K+]i | 122.9 mM", "[Cl-]i | 5.2 mM", "gK | 70 µS/cm2", "gNa | 20 µS/cm2", "gCl | 20 µS/cm2" and "Vm | −72.6 mV" (JATS of the Europe PMC REST service, read 12 October 2026). The conductances are ohmic -- "Leak currents were calculated using Ohm's Law, I=g(Vm-E)" -- and are not GHK permeabilities; docs/membrane_potential_constants.md shows that substituting them into the GHK voltage equation misses this paper's own resting potential by 39 mV. CC BY 4.0, verified from the article's permissions block. Set A of docs/membrane_potential_constants.md}
+}
+
+@article{raimondo2015ion,
+  author  = {Raimondo, Joseph V. and Burman, Richard J. and Katz, Arieh A. and Akerman, Colin J.},
+  title   = {Ion dynamics during seizures},
+  journal = {Frontiers in Cellular Neuroscience},
+  year    = {2015},
+  volume  = {9},
+  pages   = {419},
+  doi     = {10.3389/fncel.2015.00419},
+  pmid    = {26539081},
+  note    = {Table 1, "Typical ion concentrations at rest and during an epileptic seizure", gives for typical rest "K+ | 96 mM | 4 mM | −85 mV", "Na+ | 10 mM | 145 mM | +71 mV" and "Cl− | 7 mM | 145 mM | −80 mV" (JATS of the Europe PMC REST service, read 12 October 2026). The paper states no temperature and no resting potential, and says the table's numbers are "averages that have been derived from different cell-types, brain areas and seizure models". CC BY, verified from the article's permissions block. Set B of docs/membrane_potential_constants.md}
+}
+
+@article{um2021trpc3,
+  author  = {Um, Ki Bum and Hahn, Suyun and Kim, So Woon and Lee, Yoon Je and Birnbaumer, Lutz and Kim, Hyun Jin and Park, Myoung Kyu},
+  title   = {TRPC3 and NALCN channels drive pacemaking in substantia nigra dopaminergic neurons},
+  journal = {eLife},
+  year    = {2021},
+  volume  = {10},
+  pages   = {e70920},
+  doi     = {10.7554/eLife.70920},
+  pmid    = {34409942},
+  note    = {"The pK, pNa, and pCl are relative membrane permeability for K+, Na+, and Cl−, and the ratio of pK:pNa:pCl used was 1:0.05:0.45 (Goldman, 1943; Schleifer et al., 2012)", with slice recordings "continuously perfused with warm (33°C) oxygenated (95/5% O2/CO2 gas) aCSF" (Materials and methods; JATS of the Europe PMC REST service, read 12 October 2026). The only mammalian central-neuron GHK permeability ratio verified in the pass of 12 October 2026, for the mouse substantia nigra pars compacta dopaminergic neuron. The ratio is used rather than measured, and the authors' attribution of it to Schleifer et al. 2012, a pharmacology paper on pyrazole blockers, looks doubtful. CC BY 4.0, verified from the article's permissions block. Set C of docs/membrane_potential_constants.md}
+}
+
+@article{alvarez2017constantfield,
+  author  = {Alvarez, Osvaldo and Latorre, Ramon},
+  title   = {The enduring legacy of the "constant-field equation" in membrane ion transport},
+  journal = {The Journal of General Physiology},
+  year    = {2017},
+  volume  = {149},
+  number  = {10},
+  pages   = {911--920},
+  doi     = {10.1085/jgp.201711839},
+  pmid    = {28931632},
+  note    = {"Hodgkin and Katz (1949) explained Curtis and Cole's results (Curtis and Cole, 1942) using Eq. 1 with PK/PNa/PCl = 1:0.04:0.45", and for the refractory period "the Na+ membrane permeability coefficient was 0, PK/PNa/PCl = 1:0:0.45" (section "Applications of the Goldman equation"; JATS of the Europe PMC REST service, read 12 October 2026). The route by which the squid giant axon permeability ratio was read, the 1949 article itself being refused. CC BY-NC-SA 4.0 after the first six months, verified from the article's permissions block: non-commercial and share-alike, so quoting is within it and redistributing the article is not. Set D of docs/membrane_potential_constants.md}
+}
+
+@article{hodgkin1949sodium,
+  author  = {Hodgkin, A. L. and Katz, B.},
+  title   = {The effect of sodium ions on the electrical activity of the giant axon of the squid},
+  journal = {The Journal of Physiology},
+  year    = {1949},
+  volume  = {108},
+  number  = {1},
+  pages   = {37--77},
+  doi     = {10.1113/jphysiol.1949.sp004310},
+  pmid    = {18128147},
+  note    = {The primary source of the squid giant axon resting permeability ratio PK:PNa:PCl = 1:0.04:0.45. Not read in this repository: the PubMed Central copy is a page scan with no text layer, Europe PMC holds no full-text XML (HTTP 500), the PMC Open Access service is disallowed by that host's robots file, and the scanned PDF answers with a proof-of-work gate, which under the ruling of 11 October 2026 is not solved or routed around. The ratio is therefore cited through alvarez2017constantfield, and no licence sentence was read for this article. The owner can open pmc.ncbi.nlm.nih.gov/articles/PMC1392331/ (PDF link pdf/jphysiol01475-0050.pdf). Measured in the squid giant axon, not a mammalian neuron}
+}

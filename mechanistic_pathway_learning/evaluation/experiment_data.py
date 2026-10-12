@@ -19,6 +19,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from mechanistic_pathway_learning.evidence.combined_perturbations import (
+    COMBINATION_PERTURBATION_TYPE,
+    PARTS_COLUMN,
+    read_parts,
+)
 from mechanistic_pathway_learning.graph.drug_entry_nodes import (
     CARRIAGE_EVIDENCE_PREFIX,
     CHANGE_CARRYING_RELATIONS,
@@ -76,6 +81,10 @@ class ExperimentData:
     entry_node_mask: np.ndarray | None = None  # [num_nodes] True for a node that exists only in the perturbation seeded on it (a drug node)
     perturbation_target_seeds: list[np.ndarray] | None = None  # per perturbation, the nodes it would seed without entry nodes: a drug's targets, a knockout's gene
     drug_entry: str | None = None  # "nodes" when drug perturbations are seeded on their entry nodes
+    # Parts of each perturbation (evidence/combined_perturbations.py): one part for a single perturbation, several for a
+    # combination. None when no combination was loaded, so a run without them carries nothing new.
+    perturbation_parts: list[list] | None = None
+    perturbation_seed_parts: list[np.ndarray] | None = None  # per seed, the index of the part it came from; set with perturbation_parts
 
     def structural_node_features(self) -> np.ndarray:
         """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
@@ -186,6 +195,9 @@ def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "Expe
     changes = {name: [getattr(data, name)[i] for i in positions] for name in PER_PERTURBATION_LISTS}
     if data.perturbation_target_seeds is not None:
         changes["perturbation_target_seeds"] = [data.perturbation_target_seeds[i] for i in positions]
+    if data.perturbation_parts is not None:
+        changes["perturbation_parts"] = [data.perturbation_parts[i] for i in positions]
+        changes["perturbation_seed_parts"] = [data.perturbation_seed_parts[i] for i in positions]
     for name in PER_PERTURBATION_ARRAYS:
         value = getattr(data, name)
         changes[name] = None if value is None else value[positions]
@@ -227,7 +239,7 @@ def read_lockbox(lockbox_path: Path, data: "ExperimentData", group_by: str | Non
 
 
 def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_types: list[str], group_ids: list[str],
-                                   perturbation_seeds: list, node_ids: list[str]) -> list[str]:
+                                   perturbation_seeds: list, node_ids: list[str], perturbation_parts: list[list] | None = None) -> list[str]:
     """Leakage groups in which a drug is held out together with every labelled gene it targets and every drug that shares
     a target node with it (group_by "disease_cluster_and_targets").
 
@@ -237,7 +249,14 @@ def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_typ
     A model then learns "perturbing this node causes this symptom" from the gene and is credited for it on the drug.
     Groups are the connected components of: perturbation - its group (disease cluster), drug - each gene perturbation
     whose node it targets, drug - each target node. Each component is named by the smallest disease cluster of a gene in it, or the smallest
-    group id when it holds drugs only."""
+    group id when it holds drugs only.
+
+    With perturbation_parts a combination is joined to every part of it as well (evidence/combined_perturbations.py), by
+    the part's id and not by which nodes it seeds. That is section 8's property made exact: "a combination inherits the
+    groups of its parts", so a combination cannot sit in a fold that none of its parts sits in, and a part that is
+    itself a perturbation of the table drags the combination into its group. A drug part is also joined to its target
+    nodes, as a drug perturbation is, so a combination and the loss of function of one of its targets are held out
+    together."""
     parent: dict[str, str] = {}
 
     def find(item: str) -> str:
@@ -254,7 +273,22 @@ def merge_drugs_with_their_targets(perturbation_ids: list[str], perturbation_typ
                                  if kind == "gene" and len(seeds)}
     for perturbation_id, group_id in zip(perturbation_ids, group_ids):
         union("perturbation:" + perturbation_id, "group:" + group_id)
-    for perturbation_id, kind, seeds in zip(perturbation_ids, perturbation_types, perturbation_seeds):
+    in_the_table = set(perturbation_ids)
+    for position, (perturbation_id, kind, seeds) in enumerate(zip(perturbation_ids, perturbation_types, perturbation_seeds)):
+        if kind == COMBINATION_PERTURBATION_TYPE and perturbation_parts is not None:
+            for part in perturbation_parts[position]:
+                if part.part_id in in_the_table:  # the part is a perturbation of its own: one group holds both
+                    union("perturbation:" + perturbation_id, "perturbation:" + part.part_id)
+                for node_id, _, _ in part.nodes:
+                    # a gene perturbation on the part's node is joined whatever the part's kind: a lowered enzyme that
+                    # the study also perturbs on its own belongs in the combination's group, and a part named otherwise
+                    # than that perturbation is recognised by its node
+                    gene_perturbation = gene_perturbation_of_node.get(node_id)
+                    if gene_perturbation is not None:
+                        union("perturbation:" + perturbation_id, "perturbation:" + gene_perturbation)
+                    if part.part_kind == "drug":  # the node key is what joins the drugs that share a target
+                        union("perturbation:" + perturbation_id, "node:" + node_id)
+            continue
         if kind != "drug":
             continue
         for seed in seeds:
@@ -324,8 +358,52 @@ def drop_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: l
     return kept_nodes, kept_edges, kept_relations
 
 
+REQUIRED_COMBINATION_COLUMNS: tuple[str, ...] = ("perturbation_id", "perturbation_type", "perturbation_label", "group_id", "symptom", "relation", "grade", "weight",
+                                                  "perturbation_nodes", PARTS_COLUMN, "in_metabolic_layer")
+
+
+def evidence_with_combinations(evidence: pd.DataFrame, combined_perturbations: Path, relation: str, label_grades: tuple[str, ...] | None) -> pd.DataFrame:
+    """The evidence rows with the combination rows of a parquet appended, under the same relation and grade filters.
+
+    A column the combination table does not carry is filled the way a row with nothing to say in it is filled
+    elsewhere in the loader: a count with 0, a flag with False, a text column with the empty string. positive_report_count
+    is 1, because a combination row states a positive claim and the loader keeps only rows that do.
+    """
+    table = pd.read_parquet(combined_perturbations)
+    missing = [column for column in REQUIRED_COMBINATION_COLUMNS if column not in table.columns]
+    if missing:
+        raise ValueError(f"{combined_perturbations} is missing {missing}; rebuild it with experiments/build_combined_perturbations.py")
+    not_a_combination = sorted(set(table.perturbation_type) - {COMBINATION_PERTURBATION_TYPE})
+    if not_a_combination:
+        raise ValueError(f"{combined_perturbations} holds perturbation types {not_a_combination}; every row of it is a {COMBINATION_PERTURBATION_TYPE}")
+    table = table[table.relation == relation]
+    if label_grades is not None:
+        table = table[table.grade.isin(label_grades)]
+    already_there = sorted(set(table.perturbation_id) & set(evidence.perturbation_id))
+    if already_there:
+        raise ValueError(f"{combined_perturbations}: {len(already_there)} perturbation ids are already in the evidence table, e.g. {already_there[:3]}")
+    if not len(table):
+        return evidence
+    if PARTS_COLUMN not in evidence.columns:  # a single perturbation has no parts column of its own; empty means "one part, itself"
+        evidence = evidence.assign(**{PARTS_COLUMN: ""})
+    filled = {}
+    for column in evidence.columns:
+        if column in table.columns:
+            continue
+        if column == "positive_report_count":
+            filled[column] = 1
+        elif evidence[column].dtype == bool:
+            filled[column] = False
+        elif pd.api.types.is_numeric_dtype(evidence[column]):
+            filled[column] = 0
+        else:
+            filled[column] = ""
+    table = table.assign(**filled)
+    return pd.concat([evidence, table[evidence.columns]], ignore_index=True)
+
+
 def load_experiment_data(graph_directory: Path, evidence_directory: Path, relation: str = "induces", symptoms: list[str] | None = None, metabolic_layer_only: bool = False, group_by: str = "gene", label_grades: tuple[str, ...] | None = DEFAULT_LABEL_GRADES,
-                         label_selection: Path | None = None, drug_entry: str = "targets") -> ExperimentData:
+                         label_selection: Path | None = None, drug_entry: str = "targets", combined_perturbations: Path | None = None) -> ExperimentData:
     """group_by selects the leakage group for the grouped split: "gene" (the gene itself; drugs by dominant
     target), "disease_cluster" (genes sharing a disease entry in HPO are held out together) or "disease_cluster_and_targets"
     (disease clusters with each drug joined to the genes it targets and to the drugs sharing a target: merge_drugs_with_their_targets). label_grades restricts
@@ -348,7 +426,13 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     the ones the source graph gives: every caller written before the nodes existed, the baselines among them, reads
     the graph it always read. "nodes" keeps them and seeds each drug on its own node with sign 1 and magnitude 1; the
     mechanism edges carry the sign and the magnitude to the targets. Leakage groups and degrees are read from the
-    targets under both, so the two arms share their folds, their lockbox and their degree strata."""
+    targets under both, so the two arms share their folds, their lockbox and their degree strata.
+
+    combined_perturbations is a parquet of combination rows written by experiments/build_combined_perturbations.py,
+    appended to the evidence rows (evidence/combined_perturbations.py). Without it the table holds no combination and
+    nothing about a run changes, which is why it is a path and not a default: whether these examples train is the
+    owner's decision. A combination's rows pass the same relation and grade filters as every other row, and its
+    perturbation id must not already be in the table."""
     if group_by not in GROUPING_COLUMNS:
         raise ValueError(f"group_by must be one of {sorted(GROUPING_COLUMNS)}")
     if drug_entry not in DRUG_ENTRY_MODES:
@@ -374,8 +458,12 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         raise ValueError(f"label_grades {sorted(label_grades)} include a literature grade; grades {SOFT_PRIOR_ONLY_GRADES} are soft priors and never labels (design section 4.2)")
     if label_grades is not None and "grade" in evidence.columns:
         evidence = evidence[evidence.grade.isin(label_grades)]
+    if combined_perturbations is not None:
+        evidence = evidence_with_combinations(evidence, Path(combined_perturbations), relation=relation, label_grades=label_grades)
     if group_column not in evidence.columns:  # evidence tables written before disease clusters existed
         evidence = evidence.assign(**{group_column: evidence.group_id})
+    if PARTS_COLUMN not in evidence.columns:
+        evidence = evidence.assign(**{PARTS_COLUMN: ""})
     if metabolic_layer_only:
         evidence = evidence[evidence.in_metabolic_layer == True]  # noqa: E712
     if symptoms is None:
@@ -393,6 +481,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     has_date_source_column = "evidence_date_source" in evidence.columns
     evidence_date_is_publication = np.zeros(outcomes.shape, dtype=bool)
     labels, types, groups, seeds, signs, magnitudes, metabolic = {}, {}, {}, {}, {}, {}, {}
+    parts = {}  # perturbation id -> its parts (one for a single perturbation; evidence/combined_perturbations.py)
+    seed_parts = {}  # perturbation id -> the part index of each of its seeds
     group_seeds = {}  # the seeds the leakage groups are built from: the evidence's own gene nodes, also on a split graph
     target_seeds = {}  # the seeds without entry nodes; the degrees are read from these under either drug_entry
     for row in evidence.itertuples(index=False):
@@ -412,16 +502,28 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         groups[row.perturbation_id] = getattr(row, group_column)
         metabolic[row.perturbation_id] = bool(row.in_metabolic_layer)
         if row.perturbation_id not in seeds:
-            triples = [triple for triple in json.loads(row.perturbation_nodes) if triple[0] in node_index]
-            group_seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples], dtype=int)
-            if protein_of_gene and row.perturbation_type == "drug":  # split graph: a knockout seeds its gene, a drug its targets' proteins
-                triples = drug_seeds_on_proteins(triples, protein_of_gene)
-            target_seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples], dtype=int)
-            if row.perturbation_id in entry_node_of_perturbation:  # the drug's own node; its mechanism edges carry sign and magnitude on
-                triples = [[entry_node_of_perturbation[row.perturbation_id], 1.0, 1.0]]
-            seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in triples], dtype=int)
-            signs[row.perturbation_id] = np.array([sign for _, sign, _ in triples])
-            magnitudes[row.perturbation_id] = np.array([magnitude for _, _, magnitude in triples])
+            # Every row is read as a list of parts: one part for a single perturbation, several for a combination
+            # (evidence/combined_perturbations.py). The routing below is per part, because a drug part and a gene part
+            # of one combination are seeded differently on both a split graph and a graph with drug entry nodes.
+            parts[row.perturbation_id] = row_parts = read_parts(row.perturbation_id, row.perturbation_type, row.perturbation_nodes,
+                                                                getattr(row, PARTS_COLUMN, None))
+            group_triples, target_triples, seed_triples, seed_part = [], [], [], []
+            for part_position, part in enumerate(row_parts):
+                part_triples = [[node_id, sign, magnitude] for node_id, sign, magnitude in part.nodes if node_id in node_index]
+                group_triples += part_triples
+                if protein_of_gene and part.part_kind == "drug":  # split graph: a knockout seeds its gene, a drug its targets' proteins
+                    part_triples = drug_seeds_on_proteins(part_triples, protein_of_gene)
+                target_triples += part_triples
+                if part.part_id in entry_node_of_perturbation:  # the drug's own node; its mechanism edges carry sign and magnitude on
+                    part_triples = [[entry_node_of_perturbation[part.part_id], 1.0, 1.0]]
+                seed_triples += part_triples
+                seed_part += [part_position] * len(part_triples)
+            seed_parts[row.perturbation_id] = np.array(seed_part, dtype=int)
+            group_seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in group_triples], dtype=int)
+            target_seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in target_triples], dtype=int)
+            seeds[row.perturbation_id] = np.array([node_index[node_id] for node_id, _, _ in seed_triples], dtype=int)
+            signs[row.perturbation_id] = np.array([sign for _, sign, _ in seed_triples])
+            magnitudes[row.perturbation_id] = np.array([magnitude for _, _, magnitude in seed_triples])
     label_mask, label_selection_summary = None, None
     if label_selection is not None:
         selection = pd.read_parquet(label_selection)
@@ -470,20 +572,27 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         else:
             evidenced_negative = None
     edge_weight, entry_node_mask = None, None
+    # A graph may give an edge a weight of its own: today the driving-force edges of the computed membrane-potential
+    # build, whose weights come from the linearised voltage equation (graph/membrane_potential.py). Absent column, or
+    # an absent value in it, means weight 1, so a graph built before the column reads exactly as it did.
+    weight_in_the_graph = edges["weight"].fillna(1.0).to_numpy(dtype=float) if "weight" in edges.columns else None
     if entry_table is not None:
-        # a mechanism edge replaces one seed, so it carries that seed's magnitude; every other edge has weight 1
+        # a mechanism edge replaces one seed, so it carries that seed's magnitude; every other edge keeps the graph's weight
         magnitude_of_edge = {(source, target): float(magnitude) for source, target, magnitude in zip(entry_table.drug_node_id, entry_table.target_node_id, entry_table.magnitude)}
         is_mechanism_edge = (edges.relation_type == DRUG_MECHANISM_RELATION).to_numpy()
-        edge_weight = np.ones(len(edges), dtype=float)
+        edge_weight = np.ones(len(edges), dtype=float) if weight_in_the_graph is None else weight_in_the_graph.copy()
         mechanism_pairs = list(zip(edges.source_id[is_mechanism_edge], edges.target_id[is_mechanism_edge]))
         without_a_row = [pair for pair in mechanism_pairs if pair not in magnitude_of_edge]
         if without_a_row:
             raise ValueError(f"{len(without_a_row)} {DRUG_MECHANISM_RELATION} edges of {graph_directory} have no row in {DRUG_ENTRY_FILE}, for example {without_a_row[0]}")
         edge_weight[is_mechanism_edge] = [magnitude_of_edge[pair] for pair in mechanism_pairs]
         entry_node_mask = nodes.node_type.isin(ENTRY_NODE_TYPES).to_numpy()
+    elif weight_in_the_graph is not None and not np.all(weight_in_the_graph == 1.0):
+        edge_weight = weight_in_the_graph
     group_ids = [groups[p] for p in perturbation_ids]
     if group_by == "disease_cluster_and_targets":
-        group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [group_seeds[p] for p in perturbation_ids], node_ids)
+        group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [group_seeds[p] for p in perturbation_ids], node_ids,
+                                                   [parts[p] for p in perturbation_ids])
     return ExperimentData(
         node_ids=node_ids,
         node_index=node_index,
@@ -524,4 +633,6 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         entry_node_mask=entry_node_mask,
         perturbation_target_seeds=None if entry_table is None else [target_seeds[p] for p in perturbation_ids],
         drug_entry=None if entry_table is None else "nodes",
+        perturbation_parts=None if combined_perturbations is None else [parts[p] for p in perturbation_ids],
+        perturbation_seed_parts=None if combined_perturbations is None else [seed_parts[p] for p in perturbation_ids],
     )
