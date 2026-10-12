@@ -117,7 +117,21 @@ reads either is a separate decision.
   transforms, since a repeated layer applies one transform per relation at every round where three independent
   layers do not. Neither the noisy-OR head nor the training stopping rule is reopened by this: the head was settled
   on 8 October and the stopping rule is preregistered as validation loss with patience 8 and at most 60 epochs
-  (`docs/label_source_review.md` 18, 19).
+  (`docs/label_source_review.md` 18, 19). **Open on the owner's challenge of 17:09**: four shared bases assume all 20
+  relation matrices lie near one four-dimensional subspace, which nothing tests. A per-relation low-rank
+  factorisation assumes only that each transform is low rank and costs 5,120 against 4,176, and a rank set by each
+  relation's edge count costs 5,248 and spends it where the evidence is. The draft keeps "use the 4 bases" until the
+  owner chooses (20.3). The loss of depth-specialised transforms is withdrawn as a cost (20.1).
+
+- **The message-passing encoder's edge signs.** Verified on 12 October: `build_relation_adjacencies` gives every
+  entry of every relation's adjacency the positive value `1 / in_degree`, and the encoder is passed no edge sign for
+  ordinary relations, where the linear-response encoder is passed `data.edge_sign` and uses it. For the 12 relations
+  of constant sign nothing is lost, since the relation index carries it; for the 8 whose sign varies within the
+  relation, 7,321 negative edges are read as positive, 7,087 of them transcriptional repressions among
+  `regulates_transcription_of`'s 41,638 edges. The fix is to make the adjacency value `sign / in_degree`, which costs
+  no parameters, and the amendment has to state one consequence: with signs in the values the in-degree mean can
+  cancel, so a node with one activator and one repressor of equal weight receives zero. Reported in the architecture
+  review of 10 October and not acted on (20.2).
 
 ## 4. What is still missing before this can be applied
 

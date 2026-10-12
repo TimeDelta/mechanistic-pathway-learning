@@ -50,12 +50,32 @@ def relation_parameter_schemes(num_relations: int, node_state_dim: int, num_laye
             "total": num_relations * num_blocks * (node_state_dim // num_blocks) ** 2,
             "one_relation": num_blocks * (node_state_dim // num_blocks) ** 2,
             "note": "each relation mixes only within blocks of the node state"})
+    for rank in (2, 4, 8):
+        schemes.append({
+            "scheme": f"per-relation low rank {rank}, shared across layers",
+            "total": num_relations * 2 * node_state_dim * rank,
+            "one_relation": 2 * node_state_dim * rank,
+            "note": "W_r = U_r V_r^T, each relation with its own rank-r factors; no relation shares a subspace with "
+                    "another, so it assumes only that each transform is low rank"})
     schemes.append({
         "scheme": "diagonal, shared across layers",
         "total": num_relations * node_state_dim,
         "one_relation": node_state_dim,
         "note": "one gain per relation per channel, which is what the linear-response encoder already is"})
     return schemes
+
+
+def rank_matched_to_evidence(edge_counts: dict[str, int], node_state_dim: int,
+                             ranks_by_edges: tuple[tuple[int, int], ...]) -> dict:
+    """A per-relation rank chosen by how many edges the relation has, so capacity follows evidence.
+
+    ranks_by_edges is (at least this many edges, rank), largest threshold first."""
+    total, per_relation = 0, {}
+    for relation, edges in edge_counts.items():
+        rank = next(rank for threshold, rank in ranks_by_edges if edges >= threshold)
+        per_relation[relation] = {"edges": edges, "rank": rank, "parameters": 2 * node_state_dim * rank}
+        total += 2 * node_state_dim * rank
+    return {"total": total, "per_relation": per_relation}
 
 
 def main() -> None:
@@ -110,10 +130,20 @@ def main() -> None:
     for scheme in schemes:
         print(f"  {scheme['scheme']}: {scheme['note']}")
 
+    # A rank matched to the evidence, since the relations differ in size by four orders of magnitude.
+    edge_counts = edges.relation_type.value_counts().to_dict()
+    tiers = ((10_000, 8), (1_000, 4), (100, 2), (0, 1))
+    matched = rank_matched_to_evidence(edge_counts, state, tiers)
+    print(f"\nA rank matched to each relation's evidence, with tiers {tiers}:")
+    print(f"  total {matched['total']:,} parameters, {matched['total'] / kept_pairs:.2f} per labelled pair")
+    for relation, entry in sorted(matched["per_relation"].items(), key=lambda item: -item[1]["edges"]):
+        print(f"    {relation:<30} {entry['edges']:>7,} edges -> rank {entry['rank']}, {entry['parameters']:>5,} parameters")
+
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_text(json.dumps(
         {"relations": num_relations, "kept_pairs": kept_pairs, "message_passing": message_passing,
-         "linear_response": linear_response, "schemes": schemes}, indent=1, sort_keys=True))
+         "linear_response": linear_response, "schemes": schemes, "rank_matched_to_evidence": matched},
+        indent=1, sort_keys=True))
     print(f"\nwrote {arguments.output}")
 
 

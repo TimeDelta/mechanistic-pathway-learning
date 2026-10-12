@@ -2026,6 +2026,116 @@ chosen like one**: compare 2, 4, 8 and the full matrix on development folds and 
 relations genuinely need distinct transforms, too small a B shows as underfitting, which is testable rather than
 assumed in either direction.
 
+## 20. Answers of 12 October, 17:09
+
+### 20.1 Depth specialisation: the owner is right, and I over-weighted it
+
+"Why does it need to specialize per depth? I thought there was separate matrices per relation type even if the bases
+are shared."
+
+The second sentence is correct and the two axes are independent. Basis decomposition acts on the **relation** axis:
+with four shared bases there are still 20 distinct relation matrices, each a different mixture. Weight tying acts on
+the **depth** axis: the same 20 matrices are applied at every round rather than three different sets of 20. Repeating
+the layer therefore costs nothing per relation; it costs only the ability for round 1 to use a different `encodes`
+matrix from round 2.
+
+And on the first question: it does not need to. I listed depth specialisation as a loss without asking whether it is
+a capability worth having, and it mostly is not. The law of a relation should not depend on how many edges a signal
+has already crossed — `encodes` means the same thing at round 1 and round 5 — so a transform that varies with hop
+count is a fitting convenience rather than a physiological one. The argument for keeping it is raw capacity, and at
+2,975 labelled pairs capacity is the thing in short supply. The example I gave, that a knockout spends its first
+layer on gene to protein, is not an argument either: with a repeated layer the `encodes` relation still has its own
+matrix and still fires at round 1, it simply fires with the same matrix again later, which is what a physiological
+law does. **Withdrawn as a cost.**
+
+### 20.2 The message-passing encoder does not read edge signs, and this is a real defect
+
+"Why would MP not read the edge sign?! That seems like a bug..."
+
+**Verified in the code, not from the review.** `RelationalMessagePassingEncoder.build_relation_adjacencies` sets
+every entry of every relation's adjacency to `1.0 / in_degree[destination]`, a positive number, and the constructor
+takes no edge sign for ordinary relations: `entry_edge_sign` exists and applies to the drug entry edges alone. The
+linear-response encoder is passed `data.edge_sign` and uses it. So the two registered encoders differ here, and the
+message-passing one discards the sign of every ordinary graph edge.
+
+**How much that costs, measured.** For a relation whose sign never varies, nothing is lost: the relation index
+carries the sign and the relation's own matrix can learn to negate. That covers 12 relations and 236,881 edges,
+`activates` at +1 and `inhibits` at -1 among them. The loss is confined to the 8 relations whose sign varies within
+the relation:
+
+| relation | edges | of which negative |
+| --- | --- | --- |
+| `regulates_transcription_of` | 41,638 | **7,087** |
+| `changes_membrane_potential` | 405 | 52 |
+| `changes_ion_pool` | 395 | 36 |
+| `changes_redox_pool` | 324 | 49 |
+| `regulates_release` | 89 | 65 |
+| `oxidatively_modifies` | 41 | 28 |
+| `voltage_gates` | 7 | 2 |
+| `driving_force` | 4 | 2 |
+| total | 42,903 (15.3 percent of all edges) | **7,321** |
+
+So the encoder models 7,087 transcriptional repressions identically to activations of transcription. For a study
+whose claim is mechanistic, a repressor read as an activator is not a small thing, and it is concentrated in the
+second largest relation in the graph.
+
+**It is not newly found, and it was not acted on.** The architecture review of 10 October listed it among the points
+most likely to differ from the owner's expectation: "message passing reads no edge sign and treats the perturbation's
+sign as a feature". It was reported and left, and I repeated it in 19.3 as though it were a settled design choice
+rather than an open defect. It is the owner's call whether it was ever a choice.
+
+**The fix is one line and costs no parameters**: make the adjacency value `sign / in_degree[destination]` instead of
+`1 / in_degree[destination]`, which is what the linear-response encoder effectively does. One consequence to state in
+the amendment rather than discover later: with signs in the values, the in-degree mean can cancel, so a node with one
+activator and one repressor of equal weight receives zero. That is arguably correct and it is a change in behaviour,
+so it belongs in the amendment with the rest. It is a registered change either way.
+
+### 20.3 Shared bases assume too much, and per-relation rank does not
+
+"Why wouldn't we just use 4 unique bases per matrix? Assuming that all relation types are close to the same 4d
+manifold is insane..."
+
+The objection holds. Basis decomposition asserts that all 20 relation matrices lie near one four-dimensional
+subspace, which is an assumption across relations that nothing here tests, and I offered it as a default without
+saying so plainly. What the owner describes — each relation with its own four bases — is a per-relation low-rank
+factorisation, W_r = U_r V_r transposed with U_r and V_r of shape [32, 4]. It assumes only that each relation's
+transform is low rank, which is an assumption inside a relation and not across them, and it costs almost the same:
+
+| scheme | total | one relation owns | per labelled pair | what it assumes |
+| --- | --- | --- | --- | --- |
+| full matrices, shared across layers | 20,480 | 1,024 | 6.88 | nothing |
+| **per-relation low rank 4** | **5,120** | **256** | **1.72** | each transform is low rank |
+| per-relation low rank 2 | 2,560 | 128 | 0.86 | the same, more strongly |
+| per-relation low rank 8 | 10,240 | 512 | 3.44 | the same, more weakly |
+| shared basis, 4 bases | 4,176 | 4 | 1.40 | all 20 lie near one 4-d subspace |
+
+Per-relation rank 4 costs 5,120 against the shared basis's 4,176. For a thousand parameters it drops an assumption
+across 20 relations. That is the better default and the owner should have it.
+
+**One thing the shared basis did better, and how to keep it.** Under a shared basis a relation with 3 edges owns 4
+parameters, which is proportionate; under a flat per-relation rank 4 it owns 256, which is the over-parameterisation
+of 19.3 in a milder form. The fix is to let the rank follow the evidence rather than be flat.
+`experiments/count_encoder_parameters.py` prices one such scheme, rank 8 above 10,000 edges, 4 above 1,000, 2 above
+100 and 1 below:
+
+| tier | relations | rank | parameters each |
+| --- | --- | --- | --- |
+| above 10,000 edges | 8 (`activates`, `regulates_transcription_of`, `product_of`, `substrate_of`, `binds`, `catalyzed_by`, `inhibits`, `encodes`) | 8 | 512 |
+| 1,000 to 10,000 | 1 (`member_of`) | 4 | 256 |
+| 100 to 1,000 | 3 (the three pool relations) | 2 | 128 |
+| below 100 | 8 | 1 | 64 |
+
+**5,248 parameters in all, 1.76 per labelled pair** — the same budget as a flat rank 4, spent where the evidence is.
+Even this is generous at the bottom: 64 parameters for `catalyzes_reverse_transport`'s 3 edges is still more than
+those edges can identify, so the lowest tier should probably be diagonal (32 parameters) or a single gain per
+channel, which is what the linear-response encoder gives every relation.
+
+**Recommended, replacing the four shared bases in the amendment draft**: a per-relation low-rank factorisation with
+the rank set by the relation's edge count, the tiers named in the registration, and the bottom tier diagonal. It
+answers the parameter objection as well as the shared basis does, it assumes nothing across relations, and the ranks
+are a stated rule rather than a fitted choice. The amendment still records the owner's "use the 4 bases" until he
+says otherwise.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
