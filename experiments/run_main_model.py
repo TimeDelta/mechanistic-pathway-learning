@@ -284,7 +284,7 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
 ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input", "drug_entry",
-                                    "drug_mechanism_before_first_layer", "sequestration_carries"}
+                                    "drug_mechanism_before_first_layer", "sequestration_carries", "permute_drug_targets", "placebo_negative_weight"}
 
 
 def array_sha256(values) -> str:
@@ -573,14 +573,57 @@ def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_
 def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
     """The loss's weight per (perturbation, symptom): a positive at its evidence weight (at 1 when the frequency is the
     target), a negative at --negative-weight, a pair set aside by the selection at zero; under --equal-drug-shares each
-    drug's positives and negatives are rescaled to the mean drug counts over fit_indices (equal_drug_loss_shares)."""
+    drug's positives and negatives are rescaled to the mean drug counts over fit_indices (equal_drug_loss_shares).
+
+    A negative whose absence rests on a controlled comparison rather than on silence (the never-above-placebo pairs of a
+    selection built with --never-above-placebo-as-negative, marked in data.evidenced_negative) takes
+    --placebo-negative-weight, which defaults to --negative-weight so that nothing changes unless it is set. The user,
+    11 October 2026, asked for a better-evidenced absence to count more in the loss share.
+    """
     positive = data.outcomes > 0
     weights = np.where(positive, 1.0 if frequency_targets else np.maximum(data.weights, 1e-3), arguments.negative_weight)
+    evidenced_negative = getattr(data, "evidenced_negative", None)
+    if evidenced_negative is not None and getattr(arguments, "placebo_negative_weight", None) is not None:
+        weights = np.where(~positive & np.asarray(evidenced_negative, dtype=bool), arguments.placebo_negative_weight, weights)
     if label_mask is not None:
         weights = weights * label_mask
     if getattr(arguments, "equal_drug_shares", False):
         weights = equal_drug_loss_shares(weights, positive, np.array([kind == "drug" for kind in data.perturbation_types]), fit_indices)
     return weights
+
+
+def permuted_drug_targets(perturbation_types: list[str], perturbation_seeds: list[np.ndarray], perturbation_signs: list[np.ndarray],
+                          perturbation_magnitudes: list[np.ndarray], random_seed: int) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], int]:
+    """Each drug's seeds exchanged with those of another drug that has the same number of them; genes untouched.
+
+    The third of the three controls for the input-size objection (docs/label_source_review.md, 13.1). Every drug keeps
+    its number of targets and its total input magnitude and loses which targets they are, so a model that scores as
+    well here as on the real targets is reading the size of a drug's input and not what its targets do. The exchange is
+    inside a group of equal count, which is what makes it a control of identity alone: a drug with three targets gets
+    three other targets, never one or five.
+
+    A count whose group holds one drug cannot be exchanged and is left as it is; the returned number of drugs moved
+    says how many were. The permutation is a derangement where the group allows one (a cycle of the group, so no drug
+    keeps its own targets), seeded by random_seed.
+
+    Returns (seeds, signs, magnitudes, drugs moved); the three lists are new and the caller's are not modified."""
+    generator = np.random.default_rng(random_seed)
+    seeds, signs, magnitudes = list(perturbation_seeds), list(perturbation_signs), list(perturbation_magnitudes)
+    positions_by_count: dict[int, list[int]] = {}
+    for position, kind in enumerate(perturbation_types):
+        if kind == "drug":
+            positions_by_count.setdefault(len(perturbation_seeds[position]), []).append(position)
+    moved = 0
+    for count in sorted(positions_by_count):
+        group = positions_by_count[count]
+        if len(group) < 2:
+            continue
+        order = list(generator.permutation(len(group)))  # a cycle of a shuffled order: every member takes another's seeds
+        taken_from = [group[order[(index + 1) % len(order)]] for index in range(len(order))]
+        for position, source in zip([group[index] for index in order], taken_from):
+            seeds[position], signs[position], magnitudes[position] = perturbation_seeds[source], perturbation_signs[source], perturbation_magnitudes[source]
+            moved += 1
+    return seeds, signs, magnitudes, moved
 
 
 def drug_input_normalised(perturbation_types: list[str], perturbation_magnitudes: list[np.ndarray]) -> list[np.ndarray]:
@@ -917,10 +960,17 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="open question 8: use the reported HPO or label frequency (floored at --minimum-frequency-target) as the target of a positive pair instead of --positive-target")
     parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
     parser.add_argument("--negative-weight", type=float, default=0.2)
+    parser.add_argument("--placebo-negative-weight", type=float, default=None,
+                        help="loss weight of a negative that rests on a controlled comparison rather than on silence: the never-above-placebo pairs of a selection "
+                             "built with --never-above-placebo-as-negative. Unset, they take --negative-weight like any other negative")
     parser.add_argument("--equal-drug-shares", action="store_true",
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
                         help="rescale each drug's seed magnitudes to sum to 1, so a drug with more targets does not push more field; genes unchanged")
+    parser.add_argument("--permute-drug-targets", action="store_true",
+                        help="exchange each drug's target seeds with those of another drug that has the same number of them, so every drug keeps its input size and "
+                             "loses which targets it acts on (the third control for the input-size objection, docs/label_source_review.md 13.1). A negative control: "
+                             "a run of it is never a result of the study")
     parser.add_argument("--drug-entry", choices=DRUG_ENTRY_MODES, default=None,
                         help="on a graph with drug entry nodes (docs/drug_entry_nodes.md): nodes seeds each drug on its own node, which is the default there; "
                              "targets drops the nodes and seeds the drug's targets, the ablation arm and the inputs of the source graph. No effect on a graph without drug nodes")
@@ -984,6 +1034,16 @@ def main() -> None:
         if data.label_mask is not None:
             data.label_mask = data.label_mask[source_row]
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
+    permuted_drug_targets_summary = None
+    if arguments.permute_drug_targets:
+        if data.drug_entry == "nodes":
+            raise ValueError("--permute-drug-targets exchanges a drug's seeds, and a drug seeded on its entry node has one seed, its own node; "
+                             "its targets are its mechanism edges. Use --drug-entry targets with it")
+        seeds, signs, magnitudes, moved = permuted_drug_targets(data.perturbation_types, data.perturbation_seeds, data.perturbation_signs, data.perturbation_magnitudes, arguments.seed)
+        data.perturbation_seeds, data.perturbation_signs, data.perturbation_magnitudes = seeds, signs, magnitudes
+        permuted_drug_targets_summary = {"drugs_moved": moved, "drugs": int(sum(kind == "drug" for kind in data.perturbation_types)), "seed": arguments.seed,
+                                         "seeds_sha256": array_sha256(np.concatenate([np.asarray(group, dtype=np.int64) for group in seeds]))}
+        print(f"permuted drug targets: {permuted_drug_targets_summary}")
     if arguments.normalise_drug_input:
         data.perturbation_magnitudes = drug_input_normalised(data.perturbation_types, data.perturbation_magnitudes)
     if arguments.encoder == "linear_response":  # its input is sign x magnitude, so a perturbation whose seeds all have sign 0 gives a zero field
@@ -1051,7 +1111,8 @@ def main() -> None:
     split_directory = arguments.run_dir / split_name
     split_signature = {"test_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in test_indices).encode()).hexdigest(),
                        "train_perturbation_ids_sha256": hashlib.sha256("\n".join(data.perturbation_ids[i] for i in train_indices).encode()).hexdigest(),
-                       "lockbox_sha256": (lockbox_summary or {}).get("sha256"), "rewiring": rewiring_summary, "labels_permuted": bool(arguments.permute_labels)}
+                       "lockbox_sha256": (lockbox_summary or {}).get("sha256"), "rewiring": rewiring_summary, "labels_permuted": bool(arguments.permute_labels),
+                       "permuted_drug_targets": permuted_drug_targets_summary}
     refit_after_done = False
     if arguments.resume and (split_directory / "DONE").exists():
         finished = json.loads((split_directory / "results.json").read_text()) if (split_directory / "results.json").exists() else {}

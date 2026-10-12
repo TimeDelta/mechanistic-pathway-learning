@@ -27,6 +27,7 @@ import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.measurement_coverage_strata import measurement_coverage_strata, read_measurement_coverage
+from mechanistic_pathway_learning.evaluation.input_size_strata import strata_of_scored_rows
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import (
     bootstrap_interval,
@@ -67,6 +68,13 @@ def coverage_strata_metric(predictions: np.ndarray, outcomes: np.ndarray, data, 
         return {}
     scored_ids = [perturbation_id for perturbation_id, keep in zip(data.perturbation_ids, scored) if keep]
     stratum_of_row, labels = measurement_coverage_strata(scored_ids, coverage)
+    scores = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, mask=mask)
+    return {label: scores.get(label, float("nan")) for label in labels}
+
+
+def target_count_strata_metric(predictions: np.ndarray, outcomes: np.ndarray, data, scored: np.ndarray, mask: np.ndarray | None) -> dict[str, float]:
+    """Macro AUPRC inside strata of how many mechanism targets a drug has (evaluation/input_size_strata.py)."""
+    stratum_of_row, labels = strata_of_scored_rows(data, scored)
     scores = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, mask=mask)
     return {label: scores.get(label, float("nan")) for label in labels}
 
@@ -151,6 +159,7 @@ def aggregate_run_directory(run_directory: Path, data, num_bootstrap: int, label
         "expected_calibration_error": expected_calibration_error(predictions, outcomes, mask=mask),
         "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, data.perturbation_degrees_for_strata[scored], mask=mask),
         "macro_auprc_by_measurement_coverage": coverage_strata_metric(predictions, outcomes, data, scored, coverage, mask),
+        "macro_auprc_by_target_count": target_count_strata_metric(predictions, outcomes, data, scored, mask),
         "label_selection_sha256": label_selection_sha256,
         "per_split": per_split, "mean_epochs": float(np.mean(epochs)) if epochs else float("nan"),
         "module_support_sizes": support_sizes, "module_expected_support_sizes": expected_support_sizes, "symptoms_per_module_above_half": symptoms_per_module,
@@ -381,6 +390,14 @@ def main() -> None:
         for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
             bins = entry.get("macro_auprc_by_degree_bin", {})
             lines.append(f"| {name} | " + " | ".join(f"{bins[b]:.3f}" if b in bins else "n/a" for b in degree_bins) + " |")
+        target_count_strata = list(next(iter(aggregated.values())).get("macro_auprc_by_target_count", {}))
+        if target_count_strata:
+            lines += ["", "Macro AUPRC inside strata of how many mechanism targets a drug has. A drug enters with magnitude 1 at each target, so its total input is "
+                      "its number of targets; an advantage that sits only in the many-target stratum is a reading of input size (docs/label_source_review.md, 13.1):", "",
+                      "| model | " + " | ".join(target_count_strata) + " |", "|---|" + "---|" * len(target_count_strata)]
+            for name, entry in list(baseline_entries.items()) + list(aggregated.items()):
+                strata = entry.get("macro_auprc_by_target_count", {})
+                lines.append(f"| {name} | " + " | ".join(f"{strata[stratum]:.3f}" if stratum in strata else "n/a" for stratum in target_count_strata) + " |")
         coverage_strata = list(next(iter(aggregated.values())).get("macro_auprc_by_measurement_coverage", {}))
         if coverage_strata:
             lines += ["", f"Macro AUPRC inside strata of binding measurement coverage ({arguments.measurement_coverage}). Drugs are cut into terciles by how "

@@ -61,6 +61,8 @@ import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.measurement_coverage_strata import measurement_coverage_strata, read_measurement_coverage
+from mechanistic_pathway_learning.evaluation.input_size_strata import strata_of_scored_rows
+from mechanistic_pathway_learning.models.baselines.input_size_baseline import InputSizeBaseline, input_size_features
 from mechanistic_pathway_learning.evaluation.negative_controls import degree_preserving_rewiring, degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, rewire_walk_graph
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
@@ -94,6 +96,7 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
 )
 
 BASELINE_NAMES = ("popularity", "degree_popularity", "random_walk_with_restart")
+INPUT_SIZE_NAME = "input_size"  # the control for the input-size objection; --with-input-size, so no earlier run changes
 CACHED_BASELINES = ("random_walk_with_restart", "knowledge_graph_embedding_transe")  # the slow fits; popularity takes milliseconds
 BASELINE_SOURCES = [Path(__file__), *sorted((Path(__file__).resolve().parents[1] / "mechanistic_pathway_learning" / "models" / "baselines").glob("*.py"))]
 _DIGEST_MEMO: dict[int, tuple[object, str]] = {}
@@ -127,6 +130,10 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
             normalized_adjacency, [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
         )
         return model.predict([data.perturbation_seeds[i] for i in np.where(test)[0]])
+    if model_name == INPUT_SIZE_NAME:
+        features = input_size_features(data.perturbation_seeds if data.perturbation_target_seeds is None else data.perturbation_target_seeds, data.perturbation_magnitudes)
+        model = InputSizeBaseline().fit(features[train], outcomes[train], None if label_mask is None else label_mask[train])
+        return model.predict(features[test])
     if model_name == KG_EMBEDDING_NAME:
         model = KnowledgeGraphEmbeddingBaseline(**KG_EMBEDDING_SETTINGS, random_seed=random_seed).fit(
             len(data.node_ids), data.edge_source, data.edge_target, data.edge_relation, len(data.relation_types),
@@ -165,6 +172,9 @@ def fold_cache_key(data, training_outcomes: np.ndarray, train: np.ndarray, test:
             "kg_embedding_settings": KG_EMBEDDING_SETTINGS if model_name == KG_EMBEDDING_NAME else None,
             "rows": array_digest(train, test), "training_outcomes": array_digest(training_outcomes), "label_mask": array_digest(label_mask),
             "graph": graph, "adjacency": memoised_digest(normalized_adjacency, sparse_digest) if model_name == "random_walk_with_restart" else None,
+            # the input-size baseline is the one fit that reads the seed magnitudes, which the graph digest leaves out
+            "input_size_features": array_digest(input_size_features(data.perturbation_seeds if data.perturbation_target_seeds is None else data.perturbation_target_seeds,
+                                                                    data.perturbation_magnitudes)) if model_name == INPUT_SIZE_NAME else None,
             "source": memoised_digest(BASELINE_SOURCES, lambda paths: source_digest(*paths))}
 
 
@@ -252,7 +262,15 @@ def score(data, predictions: np.ndarray, outcomes: np.ndarray, rows: np.ndarray,
         "hits_at_3": hits_at_k(predictions, outcomes, 3, mask),
         "macro_auprc_by_degree_bin": macro_auprc_by_degree_bin(predictions, outcomes, degrees, mask=mask),
         "macro_auprc_by_measurement_coverage": macro_auprc_by_measurement_coverage(predictions, outcomes, scored_perturbation_ids, coverage, mask),
+        "macro_auprc_by_target_count": macro_auprc_by_target_count(predictions, outcomes, data, rows, mask),
     }
+
+
+def macro_auprc_by_target_count(predictions: np.ndarray, outcomes: np.ndarray, data, rows: np.ndarray, mask) -> dict[str, float]:
+    """Macro AUPRC inside strata of how many mechanism targets a drug has (evaluation/input_size_strata.py)."""
+    stratum_of_row, labels = strata_of_scored_rows(data, rows)
+    scores = macro_auprc_by_stratum(predictions, outcomes, stratum_of_row, mask=mask)
+    return {label: scores.get(label, float("nan")) for label in labels}
 
 
 def macro_auprc_by_measurement_coverage(predictions: np.ndarray, outcomes: np.ndarray, scored_perturbation_ids: list[str], coverage, mask) -> dict[str, float]:
@@ -404,6 +422,9 @@ def main() -> None:
     parser.add_argument("--no-fold-cache", action="store_true",
                         help="recompute every random-walk and TransE fold instead of reusing those stored in OUTPUT_DIR/fold_cache under a key of all their inputs "
                              "(the store lets a run killed by a reclaimed container resume; a stored fold equals the recomputed one)")
+    parser.add_argument("--with-input-size", action="store_true",
+                        help="also run the input-size baseline, which sees a perturbation's number of seeds and total input magnitude and nothing else "
+                             "(the control for the input-size objection, docs/label_source_review.md 13.1)")
     parser.add_argument("--with-type-popularity", action="store_true",
                         help="also run popularity and degree_popularity fitted per perturbation type (drug or gene), the graph-free reading of the type offset "
                              "(docs/perturbation_type_offset.md); off by default, so the confirmatory baseline set is unchanged unless the scorer is given these names")
@@ -485,7 +506,8 @@ def main() -> None:
         entry = results["splits"][f"{primary_split}_rewired_graph"]["random_walk_with_restart"]
         print(f"{primary_split + '_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
     split_plan = [(primary_split, grouped_masks, grouped_labels), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
-    model_names = list(BASELINE_NAMES) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else []) + (list(TYPE_POPULARITY_NAMES) if arguments.with_type_popularity else [])
+    model_names = (list(BASELINE_NAMES) + ([INPUT_SIZE_NAME] if arguments.with_input_size else []) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else [])
+                   + (list(TYPE_POPULARITY_NAMES) if arguments.with_type_popularity else []))
     for model_name in model_names:
         for split_name, masks, labels in split_plan:
             if not masks:
@@ -544,6 +566,15 @@ def main() -> None:
     for name, entry in results["splits"][primary_split].items():
         lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_degree_bin'][b]:.3f}" for b in degree_bins) + " |")
     lines.append("")
+    target_count_strata = list(next(iter(results["splits"][primary_split].values()))["macro_auprc_by_target_count"])
+    if target_count_strata:
+        lines += ["Macro AUPRC inside strata of how many mechanism targets a drug has (`evaluation/input_size_strata.py`). A drug enters with magnitude 1 at each "
+                  "target, so its total input is its number of targets; an advantage that sits only in the many-target stratum is a reading of input size "
+                  f"(docs/label_source_review.md, 13.1). A stratum where no symptom reaches {MINIMUM_POSITIVES_TO_SCORE} positives reads nan.", "",
+                  "| model | " + " | ".join(target_count_strata) + " |", "|---|" + "---|" * len(target_count_strata)]
+        for name, entry in results["splits"][primary_split].items():
+            lines.append(f"| {name} | " + " | ".join(f"{entry['macro_auprc_by_target_count'][stratum]:.3f}" for stratum in target_count_strata) + " |")
+        lines.append("")
     coverage_strata = list(next(iter(results["splits"][primary_split].values()))["macro_auprc_by_measurement_coverage"])
     if coverage_strata:
         lines += [f"Macro AUPRC inside strata of binding measurement coverage ({arguments.measurement_coverage}); a stratum where no symptom reaches "
