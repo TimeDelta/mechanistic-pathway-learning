@@ -259,7 +259,16 @@ def main() -> int:
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     usable.drop(columns=["animal_readout", "species_ambiguous", "made_by_a_study_drug_label"]).to_csv(arguments.output_dir / f"target_statements_by_side_{arguments.name}.csv", index=False)
     pd.DataFrame({"perturbation_id": [new.perturbation_ids[p] for p in added], "label": [new.perturbation_labels[p] for p in added], "type": [new.perturbation_types[p] for p in added],
-                  "kept_pairs": [int(kept_per_perturbation[p]) for p in added], "held_out": [p in set(added_held) for p in added]}).to_csv(arguments.output_dir / f"added_perturbations_by_side_{arguments.name}.csv", index=False)
+                  "kept_pairs": [int(kept_per_perturbation[p]) for p in added], "held_out": [p in set(added_held) for p in added],
+                  # the nodes that put it there, so that a reader can check each placement
+                  "held_out_nodes_acted_on": ["; ".join(sorted(node.replace("GENE:", "") for node in seed_node_ids(new, p) & carried_nodes)) for p in added],
+                  "other_nodes_acted_on": ["; ".join(sorted(node.replace("GENE:", "") for node in seed_node_ids(new, p) - carried_nodes)) for p in added]}
+                 ).to_csv(arguments.output_dir / f"added_perturbations_by_side_{arguments.name}.csv", index=False)
+    # every perturbation of the new table with its side under the rule (membership only; the comparative checks read it to place a combination)
+    pd.DataFrame({"perturbation_id": new.perturbation_ids, "label": new.perturbation_labels, "type": new.perturbation_types, "held_out": held_mask,
+                  "why": ["carried from the lockbox by its leakage group" if perturbation_id in carried else ("added, acts on a held-out node" if held else "")
+                          for perturbation_id, held in zip(new.perturbation_ids, held_mask)]}
+                 ).to_csv(arguments.output_dir / f"held_out_perturbations_{arguments.name}.csv", index=False)
     print(usable[["target", "direction", "target_symptom", "held_out", "held_out_by_node", "family_size", "study_drugs_in_the_statement_direction", "edges_to_nearest_held_out_seed"]].to_string(index=False))
     return 0
 

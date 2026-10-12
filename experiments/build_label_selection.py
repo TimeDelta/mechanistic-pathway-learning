@@ -26,6 +26,14 @@ such label is the event more frequent on the drug (mechanistic_pathway_learning/
 pair is masked like any other pair set aside. A pair with no placebo arm in SIDER is not judged, and OnSIDES gives no
 frequencies, so a drug known to OnSIDES alone is never judged.
 
+--never-above-placebo-as-negative (an option built on 11 October 2026 after the user asked "Why would working no better
+than the placebo not be counted as evidence against a label?") judges the same pairs and relabels them: the row gets
+keep False and counts_as_negative True, and load_experiment_data turns the pair into a negative, with the weight of any
+other negative in training and counted as a negative in scoring. The reasoning: an unlabelled pair is already treated
+as a negative on no evidence at all, so a pair with a controlled comparison that shows no excess should not count for
+less. Its limits: SIDER gives no arm sizes, so "not above placebo" is read from percentages alone, and several of the
+pairs are the symptom of the condition the drug treats. The two flags exclude each other.
+
 Usage:
   python experiments/build_label_selection.py --evidence-dir data/processed/evidence_full \
       --output data/processed/label_selection/better_v1_full.parquet
@@ -48,19 +56,24 @@ from mechanistic_pathway_learning.evidence.placebo_arm_comparison import Placebo
 GENE_MINIMUM_FREQUENCY = 0.30
 DRUG_MINIMUM_FREQUENCY = 0.01
 NEVER_ABOVE_PLACEBO_REASON = "drug pair never more frequent on the drug than on placebo"
+COUNTED_AS_NEGATIVE = ", counted as a negative"
 
 
-def select_pairs(records: pd.DataFrame, placebo_arm_comparisons: Mapping[tuple[str, str], PlaceboArmComparison] | None = None) -> pd.DataFrame:
+def select_pairs(records: pd.DataFrame, placebo_arm_comparisons: Mapping[tuple[str, str], PlaceboArmComparison] | None = None,
+                 never_above_placebo_as_negative: bool = False) -> pd.DataFrame:
     """One row per positive (perturbation_id, symptom) with keep and the reason.
 
     placebo_arm_comparisons, keyed by (perturbation_id, symptom), sets aside the drug pairs the frequency rule would
-    keep whose comparison is never_above_placebo; None leaves the rule as it was registered."""
+    keep whose comparison is never_above_placebo; None leaves the rule as it was registered. With
+    never_above_placebo_as_negative those pairs get counts_as_negative True as well (and every other row False), which
+    the loader reads as "a negative", where a pair set aside is neither a positive nor a negative."""
     positives = records[(records.relation == "induces") & records.grade.isin(DEFAULT_LABEL_GRADES)]
     if "positive_report_count" in positives.columns:
         positives = positives[positives.positive_report_count > 0]
     rows = []
     for (perturbation_id, symptom), group in positives.groupby(["perturbation_id", "symptom"], sort=True):
         perturbation_type = group.perturbation_type.iloc[0]
+        counts_as_negative = False
         frequency = pd.to_numeric(group.label_frequency, errors="coerce").max()
         sources = ";".join(group.source.astype(str))
         if perturbation_type == "gene":
@@ -82,9 +95,10 @@ def select_pairs(records: pd.DataFrame, placebo_arm_comparisons: Mapping[tuple[s
                 keep, reason = False, f"drug pair, frequency {frequency:.3f} below {DRUG_MINIMUM_FREQUENCY}, one label source"
             comparison = (placebo_arm_comparisons or {}).get((perturbation_id, symptom))
             if keep and comparison is not None and comparison.never_above_placebo:
-                keep, reason = False, f"{NEVER_ABOVE_PLACEBO_REASON} ({comparison.entries_with_both_arms} label entries with both arms)"
+                keep, counts_as_negative = False, never_above_placebo_as_negative
+                reason = f"{NEVER_ABOVE_PLACEBO_REASON}{COUNTED_AS_NEGATIVE if counts_as_negative else ''} ({comparison.entries_with_both_arms} label entries with both arms)"
         rows.append({"perturbation_id": perturbation_id, "symptom": symptom, "perturbation_type": perturbation_type,
-                     "label_frequency": frequency, "keep": keep, "reason": reason})
+                     "label_frequency": frequency, "keep": keep, "reason": reason} | ({"counts_as_negative": counts_as_negative} if never_above_placebo_as_negative else {}))
     return pd.DataFrame(rows)
 
 
@@ -112,19 +126,25 @@ def main() -> None:
     parser.add_argument("--mask-grades", nargs="*", default=[], help="also mask the pairs whose only evidence is of these grades (C for better_v2)")
     parser.add_argument("--mask-never-above-placebo", action="store_true",
                         help="set aside the kept drug pairs that no SIDER label with both arms lists as more frequent on the drug than on placebo")
-    parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"), help="SIDER 4.1 tables, read under --mask-never-above-placebo")
-    parser.add_argument("--crosswalk", type=Path, default=Path("docs/symptom_crosswalk.csv"), help="preferred term to target symptom, read under --mask-never-above-placebo")
+    parser.add_argument("--never-above-placebo-as-negative", action="store_true",
+                        help="relabel those pairs as negatives in place of setting them aside (excludes --mask-never-above-placebo)")
+    parser.add_argument("--sider-dir", type=Path, default=Path("data/raw/sider_4.1"), help="SIDER 4.1 tables, read under either placebo flag")
+    parser.add_argument("--crosswalk", type=Path, default=Path("docs/symptom_crosswalk.csv"), help="preferred term to target symptom, read under either placebo flag")
     arguments = parser.parse_args()
+    if arguments.mask_never_above_placebo and arguments.never_above_placebo_as_negative:
+        raise SystemExit("--mask-never-above-placebo and --never-above-placebo-as-negative exclude each other: a pair is set aside or it is a negative")
     if set(arguments.mask_grades) & set(DEFAULT_LABEL_GRADES):
         raise SystemExit(f"--mask-grades {arguments.mask_grades} names a label grade")
     if arguments.output.exists():
         raise SystemExit(f"{arguments.output} exists; a selection is written once (jobs and the lockbox record its hash)")
     records = pd.read_parquet(arguments.evidence_dir / "evidence_records.parquet")
     placebo_arm_comparisons = None
-    if arguments.mask_never_above_placebo:
+    if arguments.mask_never_above_placebo or arguments.never_above_placebo_as_negative:
         placebo_arm_comparisons = compare_drug_arm_with_placebo_arm(load_sider_frequency_rows(arguments.sider_dir), read_preferred_term_to_target_symptom(arguments.crosswalk))
-    positive_selection = select_pairs(records, placebo_arm_comparisons)
+    positive_selection = select_pairs(records, placebo_arm_comparisons, arguments.never_above_placebo_as_negative)
     masked_negatives = masked_negative_pairs(records, arguments.mask_grades) if arguments.mask_grades else None
+    if masked_negatives is not None and arguments.never_above_placebo_as_negative:
+        masked_negatives = masked_negatives.assign(counts_as_negative=False)
     selection = positive_selection if masked_negatives is None else pd.concat([positive_selection.assign(masks_a_negative=False), masked_negatives], ignore_index=True)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     selection.to_parquet(arguments.output, index=False)
@@ -143,7 +163,7 @@ def main() -> None:
         drug_pairs = positive_selection[positive_selection.perturbation_type == "drug"]
         judged = [placebo_arm_comparisons.get(pair) for pair in zip(drug_pairs.perturbation_id, drug_pairs.symptom)]
         set_aside_for_placebo = drug_pairs[drug_pairs.reason.str.startswith(NEVER_ABOVE_PLACEBO_REASON)]
-        summary["mask_never_above_placebo"] = {
+        summary["never_above_placebo_as_negative" if arguments.never_above_placebo_as_negative else "mask_never_above_placebo"] = {
             "drug_pairs_with_a_label_entry_giving_both_arms": sum(comparison is not None for comparison in judged),
             "of_them_never_above_placebo": sum(comparison is not None and comparison.never_above_placebo for comparison in judged),
             "kept_pairs_set_aside": len(set_aside_for_placebo),

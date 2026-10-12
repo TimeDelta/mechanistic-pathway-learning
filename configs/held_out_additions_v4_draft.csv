@@ -1,0 +1,69 @@
+perturbation_id,label,type,kept_pairs,placement,held_out,held_out_nodes_acted_on,other_nodes_acted_on
+CID100060795,aripiprazole,drug,18,"held out, own stratum, outside the primary score",True,DRD2,HTR1A; HTR2A
+CID100004585,olanzapine,drug,15,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A; HTR2C
+CID100005002,quetiapine,drug,14,"held out, own stratum, outside the primary score",True,DRD2,HTR2A; HTR2C
+CID100004205,mirtazapine,drug,13,"held out, own stratum, outside the primary score",True,ADRA2A; ADRA2B; ADRA2C,HTR2A; HTR2C
+CID100005073,risperidone,drug,13,"held out, own stratum, outside the primary score",True,DRD2,HTR2A; HTR2C
+CID100156326,asenapine,drug,10,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+CID100002818,clozapine,drug,9,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+CID100003559,haloperidol,drug,9,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A
+CID100002159,amisulpride,drug,7,"held out, own stratum, outside the primary score",True,DRD2; DRD3,HTR1A; HTR1B; HTR1D; HTR1E; HTR1F; HTR2A; HTR2B; HTR2C; HTR3A; HTR3B; HTR3C; HTR3D; HTR3E; HTR4; HTR5A; HTR6; HTR7
+CID100003158,doxepin,drug,7,"held out, own stratum, outside the primary score",True,HRH1,SLC6A2
+CID100016362,pimozide,drug,7,"held out, own stratum, outside the primary score",True,DRD1; DRD2; DRD3; DRD4; DRD5,HTR2A
+CID100060853,ziprasidone,drug,7,"held out, own stratum, outside the primary score",True,DRD2,HTR2A; HTR2C
+CID100115237,paliperidone,drug,6,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+CID100002170,amoxapine,drug,5,"held out, own stratum, outside the primary score",True,DRD1; DRD2; DRD3; DRD4; DRD5,SLC6A2; SLC6A4
+CID100002726,chlorpromazine,drug,5,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A
+CID100003964,loxapine,drug,4,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A; HTR2C
+CID100005452,thioridazine,drug,3,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A; HTR2C
+CID100005454,thiothixene,drug,3,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+CID100005566,trifluoperazine,drug,3,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A; HTR2C
+CID100023897,molindone,drug,2,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+RXCUI:2275602,Lumateperone,drug,0,"held out, own stratum, outside the primary score",True,DRD2,HTR2A; SLC6A4
+CID100002366,betahistine,drug,0,"held out, own stratum, outside the primary score",True,HRH1,HRH3
+RXCUI:1658314,brexpiprazole,drug,0,"held out, own stratum, outside the primary score",True,DRD2,HTR1A; HTR2A
+RXCUI:1667655,cariprazine,drug,0,"held out, own stratum, outside the primary score",True,DRD2; DRD3,
+CID100003168,droperidol,drug,0,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A
+CID100003251,ergotamine,drug,0,"held out, own stratum, outside the primary score",True,ADRA2A; ADRA2B; ADRA2C,ADRA1A; ADRA1B; ADRA1D; HTR1D
+CID100071360,iloperidone,drug,0,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+CID100213046,lurasidone,drug,0,"held out, own stratum, outside the primary score",True,DRD2,HTR2A
+RXCUI:8742,promazine,drug,0,"held out, own stratum, outside the primary score",True,DRD2; DRD3; DRD4,HTR2A
+CID100005656,venlafaxine,drug,16,development,False,,SLC6A2; SLC6A4
+CID100060834,duloxetine,drug,15,development,False,,SLC6A2; SLC6A4
+CID100002476,buprenorphine,drug,11,development,False,,OPRK1; OPRM1
+CID100000444,bupropion,drug,11,development,False,,SLC6A2; SLC6A3
+CID100059708,levetiracetam,drug,11,development,False,,CACNA1B; SV2A
+CID100004158,methylphenidate,drug,10,development,False,,SLC6A2; SLC6A3
+CID100005533,trazodone,drug,10,development,False,,HTR2A; HTR2C; SLC6A4
+CID100071158,acamprosate,drug,9,development,False,,GABRA1; GABRA2; GABRA3; GABRA4; GABRA5; GABRA6; GABRB1; GABRB2; GABRB3; GABRD; GABRE; GABRG2; GABRQ; GRIN1; GRIN2A; GRIN2B; GRIN2C; GRIN2D; GRIN3A
+CID100002160,amitriptyline,drug,9,development,False,,SLC6A2; SLC6A4
+CID100003696,imipramine,drug,9,development,False,,SLC6A2; SLC6A4
+CID100004543,nortriptyline,drug,9,development,False,,SLC6A2; SLC6A4
+CID100123606,almotriptan,drug,8,development,False,,HTR1B; HTR1D; HTR1F
+CID100125017,desvenlafaxine,drug,8,development,False,,SLC6A2; SLC6A4
+CID106433091,tapentadol,drug,8,development,False,,OPRM1; SLC6A2
+CID100002487,butorphanol,drug,7,development,False,,OPRK1; OPRM1
+CID100005078,rizatriptan,drug,6,development,False,,HTR1B; HTR1D
+CID100001983,acetaminophen,drug,5,development,False,,FAAH; PTGS1; PTGS2; TRPV1
+CID100002684,cevimeline,drug,5,development,False,,CHRM1; CHRM3
+CID100003007,amphetamine,drug,4,development,False,,SLC18A2; SLC6A2; SLC6A3
+CID100077992,frovatriptan,drug,4,development,False,,HTR1B; HTR1D
+CID100004909,primidone,drug,3,development,False,,GABRA1; GABRA2; GABRA3; GABRA4; GABRA5; GABRA6; GABRB1; GABRB2; GABRB3; GABRD; GABRE; GABRG2; GABRQ; SCN10A; SCN11A; SCN1A; SCN2A; SCN3A; SCN4A; SCN5A; SCN7A; SCN8A; SCN9A
+CID100005358,sumatriptan,drug,3,development,False,,HTR1B; HTR1D
+CID100003155,dothiepin,drug,2,development,False,,SLC6A2; SLC6A4
+CID100077993,eletriptan,drug,2,development,False,,HTR1B; HTR1D; HTR1F
+CID100004440,naratriptan,drug,2,development,False,,HTR1B; HTR1D
+CID100005731,zolmitriptan,drug,2,development,False,,HTR1B; HTR1D
+CID100055480,milnacipran,drug,1,development,False,,SLC6A2; SLC6A4
+CID100004819,pilocarpine,drug,1,development,False,,CHRM1; CHRM3
+CID100004976,protriptyline,drug,1,development,False,,SLC6A2; SLC6A4
+CID109966051,Lu,drug,0,development,False,,HTR1A; HTR3A; SLC6A4
+CID100082148,agomelatine,drug,0,development,False,,HTR2C; MTNR1A; MTNR1B
+RXCUI:2265690,cenobamate,drug,0,development,False,,GABRA1; GABRA2; GABRA3; GABRA4; GABRA5; GABRA6; GABRB1; GABRB2; GABRB3; GABRD; GABRE; GABRG2; GABRQ; SCN10A; SCN11A; SCN1A; SCN2A; SCN3A; SCN4A; SCN5A; SCN7A; SCN8A; SCN9A
+RXCUI:2591497,daridorexant,drug,0,development,False,,HCRTR1; HCRTR2
+RXCUI:4328,fenfluramine,drug,0,development,False,,HTR1D; HTR2C; SIGMAR1
+RXCUI:2272403,lemborexant,drug,0,development,False,,HCRTR1; HCRTR2
+CID111597697,lisdexamfetamine,drug,0,development,False,,SLC18A2; SLC6A2; SLC6A3
+CID100004163,methysergide,drug,0,development,False,,HTR1A; HTR2B; HTR2C
+CID100004422,nalmefene,drug,0,development,False,,OPRD1; OPRK1; OPRM1
+CID106918313,vilazodone,drug,0,development,False,,HTR1A; SLC6A4

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -196,3 +197,50 @@ def test_the_selection_sets_aside_kept_drug_pairs_never_above_placebo_only_with_
     assert masked.loc[("CID100000002", "fatigue"), "reason"] == plain.loc[("CID100000002", "fatigue"), "reason"]  # already set aside for its frequency
     assert masked_summary["mask_never_above_placebo"] == {"drug_pairs_with_a_label_entry_giving_both_arms": 3, "of_them_never_above_placebo": 2,
                                                           "kept_pairs_set_aside": 2, "kept_pairs_set_aside_by_symptom": {"anxiety": 1, "insomnia": 1}}
+
+
+def test_never_above_placebo_pairs_can_be_relabelled_as_negatives_in_place_of_being_set_aside(tmp_path: Path) -> None:
+    """--never-above-placebo-as-negative: the same pairs the mask sets aside become labelled negatives in the loader."""
+    from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+
+    graph_directory, evidence_directory = tmp_path / "graph", tmp_path / "evidence"
+    graph_directory.mkdir()
+    evidence_directory.mkdir()
+    pd.DataFrame({"node_id": ["GENE:A", "GENE:B", "R1"], "node_type": ["gene", "gene", "reaction"], "degree": [1, 1, 2], "is_currency": [False, False, False]}).to_parquet(graph_directory / "nodes.parquet")
+    pd.DataFrame({"source_id": ["GENE:A", "GENE:B"], "target_id": ["R1", "R1"], "relation_type": ["catalyzed_by"] * 2}).to_parquet(graph_directory / "edges.parquet")
+    (graph_directory / "relation_types.json").write_text(json.dumps(["catalyzed_by"]))
+    records = evidence_rows().assign(group_id=lambda table: table.perturbation_id, weight=0.8, in_metabolic_layer=True,
+                                     perturbation_nodes=lambda table: [json.dumps([["GENE:A" if perturbation_id != "CID100000002" else "GENE:B", -1.0, 1.0]]) for perturbation_id in table.perturbation_id])
+    records.to_parquet(evidence_directory / "evidence_records.parquet")
+    sider_directory = write_frequency_table(tmp_path / "sider")
+    crosswalk = tmp_path / "crosswalk.csv"
+    crosswalk.write_text("target_symptom,meddra_preferred_terms\ninsomnia,Insomnia\nanxiety,Anxiety\nfatigue,Fatigue\n")
+
+    def build(name: str, *flags: str) -> Path:
+        output = tmp_path / f"{name}.parquet"
+        subprocess.run([sys.executable, "experiments/build_label_selection.py", "--evidence-dir", str(evidence_directory), "--output", str(output),
+                        "--sider-dir", str(sider_directory), "--crosswalk", str(crosswalk), *flags], check=True, capture_output=True)
+        return output
+
+    masked_path, negative_path = build("masked", "--mask-never-above-placebo"), build("negative", "--never-above-placebo-as-negative")
+    masked_selection, negative_selection = pd.read_parquet(masked_path), pd.read_parquet(negative_path)
+    assert "counts_as_negative" not in masked_selection.columns  # the registered flag writes the table it always wrote
+    relabelled = negative_selection[negative_selection.counts_as_negative]
+    assert sorted(zip(relabelled.perturbation_id, relabelled.symptom)) == [("CID100000001", "insomnia"), ("CID100000002", "anxiety")]
+    assert not relabelled.keep.any() and relabelled.reason.str.contains("counted as a negative").all()
+    assert negative_selection.keep.tolist() == masked_selection.keep.tolist()  # the same pairs are kept under both
+    assert "never_above_placebo_as_negative" in json.loads(negative_path.with_suffix(".summary.json").read_text())
+
+    masked, negative = load_experiment_data(graph_directory, evidence_directory, label_selection=masked_path), load_experiment_data(graph_directory, evidence_directory, label_selection=negative_path)
+    row, column = masked.perturbation_ids.index("CID100000001"), masked.symptoms.index("insomnia")
+    assert masked.outcomes[row, column] == 1 and not masked.label_mask[row, column]  # set aside: neither positive nor negative
+    assert negative.outcomes[row, column] == 0 and negative.label_mask[row, column]  # relabelled: a labelled negative
+    assert negative.weights[row, column] == 0 and np.isnan(negative.frequencies[row, column])
+    assert negative.label_selection_summary["positive_pairs_relabelled_as_negatives"] == 2
+    assert negative.label_selection_summary["positive_pairs"] == masked.label_selection_summary["positive_pairs"]
+    assert negative.label_selection_summary["kept_positive_pairs"] == masked.label_selection_summary["kept_positive_pairs"]
+    assert int(negative.label_mask.sum()) == int(masked.label_mask.sum()) + 2  # the two pairs are labelled again
+
+    both = subprocess.run([sys.executable, "experiments/build_label_selection.py", "--evidence-dir", str(evidence_directory), "--output", str(tmp_path / "both.parquet"),
+                           "--mask-never-above-placebo", "--never-above-placebo-as-negative"], capture_output=True, text=True, check=False)
+    assert both.returncode != 0 and "exclude each other" in both.stderr

@@ -102,3 +102,17 @@ def test_a_long_run_together_table_is_quoted_around_its_carrier():
 
 def test_a_short_sentence_is_quoted_whole():
     assert quoted("Entacapone binds mainly to serum albumin.") == "Entacapone binds mainly to serum albumin."
+
+
+def test_a_sentence_about_a_combination_partner_or_without_a_binding_word_names_no_carrier():
+    from experiments.scope_label_plasma_binder_coverage import COMBINATION_PARTNERS
+
+    # naloxone is not a study drug, so the study's own names do not catch it; the list of combination partners does
+    assert binders_named("Naloxone is approximately 45% protein bound, primarily to albumin.", "buprenorphine", COMBINATION_PARTNERS) == set()
+    # a dose-modification rule names the protein and states no binding
+    assert binders_named("Serum albumin less than 30 g/L with international normalized ratio (INR) > 1.5.", "lutetium") == set()
+    # "unbound" is a statement about binding
+    assert binders_named("Liver disease is also associated with decreased albumin concentrations and larger unbound fractions of valproate.", "valproate") == {"albumin"}
+    reading = carrier_of_drug({"drug": "buprenorphine", "perturbation_id": "X", "labels": [{"set_id": "s", "effective_time": "2026", "sentences": [
+        "Naloxone is approximately 45% protein bound, primarily to albumin.", "Buprenorphine is approximately 96% protein bound, primarily to alpha and beta globulin."]}]}, COMBINATION_PARTNERS)
+    assert reading["carrier"] == ""

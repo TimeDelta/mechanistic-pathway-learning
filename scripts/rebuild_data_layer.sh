@@ -90,14 +90,43 @@ if [ -s "$log_directory/symptom_crosswalk_before_parkinsonism.csv" ]; then
 fi
 evidence_build "_parkinsonism" docs/symptom_crosswalk.csv
 
+# --- evidence table v4: the label changes the user approved on 10 and 11 October 2026 ---------------------------------
+# docs/label_source_review.md, sections 8, 9 and 13: a drug with at most three mechanism targets is admitted, a gene whose
+# every causal association is a gain of function is seeded with sign +1, and a kept drug pair never more frequent on the
+# drug than on placebo is set aside. No held-out set is drawn on this table yet and nothing registered reads it.
+step "$processed/onsides_v4/onsides_reports.parquet" "OnSIDES reports v4" \
+  python experiments/build_onsides_reports.py --crosswalk docs/symptom_crosswalk.csv --output-dir "$processed/onsides_v4" \
+    --markdown-output "$log_directory/onsides_v4.md" --evidence-dir "$processed/evidence_full_v4" --max-drug-targets 3
+step "$processed/evidence_full_v4/evidence_records.parquet" "evidence table v4" \
+  python -m mechanistic_pathway_learning.evidence.assemble_evidence_table --crosswalk docs/symptom_crosswalk.csv --graph-dir "$processed/graph_full" \
+    --output-dir "$processed/evidence_full_v4" --extra-reports "$processed/onsides_v4/onsides_reports.parquet" \
+    --onsides-bridge data/raw/onsides/v3.1.1/ingredient_identifier_bridge.json --max-drug-targets 3 --seed-gain-of-function-genes-positive
+step "$processed/label_selection/better_v2_full_v4.parquet" "label selection better_v2 on v4, never-above-placebo pairs set aside" \
+  python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v4" --mask-grades C --mask-never-above-placebo \
+    --output "$processed/label_selection/better_v2_full_v4.parquet"
+# the alternative the user is deciding on (11 October 2026): the same pairs counted as negatives in place of being set aside
+step "$processed/label_selection/better_v2_full_v4_placebo_negative.parquet" "label selection better_v2 on v4, never-above-placebo pairs as negatives" \
+  python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v4" --mask-grades C --never-above-placebo-as-negative \
+    --output "$processed/label_selection/better_v2_full_v4_placebo_negative.parquet"
+
 # --- drug entry nodes -----------------------------------------------------------------------------------------------
 step data/raw/fda_labels/.complete "FDA label protein-binding sentences" bash -c "python experiments/fetch_fda_label_protein_binding.py --evidence-dir $processed/evidence_full_v3 && touch data/raw/fda_labels/.complete"
-# configs/drug_plasma_carriers.csv is committed; experiments/scope_label_plasma_binder_coverage.py --carrier-table rewrites it from the label
-# sentences and the fraction-unbound database. The variant holds the drug nodes, their mechanism edges and the carriers' sequestration edges;
+step data/raw/fda_labels/.complete_v4 "FDA label protein-binding sentences for the drugs v4 adds" bash -c "python experiments/fetch_fda_label_protein_binding.py --evidence-dir $processed/evidence_full_v4 && touch data/raw/fda_labels/.complete_v4"
+# configs/drug_plasma_carriers.csv and configs/drug_plasma_carriers_v4.csv are committed. experiments/scope_label_plasma_binder_coverage.py rewrites
+# each from the label sentences and the fraction-unbound database, with --evidence-dir naming the table whose drugs are read (the label cache holds
+# more drugs than any one table). The variant holds the drug nodes, their mechanism edges and the carriers' sequestration edges;
 # both arms of the ablation are read from it (run_main_model.py --drug-entry nodes or targets).
 if [ "$stage" = "graphs" ]; then
   step "$processed/graph_full_neuronal_split_binders_drugs/nodes.parquet" "drug entry nodes on the confirmatory graph" \
     python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v3_parkinsonism"
+  step "$processed/graph_full_neuronal_split_binders_drugs_v4/nodes.parquet" "drug entry nodes on the confirmatory graph, for the v4 table" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v4" \
+      --carrier-table configs/drug_plasma_carriers_v4.csv --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v4"
+  # the same graph with a clearance edge from each drug's clearing enzyme (configs/drug_clearing_enzymes.csv); read by the comparative checks only
+  step "$processed/graph_full_neuronal_split_binders_drugs_v4_enzymes/nodes.parquet" "drug entry nodes with clearance edges, for the v4 table" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v4" \
+      --carrier-table configs/drug_plasma_carriers_v4.csv --clearing-enzymes configs/drug_clearing_enzymes.csv \
+      --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v4_enzymes"
 fi
 
 if [ "$stage" = "descriptors" ]; then

@@ -17,7 +17,9 @@ table and listed in the document, because no rule resolves a disagreement yet (d
 2026). Adds no edge and changes no graph.
 
 Usage:
-  python experiments/scope_label_plasma_binder_coverage.py
+  python experiments/scope_label_plasma_binder_coverage.py --evidence-dir data/processed/evidence_full_v3_parkinsonism
+  python experiments/scope_label_plasma_binder_coverage.py --evidence-dir data/processed/evidence_full_v4 \
+      --carrier-table configs/drug_plasma_carriers_v4.csv --document docs/label_plasma_binders_v4.md
 """
 from __future__ import annotations
 
@@ -37,6 +39,9 @@ OROSOMUCOID_PATTERN = re.compile(r"acid glycoprotein|orosomucoid|(alpha|α)\s?-?
 # mentions albumin at all is of that kind
 ALBUMIN_PATTERN = re.compile(r"\balbumin")
 BINDING_WORD = re.compile(r"\b(?:bind|binds|bound|binding)\b")
+# what a sentence must hold to be read for a carrier at all; "unbound" counts, as in valproate's "decreased albumin
+# concentrations and larger unbound fractions"
+STATES_BINDING = re.compile(r"\b(?:un)?(?:bind|binds|bound|binding)\b")
 # a negated binding or displacement claim is evidence against a carrier rather than for it: oxcarbazepine's label
 # says "Oxcarbazepine and MHD do not bind to alpha-1-acid glycoprotein", and the only albumin sentence in triazolam's
 # says it does "not displace bilirubin bound to human serum albumin"
@@ -49,6 +54,11 @@ BINDING_SUBJECT = re.compile(r"\b([a-z][a-z-]{3,})\s+(?:is|was|are|were)\s+[^.;]
 # a sentence saying the drug does not change another drug's binding is about the other drug's carrier, not this one's
 ANOTHER_DRUG_S_BINDING = ("affect the binding of", "affected the binding of", "alter the binding of",
                           "altered the binding of", "displace the binding of")
+# the other active ingredients of combination products among the cached labels. They are not study drugs, so the
+# study's own names do not catch them: buprenorphine's label says "Naloxone is approximately 45% protein bound,
+# primarily to albumin", which is naloxone's carrier (found on 11 October 2026 when labels were fetched for the
+# drugs with up to three targets)
+COMBINATION_PARTNERS = frozenset({"naloxone", "acetaminophen", "carbidopa", "butalbital", "samidorphan", "benazepril", "naproxen"})
 OUTPUT_DOCUMENT = Path("docs/label_plasma_binders.md")
 CARRIER_TABLE = Path("configs/drug_plasma_carriers.csv")
 CARRIER_TABLE_COLUMNS = ["perturbation_id", "drug", "carrier", "source", "label_carrier", "database_carrier", "label_names_the_drug",
@@ -65,6 +75,10 @@ def binders_named(sentence: str, drug: str = "", other_drugs: frozenset[str] = f
         return set()
     subjects = {match.group(1) for match in BINDING_SUBJECT.finditer(lowered)}
     if subjects & other_drugs and drug.lower() not in subjects:
+        return set()
+    if not STATES_BINDING.search(lowered):
+        # a sentence that names a protein without a word for binding states no carrier: a dose-modification rule that
+        # reads "Serum albumin less than 30 g/L" had given a radioligand an albumin carrier (11 October 2026)
         return set()
     named = set()
     if OROSOMUCOID_PATTERN.search(lowered):
@@ -165,11 +179,19 @@ def main() -> int:
     parser.add_argument("--cache-dir", type=Path, default=Path("data/raw/fda_labels"))
     parser.add_argument("--fraction-unbound-database", type=Path,
                         default=Path("data/raw/plasma_protein_binding/fraction_unbound_database.xlsx"))
+    parser.add_argument("--evidence-dir", type=Path, default=None,
+                        help="read the cached labels of this evidence table's drugs only. Without it every cached label is read, and the cache "
+                             "grows whenever labels are fetched for a wider table, so a table is reproducible only with this set")
+    parser.add_argument("--document", type=Path, default=OUTPUT_DOCUMENT, help="where the report is written")
     arguments = parser.parse_args()
 
     cached_labels = [json.loads(path.read_text()) for path in sorted(arguments.cache_dir.glob("*.json"))]
+    if arguments.evidence_dir is not None:
+        records = pd.read_parquet(arguments.evidence_dir / "evidence_records.parquet", columns=["perturbation_id", "perturbation_type"])
+        drugs_of_the_table = set(records[records.perturbation_type == "drug"].perturbation_id)
+        cached_labels = [cached for cached in cached_labels if cached.get("perturbation_id") in drugs_of_the_table]
     drug_names = frozenset(cached.get("drug", "").lower() for cached in cached_labels if cached.get("drug"))
-    readings = [carrier_of_drug(cached, drug_names - {cached.get("drug", "").lower()}) for cached in cached_labels]
+    readings = [carrier_of_drug(cached, (drug_names | COMBINATION_PARTNERS) - {cached.get("drug", "").lower()}) for cached in cached_labels]
     table = pd.DataFrame(readings).sort_values("drug")
     measured = measured_carriers(arguments.fraction_unbound_database) if arguments.fraction_unbound_database.exists() else {}
     table["measured_carrier"] = table.drug.str.lower().map(measured).fillna("")
@@ -232,8 +254,8 @@ def main() -> int:
               "whose subject is another drug in this study (prilocaine's label states lidocaine's binding, not "
               "prilocaine's); and the disease name hypoalbuminemia, which carried every phenytoin sentence and names "
               "a dosing adjustment rather than a carrier."]
-    OUTPUT_DOCUMENT.write_text("\n".join(lines) + "\n")
-    print(f"wrote {OUTPUT_DOCUMENT}")
+    arguments.document.write_text("\n".join(lines) + "\n")
+    print(f"wrote {arguments.document}")
     carriers = carrier_table(table.fillna(""))
     arguments.carrier_table.parent.mkdir(parents=True, exist_ok=True)
     carriers.to_csv(arguments.carrier_table, index=False)
