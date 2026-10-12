@@ -16,6 +16,9 @@ What the numbers leave out, so that they are read as a first measurement and not
     paliperidone to risperidone), which understates engagement for those drugs;
   - an EC50 or IC50 is pooled with Ki and Kd, as in the scoping;
   - the concentration is at steady state within the therapeutic range, not a peak;
+  - a target's site is chosen from whether its gene is expressed in a brain tissue, which is a coarse stand-in for
+    where the target is reached: the graph has no tissue label, and a receptor expressed both centrally and
+    peripherally is read in brain;
   - the brain concentration uses a Kp,uu that is from animals for most drugs.
 
 Nothing here changes a label, a graph or a model input.
@@ -49,6 +52,18 @@ def occupancy_at(concentration_micromolar: float, p_affinity: float) -> float:
     """One-site occupancy at a concentration in micromolar, for an affinity given as -log10 of a molar constant."""
     dissociation_constant_micromolar = 10.0 ** (6.0 - p_affinity)
     return concentration_micromolar / (concentration_micromolar + dissociation_constant_micromolar)
+
+
+def brain_expressed_genes(graph_directory: Path) -> set[str]:
+    """Gene symbols the graph records as expressed in at least one brain tissue (GTEx, the build's threshold).
+
+    Used to pick the site a target's concentration is read at: a target expressed in the brain is behind the
+    blood-brain barrier, so its concentration is the unbound brain concentration; any other target is read in plasma.
+    A gene whose expression is unknown is read in plasma, which is the higher of the two concentrations for almost
+    every drug (Kp,uu,brain is below 1 for 72 of the 89 drugs that have one), so the choice errs towards a higher
+    occupancy rather than a lower one."""
+    nodes = pd.read_parquet(graph_directory / "nodes.parquet", columns=["gene_symbol", "brain_expressed"])
+    return set(nodes.gene_symbol[nodes.brain_expressed == True].dropna())  # noqa: E712
 
 
 def affinities_by_drug(data, graph_directory: Path) -> dict[str, dict]:
@@ -108,6 +123,14 @@ def main() -> None:
                                  "mechanism_targets_of_drug": len(entry["mechanism_genes"]),
                                  "occupancy_low": occupancy_at(low, p_affinity), "occupancy_high": occupancy_at(high, p_affinity)})
     occupancies = pd.DataFrame(rows)
+    # the site each target's concentration is read at, so that C belongs to the target and not only to the drug
+    brain_genes = brain_expressed_genes(arguments.graph_dir)
+    if len(occupancies):
+        occupancies["target_is_brain_expressed"] = occupancies.gene.isin(brain_genes)
+        wanted_site = np.where(occupancies.target_is_brain_expressed, "brain", "plasma")
+        has_brain = set(occupancies.loc[occupancies.site == "brain", "perturbation_id"])
+        occupancies["site_of_target"] = np.where(occupancies.perturbation_id.isin(has_brain), wanted_site, "plasma")
+        occupancies["at_the_target_s_own_site"] = occupancies.site == occupancies.site_of_target
     output_path = EXPOSURE_DIRECTORY / f"target_occupancy_{arguments.name}.csv"
     occupancies.to_csv(output_path, index=False)
 
@@ -146,6 +169,29 @@ def main() -> None:
         if len(other):
             lines += [f"- **Genes outside the mechanism list**: {len(other)} drug-gene pairs have an affinity; {int((other.occupancy_high >= 0.25).sum())} of them, over {other[other.occupancy_high >= 0.25].perturbation_id.nunique()} drugs, "
                       f"reach an occupancy of 0.25 at the high end of the range and {int((other.occupancy_high >= 0.5).sum())} reach 0.5. These are the off-targets of `docs/off_target_scoping.md`, here with a measured concentration in place of its placeholder.", ""]
+    own_site = occupancies[occupancies.at_the_target_s_own_site] if len(occupancies) else occupancies
+    if len(own_site):
+        mechanism = own_site[own_site.role == "mechanism"]
+        best = mechanism.groupby("perturbation_id").occupancy_high.max()
+        in_brain = mechanism[mechanism.site == "brain"]
+        lines += ["## At each target's own site", "",
+                  "The concentration above is one number per drug and site. A target's own site is the one it sits in: the unbound brain concentration for a target the graph records as "
+                  "expressed in a brain tissue, the unbound plasma concentration for any other target and for every target of a drug with no brain concentration. The occupancy of a "
+                  "target is then its own, which is what lets the same dose saturate a high-affinity target while leaving a weaker one far from saturation.", "",
+                  f"- {mechanism.perturbation_id.nunique()} drugs, {len(mechanism)} mechanism pairs; {len(in_brain)} of the pairs are read in brain ({in_brain.perturbation_id.nunique()} drugs) and {len(mechanism) - len(in_brain)} in plasma.",
+                  f"- **The best-bound mechanism target** has a median occupancy of {best.median():.2f} at the high end of the therapeutic range (quartiles {best.quantile(0.25):.2f} and {best.quantile(0.75):.2f}): "
+                  f"at or above 0.9, so saturated, for {int((best >= 0.9).sum())} of the {len(best)} drugs, and below 0.5 for {int((best < 0.5).sum())}. The placeholder of `docs/off_target_scoping.md` fixes this number at 0.9 for every drug, "
+                  "which is what makes a dose-dependent reading impossible under it.", ""]
+        other = own_site[own_site.role == "other"]
+        if len(other):
+            lines += ["**Off-targets at each target's own site**, for comparison with the table the placeholder gives (`docs/off_target_scoping.md`, which anchors the concentration so that the best-bound mechanism target is 90 percent occupied):", "",
+                      "| occupancy at the high end of the range | off-target pairs | drugs |", "| --- | --- | --- |"]
+            for threshold in (0.1, 0.25, 0.5):
+                kept = other[other.occupancy_high >= threshold]
+                lines.append(f"| at least {threshold} | {len(kept)} | {kept.perturbation_id.nunique()} |")
+            lines += ["", f"The placeholder reaches more drugs: it needs an affinity at a mechanism gene and nothing else, so it covers 183 of the 222 drugs, where a measured concentration covers "
+                      f"{own_site.perturbation_id.nunique()}. The two can be combined, a measured concentration where there is one and the placeholder otherwise, at the cost of two scales in one column; "
+                      "that choice is the user's (`docs/off_target_scoping.md`, decision 3).", ""]
     lines += ["## What the numbers leave out", "",
               "- Active metabolites are not added to the parent's concentration, which understates engagement for drugs such as amitriptyline, fluoxetine and risperidone.",
               "- EC50 and IC50 values are pooled with Ki and Kd. An EC50 measures potency in an assay and not binding.",

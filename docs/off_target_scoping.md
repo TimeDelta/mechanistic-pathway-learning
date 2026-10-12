@@ -68,7 +68,13 @@ affinity gap to the primary target:
 
 A measured C would replace the placeholder: free C = therapeutic total plasma concentration (Schulz et al. 2020,
 more than 1,100 drugs) × fraction unbound in plasma (Lombardo et al. 2018, 1,352 drugs). That route needs a molar
-conversion and a match for each drug; it is not built.
+conversion and a match for each drug.
+
+**Built on 11 and 12 October 2026, and the placeholder is rejected** (the user's decision; section "Decisions for the
+user" below). `docs/drug_exposure_table.md` holds the measured concentration for 128 drugs in plasma and 69 in brain,
+and `docs/target_occupancy_measured.md` the occupancy it gives, read at each target's own site. The placeholder
+remains described here because it is what the counts in the rest of this document were made with; every count under
+it is an upper bound on coverage and says nothing about saturation.
 
 **Sign.** Each pair's action strings from both sources map to −1 (inhibitor, antagonist, blocker, inverse agonist,
 negative modulator, gating inhibitor), +1 (agonist, activator, opener, positive modulator, potentiator, releasing
@@ -272,6 +278,17 @@ with its wording):
   three feature forms that were offered instead: the mean occupancy over the kept off-targets, log(number of
   off-targets) and log(sum of the occupancies), the last two count-driven and closer to a research-attention proxy;
 - item 7, the plasma binders: yes, in the two stages of docs/plasma_protein_binding.md;
+- items 3 and 4, the occupancy anchor and the threshold (the user, 12 October 2026). The 90-percent placeholder is
+  **rejected**, in the user's words, because it "is biased towards the drugs best-bound mechanism, which precludes some
+  dose-dependent changes to concentration modifying the effect via i.e. saturation of highest affinity target. Thus,
+  this wouldn't work." It is replaced by the measured unbound concentration, read at each target's own site (brain for
+  a target the graph records as expressed in a brain tissue, plasma otherwise): `docs/target_occupancy_measured.md` and
+  `docs/label_source_review.md` 13.5. The cost is coverage, 115 drugs with a mechanism pair against 183 under the
+  placeholder, and the gain is that occupancy is a property of the target: at the high end of the therapeutic range the
+  best-bound target is saturated for 59 drugs and below half occupancy for 21, which the placeholder fixed at 0.9 for
+  every drug by construction. On the threshold, the user rejected the grid's justification as well: the number of nodes
+  a threshold admits is "a poorly correlated replacement for dispersion level". No threshold is fixed; the dispersion
+  measurement that would decide one is described in `docs/label_source_review.md` 13.8 and is not built;
 - item 1 is measured rather than decided. docs/leakage_group_rules.md and
   docs/leakage_group_rules_evidence_full_v2.md test the target-family rules with both tie-breaks and report what
   leakage each one leaves; the registered grouping stays for the confirmatory reading.

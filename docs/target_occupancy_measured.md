@@ -40,6 +40,23 @@ Nothing here changes a label, a graph or a model input.
 
 - **Genes outside the mechanism list**: 899 drug-gene pairs have an affinity; 233 of them, over 48 drugs, reach an occupancy of 0.25 at the high end of the range and 158 reach 0.5. These are the off-targets of `docs/off_target_scoping.md`, here with a measured concentration in place of its placeholder.
 
+## At each target's own site
+
+The concentration above is one number per drug and site. A target's own site is the one it sits in: the unbound brain concentration for a target the graph records as expressed in a brain tissue, the unbound plasma concentration for any other target and for every target of a drug with no brain concentration. The occupancy of a target is then its own, which is what lets the same dose saturate a high-affinity target while leaving a weaker one far from saturation.
+
+- 115 drugs, 305 mechanism pairs; 122 of the pairs are read in brain (52 drugs) and 183 in plasma.
+- **The best-bound mechanism target** has a median occupancy of 0.90 at the high end of the therapeutic range (quartiles 0.65 and 0.98): at or above 0.9, so saturated, for 59 of the 115 drugs, and below 0.5 for 21. The placeholder of `docs/off_target_scoping.md` fixes this number at 0.9 for every drug, which is what makes a dose-dependent reading impossible under it.
+
+**Off-targets at each target's own site**, for comparison with the table the placeholder gives (`docs/off_target_scoping.md`, which anchors the concentration so that the best-bound mechanism target is 90 percent occupied):
+
+| occupancy at the high end of the range | off-target pairs | drugs |
+| --- | --- | --- |
+| at least 0.1 | 510 | 86 |
+| at least 0.25 | 374 | 81 |
+| at least 0.5 | 252 | 66 |
+
+The placeholder reaches more drugs: it needs an affinity at a mechanism gene and nothing else, so it covers 183 of the 222 drugs, where a measured concentration covers 121. The two can be combined, a measured concentration where there is one and the placeholder otherwise, at the cost of two scales in one column; that choice is the user's (`docs/off_target_scoping.md`, decision 3).
+
 ## What the numbers leave out
 
 - Active metabolites are not added to the parent's concentration, which understates engagement for drugs such as amitriptyline, fluoxetine and risperidone.
