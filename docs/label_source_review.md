@@ -1662,6 +1662,119 @@ separation of the curves did not.
 Nothing is changed by this: it is a measurement, and whether the propagation window moves is a registered decision
 the owner has not made.
 
+## 16. Answers of 12 October, 16:00
+
+### 16.1 The propagation window: what the record says
+
+The owner: "I also thought we did away with only having 8 propagation steps, opting instead for convergence as steady
+state reading."
+
+The record does not carry that decision. The decision log for 10 October 2026 holds it as **"Open with the user, not
+built"**, from the exchange "Why aren't we doing message passing in a way that carries the signal until all sink
+nodes are hit?" and "wouldn't convergence be preferred for physiological correctness?". I agreed there that
+convergence is the better target, because the labels describe conditions that stay on, and the probes recorded what
+it would need: the perturbation held on at every round, since the encoder gives it once and a stable shared layer
+then forgets it (norm 0.15 at round 8 against 2e-6 at round 90, while a held one settles at 3.85 with all 16
+perturbations settled by a median of round 33), and stability by construction, since at the registered scale both
+encoders grow without limit. It was proposed as a **third encoder** — held perturbation, shared relation laws,
+time-scale groups, a damped and bounded update, iteration to tolerance — and the row ends "the user's decision
+whether to build it and whether beside or in place of message passing". Nothing was built, and both registered
+encoders still run a fixed number of steps: message passing 3 edges, the linear response 8.
+
+Two numbers that look contradictory and are not. That same row recorded the linear response at 8 steps as "within
+0.14 percent of its fixed point at the median", and 15.9 reports a tissue at a median of 0.727 of its settled level
+at step 8. The first is with the encoder's own gains, which sit well below the bound; the second is at the
+contraction bound of 0.9, the fastest spread a registered model may have. How short 8 steps is depends entirely on
+the gains, which is why 16.3 matters.
+
+### 16.2 Reopening 13.7: what training the enzyme statements would take
+
+The owner: "Yes, let's reopen 13.7."
+
+**A correction of my own analysis first.** 13.7 said there was "not enough to train on either" encoder. That is wrong
+for one of them, and the difference is large enough to change the answer.
+
+| encoder | parameters the `clears` relation owns | development pairs per parameter |
+| --- | --- | --- |
+| message passing (`node_state_dim` 32, 2 layers) | 2,048 | 0.04 |
+| linear response (`propagation_channels` 4, one gain per channel) | **4** | **18.8** |
+
+There are 23 enzyme statements over 22 drugs, 12 of them on the development side with 75 development pairs. Against
+2,048 weights that is hopeless and the earlier conclusion stands. Against four bounded gains it is thin but ordinary:
+the linear-response encoder's gain for a signed relation is `sigmoid(...)` per channel, four numbers in (0, 0.9), and
+75 labelled pairs can identify four bounded parameters.
+
+So reopening has a definite shape rather than a yes or no:
+
+1. **What must be built.** The combined perturbation type, a drug and a gene perturbation carried together in one
+   example, which rows 4 to 6 of section 8 named and which nothing in the trainer has. Without it the statements
+   cannot enter the loss at all, whatever the parameter count.
+2. **Where it can train.** The linear-response encoder only. Training the same statements in message passing would
+   fit 2,048 weights on 75 pairs.
+3. **What that costs.** The two confirmatory models would then differ in what they are trained on, which is a design
+   asymmetry the owner has been avoiding ("I don't want to add extra confirmatory model variations because that
+   starts increasing probability of winning by luck"). It is also a change to a registered model, so it belongs in
+   the amendment and not in a commit.
+4. **What would make it stronger, and is nearly free.** The relation currently has 23 edges from the FDA table. CPIC
+   gives 56 pairs on study drugs over 45 drugs for the same four genes (15.5), each with an evidence level and
+   citations, under a verified CC0 licence. More edges do not add labels, but they give the same four gains more
+   structure to act through, and the edge table is the part that can be built now without touching a model.
+5. **What stays true either way.** As *checks*, the carrier, displacement and enzyme kinds still test nothing while
+   no label varies those relations, because the check reads an untrained relation. Training the enzyme statements
+   would make the enzyme checks meaningful and would leave the carrier checks exactly as they are, since no label
+   varies a carrier.
+
+Recommended, and the owner's to decide: build the combined perturbation type and the CPIC edge table, hold the
+training decision until the owner has seen what a development run on 12 statements does, and keep the two
+confirmatory models symmetric unless the owner accepts the asymmetry knowingly.
+
+### 16.3 Gains: no source has them, and what exists instead
+
+The owner: "Can you find gain numbers to train in?"
+
+**No source tabulates a per-relation gain, and the reason is structural rather than a gap in the databases.** The
+model's gain is one number per relation per channel over 20 relations, not a number per edge; it is a property of the
+model's own parameterisation, not a measured constant of biology. Nothing measures "how much an activation edge
+transmits on average", because that quantity only exists inside this model.
+
+What does exist falls into three kinds, and only the second is the right kind.
+
+**1. Per-edge confidence, which is the wrong kind.** SIGNOR carries a score per interaction, 0.2 to 0.981, over
+43,616 human rows; 21,180 are protein to protein and 15,608 of those are signed. Against the confirmatory graph it
+covers **7,640 of the 69,740 `activates` edges (11.0 percent) and 4,029 of the 18,157 `inhibits` edges (22.2
+percent)** with a score of the same sign. OmniPath, already on disk, carries `curation_effort` and consensus flags,
+and the CollecTRI table as downloaded carries no weight at all. Every one of these is a confidence: how much evidence
+the curators found, not how much signal passes. Using a confidence as a magnitude is the error the owner rejected
+twice already, in the occupancy placeholder and in the threshold grid, and I am not going to recommend it a third
+time.
+
+**2. Per-edge measured effect sizes, which is the right kind and is out of reach today.** A transcription factor
+knocked down, with the log fold change of each target, is a measured transmission magnitude for
+`regulates_transcription_of`; the same for a perturbation compendium over signalling edges. The two sources are
+KnockTF 2.0 and LINCS L1000, and all three addresses tried refuse automated readers:
+`bio.liclab.net/KnockTFv2` serves no robots file at all, which this project's reader takes as a refusal, and
+`clue.io/data/CMap2020` and the GEO series directory for GSE92742 both disallow it. Recorded, respected and left for
+the owner to open. If one of them is retrieved, the per-relation gain it would justify is an aggregate over edges,
+and an aggregate is what the model wants, so this is the route worth the owner's time.
+
+**3. Theory, which gives a constraint rather than a value.** For the metabolic relations the quantity that
+corresponds to a gain is a flux control coefficient, and metabolic control analysis gives the summation theorem:
+over an enzyme set the control coefficients sum to one. That is a constraint on the gains rather than a number to
+look up, and it is the kind of thing the study already does elsewhere through the contraction bound. For `encodes`
+the measured analogue is the genome-wide ratio of protein to messenger RNA, which is published and would give that
+one relation an initialisation.
+
+**What I would do instead of looking for gains.** The gains are four numbers per relation in the linear-response
+encoder, 80 in all, and they are what the development runs are for. If the worry is that the development labels
+under-determine them, the useful moves are to constrain rather than to import: keep the contraction bound, add the
+summation constraint on the metabolic relations if it is wanted, and note in the amendment that the gains are fitted
+and not measured. If per-edge weights are wanted, that is a different model — an edge-weighted propagation rather
+than a relation-gain one — and a registered change rather than an initialisation.
+
+**Licence, verified.** "SIGNOR 4.0 is licensed under Creative Commons Attribution 4.0 International"
+(`signor.uniroma2.it/documentation`, read 12 October 2026). Nothing from SIGNOR is used by any build; it was read to
+measure the coverage above.
+
 ## How the counts were made
 
 Scripts, all under `experiments/label_review/`, none of which writes to a study table:
