@@ -112,10 +112,13 @@ def test_the_reading_of_a_check_and_what_is_left_unjudged(tmp_path: Path) -> Non
 
     absent = ComparativeCheck("absent", "carrier_level", "another_drug", ("ALB",))
     table = evaluate_checks([*ALL_CHECKS, absent], data, predict).set_index("statement_id")
-    assert table.loc["carrier", ["symptoms_read", "holds"]].tolist() == [2, False]  # anxiety rises and fatigue falls: one symptom lower
+    # a lowered carrier or enzyme reaches the drug through a relation no label trains, so the difference is reported and nothing is judged
+    assert table.loc["carrier", ["symptoms_read", "holds"]].tolist() == [2, None] and not table.loc["carrier", "reads_a_trained_relation"]
     assert table.loc["carrier", "share_not_lower"] == 0.5 and table.loc["carrier", "mean_difference"] == pytest.approx(0.025) and table.loc["carrier", "smallest_difference"] == pytest.approx(-0.05)
-    assert bool(table.loc["enzyme", "holds"]) and table.loc["enzyme", "mean_difference"] == pytest.approx(0.1)
-    assert bool(table.loc["pair", "holds"]) and table.loc["pair", "mean_difference"] == pytest.approx(0.2)
+    assert table.loc["enzyme", "holds"] is None and table.loc["enzyme", "mean_difference"] == pytest.approx(0.1)
+    assert table.loc["displacement", "holds"] is None
+    # a second drug enters through its mechanism edges, which every drug perturbation trains, so this one is judged
+    assert bool(table.loc["pair", "holds"]) and table.loc["pair", "reads_a_trained_relation"] and table.loc["pair", "mean_difference"] == pytest.approx(0.2)
     assert table.loc["negative_pair", "holds"] is None and table.loc["negative_pair", "mean_difference"] == pytest.approx(0.2)  # reported, not judged
     assert not table.loc["absent", "expressible"] and table.loc["absent", "holds"] is None and np.isnan(table.loc["absent", "mean_difference"])
     assert evaluate_checks([absent], data, lambda seed_lists, positions: pytest.fail("no input to predict")).expressible.tolist() == [False]
@@ -150,7 +153,8 @@ def test_the_checks_table_keeps_its_provenance_and_the_report_counts_by_kind_and
     assert structure.expressible.tolist() == [True, True, True] and structure.side.tolist() == ["development", "held out", "held out"]
     assert structure_table(checks, data, {}, None).side.tolist() == ["not assigned"] * 3
     report = "\n".join(structure_lines(structure, Path("graph"), Path("evidence"), checks_path, "nodes", Path("held_out.csv")))
-    assert "| carrier_level | carrier lowered with the drug | 1 | 1 | 1 | 0 |" in report and "| enzyme_activity | clearing enzyme lowered with the drug | 1 | 1 | 0 | 1 |" in report
+    assert "| carrier_level | carrier lowered with the drug | no | 1 | 1 | 1 | 0 |" in report
+    assert "| enzyme_activity | clearing enzyme lowered with the drug | no | 1 | 1 | 0 | 1 |" in report
 
 
 def test_the_checks_pass_through_an_encoder_and_head_built_as_the_trainer_builds_them(tmp_path: Path) -> None:
@@ -168,7 +172,9 @@ def test_the_checks_pass_through_an_encoder_and_head_built_as_the_trainer_builds
         return predict_seed_lists(encoder, head, data, seed_lists, positions, adjacencies, arguments, device)
 
     table = evaluate_checks(ALL_CHECKS, data, predict)
-    assert table.expressible.all() and table.mean_difference.notna().all() and set(table.holds[table.expectation == "at_least_as_high"]) <= {True, False}
+    assert table.expressible.all() and table.mean_difference.notna().all()
+    judged = table[table.reads_a_trained_relation & (table.expectation == "at_least_as_high")]
+    assert len(judged) == 1 and set(judged.holds) <= {True, False} and table.holds[~table.reads_a_trained_relation].isna().all()
     # the reference of a check is the trainer's own prediction for that drug: same seeds, same call
     from experiments.run_main_model import predict as trainer_predict
 

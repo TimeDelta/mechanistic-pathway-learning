@@ -1,5 +1,10 @@
 """Comparative checks: a drug given with a second, varied factor, compared with the drug alone.
 
+What a check tests, and what it cannot. Only the two-drug kind reads parameters that a label trains; the three kinds
+that go through a lowered carrier or a lowered enzyme do not, because no label of the study varies either. The report
+keeps them apart for that reason (KINDS_THAT_READ_A_TRAINED_RELATION below, and the user's objection of 12 October
+2026 that it records).
+
 What a check is. A statement from a source that a drug's effects are at least as large when a second factor is present:
 its plasma carrier is lower, a second drug displaces it from the carrier, the enzyme that clears it is less active, or
 a second drug is given with it. The model is asked the same question: do the symptom probabilities of the combined
@@ -39,6 +44,16 @@ import pandas as pd
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CARRIER_GENES, CLEARS_RELATION, SEQUESTERS_RELATION
 
 CHECK_KINDS: tuple[str, ...] = ("carrier_level", "enzyme_activity", "displacement", "second_drug")
+# Which kinds read parameters that a label trains, and so can be read as a test of a model (the user, 12 October 2026:
+# the checks "are almost certain to fail without having trained any enzymes so I don't see the point in checking them").
+# A second drug enters through its mechanism edges, the relation every drug perturbation trains. A lowered carrier or
+# enzyme reaches the drug through sequesters or clears, and no label of the study varies either, so:
+#   - in the message-passing encoder those relation weights get no gradient, and the check reads untrained weights;
+#   - in the linear-response encoder the gain of a signed relation is positive by construction and the edge carries the
+#     sign, so the direction of the field at the drug's node is built in and the check reads the head's monotonicity.
+# Either way the result says nothing about carriage or clearance, so those kinds are reported as a description of the
+# model's behaviour and not as a test it passes or fails.
+KINDS_THAT_READ_A_TRAINED_RELATION: tuple[str, ...] = ("second_drug",)
 EXPECTATIONS: tuple[str, ...] = ("at_least_as_high", "none")  # "none": a negative control, reported and not judged
 CHECK_COLUMNS: tuple[str, ...] = ("statement_id", "kind", "drug_perturbation_id", "drug", "lowered_genes", "second_drug_perturbation_id", "second_drug", "symptom",
                                   "expectation", "source", "source_id", "source_version", "quote", "second_mechanism_or_limit")
@@ -69,6 +84,11 @@ class ComparativeCheck:
     @property
     def drug_perturbation_ids(self) -> tuple[str, ...]:
         return (self.drug_perturbation_id, self.second_drug_perturbation_id) if self.second_drug_perturbation_id else (self.drug_perturbation_id,)
+
+    @property
+    def reads_a_trained_relation(self) -> bool:
+        """True when the check runs through a relation that some label of the study trains (see KINDS_THAT_READ_A_TRAINED_RELATION)."""
+        return self.kind in KINDS_THAT_READ_A_TRAINED_RELATION
 
     @property
     def edge_relation(self) -> str | None:
@@ -177,8 +197,9 @@ def evaluate_checks(checks: list[ComparativeCheck], data, predict: Callable[[lis
     number of symptoms]; the position is that of the check's drug in data, for a head that reads a covariate of the
     perturbation, so that the two inputs of a check differ in their seeds alone.
 
-    holds is True when no symptom read falls by more than the tolerance, None for a negative control, a check that
-    cannot be expressed and a check whose drug has no symptom to read."""
+    holds is True when no symptom read falls by more than the tolerance, and None for a negative control, a check that
+    cannot be expressed, a check whose drug has no symptom to read, and every kind that does not read a trained
+    relation: there the difference is reported and nothing is judged."""
     rows, seed_lists, positions, pending = [], [], [], []
     for check in checks:
         reason = why_not_expressible(check, data, protein_of_gene)
@@ -186,6 +207,7 @@ def evaluate_checks(checks: list[ComparativeCheck], data, predict: Callable[[lis
         if not reason and not columns:
             reason = "the drug has no kept positive symptom to read"
         row = {"statement_id": check.statement_id, "kind": check.kind, "expectation": check.expectation, "expressible": not reason, "reason": reason,
+               "reads_a_trained_relation": check.reads_a_trained_relation,
                "symptoms_read": len(columns), "mean_difference": np.nan, "smallest_difference": np.nan, "share_not_lower": np.nan, "holds": None}
         rows.append(row)
         if reason:
@@ -200,6 +222,7 @@ def evaluate_checks(checks: list[ComparativeCheck], data, predict: Callable[[lis
         for row, columns, start in pending:
             difference = probabilities[start + 1, columns] - probabilities[start, columns]
             row.update(mean_difference=float(difference.mean()), smallest_difference=float(difference.min()), share_not_lower=float((difference >= -tolerance).mean()))
-            if row["expectation"] == "at_least_as_high":
+            # holds is read only where the comparison tests something a label trained; elsewhere the difference is reported alone
+            if row["expectation"] == "at_least_as_high" and row["reads_a_trained_relation"]:
                 row["holds"] = bool((difference >= -tolerance).all())
     return pd.DataFrame(rows)
