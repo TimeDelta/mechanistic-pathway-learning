@@ -807,8 +807,9 @@ No source found supports this as a label. What was counted:
 - Guide to PHARMACOLOGY, release 2026.3 (24,934 interaction rows), marks 98 rows "Competitive" and 4
   "Non-competitive". None of the 647 human rows of the study's drugs carries either. What those rows do hold is the
   action (antagonist 226, inhibition 99, full agonist 92, partial agonist 60, agonist 56, positive 28, inverse agonist
-  24 and others) and, for 40 rows over 19 drugs, a mode of binding (allosteric modulator 31, pore blocker 7,
-  irreversible inhibition 3).
+  24 and others) and, for 41 rows over 20 drugs, a mode of binding (type "Allosteric modulator" 31, action "Pore
+  blocker" 7, action "Irreversible inhibition" 3). Recounted on 11 October with that definition; an earlier count in
+  this session gave 40 rows over 19 drugs.
 - Of the 80 positive two-drug triples, 2 have opposing actions at one target (aripiprazole with loxapine at the D2
   receptor, a partial agonist with an antagonist).
 - The displacement pairs are competition at a carrier, not at a target, and 13.3 says what they can carry.
