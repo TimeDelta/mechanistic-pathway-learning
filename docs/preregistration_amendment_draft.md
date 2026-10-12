@@ -95,6 +95,17 @@ no clearance edge is registered: `graph_full_neuronal_split_binders_drugs_v4` an
 exist for the ablation the owner asked for on 10 October and for the checks, and whether a confirmatory configuration
 reads either is a separate decision.
 
+- **The propagation window, if the owner applies his decision of 12 October.** "Use the convergence instead of 8
+  steps. 8 steps is arbitrary, not physiological." For the linear-response encoder this is a stopping rule and not a
+  new architecture: the encoder holds the perturbation on at every step and its gains are bounded by the contraction,
+  so a fixed point exists and the loop can run to a tolerance. The amendment has to name the tolerance, because it
+  replaces a fixed count as the registered quantity; 1e-3 costs 23 steps at the contraction bound, 14 at gain 0.7 and
+  11 at 0.5. For the message-passing encoder it is not a stopping rule, since each layer owns its weights and more
+  rounds means more parameters, so convergence there means holding the perturbation on and sharing the relation
+  weights across rounds, which replaces the registered encoder rather than joining it. That second change would make
+  the registered head choice and stopping rule invalid, because both were selected on three independent layers, so it
+  needs its own development runs before any held-out run (`docs/label_source_review.md` 17.2).
+
 ## 4. What is still missing before this can be applied
 
 1. **The limit on a drug's targets.** Three stays the rule until the owner decides (`docs/label_source_review.md`,

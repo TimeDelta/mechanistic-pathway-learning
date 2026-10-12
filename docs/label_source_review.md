@@ -1696,11 +1696,15 @@ for one of them, and the difference is large enough to change the answer.
 
 | encoder | parameters the `clears` relation owns | development pairs per parameter |
 | --- | --- | --- |
-| message passing (`node_state_dim` 32, 2 layers) | 2,048 | 0.04 |
+| message passing (`node_state_dim` 32, **3 layers**, separate weights per layer) | **3,072** | 0.024 |
 | linear response (`propagation_channels` 4, one gain per channel) | **4** | **18.8** |
 
+(Corrected on the owner's challenge: the registered encoder has three message-passing layers, not two. The weight
+tensor is `[layers, relations, 32, 32]`, so a relation owns 3 x 32 x 32 = 3,072 weights. lockbox_v1 had two layers
+and lockbox_v2 has three; I had carried the older figure. The conclusion is unchanged and the ratio is worse.)
+
 There are 23 enzyme statements over 22 drugs, 12 of them on the development side with 75 development pairs. Against
-2,048 weights that is hopeless and the earlier conclusion stands. Against four bounded gains it is thin but ordinary:
+3,072 weights that is hopeless and the earlier conclusion stands. Against four bounded gains it is thin but ordinary:
 the linear-response encoder's gain for a signed relation is `sigmoid(...)` per channel, four numbers in (0, 0.9), and
 75 labelled pairs can identify four bounded parameters.
 
@@ -1774,6 +1778,86 @@ than a relation-gain one — and a registered change rather than an initialisati
 **Licence, verified.** "SIGNOR 4.0 is licensed under Creative Commons Attribution 4.0 International"
 (`signor.uniroma2.it/documentation`, read 12 October 2026). Nothing from SIGNOR is used by any build; it was read to
 measure the coverage above.
+
+## 17. Answers of 12 October, 16:26
+
+### 17.1 Two corrections the owner caught
+
+**The message-passing encoder has three layers, not two.** `num_message_passing_layers` is 3 and the weight tensor is
+`[layers, relations, node_state_dim, node_state_dim]`, so a relation owns 3 x 32 x 32 = 3,072 weights, not the 2,048
+I wrote in 16.2. The architecture review already recorded it as "Message passing stops at 3 edges. Three layers,
+separate weights per layer", and `configs` moved from two layers under lockbox_v1 to three under lockbox_v2. I was
+carrying the v1 figure. 16.2 is corrected; its conclusion is unchanged and the ratio against 75 development pairs is
+worse, 0.024 pairs per parameter rather than 0.04.
+
+**The propagation channels are not the descriptors.** The owner: "for the clears relation, shouldn't there only be 8
+channels since there are only 8 enzyme descriptors?" They are different things that never meet.
+
+- `propagation_channels` is 4 by default and is a property of the linear-response encoder, shared by every relation.
+  The channels are time scales: each carries its own per-relation gain so the response settles at different rates,
+  and a linear map expands them to the `node_state_dim` channels the heads read. The number 4 has nothing to do with
+  any descriptor and does not vary by relation, so `clears` owns four gains because the encoder propagates four
+  channels.
+- The eight enzyme descriptors are node features. They enter through the descriptor projection into the node state,
+  not through the propagation at all.
+- And they are not even present at a `clears` edge. Measured: the EC descriptors are non-zero on 5,780 nodes and
+  **every one of them is a reaction node**. A `clears` edge runs from an enzyme's gene node to a drug entry node, and
+  none of CYP2D6, CYP2C19, CYP2C9 or NAT2 carries a non-zero EC descriptor on its gene or protein node.
+
+### 17.2 Convergence in place of 8 steps
+
+The owner: "Don't make it a third encoder. Use the convergence instead of 8 steps. 8 steps is arbitrary, not
+physiological."
+
+**For the linear response this is a change of stopping rule, not a new encoder**, because the encoder already has the
+two properties convergence needs. It holds the perturbation on at every step, since the recurrence adds the sustained
+input each round, and its gains are bounded by the contraction, so the transition is a contraction and a fixed point
+exists. Iterating to a tolerance is then a one-line change to the loop.
+
+What it costs, measured by `experiments/measure_propagation_convergence.py` over the 217 drug perturbations at the
+registered damping of 0.5, with every relation given the same gain:
+
+| gain | steps to a relative change below 1e-2 | below 1e-3 | below 1e-4 | field at 8 steps, by norm, over the settled field |
+| --- | --- | --- | --- | --- |
+| 0.9, the contraction bound | 10 | 23 | 45 | 0.993 |
+| 0.7 | 7 | 14 | 22 | 0.999 |
+| 0.5 | 5 | 11 | 16 | 1.000 |
+| 0.3 | 3 | 8 | 12 | 1.000 |
+
+So the honest cost is three to six times the propagation of a forward pass at the bound, and less at the gains a
+trained model is likely to hold.
+
+**The owner's objection is right, and the norm is what hides it.** At 8 steps the field is 99.3 percent of the
+settled field *by norm*, which is the figure recorded on 10 October and which makes 8 steps look sufficient. By
+distribution it is not: against a field run to 200 steps, a tissue has reached a median of **0.631** of its settled
+saturation at step 8, the lowest being whole blood at 0.287 and the highest 0.934 (15.9, rerun against a settled
+reference; the earlier 0.727 used a 24-step reference that was not itself settled). The norm is carried by the large
+values near the seeds, which settle immediately; the far field, which is where a claim about pathway reach lives, is
+between a quarter and two thirds of the way there. Both numbers are correct and they answer different questions,
+and the question this study asks is the second one.
+
+**For message passing it is not a stopping rule, and this is where "don't make it a third encoder" has to be
+spent.** That encoder writes the perturbation once into the initial state and gives every layer its own weights, so
+there is nothing to iterate: more rounds means more parameters. Each layer is `relations x 32 x 32`, which at 20
+relations is 20,480 weights, so running to a depth that reaches the far field would multiply the parameter count
+against 2,975 labelled pairs. Convergence there needs the perturbation held on and the weights shared across rounds,
+which is what the owner proposed on 10 October himself: "something more creative like making a schema that reuses
+some params across layers and not others or having multiple layer param sets that get collated".
+
+So the instruction can be met without a third encoder, by changing the two that exist rather than adding one:
+
+1. **Linear response**: iterate to a tolerance in place of 8 steps. The tolerance is the registered quantity and the
+   step count follows from the learned gains. 1e-3 is the defensible choice, costing 23 steps at the bound.
+2. **Message passing**: hold the perturbation on at every round, share the relation weights across rounds, and
+   iterate to the same tolerance with the same bounded update. This keeps the parameter count at one layer's worth
+   and makes depth free, and it replaces the registered message-passing encoder rather than joining it, so there are
+   still two confirmatory models.
+
+Both are changes to registered models, so both belong in the amendment and neither is applied. Two things the owner
+should weigh. The second changes what message passing *is*: shared weights across rounds is a different hypothesis
+class from three independent layers, and the head choice and stopping rule were selected on the current one, so the
+development runs that chose them would have to be redone. And a convergent model has no "3 edges" story, so the
+disclosure in the preregistration about reach would be rewritten rather than amended.
 
 ## How the counts were made
 
