@@ -1543,9 +1543,11 @@ the rule in (a), a mean of **0.12 symptoms lose every training positive** (at mo
 (at most 2). The cause is visible in the table: one symptom carries a single positive in the whole of it and two more
 carry 14 and 15, so a draw that takes that one positive leaves the symptom with nothing. A symptom in that state is
 not merely unlearnable, it is **degenerate**: with its links and leak at their initial values the noisy-OR head
-returns one fixed ranking of the perturbations for it, identical for every untrained symptom (measured: the
-correlation between any two such rankings is 1.000000), driven by total module activation, which is the degree-like
-quantity the input-size and degree controls already account for. Scoring it would be scoring the degree baseline under
+returns one fixed ranking of the perturbations for it, identical for every untrained symptom, driven by total module
+activation, which is the degree-like quantity the input-size and degree controls already account for. Item 26c gives
+the reason, which is an identity of the head rather than a measurement, and the measurement that confirms it
+(`experiments/label_review/untrained_symptom_degeneracy.py`: correlation 1.000000, zero perturbations ranked
+differently). Scoring it would be scoring the degree baseline under
 a symptom's name.
 
 The registered rule already requires **five kept positives in the lockbox** for a symptom to be scored, and that
@@ -1574,6 +1576,91 @@ result is seen.
 
 The held-out set is redrawn under this rule, which the owner's direction of 13 October permits ("doesn't have to
 maintain current held out set because of the number of changes since that set was drawn").
+
+**26. The nosology readout is a descriptive secondary analysis, reported apart from every prediction claim** (the
+owner, 13 October 2026: "i accept the separated metrics for prediction (the 'any target held' version we mentioned
+with the closest prefix before the previously registered 1/7 of targets version; not the full target xval because
+that's way too expensive) vs nosology readout"). Item 25 governs the prediction side. This item fixes the other side
+before any confirmatory run, so the grouping cannot be chosen after it is seen.
+
+**a. What the readout reads.** For each symptom, its column of the module-to-symptom link probabilities, one column
+per relation, fitted on all the evidence: `sigmoid(module_symptom_link_logit)[relation, :, symptom]`, 8 modules by 2
+relations. That is the symptom's profile over mechanisms in the model's own basis, and clustering the symptoms by it
+is the nosology question stated in the model's terms.
+
+**The registration is on the quantity, not on the parameterisation.** If the head is later refactored so that the
+links are a product of a shared module-to-latent matrix and a learned symptom vector (the owner's direction of 13
+October: "we would remove module_symptom_link_logit and opt instead for a smaller output matrix that is fully
+connected across modules and then learn symptom representations alongside that output matrix"), the readout object is
+the same profile, recovered as that product, and nothing in this item reopens. The refactor itself is **not**
+registered here; it is a head change, and it is listed below as the owner's.
+
+**b. It is fitted in sample, which is legitimate here and is bounded.** The question is descriptive: which symptoms
+this model produces through the same mechanisms. For a description, the estimator that uses all the evidence is the
+right one. What it forfeits is stated rather than hedged: the readout carries **no** claim that the grouping predicts
+anything held out, **no** claim about a symptom outside the set and **no** claim that it would recur in another
+cohort. It enters neither H1 nor H2 nor P1, takes no part in the one-sided 0.025 sequence, and is reported in its own
+section labelled descriptive. A reader who takes it for a validated nosology has been misled by the report, not by
+the analysis, so the label is part of the registration.
+
+**c. A per-symptom fold is unavailable in this head, and that is an identity rather than a result.** With a symptom
+held out of training its links stay at their common initial logit, so its link probability is one constant `c` across
+modules and
+
+    P(symptom | perturbation) = 1 - (1 - leak) * prod_k (1 - c * activation_k(perturbation)).
+
+The product does not depend on the symptom. Two untrained symptoms are therefore positive affine maps of one another,
+whatever their leaks, so they correlate at 1 and rank the perturbations identically; the leak scales and does not
+reorder. The shared ranking falls as any module activation rises, so it ranks by total module activation, the
+degree-like quantity the input-size and degree controls already account for. Measured at the registered 8 modules and
+24 symptoms over three seeds (`experiments/label_review/untrained_symptom_degeneracy.py`,
+`docs/untrained_symptom_degeneracy.json`): smallest correlation between untrained symptoms 1.000000, **zero**
+perturbations ranked differently by any two of them, against a smallest correlation of 0.47 to 0.80 once one symptom
+trains. Giving each symptom a matrix that persists across folds would remove the degeneracy by supplying the quantity
+the fold withholds, so it is not a fold, which is why the readout is validated for stability instead.
+
+**d. Validation is of the clustering's stability, and the resampling is over perturbations, not symptoms.** This
+corrects the obvious construction: a symptom clustering cannot be validated by holding symptoms out, because by (c)
+the held-out columns never train. The resampling is therefore the one already registered for module supports
+(`docs/pathway_test_options.md`, gate G1): complementary-pair subsamples of the training perturbations
+(shah2013variable), refit, cluster, and match clusters one to one by Jaccard through the Hungarian assignment
+(kuhn1955hungarian), with the stability index and its interval of (nogueira2018stability). The permuted-label runs
+are the null, as they are for the supports.
+
+**The procedure is fixed now.** Distance: one minus the Pearson correlation between symptoms over the concatenated
+induces and relieves profile. Algorithm: hierarchical clustering with average linkage. Number of clusters: taken by
+the stability criterion of (benhur2002stability), which also returns the absence of structure ("it provides a means
+of rationally defining an optimum number of clusters, and can also detect the lack of structure in data", abstract),
+so the readout is able to report that there is no grouping to report. The owner may change any of these before the
+first confirmatory run. None changes after it.
+
+**e. The control that decides whether the readout says anything: label co-occurrence.** A symptom's link column is
+fitted only to reproduce which perturbations carry that symptom, so two symptoms reported for the same drugs get
+similar columns whether or not they share a mechanism. Without a control the readout would recover the label
+co-occurrence structure and present it as mechanism. So the same procedure of (d) runs on the symptom columns of the
+raw outcome matrix, same distance, same linkage, same stability selection, and the two partitions are compared
+cluster by cluster by the same one-to-one Jaccard. **No cluster that the label co-occurrence baseline also returns is
+reported as a mechanism-derived grouping.** No threshold is chosen for that comparison: the scale is the mechanism
+clustering's own resampling spread from (d), so an agreement inside that spread is read as agreement. What the graph
+adds, if anything, is the difference between the two partitions, and that difference is the readout's only positive
+claim.
+
+**f. Thin symptoms are reported with their counts and cannot form a cluster by being untrained.** By (c) a column
+that has barely moved from its initial value is close to every other such column, so symptoms with little support
+would group together and the group would read as a nosological finding while being an artefact of count. The
+clustering is therefore over the symptoms meeting the registered condition of five kept positives; symptoms below it
+are placed afterwards at their nearest cluster and reported with their counts and no claim. The inclusive clustering
+is a declared secondary, reported beside it.
+
+**g. What this item does not settle, and stays the owner's.**
+- **The head refactor of (a).** With symptom folds off the table its original argument has gone: it was proposed to
+  make them possible. What remains for it is real but smaller, shrinkage across symptoms for the thin ones and a
+  metric space in which symptom distance is defined rather than induced. Against it: it imposes a rank on the link
+  matrix, it replaces an interpretable basis of named modules with a latent one, and unless it replaces the current
+  head outright it is another confirmatory variation, which the owner has ruled against ("I don't want to add extra
+  confirmatory model variations because that starts increasing probability of winning by luck").
+- **Whether the readout is published with the confirmatory result or apart from it.** Registering it here fixes the
+  procedure either way.
 
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training

@@ -1,0 +1,25 @@
+{
+ "registered_pathway_modules": 8,
+ "registered_symptoms": 24,
+ "perturbations": 200,
+ "per_seed": [
+  {
+   "seed": 0,
+   "smallest_correlation_between_untrained_symptoms": 0.9999999999995991,
+   "largest_ranking_disagreement_between_untrained_symptoms": 0,
+   "smallest_correlation_once_one_symptom_is_trained": 0.8030848481134395
+  },
+  {
+   "seed": 1,
+   "smallest_correlation_between_untrained_symptoms": 0.9999999999995192,
+   "largest_ranking_disagreement_between_untrained_symptoms": 0,
+   "smallest_correlation_once_one_symptom_is_trained": 0.6839582549235352
+  },
+  {
+   "seed": 2,
+   "smallest_correlation_between_untrained_symptoms": 0.999999999998171,
+   "largest_ranking_disagreement_between_untrained_symptoms": 0,
+   "smallest_correlation_once_one_symptom_is_trained": 0.4723343058099303
+  }
+ ]
+}
