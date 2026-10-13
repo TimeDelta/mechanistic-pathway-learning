@@ -1669,29 +1669,67 @@ cohort. It enters neither H1 nor H2 nor P1, takes no part in the one-sided 0.025
 section labelled descriptive. A reader who takes it for a validated nosology has been misled by the report, not by
 the analysis, so the label is part of the registration.
 
-**c. A per-symptom fold is unavailable in this head, and that is an identity rather than a result.** With a symptom
-held out of training its links stay at their common initial logit, so its link probability is one constant `c` across
-modules and
+**c. A per-symptom fold predicts nothing, and that is an identity. The symptom folds registered below do not
+predict.** The identity first, because it fixes what a symptom fold cannot be asked for. With a symptom held out of
+training and its own output parameters left at their initial values, its links stay at one common initial logit, so
+its link probability is a single constant `c` across modules and
 
-    P(symptom | perturbation) = 1 - (1 - leak) * prod_k (1 - c * activation_k(perturbation)).
+    P(symptom | perturbation) = 1 - (1 - leak) * prod_k (1 - c * activation_k(perturbation)),
 
-The product does not depend on the symptom. Two untrained symptoms are therefore positive affine maps of one another,
-whatever their leaks, so they correlate at 1 and rank the perturbations identically; the leak scales and does not
-reorder. The shared ranking falls as any module activation rises, so it ranks by total module activation, the
-degree-like quantity the input-size and degree controls already account for. Measured at the registered 8 modules and
-24 symptoms over three seeds (`experiments/label_review/untrained_symptom_degeneracy.py`,
-`docs/untrained_symptom_degeneracy.json`): smallest correlation between untrained symptoms 1.000000, **zero**
-perturbations ranked differently by any two of them, against a smallest correlation of 0.47 to 0.80 once one symptom
-trains. Giving each symptom a matrix that persists across folds would remove the degeneracy by supplying the quantity
-the fold withholds, so it is not a fold, which is why the readout is validated for stability instead.
+where `leak` is the noisy-OR leak of that symptom, the background probability with no module firing, and not the
+resting leak conductance of item 13. The product does not depend on the symptom. Two such symptoms are positive
+affine maps of one another whatever their leaks, so they correlate at 1 and rank the perturbations identically; the
+leak scales and does not reorder. The shared ranking falls as any module activation rises, so it ranks by total
+module activation, the degree-like quantity the input-size and degree controls already account for. Measured at the
+registered 8 modules and 24 symptoms over three seeds
+(`experiments/label_review/untrained_symptom_degeneracy.py`, `docs/untrained_symptom_degeneracy.json`): smallest
+correlation between untrained symptoms 1.000000, **zero** perturbations ranked differently by any two of them,
+against 0.47 to 0.80 once one symptom trains.
 
-**d. Validation is of the clustering's stability, and the resampling is over perturbations, not symptoms.** This
-corrects the obvious construction: a symptom clustering cannot be validated by holding symptoms out, because by (c)
-the held-out columns never train. The resampling is therefore the one already registered for module supports
-(`docs/pathway_test_options.md`, gate G1): complementary-pair subsamples of the training perturbations
-(shah2013variable), refit, cluster, and match clusters one to one by Jaccard through the Hungarian assignment
-(kuhn1955hungarian), with the stability index and its interval of (nogueira2018stability). The permuted-label runs
-are the null, as they are for the supports.
+**This item previously read that a per-symptom fold is unavailable "at any parameterisation", and that was wrong.**
+The identity above holds only while the symptom's own output parameters sit at their initial values. The
+construction the owner specified does not leave them there, and the correction is his (13 October 2026): "i thought
+we talked about only doing the symptoms xval in the way that trains a lower rank of output matrix params on the
+whole data THEN uses those output matrix params for the per-symptom-folds xval, which is only valid because it's not
+being used to test the ability to generalize to new symptoms", and "it doesn't matter how much it leaks held-out
+labels. the point is to check for stability".
+
+**d. The symptom folds are a stability check, and the leak does not bias it because nothing is scored.** Two data
+perturbations are registered, the symptoms and the perturbations, and both measure agreement of structure rather
+than prediction.
+
+**d1. The symptom folds.** The shared low-rank output matrix and the symptom vectors are fitted once on all the
+evidence and then **frozen**. Each fold holds out one symptom and refits the encoder and the modules without it. The
+reading is the agreement between the fold's structure and the full-data structure: the module supports by one-to-one
+Jaccard through the Hungarian assignment (kuhn1955hungarian), and the symptom profiles by the clustering comparison
+of (e). Nothing is scored as a prediction of the held-out symptom, so there is no estimand for the leak to bias, and
+the leak is therefore stated and not corrected for: the frozen matrix was fitted with the held-out symptom's labels,
+and that is admissible here for the same reason it would be fatal to a prediction claim. This is the perturbation of
+the data set that (benhur2002stability) measures stability by: "the method exploits measurements of the stability of
+clustering solutions obtained by perturbing the data set".
+
+**Freezing the output matrix is what makes the folds comparable, and it is not only a convenience.** Modules are
+exchangeable: refit without a symptom, they may come back permuted, and a symptom vector from one fold would then
+mean nothing against another's. A frozen output matrix pins them, because a module's contribution to the output runs
+through a fixed row, so module `k` of a fold has to play the role that row assigns it. Without the freezing the
+folds would need module matching before anything could be compared, and splits and merges would confound the
+reading.
+
+**What it costs, and the null that keeps the cost visible.** Pinning the folds to the full-data solution biases the
+agreement upward: the quantity measured is the stability of what the modules do given a readout basis that already
+saw every symptom, not the stability of the whole estimation. The number is therefore read only against its null,
+the same per-symptom folds on labels permuted within degree strata, which carries the same pinning and so prices it
+in. An agreement that does not separate from that null is reported as no evidence of stability, whatever its
+absolute value.
+
+**d2. The perturbation resampling**, which the owner accepted on 13 October ("resampling on perturbations instead is
+fine") and which the clustering of (e) needs because a symptom fold leaves 23 of 24 profiles in place: the one
+already registered for module supports (`docs/pathway_test_options.md`, gate G1), complementary-pair subsamples of
+the training perturbations (shah2013variable), refit, cluster, match one to one by Jaccard, with the stability index
+and its interval of (nogueira2018stability). The permuted-label runs are the null here too.
+
+**Neither fold is evidence that the nosology is right.** Both say the structure is reproducible under a perturbation
+of the data. A stable grouping of the wrong thing is stable, which is what (e) is for.
 
 **The procedure is fixed now.** Distance: one minus the Pearson correlation between symptoms over the concatenated
 induces and relieves profile. Algorithm: hierarchical clustering with average linkage. Number of clusters: taken by
@@ -1719,12 +1757,15 @@ are placed afterwards at their nearest cluster and reported with their counts an
 is a declared secondary, reported beside it.
 
 **g. What this item does not settle, and stays the owner's.**
-- **The head refactor of (a).** With symptom folds off the table its original argument has gone: it was proposed to
-  make them possible. What remains for it is real but smaller, shrinkage across symptoms for the thin ones and a
-  metric space in which symptom distance is defined rather than induced. Against it: it imposes a rank on the link
-  matrix, it replaces an interpretable basis of named modules with a latent one, and unless it replaces the current
-  head outright it is another confirmatory variation, which the owner has ruled against ("I don't want to add extra
-  confirmatory model variations because that starts increasing probability of winning by luck").
+- **The head refactor of (a), which (d1) now depends on.** An earlier version of this item said the refactor had
+  lost its argument once symptom folds were off the table. The folds are not off the table, and the refactor is what
+  they are built on: the frozen shared matrix of (d1) is the low-rank output matrix, and there is no other object in
+  the current head that can pin the module basis across folds. So the question is no longer whether it has a
+  purpose but whether the purpose is worth the cost: it imposes a rank on the link matrix and trades a basis of
+  named modules for a latent one, and unless it replaces the current head outright it is another confirmatory
+  variation, which the owner has ruled against ("I don't want to add extra confirmatory model variations because
+  that starts increasing probability of winning by luck"). The rank is the one free number it introduces and it is
+  not registered here.
 - **Whether the readout is published with the confirmatory result or apart from it.** Registering it here fixes the
   procedure either way.
 
