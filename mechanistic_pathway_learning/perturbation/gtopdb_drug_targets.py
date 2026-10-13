@@ -15,9 +15,25 @@ study's drugs that is 114 of 326 mechanism rows over 91 drugs, and the result is
 
 GtoPdb names one gene per interaction: of 357 human rows for the drugs matched here, 356 carry a single
 `Target Gene Symbol`. Where both sources describe a drug it gives 3 or 4 subunits against ChEMBL's 16 (alprazolam 4,
-clonazepam 3, diazepam 3, flunitrazepam 4, zolpidem 1). So for a drug GtoPdb covers, its rows replace ChEMBL's rather
-than joining them, because a union keeps the wrong subunits; for a drug it does not cover, ChEMBL's rows stand and the
-route is recorded per drug.
+clonazepam 3, diazepam 3, flunitrazepam 4, zolpidem 1). What replaces what, and the unit is a ChEMBL **row** rather than a drug. The first version of this module replaced a
+drug's whole ChEMBL target set wherever GtoPdb covered the drug, and the owner caught what that does (13 October 2026:
+"cocaine should NOT narrow to a single target ... it blocks both DAT and NET at minimum ... double check your
+assumptions and data availability for these drugs"). GtoPdb holds two human rows for cocaine, both at HTR3A, so
+replacing wholesale would have left cocaine with HTR3A alone. ChEMBL's rows come in two kinds and only one is broken:
+
+- a **complex row**, whose `gene_symbols` lists several genes, is the expansion this module exists to undo, and
+  GtoPdb's rows naming genes of that complex replace it;
+- a **single-gene row** names one target specifically and is kept, always;
+- a GtoPdb gene belonging to no ChEMBL row of that drug is added.
+
+So a drug can only gain specificity within a complex GtoPdb describes, never lose a target to a gap in GtoPdb. Under
+this rule cocaine goes from 10 targets to 11 - its sodium-channel complex untouched, because GtoPdb names none of its
+subunits, and HTR3A added - rather than to 1.
+
+**What this does not fix, and is not for.** Cocaine's sodium-channel rows are themselves the wrong pharmacology for
+this study: ChEMBL curates mechanism by approved indication, cocaine is approved as a topical anaesthetic, and its
+monoamine transport sits in the off-target table at 300 times the occupancy of its mechanism targets. That is a
+question about which table a target is read from, not about subunit expansion, and it is answered elsewhere.
 
 Licence, already verified and recorded in docs/data_sources.md: "The Guide to PHARMACOLOGY database is licensed under
 the Open Data Commons Open Database License (ODbL)."; "Its contents are licensed under a Creative Commons
@@ -157,6 +173,51 @@ def one_gene_per_row(rows: pd.DataFrame) -> pd.DataFrame:
     named = rows[rows.gene_symbol.notna() & (rows.gene_symbol != "") & (rows.gene_symbol.str.lower() != "nan")]
     single = named[~named.gene_symbol.str.contains(r"[|,;]", regex=True, na=False)]
     return single[single.sign.notna()]
+
+
+# How many subunits of a complex GtoPdb must name before its rows narrow that complex. One row is an assay against
+# whichever subtype was convenient to test, not a statement of selectivity: GtoPdb holds a single human row for
+# lidocaine (SCN5A, the cardiac subtype its antiarrhythmic data comes from), for phenytoin (SCN2A) and for lacosamide
+# (SCN9A), and all three block sodium channels broadly. Two or more named subunits is evidence that selectivity was
+# looked at, and it is what narrows the benzodiazepines from 16 GABA-A subunits to the 3 or 4 they act through.
+SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX = 2
+
+
+def replace_complex_rows(chembl_rows: pd.DataFrame, gtopdb_rows: pd.DataFrame,
+                         gene_symbols_column: str = "gene_symbols",
+                         subunits_needed: int = SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX) -> tuple[dict[str, float], dict[str, str]]:
+    """gene -> sign for one drug, and gene -> why it is there, under the row-wise rule in this module's docstring.
+
+    chembl_rows are that drug's rows of the mechanism table, each with a gene_symbols field that may list several genes
+    and an action; gtopdb_rows are one_gene_per_row's output for the same drug. A ChEMBL row naming one gene is kept
+    whatever GtoPdb says. A ChEMBL row naming several is replaced by the GtoPdb rows whose gene is among them, but only
+    where GtoPdb names at least subunits_needed of them: GtoPdb's silence about a complex is not evidence against it,
+    and one named subunit is an assay rather than a selectivity claim
+    (SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX)."""
+    sign_of_gene: dict[str, float] = {}
+    reason_of_gene: dict[str, str] = {}
+    gtopdb_sign = {str(row.gene_symbol): float(row.sign) for row in gtopdb_rows.itertuples()}
+    for chembl_row in chembl_rows.itertuples():
+        genes = [gene for gene in str(getattr(chembl_row, gene_symbols_column)).split("|") if gene]
+        chembl_sign = float(getattr(chembl_row, "sign", 0.0))
+        if len(genes) <= 1:
+            for gene in genes:
+                sign_of_gene[gene], reason_of_gene[gene] = chembl_sign, "chembl single-gene row"
+            continue
+        named_by_gtopdb = [gene for gene in genes if gene in gtopdb_sign]
+        if len(named_by_gtopdb) >= subunits_needed:
+            for gene in named_by_gtopdb:
+                sign_of_gene[gene], reason_of_gene[gene] = gtopdb_sign[gene], "gtopdb, narrowing a chembl complex"
+        else:
+            reason = ("chembl complex, no gtopdb row names a subunit of it" if not named_by_gtopdb else
+                      f"chembl complex, gtopdb names only {len(named_by_gtopdb)} of its subunits")
+            for gene in genes:
+                sign_of_gene.setdefault(gene, chembl_sign)
+                reason_of_gene.setdefault(gene, reason)
+    for gene, sign in gtopdb_sign.items():  # a GtoPdb target belonging to no ChEMBL row of this drug
+        if gene not in sign_of_gene:
+            sign_of_gene[gene], reason_of_gene[gene] = sign, "gtopdb, outside every chembl row"
+    return sign_of_gene, reason_of_gene
 
 
 def pubchem_cid_from_perturbation_id(perturbation_id: str) -> int | None:

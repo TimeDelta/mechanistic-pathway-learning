@@ -109,3 +109,61 @@ def test_the_release_on_disk_names_one_gene_for_nearly_every_human_row():
     one_gene = ~named["Target Gene Symbol"].astype(str).str.contains(r"[|,;]", regex=True, na=False)
     assert float(one_gene.mean()) > 0.95, "a GtoPdb release has started naming subunit lists where it named one gene"
     assert set(human.Action.dropna().astype(str).str.upper()) <= set(GTOPDB_ACTION_SIGN), "a new Action has no sign"
+
+
+def test_a_single_gene_chembl_row_is_never_replaced_and_a_complex_is():
+    """The unit is a ChEMBL row, not a drug. A drug may gain specificity inside a complex GtoPdb describes and may
+    never lose a target to a gap in GtoPdb."""
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import replace_complex_rows
+
+    chembl = pd.DataFrame([
+        {"gene_symbols": "SLC6A3", "sign": -1.0},                      # specific: kept whatever GtoPdb says
+        {"gene_symbols": "GABRA1|GABRA2|GABRA4|GABRD", "sign": 0.5},   # complex: narrowed by GtoPdb
+        {"gene_symbols": "SCN1A|SCN2A", "sign": -1.0},                 # complex GtoPdb says nothing about: kept whole
+    ])
+    gtopdb = pd.DataFrame([
+        {"gene_symbol": "GABRA1", "sign": 0.5},
+        {"gene_symbol": "GABRA2", "sign": 0.5},
+        {"gene_symbol": "HTR3A", "sign": -1.0},                        # outside every ChEMBL row: added
+    ])
+    signs, reasons = replace_complex_rows(chembl, gtopdb)
+    assert sorted(signs) == ["GABRA1", "GABRA2", "HTR3A", "SCN1A", "SCN2A", "SLC6A3"]
+    assert "GABRA4" not in signs and "GABRD" not in signs  # the benzodiazepine-insensitive subunits go
+    assert reasons["SLC6A3"] == "chembl single-gene row"
+    assert reasons["GABRA1"].startswith("gtopdb, narrowing")
+    assert reasons["SCN1A"].startswith("chembl complex, no gtopdb row")
+    assert reasons["HTR3A"] == "gtopdb, outside every chembl row"
+    assert signs["SLC6A3"] == -1.0 and signs["GABRA1"] == 0.5
+
+
+def test_the_cocaine_case_gains_a_target_rather_than_losing_nine():
+    """The owner, 13 October 2026: "cocaine should NOT narrow to a single target". GtoPdb holds two human rows for
+    cocaine, both HTR3A, and names no sodium-channel subunit, so the sodium-channel complex must survive untouched."""
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import replace_complex_rows
+
+    sodium_channel = "|".join(f"SCN{number}A" for number in (1, 2, 3, 4, 5, 7, 8, 9)) + "|SCN10A|SCN11A"
+    signs, reasons = replace_complex_rows(pd.DataFrame([{"gene_symbols": sodium_channel, "sign": -1.0}]),
+                                          pd.DataFrame([{"gene_symbol": "HTR3A", "sign": -1.0}]))
+    assert len(signs) == 11 and "SCN1A" in signs and "HTR3A" in signs
+    assert all(reason.startswith("chembl complex") for gene, reason in reasons.items() if gene.startswith("SCN"))
+
+
+def test_a_drug_with_no_gtopdb_row_keeps_every_chembl_target():
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import replace_complex_rows
+    chembl = pd.DataFrame([{"gene_symbols": "CACNA2D1|CACNA1S", "sign": 0.0}, {"gene_symbols": "SLC6A4", "sign": -1.0}])
+    signs, _ = replace_complex_rows(chembl, pd.DataFrame(columns=["gene_symbol", "sign"]))
+    assert sorted(signs) == ["CACNA1S", "CACNA2D1", "SLC6A4"]
+
+
+def test_one_named_subunit_is_an_assay_and_does_not_narrow_a_complex():
+    """GtoPdb holds a single human row for lidocaine (SCN5A), phenytoin (SCN2A) and lacosamide (SCN9A), and all three
+    block sodium channels broadly, so one named subunit must leave the complex whole."""
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import replace_complex_rows
+
+    sodium_channel = "SCN1A|SCN2A|SCN3A|SCN5A|SCN9A"
+    one_named = replace_complex_rows(pd.DataFrame([{"gene_symbols": sodium_channel, "sign": -1.0}]),
+                                     pd.DataFrame([{"gene_symbol": "SCN5A", "sign": -1.0}]))
+    assert len(one_named[0]) == 5 and one_named[1]["SCN5A"].startswith("chembl complex, gtopdb names only 1")
+    two_named = replace_complex_rows(pd.DataFrame([{"gene_symbols": sodium_channel, "sign": -1.0}]),
+                                     pd.DataFrame([{"gene_symbol": "SCN5A", "sign": -1.0}, {"gene_symbol": "SCN9A", "sign": -1.0}]))
+    assert sorted(two_named[0]) == ["SCN5A", "SCN9A"]  # selectivity was looked at, so the complex narrows

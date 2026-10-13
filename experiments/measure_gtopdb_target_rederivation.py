@@ -27,11 +27,16 @@ from pathlib import Path
 
 import pandas as pd
 
+from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
+    drug_targets_for_pubchem_cid,
+    load_chembl_caches,
+)
 from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import (
     ALLOSTERIC_TYPE,
     ligand_id_of_drug,
     one_gene_per_row,
     pubchem_cid_from_perturbation_id,
+    replace_complex_rows,
     read_interactions,
     targets_per_drug,
 )
@@ -56,11 +61,33 @@ def chembl_targets_per_drug(graph_directory: Path) -> dict[str, set[str]]:
             for drug, group in entry.groupby("perturbation_id").target_node_id}
 
 
+def chembl_rows_per_drug(perturbation_ids, chembl_directory: Path) -> dict[str, pd.DataFrame]:
+    """perturbation id -> its ChEMBL mechanism rows, one per target with the gene list that target names.
+
+    The gene list is what makes a row a complex row, and the row is the unit the replacement rule works on
+    (gtopdb_drug_targets.replace_complex_rows). A drug the cache cannot resolve has no rows here, and its graph
+    targets are kept whole by the caller."""
+    caches = load_chembl_caches(chembl_directory)
+    rows_per_drug: dict[str, pd.DataFrame] = {}
+    for perturbation_id in perturbation_ids:
+        cid = pubchem_cid_from_perturbation_id(perturbation_id)
+        if cid is None:
+            continue
+        targets = drug_targets_for_pubchem_cid(cid, caches)
+        if targets:
+            rows_per_drug[perturbation_id] = pd.DataFrame(
+                [{"gene_symbols": "|".join(target.gene_symbols), "sign": target.sign,
+                  "action_type": target.action_type, "target_chembl_id": target.target_chembl_id}
+                 for target in targets if target.gene_symbols])
+    return rows_per_drug
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--graph-dir", type=Path, required=True)
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--gtopdb-dir", type=Path, default=Path("data/raw/gtopdb_2026"))
+    parser.add_argument("--chembl-dir", type=Path, default=Path("data/raw/chembl"))
     parser.add_argument("--markdown-output", type=Path, default=None)
     parser.add_argument("--json-output", type=Path, default=None)
     arguments = parser.parse_args()
@@ -72,15 +99,21 @@ def main() -> None:
     interactions = read_interactions(arguments.gtopdb_dir)
     per_drug = targets_per_drug({drug: ligand for drug, ligand in ligand_of_drug.items() if drug in before}, interactions)
 
+    chembl_rows = chembl_rows_per_drug(list(before), arguments.chembl_dir)
     after: dict[str, set[str]] = {}
+    reasons_per_drug: dict[str, dict[str, str]] = {}
     unnamed_actions: dict[str, list[str]] = {}
     modulating: dict[str, list[str]] = {}
     allosteric: dict[str, list[str]] = {}
     for drug, rows in per_drug.items():
         usable = one_gene_per_row(rows)
-        if usable.empty:
+        if usable.empty or drug not in chembl_rows:
             continue
-        after[drug] = set(usable.gene_symbol)
+        # the row-wise rule: a single-gene ChEMBL row is kept, a complex row is narrowed only by GtoPdb rows naming
+        # its own subunits, and a GtoPdb target outside every ChEMBL row is added (the cocaine case)
+        signs, reasons = replace_complex_rows(chembl_rows[drug], usable)
+        after[drug] = {gene for gene in signs if gene in before[drug] or reasons[gene].startswith("gtopdb")}
+        reasons_per_drug[drug] = reasons
         unnamed = rows[rows.sign.isna() & rows.Action.notna()]  # an action the table has a word for but no sign
         if not unnamed.empty:
             unnamed_actions[drug] = sorted({str(action) for action in unnamed.Action})
@@ -113,6 +146,10 @@ def main() -> None:
     # where GtoPdb names far fewer genes than ChEMBL's complex, the narrowing is right in kind but its recall is the
     # open question: GtoPdb may hold one subunit of a receptor the drug acts on through several, so these are listed
     # for a read rather than taken as settled
+    record["reason_counts"] = {}
+    for reasons in reasons_per_drug.values():
+        for reason in reasons.values():
+            record["reason_counts"][reason] = record["reason_counts"].get(reason, 0) + 1
     record["narrowed_to_one_from_five_or_more"] = [
         change for change in changes if change["gtopdb_targets"] == 1 and change["chembl_targets"] >= 5]
     record["narrowed_most"] = changes[:15]
