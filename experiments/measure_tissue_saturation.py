@@ -21,7 +21,7 @@ Propagation. The recurrence is the linear-response encoder's, h(t+1) = (1 - damp
 with the registered damping of 0.5, but every relation's gain is 1 and the adjacency is the mean over incoming
 edges. This is a structural measurement of where a perturbation goes, not a model: the gains are learned and no
 model has been trained on this table, so reading peak steps off untrained gains would measure the initialisation.
-The script runs past the registered 8 steps on purpose, because 13.8 recorded that the registered propagation is cut
+The script runs past the 8 steps the encoder then ran on purpose, because 13.8 recorded that the propagation was cut
 off before it settles and a peak can only be seen if the window reaches it.
 
 Nothing here changes a label, a graph, a model or a model input; it writes a document and a table of curves.

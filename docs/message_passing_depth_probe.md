@@ -43,7 +43,7 @@ The relative change of the response when the number of steps is doubled, over th
 | 64 | 32 | 5.89e-09 | 2.21e-05 |
 | 128 | 64 | 2.42e-14 | 5.28e-11 |
 
-The registered linear-response encoder runs 8 steps.
+The linear-response encoder ran 8 steps when this was measured; amendment item 7 of 12 October 2026 replaced that with iteration to a fixed point at a tolerance of 1e-3.
 
 ## 4. A perturbation given once against a perturbation held on
 

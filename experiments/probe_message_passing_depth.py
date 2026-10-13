@@ -3,7 +3,8 @@
 Why. The registered message-passing encoder runs 3 layers, each with its own weights, so a perturbation's difference
 field is exactly zero more than 3 edges from its seeds. docs/drug_entry_nodes_measured.md, section 4, gives what that
 reaches: about 1 percent of the nodes a gene knockout can reach and about 35 percent of what a drug can, against 96 to
-98 percent at the 8 steps of the linear-response encoder. The user asked why message passing does not carry the signal
+98 percent at the 8 steps the linear-response encoder ran when this was measured (amendment item 7 of 12 October
+2026 replaced that fixed count with iteration to a fixed point at a tolerance of 1e-3). The user asked why message passing does not carry the signal
 until every reachable node has been reached, with parameters reused across layers. This script measures the three
 things that question turns on before anything is built:
 
@@ -298,7 +299,8 @@ def write_document(results: dict, arguments) -> None:
         *markdown_table(["steps", "against", "median relative change", "largest"],
                         [[row["steps"], row["against_steps"], f"{row['median_relative_change']:.2e}", f"{row['largest_relative_change']:.2e}"] for row in results["linear_response"]]),
         "",
-        "The registered linear-response encoder runs 8 steps.",
+        "The linear-response encoder ran 8 steps when this was measured; amendment item 7 of 12 October 2026 "
+        "replaced that with iteration to a fixed point at a tolerance of 1e-3.",
         *held_perturbation_lines(results.get("held_perturbation")),
     ]
     arguments.markdown_output.write_text("\n".join(lines) + "\n")

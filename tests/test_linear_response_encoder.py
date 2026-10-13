@@ -684,3 +684,140 @@ def test_the_propagation_runs_to_a_fixed_point_and_reports_the_rounds_it_took():
         encoder_with(fixed_point_tolerance=0.0)
     with pytest.raises(ValueError, match="max_propagation_steps must be at least 1"):
         encoder_with(fixed_point_tolerance=1e-3, max_propagation_steps=0)
+
+
+# the limiting-step cell-class rule (the owner, 13 October 2026: "min along the path makes WAY more sense to me")
+DIAMOND_RELATIONS = ["activates"]
+DIAMOND_SOURCE, DIAMOND_TARGET = [0, 1, 0, 2, 3], [1, 3, 2, 3, 4]  # 0 -> 1 -> 3 and 0 -> 2 -> 3, then 3 -> 4
+
+
+def build_diamond_encoder(cell_class_weights, class_weight_rule="limiting_step", channels_per_cell_class=1, steps=8):
+    torch.manual_seed(0)
+    num_nodes = 5
+    return LinearResponseEncoder(
+        num_nodes, DIAMOND_RELATIONS,
+        edge_source=torch.tensor(DIAMOND_SOURCE), edge_target=torch.tensor(DIAMOND_TARGET),
+        edge_relation=torch.zeros(len(DIAMOND_SOURCE), dtype=torch.long), edge_sign=torch.ones(len(DIAMOND_SOURCE)),
+        node_features=torch.eye(num_nodes), node_state_dim=4, num_propagation_steps=steps,
+        cell_class_weights=cell_class_weights, channels_per_cell_class=channels_per_cell_class,
+        class_weight_rule=class_weight_rule,
+    )
+
+
+def test_the_bottleneck_takes_the_widest_route_and_not_the_product_along_it():
+    """b(t) = max over routes of min over nodes on the route. The thin route through node 1 at 0.1 must not set the
+    ceiling at node 3 when the route through node 2 at 0.4 exists, and node 4 must inherit 0.4 rather than 0.4 * 0.5."""
+    weights = torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]])
+    encoder = build_diamond_encoder(weights)
+    with torch.no_grad():
+        bottleneck = encoder.class_bottleneck(torch.tensor([[0]]), rounds=8)[:, 0, 0]
+    assert torch.allclose(bottleneck, torch.tensor([1.0, 0.1, 0.4, 0.4, 0.4]))
+
+
+def test_the_bottleneck_counts_no_route_longer_than_the_rounds_it_is_given():
+    """Node 4 is three edges from the seed, so two rounds must leave it at zero: the attenuation may not be set by a
+    route the propagation never travelled."""
+    encoder = build_diamond_encoder(torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]]))
+    with torch.no_grad():
+        after_two = encoder.class_bottleneck(torch.tensor([[0]]), rounds=2)[:, 0, 0]
+        after_three = encoder.class_bottleneck(torch.tensor([[0]]), rounds=3)[:, 0, 0]
+    assert after_two[4] == 0.0 and after_two[3] == pytest.approx(0.4)
+    assert after_three[4] == pytest.approx(0.4)
+
+
+def test_a_stoichiometric_demand_divides_the_bottleneck_past_the_step_that_consumes_it():
+    """The owner, 13 October 2026: "ACh needing to bind two molecules to the receptor [...] would cut that expression
+    in half". A demand of two on the wide route leaves it at 0.2, which is still above the thin route's 0.1."""
+    encoder = build_diamond_encoder(torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]]))
+    wide_route_edge = [index for index, (source, target) in enumerate(zip(encoder.bottleneck_edge_source.tolist(),
+                                                                         encoder.bottleneck_edge_target.tolist()))
+                       if (source, target) == (2, 3)]
+    demand = torch.ones(encoder.bottleneck_edge_source.shape[0])
+    demand[wide_route_edge] = 2.0
+    encoder.bottleneck_edge_demand = demand
+    with torch.no_grad():
+        bottleneck = encoder.class_bottleneck(torch.tensor([[0]]), rounds=8)[:, 0, 0]
+    assert torch.allclose(bottleneck, torch.tensor([1.0, 0.1, 0.4, 0.2, 0.2]))
+
+
+def test_the_bottleneck_of_two_seeds_is_the_better_of_their_own():
+    encoder = build_diamond_encoder(torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]]))
+    with torch.no_grad():
+        from_the_thin_node = encoder.class_bottleneck(torch.tensor([[1]]), rounds=8)[:, 0, 0]
+        from_the_wide_node = encoder.class_bottleneck(torch.tensor([[2]]), rounds=8)[:, 0, 0]
+        from_both = encoder.class_bottleneck(torch.tensor([[1, 2]]), rounds=8)[:, 0, 0]
+    assert torch.allclose(from_both, torch.maximum(from_the_thin_node, from_the_wide_node))
+
+
+def test_the_bottleneck_does_not_depend_on_how_the_gather_is_chunked():
+    weights = torch.rand(5, 3)
+    encoder = build_diamond_encoder(weights)
+    with torch.no_grad():
+        one_column_at_a_time = encoder.class_bottleneck(torch.tensor([[0], [2]]), rounds=8, chunk=1)
+        all_at_once = encoder.class_bottleneck(torch.tensor([[0], [2]]), rounds=8, chunk=1024)
+    assert torch.equal(one_column_at_a_time, all_at_once)
+
+
+def test_the_bottleneck_is_per_class_and_does_not_change_with_the_channels_per_class():
+    weights = torch.rand(5, 2)
+    single = build_diamond_encoder(weights, channels_per_cell_class=1)
+    tripled = build_diamond_encoder(weights, channels_per_cell_class=3)
+    with torch.no_grad():
+        assert torch.equal(single.class_bottleneck(torch.tensor([[0]]), rounds=8),
+                           tripled.class_bottleneck(torch.tensor([[0]]), rounds=8))
+    assert single.cell_class_node_weight.shape == (5, 2) and tripled.channel_node_weight.shape == (5, 6)
+
+
+def test_the_limiting_step_rule_attenuates_by_the_bottleneck_and_not_by_the_product():
+    """The two rules must differ where the product compounds: along the wide route the product charges 0.4 * 1.0 * 0.5
+    at node 4 while the limiting step charges 0.4 once, so the limiting step's response there is the larger."""
+    weights = torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]])
+    with torch.no_grad():
+        unweighted = build_diamond_encoder(torch.ones(5, 1), class_weight_rule="limiting_step").response(*perturb(0, 1.0))[0, :, 0]
+        limiting = build_diamond_encoder(weights, class_weight_rule="limiting_step").response(*perturb(0, 1.0))[0, :, 0]
+        product = build_diamond_encoder(weights, class_weight_rule="product").response(*perturb(0, 1.0))[0, :, 0]
+    expected_bottleneck = torch.tensor([1.0, 0.1, 0.4, 0.4, 0.4])
+    assert torch.allclose(limiting, unweighted * expected_bottleneck, atol=1e-6)
+    assert abs(limiting[4]) > abs(product[4])  # the compounding is what the rule removes
+
+
+def test_the_limiting_step_rule_keeps_a_blocked_node_blocked_when_no_route_avoids_it():
+    """Node 4 has one route in, through node 3. A class that does not express node 3 must hold nothing at node 4,
+    even though the attenuation is applied after the propagation rather than inside it."""
+    weights = torch.ones(5, 2)
+    weights[3, 1] = 0.0
+    with torch.no_grad():
+        response = build_diamond_encoder(weights, class_weight_rule="limiting_step").response(*perturb(0, 1.0))[0]
+    assert response[4, 0] != 0 and response[3, 0] != 0
+    assert response[4, 1] == 0 and response[3, 1] == 0
+    assert response[1, 1] != 0 and response[2, 1] != 0  # upstream of the block the class still answers
+
+
+def test_the_limiting_step_rule_stays_linear_and_zero_without_input():
+    encoder = build_diamond_encoder(torch.rand(5, 2))
+    with torch.no_grad():
+        raised = encoder.response(*perturb(0, 1.0))
+        lowered = encoder.response(*perturb(0, -1.0))
+        padding_only = encoder.response(torch.tensor([[-1]]), torch.tensor([[[1.0, 1.0]]]))
+        doubled = encoder.response(torch.tensor([[0]]), torch.tensor([[[1.0, 2.0]]]))
+    assert torch.allclose(raised, -lowered)
+    assert torch.count_nonzero(padding_only) == 0
+    assert torch.allclose(doubled, 2.0 * raised, atol=1e-6)
+
+
+def test_the_limiting_step_rule_leaves_a_run_without_cell_classes_alone():
+    """Without cell-class weights there is nothing to take a minimum over, so the rule must change no arithmetic."""
+    torch.manual_seed(0)
+    plain = build_encoder()
+    torch.manual_seed(0)
+    named = build_encoder()
+    named.class_weight_rule = "limiting_step"
+    with torch.no_grad():
+        assert torch.equal(plain.response(*perturb(0, -1.0)), named.response(*perturb(0, -1.0)))
+
+
+def test_an_unknown_class_weight_rule_is_refused_and_the_bottleneck_needs_the_weights():
+    with pytest.raises(ValueError):
+        build_diamond_encoder(torch.ones(5, 1), class_weight_rule="minimum")
+    with pytest.raises(ValueError):
+        build_encoder().class_bottleneck(torch.tensor([[0]]), rounds=4)

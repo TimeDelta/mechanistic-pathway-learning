@@ -151,7 +151,7 @@ def figure_model_pipeline() -> None:
                      "message passing: node states from structural\nfeatures and descriptors, 3 layers of typed\n"
                      "messages (mean per relation), one more than on\na merged graph because a perturbed gene reaches\n"
                      "its protein one hop later\n\n"
-                     "linear response, 8 steps:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
+                     "linear response, to a fixed point:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
                      "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
                      f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
                      "both read the difference field:\nperturbed minus unperturbed", BOX_COLOURS["propagation"]),

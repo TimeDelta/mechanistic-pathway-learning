@@ -23,7 +23,7 @@ mean-aggregating adjacency contracts from the first step, so 68 of 68 tissues pe
 `data/processed/tissue_saturation/curves.csv` for anyone who wants them.
 
 - peak step: min 1, median 2, max 11, over 9 distinct steps
-- **tissues that fill fastest within the registered 8 steps: 66 of 68**, so 2 are cut off before their fastest step
+- **tissues that fill fastest within the 8 steps the encoder then ran: 66 of 68**, so 2 are cut off before their fastest step
 - median pairwise correlation between the normalised curves: 0.972 (quartiles 0.924 and 0.991), so the curves separate rather than tracking one another
 - share of the settled level reached by step 8: median 0.631, lowest 0.287 (Whole_Blood)
 
