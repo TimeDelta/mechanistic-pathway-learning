@@ -1736,6 +1736,28 @@ withdrawn** (the owner, 13 October 2026: "why does a module not surviving a one-
 which is the only reading in this item that can separate a grouping the mechanism supplies from one the labels
 already carry.
 
+**What the fold adds over the controls already registered, costed** (the owner, 13 October 2026: "is it just that
+the individual module might be degenerately trained, which can be inferred from other controls?"). Mostly yes, and
+the three parts of the question are each covered better elsewhere.
+
+| what the fold would catch | what already catches it, more directly |
+| --- | --- |
+| a degenerate or underdetermined module | `docs/module_health.md` (responding, nonempty, support size) and gate G1's agreement across seeds and resampled training sets, which perturb the fit harder than removing one of 24 label columns |
+| a module whose links sit on one symptom | the link concentration `max_s link_ks / sum_s link_ks` of the fitted readout: exact, per module, and free |
+| a grouping that rests on symptoms co-occurring rather than sharing a mechanism | the label co-occurrence baseline of (e), and the column correlations of the raw outcome matrix, which are read without fitting anything |
+
+What is left that none of them gives is the **joint** reading: whether, in the model as actually fitted, removing
+one symptom's evidence moves the mechanism attribution. The optimiser's behaviour is not a function of those three
+statistics, so none of them strictly implies it. That is a thin residue to buy at the price: 24 folds x 2 models x
+5 seeds is 240 runs against the registered 60, four times the whole confirmatory budget for a diagnostic whose
+power runs one way, and the same arithmetic ruled out leave-one-target-out in item 25.
+
+**So the folds are registered conditionally rather than as a sweep.** The link concentration is computed for every
+module from the full-data fit, and a fold is run only for a (module, symptom) pair whose concentration passes the
+threshold set before the fit, which puts the refits in single figures rather than at 24 per model. A pair that the
+cheap statistic does not flag is not refitted, and the registration says so now so that the set cannot be chosen
+after the concentrations are seen. If no pair is flagged, no fold runs and that is the finding.
+
 **Freezing the output matrix is what makes the folds comparable, and it is not only a convenience.** Modules are
 exchangeable: refit without a symptom, they may come back permuted, and a symptom vector from one fold would then
 mean nothing against another's. A frozen output matrix pins them, because a module's contribution to the output runs
