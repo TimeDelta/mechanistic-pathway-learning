@@ -1452,6 +1452,57 @@ cell-class weights and combined perturbations are named per run and belong to th
   input, not a tested claim, which is why it is registered as open rather than added (the owner, 12 October: "I don't
   want to add extra confirmatory model variations because that starts increasing probability of winning by luck").
 
+**25. The held-out set is split on mechanism targets, not on drugs, and two readings are registered beside it**
+(the owner, 13 October 2026: "NOT splitting on drug itself but splitting on each target individually (so each drug can
+have some labels in the test/validation and some in the held-out but all of the labels for a specific mechanism are
+consistently split across test and held out)"; "the memorization vs generalization seems like a defensible middle
+ground though and i can also report a separate stratum for the unseen mechanisms as an estimate on generalization ...
+do it and register all 3").
+
+**Why the drug split cannot stand.** Over 200 full redraws at a held-out fraction of one seventh, **84.4 percent** of
+held-out drugs have every target already present in a training drug, because the drugs genuinely share mechanisms: 58
+of the 192 targets are held by six or more drugs. No grouping fixes it. Grouping hard enough to remove the sharing
+gives a single block of 90 percent of the drugs, and the rare-target rule mitigates without eliminating, as the owner
+said ("it doesn't truly stop leakage ... just mitigates it").
+
+**a. The split.** The unit is a (drug, target) mechanism edge. A partition of the targets puts every edge through a
+held-out target on the held-out side, so a drug keeps labels on both sides and what is held out is **the drug acting
+through a particular target**. Measured over 200 redraws (`experiments/label_review/target_split_options.py`), against
+the three other readings of the same sentence:
+
+| rule | held-out share | fully covered by training mechanisms | has a mechanism training never saw |
+|---|---|---|---|
+| drug, as drawn today | 14.3% | 84.4% | 15.6% |
+| every target held | 3.1% | 81.1% | 18.9% |
+| primary target held | 7.1% | 75.8% | 24.2% |
+| any target held | 46.0% | 0.0% | 100% |
+| **mechanism edge** | **13.8%** | **0.0%** | **100%** |
+
+The mechanism-edge rule holds out the same share as the drug split does today and leaves **none** of the held-out side
+covered by a training mechanism, by construction: a held-out target appears in no training edge of any drug.
+`any target held` achieves the same and holds out 46 percent of the drugs, which is why it is not taken.
+
+**The cost, stated because it is not small.** A label is a (drug, symptom) pair and the observed symptom was produced
+by the whole drug. Under this split the model is asked at test time to predict from the drug's held-out targets alone,
+so a partial mechanism is scored against a whole-drug label. The label is therefore noisy with respect to the input,
+and the noise is one-sided: a symptom the drug causes through a target that stayed in training still appears in the
+label. This lowers the ceiling on the achievable score and must be reported with it. It does not bias in favour of the
+hypothesis: a model that has learned nothing about the held-out mechanism cannot be helped by the label noise.
+
+**b. The permuted-target negative control carries the evidence on memorisation.** Already registered as item 4 and
+read as the primary answer to whether the model uses mechanism or drug identity, because no split can settle it
+structurally. Permuting which targets each drug has and retraining must lower the score; a score that survives the
+permutation is drug identity and not mechanism, whatever the split.
+
+**c. A pre-registered secondary stratum for unseen mechanisms.** Scored apart on the held-out edges whose target
+appears in no training edge, which under the mechanism-edge rule is all of them, and under the drug split would have
+been the 15.6 percent with a genuinely unseen mechanism. It is the study's only estimate of extrapolation to a
+mechanism never trained on, it is underpowered, and it is fixed here before the draw so it cannot be chosen after a
+result is seen.
+
+The held-out set is redrawn under this rule, which the owner's direction of 13 October permits ("doesn't have to
+maintain current held out set because of the number of changes since that set was drawn").
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
