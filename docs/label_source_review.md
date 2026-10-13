@@ -2980,3 +2980,145 @@ What follows, stated so the owner can decide knowingly:
 
 Nothing here touches the message-passing encoder's adjacency, which reads neither signs nor weights; that is the change
 item 9 of the amendment registers and whose code is not written.
+
+## 28. Answers of 12 October, 20:30
+
+The owner: "Can't exclude all beta blockers … just ones that don't act centrally because beta receptors are all
+throughout the brain. I also feel like 5-HT3 antagonists could be useful but might require new brain region so not
+sure. psychiatric-adverse-event drugs also sound super useful. Why were they excluded?" Then: "has adenylyl cyclase to
+cAMP pathway been conditioned on cell type?"
+
+### 28.1 The beta blockers: the owner is right, and the measurement separates them
+
+The graph's own expression data says so first: `ADRB1` is brain-expressed at 12.7 median TPM and `ADRB2` at 2.5, both
+with real connectivity (`PROTEIN:ADRB1` 25 outgoing edges, `PROTEIN:ADRB2` 109). Only `ADRB3` fails (0.20 TPM). So
+"not named as centrally acting" was a property of the ATC group name and not of the receptor, and excluding the class
+threw away a brain-expressed target the study already carries.
+
+And the drugs separate by measured brain penetration, in the tables the exposure build already reads
+(`data/raw/label_review/effect_site_tables/kpuu/`, rat Kp,uu,brain unless stated):
+
+| drug | Kp,uu,brain | reads |
+| --- | --- | --- |
+| metoprolol | 0.43, 0.64; 0.93 human | reaches the brain |
+| propranolol | 0.49, 0.61; 0.42 human | reaches the brain |
+| pindolol | 0.11, 0.50; 0.52 human | reaches the brain |
+| alprenolol | 0.33, 0.38, 0.77 | reaches the brain |
+| oxprenolol | 0.10, 0.20 | partly |
+| labetalol | 0.054 | barely |
+| nadolol | 0.037, 0.041 | no |
+| atenolol | 0.026, 0.036 | no |
+
+A factor of 20 between metoprolol and atenolol, which is the distinction the owner is making and the ATC letter cannot
+make. So the rule should not be a class at all:
+
+**Proposed rule, for the owner's approval: a drug is admitted when a mechanism target of it is a brain-expressed node
+of the graph and the drug has a measured Kp,uu,brain.** Both halves are properties of the drug's pharmacology and of
+the graph, measured before any outcome is looked at, so the rule cannot select on the outcome the way the ATC-name rule
+had to be guarded against. It also needs no new threshold: the registered occupancy anchor already turns fu,plasma and
+Kp,uu,brain into an unbound brain concentration, so a drug with both gets a real concentration at a real target and a
+drug without one gets no occupancy and is not admitted.
+
+Two warnings on the data. The `friden2011_via_chembl` rows give atenolol 2.25 and nadolol 2.63, which are 60 times the
+other rows for the same drugs and are recorded in ChEMBL as type `Kp` rather than `K(p,uu,brain)`; the exposure build
+takes the median per species, so three rat values survive the outlier, but a drug whose only row came from that file
+would be read wrong. And every value above is rodent except the three human ones, so the rule inherits the
+species caveat the occupancy anchor already carries.
+
+### 28.2 The 5-HT3 antagonists: my reason was wrong twice, and the real limit is different
+
+I wrote that they "act at the area postrema and on vagal afferents, outside the blood-brain barrier". The data
+contradicts both halves.
+
+- **Measured penetration.** Ondansetron Kp,uu,brain 0.19 and 0.283 in rat and 0.481, 0.483 in cynomolgus monkey;
+  granisetron 0.13 in rat. Ondansetron's monkey value is above propranolol's rat value. These drugs reach the unbound
+  brain compartment.
+- **The target is in the brain.** `HTR3A` is brain-expressed at 2.19 median TPM and `HTR3B` at 5.07 in the graph's own
+  GTEx annotation.
+
+So the exclusion rested on a claim the project's own data refutes, and no new brain region is needed: the owner's "might
+require new brain region" would be the right worry if the receptor sat outside the barrier, and it does not.
+
+**The real limitation is connectivity, not geography.** `PROTEIN:HTR3A` has 10 outgoing edges and `PROTEIN:HTR3B` 7, and
+every one of them is `binds` or `member_of`. `binds` is the unsigned relation, so a 5-HT3 antagonist's change has no
+signed functional output to propagate: it would enter the graph and stop. That is a statement about the graph, and it is
+fixable by wiring the receptor to the cation current it gates, which is the same kind of gap as the 57 channel reactions
+of 23.4. Until it is, admitting these drugs adds labels the model has almost no route to explain. Compare `ADRB1`, whose
+25 outgoing edges include 3 `activates` into the G-protein cascade.
+
+### 28.3 Why the psychiatric-adverse-event drugs were excluded, and why that was right for two of three
+
+The reason was circularity, and it is worth stating plainly because it is the one argument in section 9.4 that is about
+method rather than pharmacology. Montelukast, isotretinoin and ribavirin are known for psychiatric adverse events.
+Admitting a drug into the study *because* it causes the study's symptoms selects the drug set on the outcome: the model
+is then scored on drugs chosen for having the labels it is asked to predict, and some of its apparent skill is the
+selection and not the model. The same argument excluded the first-generation antihistamines whose labels state sedation.
+
+But the argument only bites when the drug has no independent mechanistic claim on admission. Checked against the graph:
+
+| drug | mechanism target | brain-expressed | connectivity of the protein node | Kp,uu,brain |
+| --- | --- | --- | --- | --- |
+| isotretinoin | `RARA`, `RARB`, `RARG`, `RXRA` | **yes**: 19.3, 6.0, 21.0, 26.3 TPM | `PROTEIN:RARA` 246 out-edges (186 transcriptional), `RARB` 63 | none found |
+| montelukast | `CYSLTR1` | **no**: 0.47 TPM (`CYSLTR2` is, at 1.90) | 22 out-edges | none found |
+| ribavirin | no central target | — | — | none found |
+
+So the mechanism rule of 28.1 settles all three without appeal to their adverse events: **montelukast and ribavirin
+fail it**, the first because its receptor is not brain-expressed and the second because it has no central target, and
+the exclusion of those two is not a judgment about selection any more. **Isotretinoin passes the brain-expression
+half** on four well-connected nuclear receptors, and the retinoic-acid route to mood is a mechanistic claim rather than
+an adverse-event one, so excluding it was wrong on the evidence. It fails the Kp,uu,brain half only for want of a
+measured value, which is a gap in the exposure tables rather than a finding about the drug.
+
+Recommended: admit isotretinoin if the owner accepts the mechanism rule with a missing Kp,uu,brain treated as "not yet
+measured" rather than "does not penetrate"; keep montelukast and ribavirin out, now for a measured reason.
+
+### 28.4 Adenylyl cyclase to cAMP, conditioned on cell type: partly, and only where a perturbation enters
+
+Three answers, because the question has three parts.
+
+**The enzymes are conditioned, and sharply.** Every adenylyl cyclase isoform node carries a weight per brain cell class
+(`data/processed/cell_class_weights/`, 11 classes from the Siletti atlas), and the isoforms separate the way the
+literature would have them:
+
+| node | medium spiny neuron | astrocyte | range over the 11 classes |
+| --- | --- | --- | --- |
+| `ADCY5` | 0.999 | 0.027 | 0.005 to 0.999 |
+| `ADCY8` | 0.035 | 0.998 | 0.008 to 0.998 |
+| `ADCY2` | 0.278 | 0.999 | 0.006 to 0.999 |
+| `ADCY1` | 0.380 | 0.234 | 0.015 to 0.997 |
+
+Over the whole graph, 32,234 of 49,728 nodes (64.8 percent) have a weight that varies across the classes: 95.9 percent
+of gene nodes, 96.5 percent of protein nodes.
+
+**The cAMP step itself is not conditioned, and the reason is a gap rather than a choice.** `MAM01419c`, `MAM01419e` and
+`MAM01419g` (the cAMP pools) and the reactions that make cAMP — `RCT_392129`, `RCT_111930`, `RCT_442715` — carry 1.0 in
+every class. Metabolite nodes are flat by construction, which is defensible. The reactions are not, and the break is
+locatable:
+
+| reactions | with a varying class weight |
+| --- | --- |
+| regulated by a gene or protein node (7,769) | 98.9 percent |
+| regulated only by a protein complex (413) | **0 percent — every one is flat** |
+
+The weight reaches a reaction through its catalysing gene, and a Reactome reaction's catalyst is a complex
+(`protein_entity`), not a gene. Complexes carry no weight, so the chain gene → protein → complex → reaction breaks at
+the complex and 413 reactions fall back to 1.0. Adenylyl cyclase is in that set, because Reactome models it as
+`G alpha (s):GTP:Adenylate cyclase`. The fix is available and small: 1,527 of the 1,681 complexes have a member gene or
+protein node that already carries a weight, and `member_of` edges give the membership, so a complex can take the weight
+of its limiting member and pass it on as any gene-backed reaction does.
+
+**And the conditioning gates entry, not travel.** The encoder multiplies the sustained input by the per-class node
+weight (`channel_node_weight` in `linear_response_encoder.py`, "a class that does not express the perturbed node does
+not feel it there"), and the input is nonzero only at the seeds. So the weights decide how strongly a perturbation
+*enters* each class's channel; from there every channel traverses the same adenylyl cyclase to cAMP to PKA structure,
+differing only in its learned relation gains. "Conditioned on cell type" is true of where the signal starts and false
+of how it travels. Conditioning the travel would mean a per-class node weight inside the recurrence, which is a change
+to a registered encoder and not something to slip in.
+
+**One thing I checked and will not report as a defect.** I first traced `PROTEIN:DRD2` to a Gs complex in two edges and
+`PROTEIN:ADRB1` to a Gi complex, which would have been a serious sign bug: the Gs arm catalyses the cyclase at +1 and
+the Gi and Gz arms inhibit it at -1, so coupling that reached both arms would let a D2 antagonist raise cAMP. It was my
+own error. The goal set was matched on display names, and Reactome's joint complex names
+("(Gi alpha1:GTP:Adenylate cyclase):(G alpha-olf...)") contain both strings. Read properly the coupling is right:
+`DRD2` activates `GNAI1`, `GNAI2`, `GNAI3` and `GNAZ`, `ADRB1` activates `GNAS`, and the signs at the cyclase follow.
+`ADRB1` also reaches `GNAL` and `GNA14`, which are Reactome's own annotations and not an error either.
