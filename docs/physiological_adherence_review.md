@@ -344,6 +344,12 @@ mirror - the claim that a gain of function produces the exact negative of the fi
 as a divergence between registration and code, when the property should never have been registered at all: the
 owner never accepted it, and it is withdrawn rather than corrected.
 
+**The remedy for most of it is already written and is not the default.** `total_in_degree` divides each entry by
+the destination's in-degree summed over every relation, so the unsigned row sums are one exactly as under
+`in_degree` - the same contraction, no global shrink - while the counts survive: five producers against one
+consumer give (5-1)/6 rather than 0. The per-node mean cannot be justified as physiology; it is there so the
+iteration contracts, which is a numerical requirement. Decision 4.13.
+
 **The pattern worth naming.** Most of the costed deviations are the same deviation: the in-degree mean. It erases
 reaction counts (section 1), cancels reversible reactions (2), dilutes the proton node to 1/4,096 (5) and the
 membrane potential to the pool's in-degree (7). The study's one external check of the propagation - direction
