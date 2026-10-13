@@ -89,6 +89,7 @@ from mechanistic_pathway_learning.models.relational_message_passing_encoder impo
                                                                                       RelationalMessagePassingEncoder)
 from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, equal_drug_loss_shares, evidence_weighted_binary_cross_entropy
 
+MESSAGE_PASSING_EDGE_SIGNS: tuple[str, ...] = ("graph", "unsigned")
 CHECKPOINT_REQUESTED = False
 MINIMUM_POSITIVES_TO_SCORE = 5
 
@@ -594,6 +595,24 @@ def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, freq
     return weights
 
 
+def message_passing_adjacencies(data, edge_signs: str) -> list:
+    """The message-passing encoder's per-relation adjacencies, signed from the graph under edge_signs "graph".
+
+    Registered as item 9 of the amendment of 12 October 2026 (the owner: "The edge signs are also settled: the MP has
+    to adhere to the edge signs the same way the linear encoder does"), so "graph" is the default and "unsigned"
+    reproduces every run made before that date. Under "graph" an edge also carries the weight the graph gives it, which
+    today is the driving-force edges of the computed membrane potential; without such a column every weight is 1 and
+    only the signs change."""
+    if edge_signs not in MESSAGE_PASSING_EDGE_SIGNS:
+        raise ValueError(f"--message-passing-edge-signs must be one of {MESSAGE_PASSING_EDGE_SIGNS}, not {edge_signs!r}")
+    edge_sign = None if edge_signs == "unsigned" or data.edge_sign is None else torch.as_tensor(np.asarray(data.edge_sign), dtype=torch.float32)
+    edge_weight = None if edge_signs == "unsigned" or data.edge_weight is None else torch.as_tensor(np.asarray(data.edge_weight), dtype=torch.float32)
+    return RelationalMessagePassingEncoder.build_relation_adjacencies(
+        torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long),
+        torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types),
+        edge_sign=edge_sign, edge_weight=edge_weight)
+
+
 def drug_loss_slots(data) -> np.ndarray | None:
     """One slot id per perturbation for the equal drug shares, or None for a table with no combination in it.
 
@@ -900,6 +919,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
     parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
+    parser.add_argument("--message-passing-edge-signs", choices=MESSAGE_PASSING_EDGE_SIGNS, default="graph",
+                        help="whether the message-passing encoder's adjacency carries the graph's edge signs and weights. \"graph\" is the registered "
+                             "behaviour from 12 October 2026 (amendment item 9); \"unsigned\" reproduces every run made before it, when an inhibition "
+                             "and an activation of the same relation arrived alike")
     parser.add_argument("--combined-perturbations", type=Path, default=None,
                         help="parquet of combination rows from experiments/build_combined_perturbations.py: a drug carried with a lowered gene, or with a second drug, "
                              "in one example (mechanistic_pathway_learning/evidence/combined_perturbations.py). Without it the table holds no combination and the run is unchanged")
@@ -1139,6 +1162,12 @@ def main() -> None:
             rewiring_summary["fixed_relations"] = [data.relation_types[relation] for relation in fixed_relations]
         if arguments.recompute_reaction_expression_on_rewired_graph:  # only then, so the split signature of earlier rewired runs is unchanged
             rewiring_summary["reaction_expression_recomputed"] = recompute_reaction_expression(data, original_edges, rewired, arguments)
+        # The signs stay at their edge positions. The rewiring exchanges targets between two edges of one relation, so
+        # position i keeps its source and its sign and gets a new target: the control randomises which node an edge
+        # points at, not whether that edge activates or represses, which keeps the sign distribution of every source and
+        # every relation intact and randomises only the wiring. The question did not exist before 12 October 2026,
+        # when the message-passing adjacency began to read the signs (amendment item 9), and the linear-response
+        # encoder has always read them this way.
         data.edge_source, data.edge_target = rewired[0], rewired[1]  # before the encoder and the adjacencies are built
         print(f"rewired graph: {rewiring_summary}")
     elif arguments.recompute_reaction_expression_on_rewired_graph:
@@ -1168,8 +1197,8 @@ def main() -> None:
     initialise_rates_at_weighted_optimum(head, data, train_indices, label_mask, arguments, device)
     adjacencies = None  # the linear-response encoder builds its signed adjacency from the edges at construction
     if arguments.encoder == "message_passing":
-        adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
-            torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types))]
+        adjacencies = [adjacency.to(device) if adjacency is not None else None
+                       for adjacency in message_passing_adjacencies(data, arguments.message_passing_edge_signs)]
     laboratory_index, laboratory_readout = None, None
     if arguments.laboratory_label_weight > 0:
         laboratory_index = LaboratoryLabelIndex(pd.read_parquet(arguments.laboratory_labels), data.perturbation_ids, data.node_base_metabolite_id)

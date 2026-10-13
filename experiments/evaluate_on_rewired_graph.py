@@ -35,11 +35,17 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from experiments.run_main_model import (build_argument_parser, build_models, macro_auprc, predict, rewiring_fixed_relations)
+from experiments.run_main_model import (
+    build_argument_parser,
+    build_models,
+    macro_auprc,
+    message_passing_adjacencies,
+    predict,
+    rewiring_fixed_relations,
+)
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data, read_lockbox, restrict_to_perturbations
 from mechanistic_pathway_learning.evaluation.negative_controls import fast_degree_preserving_rewiring, reciprocated_relations
 from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics import micro_auprc
-from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
 
 OUTPUT_NAME = "rewired_graph_evaluation.json"
 SYMMETRIC_OUTPUT_NAME = "rewired_graph_evaluation_symmetric.json"
@@ -82,9 +88,10 @@ def trained_models(data, arguments: Namespace, checkpoint: dict, device):
     head.load_state_dict(state["best_head"] if state.get("best_head") is not None else checkpoint["head"])
     adjacencies = None
     if arguments.encoder == "message_passing":
-        adjacencies = [adjacency.to(device) if adjacency is not None else None for adjacency in RelationalMessagePassingEncoder.build_relation_adjacencies(
-            torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long),
-            len(data.node_ids), len(data.relation_types))]
+        # the signs come from the rewired graph the data was loaded with, so the H2 arm reads the signs its own edges
+        # carry rather than the real graph's (amendment item 9 of 12 October 2026)
+        adjacencies = [adjacency.to(device) if adjacency is not None else None
+                       for adjacency in message_passing_adjacencies(data, getattr(arguments, "message_passing_edge_signs", "graph"))]
     return encoder, head, adjacencies
 
 
@@ -127,6 +134,12 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
                                               undirected_relations=undirected_relations,
                                               fixed_relations=rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False)))
     try:
+        # The signs stay at their edge positions. The rewiring exchanges targets between two edges of one relation, so
+        # position i keeps its source and its sign and gets a new target: the control randomises which node an edge
+        # points at, not whether that edge activates or represses, which keeps the sign distribution of every source and
+        # every relation intact and randomises only the wiring. The question did not exist before 12 October 2026,
+        # when the message-passing adjacency began to read the signs (amendment item 9), and the linear-response
+        # encoder has always read them this way.
         data.edge_source, data.edge_target = rewired[0], rewired[1]
         rewired_encoder, rewired_head, rewired_adjacencies = trained_models(data, arguments, checkpoint, device)
         rewired_predictions = predict(rewired_encoder, rewired_head, data, test_indices, rewired_adjacencies, arguments, device)
@@ -136,7 +149,7 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
     evaluation = {
         "swaps_per_edge": swaps_per_edge, "rewiring_seed": rewiring_seed, "share_of_edges_unchanged": float((rewired == original_edges).all(axis=0).mean()),
         "undirected_relations": [data.relation_types[relation] for relation in undirected_relations],
-        "num_test": int(len(test_indices)), "reproduction_max_abs_difference": reproduction_difference,
+        "num_test": len(test_indices), "reproduction_max_abs_difference": reproduction_difference,
         "reproduced": reproduction_difference <= REPRODUCTION_TOLERANCE,
         "macro_auprc_real": macro_auprc(real_predictions, test_outcomes, test_mask), "micro_auprc_real": micro_auprc(real_predictions, test_outcomes, test_mask),
         "macro_auprc_rewired": macro_auprc(rewired_predictions, test_outcomes, test_mask), "micro_auprc_rewired": micro_auprc(rewired_predictions, test_outcomes, test_mask),

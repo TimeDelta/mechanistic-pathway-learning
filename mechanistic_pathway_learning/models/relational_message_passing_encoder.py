@@ -260,8 +260,27 @@ class RelationalMessagePassingEncoder(nn.Module):
         return node_state_field
 
     @staticmethod
-    def build_relation_adjacencies(edge_index: Tensor, edge_relation_type: Tensor, num_graph_nodes: int, num_relation_types: int) -> list[Tensor | None]:
-        """One sparse, in-degree-normalized adjacency per relation: entry [destination, source] = 1 / in_degree(destination)."""
+    def build_relation_adjacencies(edge_index: Tensor, edge_relation_type: Tensor, num_graph_nodes: int, num_relation_types: int,
+                                   edge_sign: Tensor | None = None, edge_weight: Tensor | None = None) -> list[Tensor | None]:
+        """One sparse, in-degree-normalised adjacency per relation: entry [destination, source] = sign x weight / in_degree(destination).
+
+        The signs. Until 12 October 2026 this built an unsigned adjacency, so an inhibition and an activation of the same
+        relation arrived alike and the message passing encoder read none of the graph's signs, while the linear-response
+        encoder read all of them. The owner, 12 October 2026: "Why would MP not read the edge sign?! That seems like a
+        bug"; and then "The edge signs are also settled: the MP has to adhere to the edge signs the same way the linear
+        encoder does". Registered as item 9 of the amendment of 12 October. Twelve of the twenty relations have a
+        constant sign that the relation index already carried, so nothing changes for them; the change is the eight whose
+        sign varies within the relation, 42,903 edges, of which 7,321 are negative and were read as positive, 7,087 of
+        them transcriptional repressions among `regulates_transcription_of`'s 41,638 edges.
+
+        One consequence registered with it: with signs in the values, the in-degree mean can cancel, so a node with one
+        activator and one repressor of equal weight receives exactly zero. That is the arithmetic of a mean over signed
+        messages and not a defect of this function.
+
+        edge_weight carries an edge's own strength where the graph gives it one, which today is the driving-force edges
+        of the computed membrane potential (graph/membrane_potential.py). The normalisation stays the count of incoming
+        edges, not the sum of their weights, so a relation's weights change what arrives without changing the divisor.
+        """
         adjacencies: list[Tensor | None] = []
         for relation_index in range(num_relation_types):
             edges_of_relation = edge_relation_type == relation_index
@@ -272,6 +291,10 @@ class RelationalMessagePassingEncoder(nn.Module):
             destination = edge_index[1][edges_of_relation]
             in_degree = torch.zeros(num_graph_nodes, dtype=torch.float32).index_add(0, destination, torch.ones(len(destination)))
             values = 1.0 / in_degree[destination]
+            if edge_sign is not None:
+                values = values * edge_sign[edges_of_relation].to(values.dtype)
+            if edge_weight is not None:
+                values = values * edge_weight[edges_of_relation].to(values.dtype)
             adjacency = torch.sparse_coo_tensor(torch.stack([destination, source]), values, (num_graph_nodes, num_graph_nodes)).coalesce()
             adjacencies.append(adjacency)
         return adjacencies

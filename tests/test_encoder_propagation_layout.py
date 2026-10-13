@@ -1,6 +1,8 @@
 """The node-major, stacked-adjacency propagation must equal the batch-major per-relation loop it replaced."""
 from __future__ import annotations
 
+import numpy as np
+import pytest
 import torch
 
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
@@ -68,3 +70,36 @@ def test_difference_field_is_zero_without_perturbation_and_cache_follows_the_adj
     other_adjacencies = encoder.build_relation_adjacencies(other_edges, other_relations, 30, 3)
     second_stack, _ = encoder.stacked_relation_adjacency(other_adjacencies)
     assert first_stack._nnz() != second_stack._nnz() or not torch.equal(first_stack.indices(), second_stack.indices())
+
+
+def test_the_adjacency_carries_the_graph_s_edge_signs_and_weights():
+    """Registered as item 9 of the amendment of 12 October 2026: the message-passing encoder reads the edge signs the
+    way the linear-response encoder does. Until then an inhibition and an activation of one relation arrived alike."""
+    # two edges of one relation into node 2: an activation from 0 and a repression from 1
+    edge_index = torch.tensor([[0, 1], [2, 2]], dtype=torch.long)
+    edge_relation = torch.tensor([0, 0], dtype=torch.long)
+    unsigned = RelationalMessagePassingEncoder.build_relation_adjacencies(edge_index, edge_relation, 3, 1)[0].to_dense()
+    signed = RelationalMessagePassingEncoder.build_relation_adjacencies(
+        edge_index, edge_relation, 3, 1, edge_sign=torch.tensor([1.0, -1.0]))[0].to_dense()
+    assert unsigned[2, 0] == pytest.approx(0.5) and unsigned[2, 1] == pytest.approx(0.5)
+    assert signed[2, 0] == pytest.approx(0.5) and signed[2, 1] == pytest.approx(-0.5)
+    # the consequence registered with the change: a mean over equal and opposite messages is zero
+    assert signed[2].sum() == pytest.approx(0.0)
+    # a weight scales what arrives and leaves the divisor alone, which stays the count of incoming edges
+    weighted = RelationalMessagePassingEncoder.build_relation_adjacencies(
+        edge_index, edge_relation, 3, 1, edge_sign=torch.tensor([1.0, -1.0]), edge_weight=torch.tensor([0.25, 1.0]))[0].to_dense()
+    assert weighted[2, 0] == pytest.approx(0.125) and weighted[2, 1] == pytest.approx(-0.5)
+
+
+def test_the_trainer_signs_the_adjacency_by_default_and_can_reproduce_the_unsigned_runs():
+    from types import SimpleNamespace
+
+    from experiments.run_main_model import message_passing_adjacencies
+
+    data = SimpleNamespace(edge_source=np.array([0, 1]), edge_target=np.array([2, 2]), edge_relation=np.array([0, 0]),
+                           edge_sign=np.array([1.0, -1.0]), edge_weight=None, node_ids=["a", "b", "c"], relation_types=["activates"])
+    signed = message_passing_adjacencies(data, "graph")[0].to_dense()
+    unsigned = message_passing_adjacencies(data, "unsigned")[0].to_dense()
+    assert signed[2, 1] == pytest.approx(-0.5) and unsigned[2, 1] == pytest.approx(0.5)
+    with pytest.raises(ValueError, match="must be one of"):
+        message_passing_adjacencies(data, "permuted")
