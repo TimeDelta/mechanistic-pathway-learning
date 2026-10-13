@@ -1117,10 +1117,34 @@ now holds the file to the formula, so the two cannot drift apart again.
 **4. Reported beside the score, changing no model.** The input-size baseline, macro AUPRC within strata of a drug's
 number of targets, and the permuted-target negative control. All three were named before any run on this table.
 
-**5. The occupancy anchor.** Where an off-target ever enters a model input, its occupancy is read from the measured
-unbound concentration at each target's own site and not from the placeholder that fixes the best-bound target at 90
-percent (user, 12 October). No registered input reads an off-target, so this binds nothing yet and is written here so
-the anchor is not chosen by default later.
+**5. The occupancy anchor.** Where an off-target ever enters a model input, its occupancy is read from the
+measured unbound concentration at each target's own site (user, 12 October). No registered input reads an
+off-target, so this binds nothing yet and is written here so the anchor is not chosen by default later.
+
+**5a. Amended 13 October 2026: the calibrated placeholder of item 29 is permitted where no measurement exists**
+(the owner: "Just amend the item 5"). This item read "and not from the placeholder that fixes the best-bound
+target at 90 percent". That prohibition was aimed at the **raw** placeholder, which sets the concentration by
+assertion - it pins the best-bound mechanism target at 0.9 occupancy and reads everything else off that - and the
+objection to it was that the anchor would be chosen rather than measured. Item 29's placeholder is a different
+object: its concentration is corrected by an offset measured against the drugs that have both, and it carries
+`has_measured_occupancy` so a reading can be taken with and without it. The objection is met, so the prohibition
+is lifted.
+
+**What the amendment does not do is make the two equivalent for an off-target, and the asymmetry is measured.** A
+concentration error passes into occupancy almost undamped where occupancy is low and is absorbed where it is near
+saturation, and that is exactly the difference between an off-target and a mechanism target. At the calibration's
+one-standard-deviation scatter of 1.14 log units:
+
+| | median occupancy | where a one-sd concentration error moves it |
+| --- | --- | --- |
+| mechanism targets (305 rows) | 0.787 | x1.2 up, x3.7 down |
+| off-targets (1,163 rows) | 0.063 | **x7.6 up, x13.0 down** |
+
+So an imputed off-target occupancy is uncertain by about an order of magnitude in either direction, against a
+factor of two to four for an imputed mechanism target. **An off-target occupancy that rests on a calibrated
+placeholder is therefore reported in the `has_measured_occupancy` stratum and not in the headline**, which is the
+same instrument item 29 already registers and not a new one. Whether off-targets enter at all remains decision
+1.3.
 
 **6. The comparative checks.** `configs/comparative_checks.csv`, 214 statements named in advance, read after scoring,
 testing no hypothesis of the study and changing no decision rule. Only the two-drug kind is a test of a model; the
@@ -2014,10 +2038,10 @@ how widely the drug has been studied and so correlates with its label count by t
 
 **What is not settled here.** Whether off-targets enter the input at all, and at what occupancy threshold, is
 decision 1.3 and remains the owner's; item 25's split survives them, at a cost in novelty rather than in size
-(`docs/off_targets_under_the_target_split.md`). And **item 5 and this item will have to be reconciled** if
-off-targets are admitted: item 5 registers that an off-target's occupancy is read from the measured unbound
-concentration "and not from the placeholder", which a calibrated placeholder still is. That is a conflict between
-two registered items rather than something a session resolves.
+(`docs/off_targets_under_the_target_split.md`). The conflict with item 5 that this item first flagged is closed:
+item 5a permits the calibrated placeholder, having been aimed at the raw one, and records that an imputed
+off-target occupancy is uncertain by about an order of magnitude against a factor of two to four for a mechanism
+target, so it is reported in the stratum rather than the headline.
 
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
