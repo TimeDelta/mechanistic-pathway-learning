@@ -3072,7 +3072,7 @@ measured value, which is a gap in the exposure tables rather than a finding abou
 Recommended: admit isotretinoin if the owner accepts the mechanism rule with a missing Kp,uu,brain treated as "not yet
 measured" rather than "does not penetrate"; keep montelukast and ribavirin out, now for a measured reason.
 
-### 28.4 Adenylyl cyclase to cAMP, conditioned on cell type: partly, and only where a perturbation enters
+### 28.4 Adenylyl cyclase to cAMP, conditioned on cell type: at its enzymes and in the propagation, not at the reactions a complex regulates
 
 Three answers, because the question has three parts.
 
@@ -3107,13 +3107,26 @@ the complex and 413 reactions fall back to 1.0. Adenylyl cyclase is in that set,
 protein node that already carries a weight, and `member_of` edges give the membership, so a complex can take the weight
 of its limiting member and pass it on as any gene-backed reaction does.
 
-**And the conditioning gates entry, not travel.** The encoder multiplies the sustained input by the per-class node
-weight (`channel_node_weight` in `linear_response_encoder.py`, "a class that does not express the perturbed node does
-not feel it there"), and the input is nonzero only at the seeds. So the weights decide how strongly a perturbation
-*enters* each class's channel; from there every channel traverses the same adenylyl cyclase to cAMP to PKA structure,
-differing only in its learned relation gains. "Conditioned on cell type" is true of where the signal starts and false
-of how it travels. Conditioning the travel would mean a per-class node weight inside the recurrence, which is a change
-to a registered encoder and not something to slip in.
+**And the conditioning reaches the travel as well as the entry — I wrote otherwise here and was wrong.** The claim
+published in this section, that the weights gate only where a perturbation enters, came from reading
+`channel_node_weight`'s use on the sustained input and not reading the rest of the loop.
+`LinearResponseEncoder.response` applies it twice: once to the input (`node_major_input = node_major_input *
+node_weight`, "a class that does not express the perturbed node does not feel it there") and once to the messages
+arriving at every node on **every round** (`relation_messages = relation_messages * node_weight`). So each class's
+channel does not traverse the same structure: a reaction a class does not express passes nothing on in that class's
+channel, which is the physiology the owner asked after ("I think to be true to physiology it does, no?") and it is
+already built.
+
+Reading the loop properly leaves a different observation, about the quantity rather than the mechanism. The weight is a
+*relative expression* — "its expression relative to its highest class, with a half-saturation at the Human Protein
+Atlas detection threshold" (`graph/brain_expression_weights.py`) — and it multiplies at every round, so a path of k hops
+through nodes weighted w carries w to the k. A five-hop path through nodes at 0.5 arrives at 0.03 rather than 0.5. What
+compounds is a continuous expression share and not a per-round probability that the step occurs, so a long path through
+moderately expressed nodes is suppressed by an amount nothing physiological sets, and the suppression grows with path
+length, which is the same direction as the reach problem of 27.5. The faithful alternative is a gate rather than a
+factor: a node below the detection threshold passes nothing on in that class and a node above it passes everything,
+which conditions the travel without compounding a share. That is a change to a registered encoder and is recorded as an
+option, not made.
 
 **One thing I checked and will not report as a defect.** I first traced `PROTEIN:DRD2` to a Gs complex in two edges and
 `PROTEIN:ADRB1` to a Gi complex, which would have been a serious sign bug: the Gs arm catalyses the cyclase at +1 and
