@@ -61,18 +61,29 @@ one way rather than the other.** Roughly two fifths of the reaction set is rever
 traffic in self-cancelling mirror pairs**, 4,221 have more than half, and **1,809 have nothing else at all**: their
 field is identically zero under every perturbation, whatever is done upstream.
 
-**What the physiology asks for, and why the encoder cannot give it** (the owner, 13 October: "The reaction should
-only be able to follow the reversal path under certain conditions: i.e. a competitor ligand with higher binding
-affinity for the target comes in contact"). Exactly so: reversal is conditional on the local state - product
-accumulation, a displacing ligand - and an unconditional bidirectional pair is not a weaker version of that but a
-different thing, which here cancels to nothing. Gating the reverse direction on the concentration ratio is a
-nonlinearity, so it cannot sit inside the linear-response encoder: the same wall that competition and partial
-agonism hit. Splitting each reversible reaction into a forward and a reverse node does not escape it either, since
-both would be catalysed by the same gene, carry the same field, and cancel again.
+**What the physiology asks for** (the owner, 13 October: "The reaction should only be able to follow the reversal
+path under certain conditions: i.e. a competitor ligand with higher binding affinity for the target comes in
+contact"). Exactly so: reversal is conditional on the local state, and an unconditional bidirectional pair is not
+a weaker version of that but a different thing, which here cancels to nothing.
 
-What is available is the **nominal direction only** - treating each reversible reaction as irreversible in the
-direction Human-GEM lists it. That loses a reverse direction the model cannot currently express in any case, and
-recovers 1,809 metabolites that are silent today. Decision 4.10.
+**An earlier draft of this section said the faithful version was unavailable to the encoder. That was wrong, in
+two ways.**
+
+- **The nominal direction needs no new data and no new machinery.** `build_physiology_graph` already writes it -
+  `is_substrate = coefficient < 0` sets each edge from the stoichiometric sign - and then adds the mirror edge on
+  top for every reversible reaction. Dropping the mirror leaves the direction Human-GEM writes the reaction in,
+  and recovers the 1,809 silent metabolites, at the rebuild, for nothing.
+- **The resting direction is not state-dependent, so it can be set before the propagation.** It is a property of
+  the cell at baseline, and the propagation computes deviations *around* baseline; a thermodynamic estimate or a
+  flux solution could set it for the 5,713 reversible reactions. That is the route competition already takes -
+  "it can enter only as a model input computed before the propagation and not as a relation inside it"
+  (`docs/label_source_review.md` 13.4) - and it is the template here rather than an obstacle.
+
+**What is genuinely out** is a perturbation *flipping* the direction: that depends on the state the propagation
+produces, so it is a state-dependent adjacency and a real nonlinearity. Splitting each reversible reaction into a
+forward and a reverse node does not recover it either, since both would be catalysed by the same gene, carry the
+same field and cancel again. So the loss is narrower than this review first claimed: not "reversible reactions
+cannot have a direction", but "a perturbation cannot change one". Decision 4.10.
 
 *(The pralidoxime example is a near neighbour rather than this case: reactivating a covalently inhibited enzyme is
 a displacement at a binding site, which belongs with the competition work of section 12 and is equally
@@ -89,7 +100,13 @@ The rule is right, and it is the owner's (13 October: "min along the path makes 
 already sums contributions from every route including thin ones and `b` then scales the whole sum by the widest
 route's ceiling. The product rule **understates** in the other direction. And `b` is computed on the **unsigned,
 unweighted** structure, so a route through an inhibitory edge raises the ceiling exactly as an activating route
-does.
+does. The code's justification is "a bottleneck cares only whether a route exists, so signs, weights and the
+in-degree divisor play no part in it". For **existence** that holds, and excluding the in-degree divisor is right
+because it is a modelling artifact rather than physiology. Excluding the **sign** does not follow from it: `b`
+scales a signed sum, so the ceiling can be set by a well-expressed inhibitory route while the response travels an
+activating one, and those are different routes with different expression. The fix sits where `b` already does -
+the bottleneck is applied after the fixed point, so the settled sign at the target is known and the max-min can
+be taken over routes whose sign product matches it, with no nonlinearity entering the loop. Decision 4.12.
 
 **No measurement decides whether the rule is used, and this review was wrong to imply one should** (the owner, 13
 October: "that doesn't need measured for confirmation to be in the final models. It should just be in there to
