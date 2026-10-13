@@ -82,15 +82,19 @@ ratio to it therefore looks doubtful and was **not** followed up in this pass.
 
 | Quantity | Value | Unit | Source of the number | Where it was read | Date read |
 |---|---|---|---|---|---|
-| P_K / P_Na / P_Cl at rest, **squid giant axon** | 1 : 0.04 : 0.45 | ratio | Hodgkin & Katz 1949, *J. Physiol.* 108(1):37–77; doi 10.1113/jphysiol.1949.sp004310; PMID 18128147 — **read second-hand**, quoted in Alvarez & Latorre 2017, *J. Gen. Physiol.* 149(10):911–920; doi 10.1085/jgp.201711839; PMID 28931632 | Alvarez & Latorre 2017, section "Applications of the Goldman equation", subsection "Squid axon resting and action potential" | 2026-10-12 |
-| P_K / P_Na / P_Cl during the refractory period, **squid giant axon** | 1 : 0 : 0.45 | ratio | same (Hodgkin & Katz 1949 via Alvarez & Latorre 2017) | same section | 2026-10-12 |
+| P_K / P_Na / P_Cl at rest, **squid giant axon** | 1 : 0.04 : 0.45 | ratio | Hodgkin & Katz 1949, *J. Physiol.* 108(1):37–77; doi 10.1113/jphysiol.1949.sp004310; PMID 18128147 — **read in the original**, the owner supplied the PDF on 13 October 2026 | p. 69: "there is reasonable agreement between all the results obtained with resting nerve and those predicted by the theory for PK: PNa: PCl = 1: 0.04: 0.45" | 2026-10-13 |
+| P_K / P_Na / P_Cl during the refractory period, **squid giant axon** | **1.8 : 0 : 0.45** | ratio | Hodgkin & Katz 1949, as above — **read in the original**; the second-hand value recorded here until 13 October 2026 was 1 : 0 : 0.45 and the potassium term was wrong | p. 72: "deviations between theory and experiment which can be resolved by making PK:PNa:PCl = 1.8:0:0.45. These values have been adopted in Table 7". H&K add their own caveat: "The agreement may be fortuitous and can hardly be used as evidence for a differential action on potassium and chloride permeability" | 2026-10-13 |
+| P_K / P_Na / P_Cl at the peak of the action potential, **squid giant axon** | 1 : 20 : 0.45 | ratio | Hodgkin & Katz 1949, as above — read in the original | p. 71: "change from a resting condition in which PK: PNa: PCl = 1:0.04:0.45 to an active condition in which PK:PNa:PCl = 1:20:0.45" | 2026-10-13 |
 | Squid axon K⁺ concentrations used for the Goldman current figure | 440 (intracellular), 10 (extracellular) | mM | Alvarez & Latorre 2017 | Figure 3 caption | 2026-10-12 |
 | Squid axon Na⁺ concentrations used for the Goldman current figure | 50 (intracellular), 440 (extracellular) | mM | Alvarez & Latorre 2017 | Figure 3 caption | 2026-10-12 |
 
-The Hodgkin & Katz 1949 article itself was **not** read: the PubMed Central copy is a page scan with no text layer,
-and the scanned PDF is behind a proof-of-work gate (see "Refusals and withdrawn requests"). The ratio above is
-therefore reported as a quotation inside Alvarez & Latorre 2017, which is a peer-reviewed historical review of the
-constant-field equation in the same field. The preparation is the squid giant axon, not a mammalian neuron.
+**Hodgkin & Katz 1949 has now been read in the original** (the owner supplied the PDF, 13 October 2026). Two
+things came of it. The resting ratio 1 : 0.04 : 0.45 is confirmed verbatim. The refractory ratio was **wrong**
+in this table: the second-hand quote gave 1 : 0 : 0.45 and the paper gives **1.8 : 0 : 0.45**, the potassium
+term having been lost on the way. The peak-of-action-potential ratio 1 : 20 : 0.45 is added, since it was in
+the same passage. None of the three changes the registered model, which uses the parallel-conductance equation
+and no permeabilities; they are recorded because the table is the project's reference for these constants and
+because the error shows what reading second-hand costs.
 
 ## Verbatim quotations, each attributed
 
