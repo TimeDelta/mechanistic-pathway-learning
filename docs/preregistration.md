@@ -1156,6 +1156,35 @@ carries is not in this amendment and is named in "what is still open" below.
 on and is not selected on (user, 11 October: "Peak tissue unbound concentration can be relegated to confirmation
 only"). Nothing is built for it.
 
+**12. The Open Targets evidence class carries weight 0.45, with 0.0 as a declared secondary.** The number is grade
+B's 0.6 times the measured agreement of the class with the study's own labels: of the 118 human-worded Open Targets
+triples, 71 name a target that a study drug acts on in the same direction, and 54 of those 71 (0.761) carry the symptom
+on a kept label of that drug, 9 more on a label the selection masked, and 3 (0.042) are contradicted by a placebo
+comparison. 0.6 x 0.761 = 0.457, rounded to 0.45. This replaces the 0.3 of the 12 October draft, which was a judgment
+with no measurement behind it and is withdrawn. **The limitation is registered with the number**: the testable triples
+are the ones whose target already has a study drug, and the statements that would train are by construction the ones no
+study drug label makes (docs/label_source_review.md 9.3), so the two subsets are disjoint and whether 0.761 carries over
+is not something this measurement can say. For that reason a second arm is registered now, before any run: the same
+configuration with the class at weight 0.0 and its statements reported as a held-out stratum only. The class is 1.4
+percent of training pairs, so the two arms are expected to agree; registering both makes that checkable instead of
+assumed. The user expressed no preference between them on 12 October and the standing instruction of that day was to
+lock in what I have no objection to.
+
+**13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
+is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that
+ion's share of the resting leak conductance times RT/zF, six fixed weights adding no free parameter
+(`mechanistic_pathway_learning/graph/membrane_potential.py`). Two neuronal extracellular pools are added, sodium and
+chloride, so every ion in the equation has both sides; calcium stays a signalling node and does not enter it. The
+constants are Düsterwald et al. 2018, eLife 7:e39575, Table 1, under CC BY 4.0, quoted with the place each was read in
+`docs/membrane_potential_constants.md`. The law is the parallel-conductance equation and not Goldman-Hodgkin-Katz
+because no measured permeability ratio for a mammalian central neuron could be verified and that source states ohmic
+conductances, which substituted into GHK miss its own -72.6 mV by 39 mV. The build registered is
+`computed_beside_the_reactions`: the 405 `changes_membrane_potential` edges are kept, because deleting them was measured
+to lower the field at `VM_c` and not raise it. Registered with it, as 23.3 required: the seven reactions `VM_c` gates
+all feed charge back into it, an excitable membrane is not contractive, and a model run to a fixed point under the
+contraction bound represents where the membrane settles under a sustained perturbation and not an action potential. It
+must not be read as showing excitability.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
@@ -1168,17 +1197,24 @@ as pathways.
   under any concentration scheme, takes the largest leakage group from 241 perturbations and 71 drugs to between 203
   and 209 of the 222 drugs, which ends the drug split that item 2 depends on (docs/label_source_review.md 14.3). The
   objection is recorded and the decision is the user's.
-- **The enzyme statements as training labels.** The user asked for them on 12 October. They cannot be registered yet
-  because the combined perturbation type, a drug and a gene perturbation carried in one example, does not exist in
-  the trainer. 12 development statements and 75 development pairs are what they would bring
-  (docs/label_source_review.md 16.2).
-- **The weight of the Open Targets evidence class.** Grades today are monogenic 1.0, pharmacological 0.6 and C masked
-  at 0.0; 0.3 is recommended and not decided.
-- **The rows of `configs/admitted_atc_prefixes_draft.csv`**, which have never been signed off.
-- **The electrical layer.** `VM_c` carries none of the 138 descriptor columns and its 405 incoming messages are
-  divided by 405, so no training pair reaches the relation. Either it is fixed, by computing the potential from the
-  ion pools, or the registration discloses that the layer is present in the graph and carries no fitted behaviour
-  (docs/label_source_review.md 22 and 23). Not settled.
+- **The enzyme statements as training labels.** The user asked for them on 12 October. The combined perturbation type
+  they needed is now built (`mechanistic_pathway_learning/evidence/combined_perturbations.py`;
+  docs/label_source_review.md 27.1), so what blocked registration is gone and what remains is the decision: 17 enzyme
+  combinations and 140 positive pairs are expressible, and training them in the linear-response encoder but not in
+  message passing would make the two confirmatory models differ in what they are trained on, which the user has been
+  avoiding. `--combined-perturbations` has no default, so no run loads them until it is passed.
+- **The rows of `configs/admitted_atc_prefixes_draft.csv`**, the list of admitted ATC drug groups and named centrally
+  acting drugs (docs/label_source_review.md 9.4), which have never been signed off. Named "the admitted-groups rows"
+  in my report of 12 October, which was ambiguous: the user read it as the admitted age subgroups and answered that
+  question instead ("As long as the admitted groups rows exclude only things toddler and earlier, it's fine"), which
+  settled the preschool band and left this list where it was. 73 drugs and 167 kept pairs; no build passes
+  `--admitted-atc-prefixes`.
+- **The reach of the electrical layer, which is an aggregation question and not a wiring one.** Item 13 below
+  registers the computed potential. What it does not fix is the magnitude of what arrives at `VM_c`, and the
+  measurement of 12 October withdrew the diagnosis this item used to carry: the binding divisor is the in-degree of the
+  ion pool (364 cytosolic sodium, 339 extracellular) and not the 405 at `VM_c`, so deleting the reaction edges lowers
+  the field there by a factor of 26 rather than raising it (docs/label_source_review.md 27.5). Both alternatives the
+  encoder already carries were measured worse in magnitude, so this stays open and is disclosed rather than fixed.
 - **The held-out set itself**, which is drawn only on the user's go-ahead ("Don't finalize the lockbox until I've
   given the go ahead").
 
