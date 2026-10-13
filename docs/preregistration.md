@@ -1539,11 +1539,23 @@ correlation between any two such rankings is 1.000000), driven by total module a
 quantity the input-size and degree controls already account for. Scoring it would be scoring the degree baseline under
 a symptom's name.
 
-The registered rule already requires **five kept positives in the lockbox** for a symptom to be scored. It now
-requires **five in training as well**, which is the same condition on the other side. The failing symptoms are
-excluded from the score and named in the run record. **The draw is not repeated until the condition holds**: rejecting
-draws on a property of the split would bias which targets end up held out, which is exactly what the registration
-exists to prevent. Exclusion costs a symptom; rejection would cost the split's meaning.
+The registered rule already requires **five kept positives in the lockbox** for a symptom to be scored, and that
+stays. On the training side the condition is **not five but one**, and the owner's reason is the right one (13 October
+2026: "i'm ok with the 5-kept positives for held out but not for training because including it could still help train
+parts of pathways for other symptoms"). Two things follow, and they are separate.
+
+- **Every symptom trains, whatever its count.** A symptom with two positives still sends gradient through the modules
+  and the encoder, which are shared, so it helps the symptoms that do have support. Dropping it from training would
+  throw that away for nothing.
+- **A symptom is excluded from the score only when it has no training positive at all**, which is the degenerate case
+  and not a thin one: at zero the links and leak never move from their initial values and the head returns the one
+  fixed ranking. At two they move, badly, and a bad estimate is still an estimate, so it is scored and its count is
+  reported beside it. Measured over 100 draws, that is a mean of 0.12 symptoms excluded rather than the 1.05 a
+  five-positive condition would have excluded.
+
+**The draw is not repeated until the condition holds**: rejecting draws on a property of the split would bias which
+targets end up held out, which is exactly what the registration exists to prevent. Exclusion costs a symptom;
+rejection would cost the split's meaning.
 
 **c. A pre-registered secondary stratum for unseen mechanisms.** Scored apart on the held-out drugs **none** of whose
 targets appears in training: the strictest reading available under the primary split, and **21.2 percent of the
