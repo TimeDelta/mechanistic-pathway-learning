@@ -373,7 +373,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "descriptor_treatment": "plain", "extracellular_coupling": False, "class_weight_rule": "product", "input_weights": "signed",
     "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
-    "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
+    "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "normalisation": "in_degree", "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
     "compartment_ph": False, "relation_parameterisation": "per_layer_dense", "reversible_reactions": False,
 }
 
@@ -1281,8 +1281,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
                              "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")
     parser.add_argument("--response-scale", choices=["linear", "signed_log"], default="linear",
                         help="linear-response encoder: read the response as it is, or through sign(h) log(1 + |h| / s) with a learned scale, so changes many edges away stay readable")
-    parser.add_argument("--normalisation", choices=NORMALISATIONS, default="in_degree",
-                        help="linear-response encoder: divide each message by the number of edges feeding the node (in_degree), or apply one global scale set by the spectral radius so the stoichiometric counts survive (spectral)")
+    parser.add_argument("--normalisation", choices=NORMALISATIONS, default="total_in_degree",
+                        help="linear-response encoder: how the signed adjacency is scaled so the iteration contracts. total_in_degree (registered, amendment item 28) "
+                             "divides by the destination's in-degree summed over every relation, so the unsigned row sums are one and the stoichiometric counts "
+                             "survive; in_degree divides per relation as well, which makes every metabolite a mean against a mean and zeroes 92 percent of them; "
+                             "spectral applies one global scale, which also keeps the counts but shrinks the field nearly everywhere")
     parser.add_argument("--edge-signs", choices=EDGE_SIGNS, default="graph",
                         help="linear-response encoder: the graph's signs, every edge +1 with every gain positive (the sign ablation), "
                              "or the signs shuffled among edges with a fixed seed (the sign permutation)")

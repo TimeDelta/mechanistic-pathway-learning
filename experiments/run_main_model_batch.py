@@ -82,6 +82,7 @@ V4_SHARED_MODEL = ["--head", "noisy_or", "--field", "difference", "--pooling", "
 V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "--message-passing-edge-signs", "graph", "--num-layers", "3",
                             "--relation-parameterisation", "shared_low_rank", "--relation-factor-rank", "2"]
 V4_LINEAR_RESPONSE_MODEL = [*V4_SHARED_MODEL, "--encoder", "linear_response", "--fixed-point-tolerance", "0.001",
+                            "--normalisation", "total_in_degree",
                             "--class-weight-rule", "limiting_step", "--input-weights", "positive", "--cofactor-relations",
                             "--extracellular-coupling", "--compartment-ph", "--reversible-reactions", "--channels-per-cell-class", "1"]
 

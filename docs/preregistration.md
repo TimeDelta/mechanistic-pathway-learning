@@ -1950,6 +1950,29 @@ both sides because one step consumes and regenerates them - GRIP1 and GRIP2, PIC
 neuronal K+ in channel gating. Their net stoichiometry is zero, and the right encoding is a modifier edge that
 enables the reaction without being consumed or produced. Not built.
 
+**28. The signed adjacency is scaled by `total_in_degree`, so the stoichiometric counts survive** (the owner, 13
+October 2026: "setting mean as the aggregator doesn't sound very physiological though. Can you justify it?", then
+"Set total in degree divisor as the normalization method default"). It cannot be justified as physiology, and this
+item says so rather than defending it: mass balance at a metabolite is a signed **sum**, and the per-node divisor
+exists so the row sums are at most one and the iteration contracts, which is a numerical requirement.
+
+`in_degree` divides by the destination's in-degree **under each relation** and again by the number of relations
+feeding it, so five producing reactions against one consuming reaction become one mean against another: 5/10 - 1/2,
+exactly zero. That is why **7,811 of the 21,337 destinations with any input have an aggregate row sum of zero and
+every one is a metabolite**, 92.3 percent of them, and why the direction at a both-produced-and-consumed metabolite
+is fixed by the one gain ratio every metabolite shares rather than by its own stoichiometry.
+
+`total_in_degree` divides by the destination's in-degree **summed over every relation**. The unsigned row sums are
+one exactly as before, so the contraction is unchanged and there is no global shrink, while the same node gives
+(5 - 1) / 6 and its sign comes from its own stoichiometry. The `spectral` arm also keeps the counts but divides by
+a global 36.3 where the in-degree divisor is smaller at 98.8 percent of destinations, which shrinks the field
+nearly everywhere and so makes two changes at once; `total_in_degree` separates them.
+
+**What it does not fix.** The stoichiometric coefficients themselves are still read only for their sign, so a
+reaction consuming two molecules counts as one (14.5 percent of both-produced-and-consumed metabolites touch a
+non-unit coefficient, and the totals differ at 2.8 percent of those with equal reaction counts). The registered
+per-edge demand of item 20 stays unbuilt. This item changes the counting of reactions, not of molecules.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the

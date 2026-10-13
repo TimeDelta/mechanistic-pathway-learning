@@ -471,7 +471,7 @@ class LinearResponseEncoder(nn.Module):
         response_scale: str = "linear",
         damping: float = 0.5,
         contraction: float = 0.9,
-        normalisation: str = "in_degree",
+        normalisation: str = "total_in_degree",
         cross_relation_aggregator: str = "mean",
         mixture_weighting: str = "sparsemax",
         node_type_index: Tensor | None = None,
@@ -697,7 +697,7 @@ class LinearResponseEncoder(nn.Module):
     @staticmethod
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
-                                 cofactor_edges: Tensor | None = None, normalisation: str = "in_degree",
+                                 cofactor_edges: Tensor | None = None, normalisation: str = "total_in_degree",
                                  divide_by_relations_feeding: bool = True, edge_signs: str = "graph",
                                  reversible_reactions: Tensor | None = None) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
