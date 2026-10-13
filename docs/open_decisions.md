@@ -13,6 +13,7 @@ a recommendation and an objection, but the choice is the owner's.
 | --- | --- | --- |
 | 1.1 | **The held-out set.** Drawn only on the owner's go-ahead ("Don't finalize the lockbox until I've given the go ahead") | every confirmatory run. Nothing downstream can start |
 | 1.2 | **The v4 rebuild.** The table in use still carries the three-target limit; the amendment of 12 October registers no limit with orphenadrine set aside by the stated bridging rule, which needs the table rebuilt and the held-out set redrawn from its leakage groups | 1.1, and the drug counts in every later item |
+| 1.2b | **Where the bridging rule stops.** Applied once it names orphenadrine; applied again to the rebuilt table it names tapentadol, which joins the 18-drug opioid block to the 97-drug monoamine block and takes the largest block from 50.2 to 42.4 percent of drugs; a third pass names agomelatine. The registration states no stopping condition, which is my omission; three ways to close it are set out in `docs/rebuild_leakage_cost.md` and each gives a different drug set | 1.1, since each changes the pool the lockbox is drawn from |
 | 1.3 | **Off-targets in a model input.** The owner asked for them on 12 October; my objection is recorded and stands: admitting them at any threshold from 0.1 to 0.5, under any concentration scheme, takes the largest leakage group from 71 drugs to between 203 and 209 of 222, which ends the drug split item 2 of the amendment depends on | the split, so 1.1 |
 
 ## 2. What trains
