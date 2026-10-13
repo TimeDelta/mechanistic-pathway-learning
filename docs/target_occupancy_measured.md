@@ -25,35 +25,35 @@ Nothing here changes a label, a graph or a model input.
 
 ## At the unbound brain concentration (plasma × Kp,uu,brain)
 
-66 drugs have the concentration and an affinity at one or more of their mechanism genes: 154 drug-gene pairs, of the 235 mechanism genes those drugs have.
+69 drugs have the concentration and an affinity at one or more of their mechanism genes: 161 drug-gene pairs, of the 242 mechanism genes those drugs have.
 
 | occupancy | pairs at the low end of the therapeutic range | pairs at the high end |
 | --- | --- | --- |
-| below 0.1 | 29 | 11 |
-| 0.1 to 0.5 | 74 | 36 |
-| 0.5 to 0.9 | 36 | 65 |
-| 0.9 and above | 15 | 42 |
+| below 0.1 | 30 | 11 |
+| 0.1 to 0.5 | 77 | 41 |
+| 0.5 to 0.9 | 37 | 66 |
+| 0.9 and above | 17 | 43 |
 
-- **The best-bound mechanism gene of a drug** has a median occupancy of 0.85 at the high end of the range (quartiles 0.65 and 0.96); it is at 0.9 or above for 30 of the 66 drugs and below 0.5 for 11. The scoping's placeholder assumes 0.9 for every drug.
-- **Within a drug**, for the 41 drugs with an affinity at two or more mechanism genes, the occupancies of its genes differ by a median of 0.33 (0.5 or more for 8 drugs). A unit input per target treats them as equal.
-- **Total input.** Summing the occupancies of a drug's mechanism genes gives a median total of 0.99 per drug, against a median of 2 such genes counted; the correlation between the two across drugs is 0.82.
+- **The best-bound mechanism gene of a drug** has a median occupancy of 0.85 at the high end of the range (quartiles 0.63 and 0.97); it is at 0.9 or above for 31 of the 69 drugs and below 0.5 for 13. The scoping's placeholder assumes 0.9 for every drug.
+- **Within a drug**, for the 44 drugs with an affinity at two or more mechanism genes, the occupancies of its genes differ by a median of 0.34 (0.5 or more for 9 drugs). A unit input per target treats them as equal.
+- **Total input.** Summing the occupancies of a drug's mechanism genes gives a median total of 1.02 per drug, against a median of 2 such genes counted; the correlation between the two across drugs is 0.82.
 
-- **Genes outside the mechanism list**: 899 drug-gene pairs have an affinity; 233 of them, over 48 drugs, reach an occupancy of 0.25 at the high end of the range and 158 reach 0.5. These are the off-targets of `docs/off_target_scoping.md`, here with a measured concentration in place of its placeholder.
+- **Genes outside the mechanism list**: 919 drug-gene pairs have an affinity; 247 of them, over 48 drugs, reach an occupancy of 0.25 at the high end of the range and 167 reach 0.5. These are the off-targets of `docs/off_target_scoping.md`, here with a measured concentration in place of its placeholder.
 
 ## At each target's own site
 
 The concentration above is one number per drug and site. A target's own site is the one it sits in: the unbound brain concentration for a target the graph records as expressed in a brain tissue, the unbound plasma concentration for any other target and for every target of a drug with no brain concentration. The occupancy of a target is then its own, which is what lets the same dose saturate a high-affinity target while leaving a weaker one far from saturation.
 
-- 115 drugs, 305 mechanism pairs; 122 of the pairs are read in brain (52 drugs) and 183 in plasma.
-- **The best-bound mechanism target** has a median occupancy of 0.90 at the high end of the therapeutic range (quartiles 0.65 and 0.98): at or above 0.9, so saturated, for 59 of the 115 drugs, and below 0.5 for 21. The placeholder of `docs/off_target_scoping.md` fixes this number at 0.9 for every drug, which is what makes a dose-dependent reading impossible under it.
+- 115 drugs, 305 mechanism pairs; 128 of the pairs are read in brain (55 drugs) and 177 in plasma.
+- **The best-bound mechanism target** has a median occupancy of 0.90 at the high end of the therapeutic range (quartiles 0.63 and 0.98): at or above 0.9, so saturated, for 59 of the 115 drugs, and below 0.5 for 23. The placeholder of `docs/off_target_scoping.md` fixes this number at 0.9 for every drug, which is what makes a dose-dependent reading impossible under it.
 
 **Off-targets at each target's own site**, for comparison with the table the placeholder gives (`docs/off_target_scoping.md`, which anchors the concentration so that the best-bound mechanism target is 90 percent occupied):
 
 | occupancy at the high end of the range | off-target pairs | drugs |
 | --- | --- | --- |
-| at least 0.1 | 510 | 86 |
-| at least 0.25 | 374 | 81 |
-| at least 0.5 | 252 | 66 |
+| at least 0.1 | 510 | 87 |
+| at least 0.25 | 378 | 79 |
+| at least 0.5 | 252 | 64 |
 
 The placeholder reaches more drugs: it needs an affinity at a mechanism gene and nothing else, so it covers 183 of the 222 drugs, where a measured concentration covers 121. The two can be combined, a measured concentration where there is one and the placeholder otherwise, at the cost of two scales in one column; that choice is the user's (`docs/off_target_scoping.md`, decision 3).
 

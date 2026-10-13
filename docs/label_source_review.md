@@ -3317,3 +3317,104 @@ Cu,br/Cu,pl (homog.)` rows of culot2013, which is why this was measured rather t
    column with values whose error exceeds the effect. The 59 are not missing by oversight; they are drugs the
    measurement literature never covered, and for the benzodiazepines among them occupancy would be the wrong readout
    even if it existed.
+
+## 31. Combining the rules, and the extra Kp,uu values kept (12 October, 21:50)
+
+The owner: "What about combining the rules? Yes keep additional kp,uu values."
+
+### 31.1 The extra Kp,uu values are in
+
+`experiments/build_drug_exposure_table.py` now matches the eight further spellings of the unbound-brain quantity listed
+in 30.6, with a fluid-or-regional exclusion beside it so no CSF or regional value can enter. Rebuilt:
+**89 drugs to 94**, none lost, 16 values changed. The brain-site mechanism occupancy rows go from 122 over 52 drugs to
+128 over 55.
+
+| gained | value | species |
+| --- | --- | --- |
+| nicotine | 4.56 | non-human primate |
+| cariprazine | 1.667 | other animal |
+| rivastigmine | 0.733 | other animal |
+| brexpiprazole | 0.2 | **human** |
+| eletriptan | 0.058 | other animal |
+
+The five changes beyond 2-fold, which are the ones to know about: sulpiride 0.055 to 0.001 (55-fold, two monkey rows
+now outranking four rat rows), donepezil 2.36 to 0.482, clomipramine 2.77 to 8.47, diphenhydramine 1.05 to 3.02,
+paliperidone 0.11 to 0.305. The full diff is in `data/processed/exposure/drug_exposure_v4.csv` against its predecessor
+and is reproduced in the decision log. Sulpiride's direction is right — it is a poorly penetrant antipsychotic — but a
+55-fold move resting on two monkey values is a species-preference artefact rather than new knowledge, and it should be
+read that way.
+
+### 31.2 Combining the rules: the missing half was a claim about the drug
+
+29.2 showed the measured rule admitting metformin, warfarin, omeprazole, etoposide and six NSAIDs while leaving
+carvedilol out. The first combination tried was the obvious one and it failed: requiring that the drug **share a
+mechanism target with a drug already in the table** does exclude metformin, warfarin, omeprazole and etoposide, and it
+also excludes **every beta blocker**, because no admitted drug acts on `ADRB1` or `ADRB2`. It keeps the NSAIDs, whose
+`PTGS1` and `PTGS2` are hit as off-targets by drugs already in. Exactly backwards, so it is recorded and dropped.
+
+What the measured halves lack is a claim about the drug, which is what the ATC list carried by hand. So the third half
+is the one the six named drugs of `configs/admitted_atc_prefixes_draft.csv` already met — the sentence of the label
+that states a central action — supplied as evidence per drug rather than as a group name:
+`experiments/read_label_central_action.py`, writing `configs/label_central_action.csv` and
+`docs/label_central_action.md`. It reads the pharmacology sections only (mechanism of action, clinical pharmacology,
+pharmacodynamics, description) and never the adverse-reaction, warning or indication sections, because admitting a drug
+for the psychiatric events on its label is the circularity of 28.3.
+
+**The three halves together, on the drugs this came up over:**
+
+| drug | label claim, drug-specific | brain-expressed target | Kp,uu,brain | verdict |
+| --- | --- | --- | --- | --- |
+| metoprolol | "crosses the blood brain barrier … CSF … 78% of the simultaneous plasma concentration" | yes | 0.64 | **admitted on all three** |
+| propranolol | "Propranolol crosses the blood-brain barrier and the placenta" | yes | 0.95 | **admitted on all three** |
+| pindolol | none of its own: 11 matches, all class boilerplate | yes | 0.50 | penetrant, no claim of its own |
+| oxprenolol | no US label in openFDA | yes | 0.20 | penetrant, claim unreadable |
+| timolol | "a central nervous system sympatholytic action" | yes | not measured | claim, penetration unmeasured |
+| atenolol | none | yes | 0.030 | **out on two halves** |
+| nadolol | "only minimal amounts of nadolol were detected in the brain" | yes | 0.037 | **out, and the label agrees** |
+| labetalol | "Only negligible amounts of the drug crossed the blood-brain barrier" | yes | 0.054 | **out, on the label** |
+| sotalol | "Sotalol crosses the blood brain barrier poorly" | yes | not measured | **out, on the label** |
+| carvedilol | none | yes | not measured | out for now |
+| metformin, warfarin, celecoxib, naproxen, diclofenac, pitavastatin, pioglitazone, sulfasalazine, ribavirin, isotretinoin, verapamil, prazosin | none | yes | various | **out — the misfire is fixed** |
+| montelukast | "minimal distribution across the blood-brain barrier" | no | none | out on two halves |
+| etoposide | "concentrations are lower than in extracerebral tumors" | yes | 0.164 | **out, on the label** |
+
+So the conjunction does what neither half did alone. It admits two beta blockers on all three halves, gives three
+different partial verdicts rather than a false binary for pindolol, oxprenolol and timolol, and turns the twelve
+misfires out on the claim half. It also produces something the measured halves could not: **positive evidence for
+exclusion**. Nadolol, labetalol, sotalol, montelukast and etoposide are now out because their own labels say they do
+not reach the brain, which is stronger than being out for want of a measurement. And isotretinoin, which 28.3 said I
+had wrongly excluded, makes no central-action claim on its label — so that correction of mine is itself corrected.
+
+### 31.3 The screen's limits, both found by reading its own output
+
+Two bugs, in succession, and both would have changed the answer:
+
+- **It counted four negative sentences as positive.** The first version looked for a negative word immediately before
+  the verb, and labetalol's "Only negligible amounts of the drug crossed the blood-brain barrier", nadolol's "only
+  minimal amounts … detected in the brain", sotalol's "crosses the blood brain barrier poorly" and montelukast's
+  "minimal distribution across the blood-brain barrier" all put it elsewhere. Negatives are now matched anywhere in the
+  sentence and outrank positives, which is what moved nadolol to the correct verdict.
+- **Class boilerplate makes every beta blocker positive.** "The mechanism of the antihypertensive effects … has not
+  been established; factors may include … vasomotor centers in the brain" appears on all of their labels and says
+  nothing about the drug in hand. Pindolol has eleven matching sentences and not one of its own. And a combination
+  product put metformin's only match on a sentence about **glipizide**, which itself says nothing was detectable in
+  brain.
+
+And a recall limit, measured on a control: metoclopramide is in the admitted list with a hand-read quote from openFDA
+set `0034a97a-fb05-418a-a234-de278907cd2a`, and this screen returns "no such sentence" for it at a limit of three
+labels and still at eight. So the screen misses a sentence that provably exists.
+
+**What follows for how the combination is used.** The screen's negatives are evidence and can be taken as they stand:
+they are direct quotations saying the drug does not reach the brain. Its positives are a shortlist, because of the
+boilerplate and the combination-product problem, and the handful of drugs that matter should have their sentence read
+rather than counted. That is five or six drugs, not nine hundred, so the rule stays a measurement with a short reading
+attached and not an automated gate.
+
+### 31.4 What I would register
+
+A drug outside the nervous-system code is admitted when all three hold: its label states a central action in a
+pharmacology section, in a sentence about that drug and read rather than counted; a mechanism target of it is
+brain-expressed in the graph; and its measured Kp,uu,brain is at least 0.1. A drug whose label states that it does not
+reach the brain is excluded whatever the other halves say. On this evidence that admits metoprolol and propranolol, and
+holds pindolol, oxprenolol, timolol and carvedilol with the specific thing each is missing recorded, which is a better
+state than either the ATC list or the measured rule left them in.

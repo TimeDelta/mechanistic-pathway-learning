@@ -73,8 +73,21 @@ HEPATIC_BLOOD_FLOW_ML_PER_MIN_PER_KG = 20.7  # 1,450 mL/min in a 70 kg adult
 LOW_EXTRACTION_BELOW, HIGH_EXTRACTION_ABOVE = 0.3, 0.7  # the usual cut-offs for low and high hepatic extraction
 SPECIES_PREFERENCE = ("human", "non-human primate", "other animal", "not stated")
 NOT_WILD_TYPE = re.compile(r"knock|deficient|mdr1a|bcrp\(|\(-/-\)|-/-", re.IGNORECASE)
-BRAIN_NOT_CEREBROSPINAL_FLUID = re.compile(r"kp,uu,(brain|bbb)|unbound brain", re.IGNORECASE)
-REGIONAL_VALUE = re.compile(r"kp,uu,roi|region", re.IGNORECASE)
+# Every spelling the source tables use for an unbound BRAIN ratio. The first line is what this pattern matched until
+# 12 October 2026; the rest are the same quantity written otherwise, and each was read off the corpus rather than
+# guessed (docs/label_source_review.md 30.6, docs/kpuu_quantity_forms.md). The owner, 12 October 2026: "Yes keep
+# additional kp,uu values". A fluid or regional spelling is excluded by FLUID_OR_REGIONAL_VALUE below, so widening this
+# pattern cannot let a CSF value in.
+BRAIN_NOT_CEREBROSPINAL_FLUID = re.compile(r"""kp,uu,(brain|bbb)|unbound\ brain
+    |kp,uu\ brain|kp,uu,\ ?whole\ brain|kp,uu,wb\b            # the same quantity, spelled with a space or abbreviated
+    |kpuu,bbb|kp,uu,isf\b|kpuu,ecf\b|kpuuecf                   # across the barrier, in interstitial or extracellular fluid
+    |kp,uu\ from                                               # derived from an AUC ratio or from a PET volume of distribution
+    |kp,uu\ \(reported,\ cerebral\ microdialysis\)""", re.IGNORECASE | re.VERBOSE)
+# A cerebrospinal fluid value is not a brain value: the project excludes it, and the quantitative reason is in
+# docs/brain_exposure_data_feasibility.md (lumbar CSF runs more than 3-fold high for P-gp substrates, and buprenorphine's
+# own measured range spans 46-fold). A regional value is not a whole-brain value.
+FLUID_OR_REGIONAL_VALUE = re.compile(r"csf|cerebrospinal|cisterna|lumbar|ventricle|kp,uu,roi|region|,str\b|striatum", re.IGNORECASE)
+REGIONAL_VALUE = FLUID_OR_REGIONAL_VALUE  # the name the brain exposure summary reads it by
 USER_AGENT = "mechanistic-pathway-learning/0.1 (drug exposure table)"
 
 

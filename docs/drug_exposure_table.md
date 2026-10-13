@@ -15,14 +15,14 @@ Nothing here changes a label, a graph or a model input.
 | percent excreted unchanged in urine | Benet et al. 2011 | 134 |
 | blood-to-plasma ratio | Paixão 2012, Uchimura 2010, EPA httk | 64 |
 | therapeutic total plasma concentration | Schulz et al. 2020 | 161 |
-| unbound brain-to-plasma ratio, Kp,uu,brain | the tables of `docs/effect_site_data_coverage.md` | 89 |
+| unbound brain-to-plasma ratio, Kp,uu,brain | the tables of `docs/effect_site_data_coverage.md` | 94 |
 | molecular weight | PubChem, by compound identifier (193) or by name (28) | 221 |
 | **hepatic extraction ratio** (computed) | | **101** |
 | **unbound plasma concentration at therapeutic levels** (computed) | | **128** |
-| **unbound brain concentration at therapeutic levels** (computed) | | **69** |
+| **unbound brain concentration at therapeutic levels** (computed) | | **72** |
 
-The Kp,uu,brain used is from: human 12, non-human primate 1, other animal 73, not stated 3.
-Of the drugs with an unbound brain concentration, the Kp,uu is from: human 12, non-human primate 1, other animal 53, not stated 3.
+The Kp,uu,brain used is from: human 13, non-human primate 8, other animal 73.
+Of the drugs with an unbound brain concentration, the Kp,uu is from: human 12, non-human primate 7, other animal 53.
 
 ## Fraction unbound: the two sources compared
 
