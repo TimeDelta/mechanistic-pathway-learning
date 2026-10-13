@@ -1233,8 +1233,29 @@ the table of 10 October. Two of the three numbers move, and the second is not a 
   "hallucinations" to psychosis), and the script prints every remaining statement beside the wording it was mapped
   from, which is the review that has not been done.
 
-So the class stays unbuilt, with its weight ready but provisional, until the agreement is recomputed on the rebuilt
-table and the owner rules on whether an activation is admitted as a perturbation.
+**12b. The class is built, and it adds no perturbation row** (the owner, 13 October 2026: "just attach them to the
+drugs instead where one exists but make sure to not duplicate or attach to a drug that might not actually cause
+that symptom due to e.g. some other target or somethign (so it would have to at least be limited to drugs that
+currently have ONLY that receptor as a target)").
+`mechanistic_pathway_learning/evidence/load_open_targets_statements.py` carries each statement on a perturbation
+the table already holds, or drops it. That is the rule, and the lockbox is the reason for it: a new perturbation
+moves the leakage groups and so the held-out draw, and a class that invented perturbations could not be added once
+the draw was made.
+
+- **Inhibition is carried by the study's own knockout of that gene.** 30 statements. What it conflates is the
+  registered open question and not a new one: a knockout is constitutive and developmental where an inhibitor is
+  acute, dosed and reversible.
+- **Activation is carried only by a drug that agonises the target and has no other target at all.** On the table of
+  13 October that admits **nothing**. All 23 activation targets are receptors, and all 20 (statement, drug) pairs
+  run through drugs with 2 to 13 targets: meprobamate at 13 across the GABA-A subunits, cevimeline and pilocarpine
+  at 2, fenfluramine and the opioid agonists at 3. The rule is implemented rather than the count, because the
+  rebuild changes which drugs are admitted and with how many targets, and it is re-run there.
+- **A statement never overrides an evidenced negative.** Where the pair is a never-above-placebo pair relabelled as
+  a negative under item 3, the statement is dropped rather than entered as a positive: the two are a contradiction,
+  not independent evidence, and the placebo comparison is the better controlled of them.
+
+**What is still not settled** is the weight, which stays provisional at 0.45 until the agreement is recomputed on
+the rebuilt table, where it may become 0.35.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that
