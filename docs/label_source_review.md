@@ -3190,3 +3190,130 @@ the top). But the chain needs therapeutic concentration, fraction unbound, Kp,uu
 
 So the honest state: one class settled on measurement, a general rule that needs the occupancy chain extended before it
 can be trusted, and the ATC list still unsigned.
+
+## 30. Whether the brain-exposure data can be got accurately (12 October, 21:10)
+
+The owner: "Can you please look to see if there's a viable way to get that data accurately?" Two source passes, written
+up in full in `docs/brain_exposure_data_feasibility.md` and `docs/pet_occupancy_feasibility.md`, both under the reading
+rules of `CLAUDE.md`. **The short answer is no, and the arithmetic below is why.** One free-looking win turned out not
+to be free, and that is the only thing here that is the owner's to decide.
+
+### 30.1 Which link is binding
+
+Over the 222 drugs of the table in use: molecular weight 221, fraction unbound 163, therapeutic concentration 161, a
+mechanism-target affinity 115, **Kp,uu,brain 89**. 69 drugs have the first three together and 66 have all four. Dropping
+each link in turn: 9 drugs are blocked only by a missing fraction unbound, 7 only by a missing therapeutic
+concentration, and **59 only by a missing Kp,uu,brain**. So one link carries the gap, and the question is only about it.
+
+### 30.2 Measured Kp,uu,brain: the literature does not cover these drugs
+
+Only 6 of the 133 drugs without a value appear anywhere in the 34 source tables under any spelling. The reason is
+structural rather than a gap in the search: the Kp,uu literature is built on discovery compounds plus about thirty
+recurring reference drugs, and the 59 blocked are old marketed central drugs — ten opioids, five triptans, the
+benzodiazepines, the anaesthetics, the antiepileptics. A 2025 to 2026 open-access sweep of Europe PMC for `Kp,uu`
+returned nine papers, two already in the repository and seven on single compounds. No public Kp,uu dataset was found on
+GitHub. Kalvass et al. 2007 remains the one high-value acquisition — its abstract names "opioids, triptans" — and it
+could not be retrieved; its address is in the feasibility document for the owner to open.
+
+### 30.3 Human CSF: well covered in principle, not accurate enough, and now quantified
+
+The project's filter excludes CSF deliberately, and the exclusion now has numbers behind it rather than a convention:
+
+- Fridén 2009: Kp,uu,CSF is within 3-fold of Kp,uu,brain for 33 of 39 rat drugs, but "overpredicts K(p,uu,brain) for
+  highly effluxed drugs" — the misses are systematic and upward;
+- Westerhout 2013: "24 % (21/89) of the P-gp substrates had a CSF-to-brain_ECF concentration ratio larger than 3",
+  and quinidine's ratio moved 3.1-fold, 0.72 to 2.22, on P-gp block alone;
+- Nagaya 2020, on lumbar CSF, which is the human sampling site: the good P-gp substrates ran more than 3-fold high
+  against interstitial fluid, "all of the good P-gp substrates examined";
+- Saleh 2021: "lumbar CSF drug concentration is not an accurate surrogate of brain ECF"; human %AAFE 109 percent for
+  brain extracellular fluid against 179 percent for lumbar CSF.
+
+And the within-drug spread settles it for this study's purpose. Buprenorphine, one of the 59, has a median CSF-to-plasma
+ratio of 3 percent over 56 patients at steady state with a range of 0.35 to 16 percent, which at this repository's
+fraction unbound of 0.04 is a Kp,uu,CSF between 0.09 and 4.0 — a 46-fold window on the quantity the occupancy
+calculation is trying to resolve. Atogepant moved 10-fold, 1.4 percent at 2 hours against 14.3 percent at 6 hours, from
+sampling time alone. Counter-evidence is recorded for honesty: Nagaya 2016 found CSF usable "even for P-gp substrates in
+rats", but sampled cisternal rather than lumbar CSF.
+
+### 30.4 Prediction covers everything, and the reason not to use it also indicts data already in use
+
+Nine published models, accuracies as their papers state them: R² 0.53 to 0.73, and 61 to 85 percent of compounds within
+2-fold. Every one of them predicts a *rodent* value. The finding that matters is Fagerholm 2022: rat against monkey
+R² 0.74 (n=17), rat against human **R² 0.01 (n=13)**. That is not only an argument against predicting the missing 133.
+It puts an unquantified species-translation error on the 89 values the project already has, which are largely rodent,
+and it should be disclosed wherever the occupancy anchor is read. A prediction is also a fourth provenance class the
+grading scheme does not have.
+
+### 30.5 Human PET measures the endpoint directly, and adds five drugs
+
+Of the 133: 23 have a human occupancy study, 18 have a number at a stated dose, 11 are a defensible fraction occupied
+at a therapeutic dose, and **5 of those 11 are among the 59** — amisulpride, brivaracetam, buprenorphine, milnacipran
+and moclobemide. 92 of the 133 returned nothing at all. No compilation, consortium dataset or tracer database
+tabulating human PET occupancy at therapeutic doses across many drugs was found; the nearest in intent, Grimwood and
+Hartig 2009, could be read only as an abstract.
+
+Three class findings worth more than the counts:
+
+- **For the benzodiazepines, occupancy is the wrong readout.** "Therapeutic doses of lorazepam were associated with
+  < 3% BZ receptor occupancy", with "> 97% receptor reserve", in subjects showing "marked sedation" (Sybirska 1993).
+  Zolpidem at twice the hypnotic dose reaches 27 ± 11 percent. The tracer works; the quantity is near zero at clinical
+  doses. That is 13 of the 133, and it argues against reading low computed occupancy as weak central action for any
+  agonist or positive modulator — including against the study's fixed 0.9 occupancy placeholder.
+- **Several classes have no validated human tracer at all**: the voltage-gated sodium channel (eight local anaesthetics
+  and six antiepileptics), the barbiturate and general-anaesthetic sites on GABA-A, GABA-transaminase, KCNQ, Cav2.2,
+  the melatonin receptors, the human orexin receptors and brain COMT. For those drugs no amount of searching will
+  produce a number.
+- **A tracer exists but no study of the drug** for all eleven opioid full agonists, six of seven triptans, and eleven of
+  thirteen benzodiazepines and Z-drugs.
+
+One lead worth its own pass: Varrone 2022 gives Kp,uu = (f_ND/f_P)·V_ND, so a PET study can yield the missing
+Kp,uu itself rather than only an occupancy. And `occupancy_time_courses.csv` already holds occupancy numbers inside the
+`supporting_quote` column of 8 rows that it had recorded as negatives for a different question.
+
+### 30.6 The one actionable finding, and why it is not free
+
+**The filter, not the literature, is what blocks five drugs.** The quantity filter in
+`experiments/build_drug_exposure_table.py` is `kp,uu,(brain|bbb)|unbound brain`, and the corpus holds these further
+spellings of the same quantity, every one of them an unbound brain value already copied into the repository:
+
+| form | file | what it is |
+| --- | --- | --- |
+| `Kp,uu brain` | jiang2022 | the same quantity, no comma |
+| `Kp,uu, whole brain` | svane2024 | eletriptan 0.058, rat, brain slice, primary |
+| `Kp,uu,WB (whole brain)` | ballgren2024 | whole brain |
+| `Kp,uu,ISF` | nagaya2014 | brain interstitial fluid, the reference quantity |
+| `Kpuu,ECF (brain ECF)` | saleh2021 | brain extracellular fluid |
+| `Kpuu,BBB` | saleh2022 | rivastigmine 0.733, rat, model input |
+| `Kp,uu from AUCbrain/…` and `Kp,uu from VT…` | schou2015 | nicotine, rhesus monkey PET, primary, 8 rows |
+| `Kp,uu (reported, cerebral microdialysis)` | ballgren2024 | microdialysis, so interstitial fluid |
+
+Admitting those eight forms while still excluding every CSF spelling (`Kp,uu CSF`, `Kp,uu,CSF`, `Kp,uu,CSFCM`,
+`Kp,uu,CSFLV`, `Kp,uu,CM`, `Kp,uu,LV`, `Kpuu,CM`, `Kpuu,LV`, `Kpuu,lumbar`) and every regional one (`Kp,uu,ROI` ×11,
+`Kp,uu,STR`) takes the count from 89 to **94 drugs**: nicotine 4.56 (monkey), rivastigmine 0.733, eletriptan 0.058,
+brexpiprazole 0.2 (**human**) and cariprazine 1.667.
+
+**And it changes 17 of the 89 values already in use, 5 of them by more than 2-fold**: sulpiride 0.055 to 0.001
+(55-fold), donepezil 2.36 to 0.482, clomipramine 2.77 to 8.47, paliperidone 0.11 to 0.305, diphenhydramine 1.05 to
+2.52. The cause is not the widening itself but its interaction with the species preference: the new rows are often
+monkey values, which rank above rat, so the median is taken over a different set — for sulpiride, two monkey rows
+replace four rat rows. So this is a change to data the registered occupancy anchor reads, and it is the owner's to take
+or leave rather than a correction to apply quietly.
+
+A first, broader attempt at the widening was worse and is recorded so the mistake is not repeated: excluding any
+quantity string that mentioned plasma or blood dropped the legitimate `unbound brain/unbound plasma ratio, in vivo
+Cu,br/Cu,pl (homog.)` rows of culot2013, which is why this was measured rather than applied.
+
+### 30.7 What I would do
+
+1. **Take the filter widening, with the 17 changed values published as a diff** beside the 5 gained, so the change is
+   visible rather than silent. 94 of 222 is still 42 percent.
+2. **Keep the CSF exclusion**, now with 30.3's numbers as its justification instead of a convention.
+3. **Disclose the species translation** on the existing 89 values, because of 30.4. This is the finding with the widest
+   reach and it is about data already in use.
+4. **Use PET as a validation sample for the chain, not a substitute for it.** Budda 2026 compares a computed unbound
+   brain concentration against PET for eight D2 ligands and reports RMSE 1.6 to 8.7 percent for four of them and 23.4
+   to 27.9 percent for three others, with buprenorphine deviating substantially. That is the right use of 11 numbers.
+5. **Accept that the brain-occupancy analysis covers about 70 of 222 drugs and register that**, rather than filling the
+   column with values whose error exceeds the effect. The 59 are not missing by oversight; they are drugs the
+   measurement literature never covered, and for the benzodiazepines among them occupancy would be the wrong readout
+   even if it existed.
