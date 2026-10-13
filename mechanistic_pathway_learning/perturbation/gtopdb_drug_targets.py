@@ -1,0 +1,165 @@
+"""A drug's targets per subunit, from the IUPHAR/BPS Guide to PHARMACOLOGY, in place of ChEMBL's complex targets.
+
+Why (measured 13 October 2026, and the owner's decision of that date: "agreed on both 1 and 2"). ChEMBL's
+`drug_mechanism` rows often name a protein *complex*, whose `gene_symbols` field lists every subunit, and
+map_drug_targets_to_graph_nodes expands a target to all of them and splits its magnitude 1 / n across them. On the
+study's drugs that is 114 of 326 mechanism rows over 91 drugs, and the result is not what the drugs do:
+
+- gabapentin on 26 calcium-channel subunits at 1/22 each, including the skeletal-muscle CACNA1S and the T-type
+  CACNA1G, CACNA1H and CACNA1I, where it binds the alpha-2-delta subunits CACNA2D1 and CACNA2D2;
+- every benzodiazepine on 16 GABA-A subunits, among them GABRA4, GABRA6 and GABRD, which form
+  benzodiazepine-insensitive receptors, since the site needs a gamma subunit and an alpha-1, 2, 3 or 5;
+- propofol and the barbiturates on the *same* 16 subunits as the benzodiazepines, although they act at a different
+  pocket, which erases the one distinction `configs/binding_sites.csv` exists to record;
+- amisulpride on 17 serotonin receptors.
+
+GtoPdb names one gene per interaction: of 357 human rows for the drugs matched here, 356 carry a single
+`Target Gene Symbol`. Where both sources describe a drug it gives 3 or 4 subunits against ChEMBL's 16 (alprazolam 4,
+clonazepam 3, diazepam 3, flunitrazepam 4, zolpidem 1). So for a drug GtoPdb covers, its rows replace ChEMBL's rather
+than joining them, because a union keeps the wrong subunits; for a drug it does not cover, ChEMBL's rows stand and the
+route is recorded per drug.
+
+Licence, already verified and recorded in docs/data_sources.md: "The Guide to PHARMACOLOGY database is licensed under
+the Open Data Commons Open Database License (ODbL)."; "Its contents are licensed under a Creative Commons
+Attribution-ShareAlike 4.0 International License" (guidetopharmacology.org/about.jsp, read 11 October 2026). Release
+2026.3, published 16 September 2026. Not redistributed.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pandas as pd
+
+GTOPDB_DIRECTORY = Path("data/raw/gtopdb_2026")
+INTERACTIONS_FILE = "interactions.csv"
+LIGAND_MAPPING_FILE = "ligand_id_mapping.csv"
+HUMAN_SPECIES = "Human"
+VERSION_HEADER_ROWS = 1  # the first line is "# GtoPdb Version: ..."
+
+# GtoPdb's Action vocabulary to the same signs ChEMBL's action types take
+# (map_drug_targets_to_graph_nodes.ACTION_TYPE_SIGN), so the two routes put a drug on one scale.
+GTOPDB_ACTION_SIGN: dict[str, float] = {
+    "FULL AGONIST": 1.0,
+    "AGONIST": 1.0,
+    "ACTIVATION": 1.0,
+    "POTENTIATION": 0.5,
+    "PARTIAL AGONIST": 0.5,
+    "POSITIVE": 0.5,  # positive allosteric modulation
+    "BIASED AGONIST": 0.5,  # agonist at some of a receptor's pathways only, so not a full agonist on any one of them
+    "NEGATIVE": -0.5,  # negative allosteric modulation
+    "ANTAGONIST": -1.0,
+    "INHIBITION": -1.0,
+    "INVERSE AGONIST": -1.0,
+    "PORE BLOCKER": -1.0,
+    "IRREVERSIBLE INHIBITION": -1.0,
+    "BINDING": 0.0,
+    "NEUTRAL": 0.0,
+    "MIXED": 0.0,  # opposite directions at one target; a direction-free row rather than a guessed one
+    # the rest of the release's vocabulary, which no row of this study's drugs carries (measured 13 October 2026) but
+    # which a release or a drug set could bring in, and which a guard test holds this table to
+    "COMPETITIVE": -1.0,  # Type Inhibitor throughout: competitive inhibition lowers the target's activity
+    "NON-COMPETITIVE": -1.0,  # Type Antagonist or Inhibitor; the site differs, the direction does not
+    "FEEDBACK INHIBITION": -1.0,
+    "VOLTAGE-DEPENDENT INHIBITION": -1.0,  # Type Gating inhibitor
+    "IRREVERSIBLE AGONIST": 1.0,
+    "SLOWS INACTIVATION": 1.0,  # a channel that inactivates more slowly carries more current, so the flux rises
+    "UNKNOWN": 0.0,
+}
+# GtoPdb's two competition words, which section 13.4 of docs/label_source_review.md counted: 53 human rows read
+# "Competitive" and 4 "Non-competitive" across the release, and none of them belongs to a drug of this study. They are
+# in the sign table so a different drug set does not meet an unmapped action, not because they reach anything here.
+COMPETITION_ACTIONS = ("COMPETITIVE", "NON-COMPETITIVE")
+# Action values that modulate an endogenous ligand's response instead of supplying one of their own, which the
+# modulator relation reads (preregistration item 24, partial agonism). Kept beside the sign so one table answers both.
+MODULATES_THE_ENDOGENOUS_LIGAND = ("PARTIAL AGONIST", "POSITIVE", "NEGATIVE", "POTENTIATION")
+ALLOSTERIC_TYPE = "Allosteric modulator"
+
+
+def read_interactions(gtopdb_directory: Path = GTOPDB_DIRECTORY, human_only: bool = True) -> pd.DataFrame:
+    """The interaction table, human rows only by default. The version line is skipped, not parsed, so a release change
+    is visible in the file's own hash rather than silently absorbed."""
+    table = pd.read_csv(gtopdb_directory / INTERACTIONS_FILE, low_memory=False, skiprows=VERSION_HEADER_ROWS)
+    if human_only:
+        table = table[table["Target Species"].astype(str).str.strip() == HUMAN_SPECIES]
+    return table
+
+
+def read_ligand_mapping(gtopdb_directory: Path = GTOPDB_DIRECTORY) -> pd.DataFrame:
+    return pd.read_csv(gtopdb_directory / LIGAND_MAPPING_FILE, low_memory=False, skiprows=VERSION_HEADER_ROWS)
+
+
+def ligand_id_of_drug(pubchem_cid_of_drug: dict[str, int], name_of_drug: dict[str, str],
+                      gtopdb_directory: Path = GTOPDB_DIRECTORY) -> tuple[dict[str, int], dict[str, str]]:
+    """perturbation id -> GtoPdb ligand id, and perturbation id -> how it was matched.
+
+    PubChem CID first, because an identifier is exact; the drug's name second, lowercased and stripped, because GtoPdb
+    carries approved names for drugs whose CID it does not record. Matching by name alone reaches more of the study's
+    drugs than by CID alone, so both are used and which one matched is reported, never guessed at."""
+    mapping = read_ligand_mapping(gtopdb_directory)
+    cid_column = pd.to_numeric(mapping["PubChem CID"], errors="coerce")
+    ligand_of_cid = {int(cid): int(ligand) for cid, ligand in zip(cid_column, mapping["Ligand id"]) if pd.notna(cid)}
+    ligand_of_name: dict[str, int] = {}
+    for name, ligand in zip(mapping["Name"], mapping["Ligand id"]):
+        key = str(name).strip().lower()
+        if key:
+            ligand_of_name.setdefault(key, int(ligand))
+    ligand_of_drug: dict[str, int] = {}
+    route: dict[str, str] = {}
+    for perturbation_id in {*pubchem_cid_of_drug, *name_of_drug}:
+        cid = pubchem_cid_of_drug.get(perturbation_id)
+        name = str(name_of_drug.get(perturbation_id, "")).strip().lower()
+        if cid is not None and int(cid) in ligand_of_cid:
+            ligand_of_drug[perturbation_id], route[perturbation_id] = ligand_of_cid[int(cid)], "pubchem_cid"
+        elif name in ligand_of_name:
+            ligand_of_drug[perturbation_id], route[perturbation_id] = ligand_of_name[name], "name"
+    return ligand_of_drug, route
+
+
+def sign_of_action(action: str | float | None) -> float | None:
+    """The sign of a GtoPdb Action, or None where the vocabulary does not name one, so an unknown action is reported
+    rather than silently taken as zero."""
+    if action is None or (isinstance(action, float) and pd.isna(action)):
+        return None
+    return GTOPDB_ACTION_SIGN.get(str(action).strip().upper())
+
+
+def targets_per_drug(ligand_of_drug: dict[str, int], interactions: pd.DataFrame | None = None,
+                     gtopdb_directory: Path = GTOPDB_DIRECTORY, primary_only: bool = False) -> dict[str, pd.DataFrame]:
+    """perturbation id -> its GtoPdb rows, one gene per row, with the sign its Action takes.
+
+    primary_only keeps the rows GtoPdb marks `Primary Target`, which is the narrower reading of a drug's mechanism.
+    Rows with no gene symbol, and rows whose Action the vocabulary does not name, are kept in the frame with a null
+    sign so a caller counts them rather than losing them."""
+    table = read_interactions(gtopdb_directory) if interactions is None else interactions
+    if primary_only:
+        table = table[table["Primary Target"].astype(str).str.strip().str.lower().isin(("t", "true", "yes"))]
+    ligand_column = pd.to_numeric(table["Ligand ID"], errors="coerce")
+    per_drug: dict[str, pd.DataFrame] = {}
+    for perturbation_id, ligand_id in ligand_of_drug.items():
+        rows = table[ligand_column == ligand_id].copy()
+        if rows.empty:
+            continue
+        rows["gene_symbol"] = rows["Target Gene Symbol"].astype(str).str.strip()
+        rows["sign"] = [sign_of_action(action) for action in rows["Action"]]
+        rows["modulates_the_endogenous_ligand"] = [
+            str(action).strip().upper() in MODULATES_THE_ENDOGENOUS_LIGAND for action in rows["Action"]]
+        per_drug[perturbation_id] = rows
+    return per_drug
+
+
+def one_gene_per_row(rows: pd.DataFrame) -> pd.DataFrame:
+    """The rows that name exactly one gene and take a sign: the ones that can replace a ChEMBL complex target.
+
+    A GtoPdb gene symbol field occasionally carries a subunit list of its own ("GABRA1|GABRB2|GABRG2" for a named
+    receptor assembly). Those are left out here rather than expanded, because expanding them is the error this module
+    exists to undo; a caller that wants them has them in the full frame."""
+    named = rows[rows.gene_symbol.notna() & (rows.gene_symbol != "") & (rows.gene_symbol.str.lower() != "nan")]
+    single = named[~named.gene_symbol.str.contains(r"[|,;]", regex=True, na=False)]
+    return single[single.sign.notna()]
+
+
+def pubchem_cid_from_perturbation_id(perturbation_id: str) -> int | None:
+    """The PubChem CID of a STITCH flat identifier CID1xxxxxxxx, or None for an identifier of another kind."""
+    match = re.fullmatch(r"CID1(\d{8})", str(perturbation_id))
+    return int(match.group(1)) if match else None
