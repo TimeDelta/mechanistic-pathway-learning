@@ -1973,6 +1973,52 @@ reaction consuming two molecules counts as one (14.5 percent of both-produced-an
 non-unit coefficient, and the totals differ at 2.8 percent of those with equal reaction counts). The registered
 per-edge demand of item 20 stays unbuilt. This item changes the counting of reactions, not of molecules.
 
+**29. Target occupancy is a model input; it is computed where its inputs exist, calibrated where they do not, and
+flagged either way** (the owner, 13 October 2026: "I want into occupancy... it's needed for the physiology", and
+"Don't REQUIRE occupancy though ... some drugs legitimately don't have it").
+
+**It is not required of a drug.** Requiring it would drop 101 of 222 drugs and 24.7 percent of the kept positive
+drug pairs, and the reason those drugs lack it is the literature rather than their pharmacology: all 101 have an
+affinity at their targets, 42 lack a therapeutic range or concentration and 59 lack that and a fraction unbound as
+well. It is also not the single-target case, which was considered and measured: 28.7 percent of the uncovered
+drugs have one target against 29.8 percent of the covered, the same population.
+
+**The placeholder is calibrated, not discarded** (the owner: "i don't want it to throw out the existing
+occupancies just because they can't be calculated by that method. It should look at disagreements between the
+sources and take the mean or median disagreement as an offset"). Measured over the 115 drugs that have both
+(`experiments/label_review/placeholder_concentration_calibration.py`), the placeholder sits **2.1 times above** the
+geometric centre of the measured therapeutic range, and that offset is removed. It is applied to the
+**concentration** and not to the occupancy: occupancy is bounded in [0, 1] and saturating, so an additive offset
+on it is ill-defined near either end, while `occupancy = C / (C + Kd)` keeps the bound by construction and is where
+the disagreement between the two methods actually sits.
+
+**Every drug therefore carries an occupancy on one scale**, which is what removes the confound a mixed input would
+have introduced: without it the two groups carry total input with medians 1.00 and 3.0, and which group a drug
+falls in is whether it has a published therapeutic range and fraction unbound, a quantity that tracks how long and
+how widely the drug has been studied and so correlates with its label count by the same route.
+
+**Two limitations are registered with it, and neither is removed by the calibration.**
+
+- **A calibrated placeholder is not a measurement.** The scatter about the offset is 1.14 log units, about two
+  orders of magnitude of drug-to-drug disagreement, and no single offset touches it: correcting moves the drugs
+  whose concentration lands inside their own measured range from 27 percent only to 30, and the median absolute
+  error from 0.75 to 0.70 log units. The bias is what a calibration removes and the scatter is what it does not,
+  so **`has_measured_occupancy` is carried as a stratum** and every reading is reported within it as well as over
+  all drugs. An imputed concentration carries roughly a ten-fold uncertainty, which an occupancy near saturation
+  absorbs and one near `Kd` does not.
+- **The offset is estimated where it is least needed.** It comes from the drugs that have a measured
+  concentration, which are the better-studied ones, and is carried to those that do not. If the placeholder's bias
+  differs between the two populations the correction does not transfer, and nothing available measures whether it
+  does. The owner accepted this as a stated limitation on 13 October ("That's a valid limitation. Just record
+  it"); it is the same shape as the extrapolation registered for the Open Targets agreement in item 12d.
+
+**What is not settled here.** Whether off-targets enter the input at all, and at what occupancy threshold, is
+decision 1.3 and remains the owner's; item 25's split survives them, at a cost in novelty rather than in size
+(`docs/off_targets_under_the_target_split.md`). And **item 5 and this item will have to be reconciled** if
+off-targets are admitted: item 5 registers that an off-target's occupancy is read from the measured unbound
+concentration "and not from the placeholder", which a calibrated placeholder still is. That is a conflict between
+two registered items rather than something a session resolves.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
