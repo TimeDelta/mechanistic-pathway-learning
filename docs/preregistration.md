@@ -1911,9 +1911,17 @@ negative sign. A perturbation that accumulates the product therefore makes the r
 reaction runs backwards against its baseline, regenerating the substrate and pulling the product back down; a
 perturbation that raises the substrate drives it forwards as before. That is the conditional reversal the owner
 described - it happens only when the local state calls for it - and it is linear, so it needs one derived edge and
-no gate on the state. The encoder already iterates to a fixed point and could carry a contracting nonlinearity
-(the softmax-mixture aggregator runs inside the loop), so linearity was never the obstacle; the obstacle was that
-I had framed reversal as switching edges on and off, when in a deviation model it is the sign of the rate.
+no gate on the state. Linearity was never the obstacle; the obstacle was that I had framed reversal as switching
+edges on and off, when in a deviation model it is the sign of the rate.
+
+*(An earlier draft of this item argued that a nonlinearity was available anyway, "the softmax-mixture aggregator
+runs inside the loop". Two things wrong with that, corrected 13 October 2026 when the owner asked why the
+aggregator used softmax rather than a sparse maximum. The mixture is **not in the registered model** -
+`cross_relation_aggregator` defaults to `mean`, so the registered linear-response loop is linear throughout and
+its only nonlinearities are the cell-class bottleneck and the pH weight, both applied after it. And the mixture's
+weighting is **sparsemax** by default and has been, returning exact zeros so that a node type either uses a
+statistic or does not; only the command-line spelling `softmax_mixture` is historical. Neither changes this item's
+conclusion, which needs no nonlinearity at all.)*
 
 **What is built.** The linear-response encoder derives, for every `product_of` edge of a reaction flagged
 reversible, the edge product -> reaction at sign -1 under its own relation `product_opposes`, whose gain is learned

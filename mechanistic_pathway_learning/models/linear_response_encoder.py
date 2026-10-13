@@ -328,8 +328,13 @@ def project_onto_simplex(logit: Tensor, dim: int) -> Tensor:
 
 
 class CrossRelationAggregator(nn.Module):
-    """Combines the gain-weighted messages of the relations feeding each node through a softmax over
+    """Combines the gain-weighted messages of the relations feeding each node through a weighted mixture of
     simple statistics, with separate weights per node type and per propagation channel.
+
+    **The weighting is sparsemax by default, not softmax**, for the reason at MIXTURE_WEIGHTINGS: it returns
+    exact zeros, so a node type either uses a statistic or it does not and the learned choice is reportable.
+    The option is nevertheless spelled `softmax_mixture` on the command line, which is historical and is kept
+    only so that runs recorded under that value stay readable.
 
     The mean annihilates a node fed by relations of opposite sign, so the statistics that survive sign
     mixing are offered beside it and the weights are learned. Only the relations that actually feed a
@@ -342,7 +347,8 @@ class CrossRelationAggregator(nn.Module):
     in absolute value, so every per-relation message is bounded by maximum_gain * max |h|. The maximum,
     the minimum and the mean over a set of such values are bounded by the same quantity, and so is the
     population standard deviation, since the dispersion of values inside an interval cannot exceed its
-    half-width times two. Softmax weights sum to one, so the combination is convex and keeps the bound.
+    half-width times two. Both weightings are non-negative and sum to one, so the combination is convex
+    and keeps the bound.
     Zero input still gives exactly zero output, so the unperturbed field stays zero and the response
     stays positively homogeneous of degree one; it loses additivity, which linearity had supplied.
     """
