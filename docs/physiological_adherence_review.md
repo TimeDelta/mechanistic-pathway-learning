@@ -57,8 +57,26 @@ cancelling pair under the in-degree mean. This is a large and previously unnamed
 cancellations in section 1, and its own consequence is sharper: **no perturbation can drive a reversible reaction
 one way rather than the other.** Roughly two fifths of the reaction set is reversible, so this is not a corner.
 
-**No document names it.** It should be registered, and the fix is not obvious: distinguishing the directions needs
-either a thermodynamic sign the graph does not carry or a split of each reversible reaction into two nodes.
+**How much of the graph is mute because of it.** The **median affected metabolite has 67 percent of its incoming
+traffic in self-cancelling mirror pairs**, 4,221 have more than half, and **1,809 have nothing else at all**: their
+field is identically zero under every perturbation, whatever is done upstream.
+
+**What the physiology asks for, and why the encoder cannot give it** (the owner, 13 October: "The reaction should
+only be able to follow the reversal path under certain conditions: i.e. a competitor ligand with higher binding
+affinity for the target comes in contact"). Exactly so: reversal is conditional on the local state - product
+accumulation, a displacing ligand - and an unconditional bidirectional pair is not a weaker version of that but a
+different thing, which here cancels to nothing. Gating the reverse direction on the concentration ratio is a
+nonlinearity, so it cannot sit inside the linear-response encoder: the same wall that competition and partial
+agonism hit. Splitting each reversible reaction into a forward and a reverse node does not escape it either, since
+both would be catalysed by the same gene, carry the same field, and cancel again.
+
+What is available is the **nominal direction only** - treating each reversible reaction as irreversible in the
+direction Human-GEM lists it. That loses a reverse direction the model cannot currently express in any case, and
+recovers 1,809 metabolites that are silent today. Decision 4.10.
+
+*(The pralidoxime example is a near neighbour rather than this case: reactivating a covalently inhibited enzyme is
+a displacement at a binding site, which belongs with the competition work of section 12 and is equally
+unrepresented.)*
 
 ## 3. The limiting-step rule is registered with no measurement at all — open
 
@@ -73,10 +91,17 @@ route's ceiling. The product rule **understates** in the other direction. And `b
 unweighted** structure, so a route through an inhibitory edge raises the ceiling exactly as an activating route
 does.
 
-**Status.** Item 20 says the cost against the product rule "is to be measured on the rebuilt graph
-(`experiments/measure_limiting_step_rule.py`)". The script exists; it has not been run, and
-`docs/limiting_step_rule_cost.md` does not exist. **The largest change made to the encoder on 13 October carries no
-numbers.** This is the clearest gap in the review.
+**No measurement decides whether the rule is used, and this review was wrong to imply one should** (the owner, 13
+October: "that doesn't need measured for confirmation to be in the final models. It should just be in there to
+mirror the physiology"). The rule is chosen because the throughput of a chain is set by its weakest step, which is
+a fact about pathways and not a hypothesis this study tests. A comparison against the product rule would say how
+much the choice moves predictions - a different question, and not a reason to hold the rule back.
+
+**What does need checking is whether the implementation is the rule.** The first of the three costs above is not a
+property of a limiting step at all: a bottleneck computed on unsigned structure lets an inhibitory route raise the
+ceiling. That is a correctness question answerable by a unit test, and
+`experiments/measure_limiting_step_rule.py` is repurposed to it. The second and third are properties of the rule
+as registered and are disclosed rather than fixed.
 
 ## 4. Cell-class expression no longer conditions the route — open, and the decision log is stale
 
@@ -287,10 +312,15 @@ perturbations ranked differently.
 
 ## What this adds up to
 
-**The three findings that should change something.** Reversible reactions cancelling against themselves (15,867
-pairs) is undisclosed and sits underneath the study's worst measured result. The limiting-step rule, the largest
-encoder change of 13 October, carries no measurement at all. And the preregistration asserts a mirror property at
-item 22a that the code does not have.
+**The finding that should change something.** Reversible reactions cancelling against themselves: 15,867 pairs,
+and 1,809 metabolites whose field is identically zero under every perturbation. It is undisclosed, it sits
+underneath the study's worst measured result, and the nominal-direction build recovers it at the rebuild.
+
+**Two things this review got wrong, corrected by the owner on 13 October.** It treated the limiting-step rule's
+missing measurement as a gap; no measurement decides whether a rule that mirrors the physiology is used, and what
+needs checking is narrower - whether the implementation is the rule. And it reported item 22a's mirror property as
+a divergence between registration and code, when the property should never have been registered: the owner never
+agreed to it, and it is withdrawn rather than corrected.
 
 **The pattern worth naming.** Most of the costed deviations are the same deviation: the in-degree mean. It erases
 reaction counts (section 1), cancels reversible reactions (2), dilutes the proton node to 1/4,096 (5) and the

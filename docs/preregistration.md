@@ -1459,9 +1459,24 @@ round compounds whichever factor it is, so the bottleneck has to be factored out
 mixes states no class has attenuated. And the two rules err in opposite directions: the product understates, charging
 a route of expressed nodes at every step, while the bottleneck overstates, scaling the sum over every route by the
 widest route's ceiling, since masking the thin routes would need a cut-off and the weights have no natural one. What
-it does not change is the fixed point, which is reached before the bottleneck is applied. The cost against the product
-rule is to be measured on the rebuilt graph (`experiments/measure_limiting_step_rule.py`); the only measurement so far
-was taken on a retired graph and is not carried here.
+it does not change is the fixed point, which is reached before the bottleneck is applied.
+
+**No measurement decides whether this rule is used** (the owner, 13 October 2026, on being told the rule was
+registered without one: "that doesn't need measured for confirmation to be in the final models. It should just be
+in there to mirror the physiology"). He is right, and an earlier draft of this item said otherwise. The rule is
+chosen because the throughput of a chain at steady state is set by its weakest step, which is a fact about
+pathways and not a hypothesis this study tests; a comparison against the product rule would say how much the
+choice moves the predictions, which is not the same question and is not a reason to hold the rule back.
+
+**What does need checking is whether the implementation is the rule**, which is a correctness question and not a
+model comparison, and `experiments/measure_limiting_step_rule.py` is repurposed to it. Two properties of the code
+are not properties of a limiting step. The bottleneck `b` is computed on the **unsigned, unweighted** structure,
+so a route through an inhibitory edge raises the ceiling exactly as an activating route does - "a bottleneck cares
+only whether a route exists" is true of a bottleneck and false of a signed one. And `b` scales the settled state,
+which already sums every route, so a contribution that arrived through a barely expressed route is credited at the
+widest route's ceiling. Both are stated in the encoder and neither has been exercised. The first is a unit test;
+the second is a property of the rule as registered and is disclosed rather than fixed, since masking thin routes
+would need a cut-off and the weights have no natural one.
 
 **21. A perturbed node does not read its own descriptors: `seed_masked` in both encoders** (the owner, 13 October
 2026: "it HAS to use seed_masked to be physiological and to avoid signal leakage"). This replaces the reading of the
@@ -1516,42 +1531,24 @@ propagation settles, that node's deviation becomes a multiplier on every node in
 568, vacuole 49, intermembrane 43). A weight does not propagate, which is the point: the cytosolic proton touches
 3,329 reactions, and a node that sent across all of them would make every pair of reactions neighbours, which is why
 the currency mask exists and why unmasking it would be worse than leaving it.
-Four properties and one cost. The form is even in the deviation, so a gain-of-function stays the exact negative of a
-loss-of-function; it is applied after the fixed point, so the contraction is untouched; it lies in (0, 1], so it cannot
-raise a norm; and a node in no compartment, or in several as a transport reaction is, takes no weight. The cost is
-**positive homogeneity of degree one**, which this breaks: doubling the input no longer doubles the response, because
-the weight reads the deviation's size. That is the first registered departure from linearity, it is confined to this
-factor, and the input-size controls change meaning accordingly.
-**No compartment pH constant enters, which is worth stating because it looks as though one should.** Converting a
-deviation to pH units would need a resting proton concentration and a scale from arbitrary units to molar, and a
-pH-activity curve would need each reaction's pH optimum, which is not available across 13,793 reactions. The
-simplification registered instead is that each reaction's optimum is its own compartment's resting state, so the
-weight depends on the deviation from rest alone and the resting value cancels out of the form. The module therefore
-claims only that moving a compartment away from its resting proton balance costs throughput; how much is learned, one
-sensitivity per compartment. Because the settled field is of order 1e-11, an uncalibrated sensitivity would leave the
-weight at exactly 1 with no gradient, so `calibrate_ph_sensitivity` sets each compartment's sensitivity once, before
-training, so that the root mean square of its argument is 0.5 on one batch, and the values it sets are reported in the
-run record. A compartment the batch does not reach keeps its sensitivity. The constants would be needed for a
-different question, a drug's ionisation against a compartment's pH and so the trapping of bases in the lysosome, which
-this is not and which stays open.
+**The form is the log one, which is what a pH is.** `ΔpH = -log10(1 + sensitivity * deviation)` and
+`w_pH = exp(-(ΔpH / width) ** 2)`, as `compartment_ph_weight` implements it. Acidifying by a given fraction and
+alkalinising by it move pH by different amounts, so the weight is **not** even in the deviation and a
+gain-of-function does not take the same weight as a loss-of-function at a node whose compartment the perturbation
+moves. That asymmetry is the chemistry and not a defect.
 
-**22b. Corrected 13 October 2026: the weight in code is the log form, and the mirror property above does not hold.**
-Item 22a registers `w_pH = exp(-(sensitivity * deviation) ** 2)` and registers evenness as a property. The encoder
-implements `ΔpH = -log10(1 + sensitivity * deviation)` and `w = exp(-(ΔpH / width) ** 2)`, and says why: "A pH shift
-is not even: acidifying by a given fraction and alkalinising by it move pH by different amounts." The code is right
-and the physiology is on its side. **The registration was wrong**, and it asserted a property items 20 and 22 lean
-on - "the response must mirror: a gain of function has to produce the negative of the field a loss of function
-produces". That mirror holds everywhere except at a node whose compartment the perturbation moves, where a gain and
-a loss now take different weights. The sign-and-typing ablations read the mirror, so they are read with this
-exception stated beside them.
+*(An earlier draft of this item registered the even form `exp(-(sensitivity * deviation) ** 2)` and listed
+evenness, and a mirror between gain and loss, among its properties. The owner never agreed to a mirror property
+and it should not have been in the registration; it is withdrawn, 13 October 2026, and nothing else in the
+registration rests on it.)*
 
-**What the ceiling does not do, also corrected.** Item 22a calls the weight "a multiplier on the throughput of every
-node in that compartment". It is applied once, after the fixed point and after the bottleneck, so it multiplies each
-node's **final value** and attenuates no message during the propagation: a collapse of lysosomal pH cannot change the
-field at any cytosolic node. The cell-class bottleneck does carry its ceiling along routes; the pH weight does not.
-`docs/physiological_adherence_review.md` section 5 holds the reach (18,928 of 49,796 nodes; 5,127 transport
-reactions and all 25,741 gene, protein and drug nodes take no weight) and the conditioning of the proton node the
-ceiling is read from.
+**What the weight does and does not do.** It is a multiplier on each node's settled value, applied once after the
+fixed point and after the bottleneck. It therefore does **not** attenuate the messages a node passes during the
+propagation: a collapse of lysosomal pH cannot change the field at any cytosolic node. The cell-class bottleneck
+does carry its ceiling along routes, through the max-min recurrence; this one does not.
+`docs/physiological_adherence_review.md` section 5 holds its reach (18,928 of 49,796 nodes take a weight; 5,127
+transport reactions carry a multi-compartment label and take none, as do all 25,741 gene, protein and drug nodes)
+and the conditioning of the proton node the ceiling is read from.
 
 **23. The registered model is the trainer's default** (the owner, 13 October 2026: "all of the v4 stuff should be ON by
 default"). Every registered choice that is built is now the default of `experiments/run_main_model.py`: the grouped
