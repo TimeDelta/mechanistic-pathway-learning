@@ -83,6 +83,28 @@ PERTURBATION_FEATURE_DIM = 2  # (sign, magnitude)
 CONJUNCTION_AGGREGATIONS = ("mean", "minimum", "soft_minimum")
 DEFAULT_CONJUNCTION_RELATIONS = ("member_of",)  # the obligate-complex relation of the physiology graph
 DEFAULT_SOFT_MINIMUM_TEMPERATURE = 0.1
+# How a relation's transform is parameterised (preregistration amendment item 8 of 12 October 2026; the owner: "set
+# the reduced rank bases with the example share flow through each edge type and 1 repeated layer regardless of depth").
+#   "per_layer_dense", every run before 13 October 2026: a full node_state_dim by node_state_dim matrix per relation
+#     per layer, 61,440 parameters at three layers, 20 relations and 32 channels, or 20.65 per kept training pair.
+#   "shared_low_rank": one set applied at every round, so the depth is a number of rounds and not a parameter count.
+#     Each relation owns a diagonal of node_state_dim parameters, and the relations that enough training examples
+#     reach additionally own a rank-r factorisation, the transform being diag(d) + L R^T and applied as
+#     x * d + (x L) R^T so the full matrix is never built. 1,792 parameters in all, 0.60 per kept pair.
+# The rank follows the number of development training pairs that reach a relation, which is why the caller passes the
+# indices rather than this module choosing them; the registered nine are encodes, catalyzed_by, substrate_of,
+# activates, product_of, binds, regulates_transcription_of, inhibits and member_of, at 2,100 to 2,468 pairs against
+# 451 or fewer for the other eleven. **Rank 4 is the only step up the registration permits**, named before any run so
+# it cannot be chosen after a result is seen.
+RELATION_PARAMETERISATIONS: tuple[str, ...] = ("per_layer_dense", "shared_low_rank")
+DEFAULT_RELATION_FACTOR_RANK = 2
+PERMITTED_RELATION_FACTOR_RANKS: tuple[int, ...] = (2, 4)
+# The norm bound item 8 registers, for the same reason item 7 bounds the linear encoder: one set of weights applied at
+# every round is a repeated map, and without a bound on its gain the iteration has no fixed point to run to. The
+# diagonal is passed through tanh and scaled by the bound, and the factor is rescaled whenever the product of its two
+# sides' spectral norms would exceed it, so the whole transform's induced norm stays at or below the bound.
+DEFAULT_RELATION_NORM_BOUND = 0.9
+RELATION_NORM_EPSILON = 1e-12
 
 
 class RelationalMessagePassingEncoder(nn.Module):
@@ -95,6 +117,10 @@ class RelationalMessagePassingEncoder(nn.Module):
         node_features: Tensor | None = None,
         num_descriptor_columns: int = 0,
         descriptor_columns_kept: Tensor | None = None,
+        relation_parameterisation: str = "per_layer_dense",
+        factorised_relation_indices: "tuple[int, ...] | None" = None,
+        relation_factor_rank: int = DEFAULT_RELATION_FACTOR_RANK,
+        relation_norm_bound: float = DEFAULT_RELATION_NORM_BOUND,
         descriptor_treatment: str = "plain",
         seed_mask_partner_index: Tensor | None = None,
         conjunction_relation_indices: tuple[int, ...] = (),
@@ -205,20 +231,78 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns, descriptor_columns_kept), persistent=False)
         self.perturbation_injection = nn.Linear(PERTURBATION_FEATURE_DIM, node_state_dim)
         scale = 1.0 / math.sqrt(node_state_dim)
-        self.relation_weight = nn.Parameter(
-            torch.randn(num_message_passing_layers, num_relation_types, node_state_dim, node_state_dim) * scale
-        )
-        self.self_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
-        self.layer_bias = nn.Parameter(torch.zeros(num_message_passing_layers, node_state_dim))
+        if relation_parameterisation not in RELATION_PARAMETERISATIONS:
+            raise ValueError(f"relation_parameterisation must be one of {RELATION_PARAMETERISATIONS}, not {relation_parameterisation!r}")
+        self.relation_parameterisation = relation_parameterisation
+        self.relation_factor_rank = relation_factor_rank
+        self.relation_norm_bound = relation_norm_bound
+        # the layers a parameter is held for: one shared set under "shared_low_rank" (amendment item 8), one per layer
+        # under "per_layer_dense", which is what every run before 13 October 2026 built
+        parameter_layers = 1 if relation_parameterisation == "shared_low_rank" else num_message_passing_layers
+        self.parameter_layers = parameter_layers
+        if relation_parameterisation == "shared_low_rank":
+            if relation_factor_rank not in PERMITTED_RELATION_FACTOR_RANKS:
+                raise ValueError(f"relation_factor_rank must be one of {PERMITTED_RELATION_FACTOR_RANKS} "
+                                 f"(amendment item 8 names rank 4 as the only step up from 2), not {relation_factor_rank}")
+            factorised = sorted(set(int(index) for index in (factorised_relation_indices or ())))
+            if factorised and (factorised[0] < 0 or factorised[-1] >= num_relation_types):
+                raise ValueError("factorised_relation_indices must index the relation types given")
+            self.register_buffer("factorised_relation_indices", torch.tensor(factorised, dtype=torch.long), persistent=False)
+            self.relation_diagonal = nn.Parameter(torch.zeros(num_relation_types, node_state_dim))
+            self.relation_factor_left = nn.Parameter(torch.randn(len(factorised), node_state_dim, relation_factor_rank) * scale) \
+                if factorised else None
+            self.relation_factor_right = nn.Parameter(torch.randn(len(factorised), node_state_dim, relation_factor_rank) * scale) \
+                if factorised else None
+            self.relation_weight = None
+        else:
+            self.factorised_relation_indices = None
+            self.relation_diagonal = self.relation_factor_left = self.relation_factor_right = None
+            self.relation_weight = nn.Parameter(
+                torch.randn(num_message_passing_layers, num_relation_types, node_state_dim, node_state_dim) * scale
+            )
+        self.self_weight = nn.Parameter(torch.randn(parameter_layers, node_state_dim, node_state_dim) * scale)
+        self.layer_bias = nn.Parameter(torch.zeros(parameter_layers, node_state_dim))
         # created last and only with entry nodes, so an encoder without them draws the parameters it always drew
         self.entry_unsigned_weight, self.entry_signed_weight = None, None
         self.entry_first_unsigned_weight, self.entry_first_signed_weight = None, None
         if entry_node_mask is not None:
-            self.entry_unsigned_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
-            self.entry_signed_weight = nn.Parameter(torch.randn(num_message_passing_layers, node_state_dim, node_state_dim) * scale)
+            self.entry_unsigned_weight = nn.Parameter(torch.randn(parameter_layers, node_state_dim, node_state_dim) * scale)
+            self.entry_signed_weight = nn.Parameter(torch.randn(parameter_layers, node_state_dim, node_state_dim) * scale)
             if entry_before_first_layer:
                 self.entry_first_unsigned_weight = nn.Parameter(torch.randn(node_state_dim, node_state_dim) * scale)
                 self.entry_first_signed_weight = nn.Parameter(torch.randn(node_state_dim, node_state_dim) * scale)
+
+    def parameter_layer(self, layer_index: int) -> int:
+        """Which set of weights a round reads: its own under "per_layer_dense", the single shared set otherwise."""
+        return 0 if self.parameter_layers == 1 else layer_index
+
+    def relation_transform(self, relation_index: int, layer_index: int):
+        """The transform of one relation at one round, as a function of [*, node_state_dim] messages.
+
+        Under "per_layer_dense" this is that layer's matrix for the relation. Under "shared_low_rank" it is
+        diag(d) + L R^T, bounded: the diagonal is tanh scaled by relation_norm_bound, and the factor is rescaled when
+        the product of its sides' spectral norms would carry the transform past the bound. The matrix is never built,
+        so the cost is two thin products rather than one square one."""
+        if self.relation_parameterisation == "per_layer_dense":
+            weight = self.relation_weight[layer_index, relation_index]
+            return lambda messages: messages @ weight
+        diagonal = self.relation_norm_bound * torch.tanh(self.relation_diagonal[relation_index])
+        position = (self.factorised_relation_indices == relation_index).nonzero()
+        if position.numel() == 0:
+            return lambda messages: messages * diagonal
+        row = int(position[0])
+        left, right = self.relation_factor_left[row], self.relation_factor_right[row]
+        left_norm = torch.linalg.matrix_norm(left, ord=2).clamp_min(RELATION_NORM_EPSILON)
+        right_norm = torch.linalg.matrix_norm(right, ord=2).clamp_min(RELATION_NORM_EPSILON)
+        # the diagonal already spends up to relation_norm_bound, so the factor is held to what is left of it
+        room = (self.relation_norm_bound - diagonal.abs().max()).clamp_min(0.0)
+        rescale = torch.clamp(room / (left_norm * right_norm), max=1.0)
+        return lambda messages: messages * diagonal + ((messages @ left) @ right.transpose(0, 1)) * rescale
+
+    def relation_transform_norm_bound(self) -> float:
+        """The largest induced norm any relation's transform can have, which is what makes the repeated map a
+        contraction and so gives the iteration of amendment item 7 a fixed point to reach."""
+        return float(self.relation_norm_bound)
 
     def descriptor_parameters(self) -> list[nn.Parameter]:
         """The parameters that read the descriptor columns on their own (zero_init_slow), for their own learning rate."""
@@ -384,11 +468,11 @@ class RelationalMessagePassingEncoder(nn.Module):
         source_state = node_major_state[self.change_only_edge_source]  # [num_edges, batch_size, node_state_dim]
         change = (source_state - source_state[:, reference_row]) * self.change_only_edge_scale[:, None, None]
         if len(self.change_only_relation_indices) == 1:
-            return torch.zeros_like(node_major_state).index_add(0, self.change_only_edge_target, change @ self.relation_weight[layer_index, self.change_only_relation_indices[0]])
+            return torch.zeros_like(node_major_state).index_add(0, self.change_only_edge_target, self.relation_transform(self.change_only_relation_indices[0], self.parameter_layer(layer_index))(change))
         messages = torch.zeros_like(node_major_state)
         for relation_index in self.change_only_relation_indices:  # each relation through its own weight
             of_relation = self.change_only_edge_relation == relation_index
-            messages = messages.index_add(0, self.change_only_edge_target[of_relation], change[of_relation] @ self.relation_weight[layer_index, relation_index])
+            messages = messages.index_add(0, self.change_only_edge_target[of_relation], self.relation_transform(relation_index, self.parameter_layer(layer_index))(change[of_relation]))
         return messages
 
     def stacked_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor]:
@@ -487,7 +571,7 @@ class RelationalMessagePassingEncoder(nn.Module):
                 summed = torch.zeros_like(node_major_state).index_add(0, target, shifted)
                 has_member = summed > 0
                 smallest = torch.where(has_member, smallest - self.soft_minimum_temperature * torch.log(summed.clamp_min(1e-12)), smallest)
-            messages = messages + smallest @ self.relation_weight[layer_index, relation_index]
+            messages = messages + self.relation_transform(relation_index, self.parameter_layer(layer_index))(smallest)
         return messages
 
     def entry_messages(self, node_major_state: Tensor, layer_index: int | None) -> Tensor:
@@ -496,8 +580,8 @@ class RelationalMessagePassingEncoder(nn.Module):
         node_major_state is [num_graph_nodes, batch_size, node_state_dim] with absent entry nodes already at zero, so an
         entry node sends only in the perturbations seeded on it and no mask is needed here. layer_index None takes the
         maps of the delivery before the first layer."""
-        unsigned_weight = self.entry_first_unsigned_weight if layer_index is None else self.entry_unsigned_weight[layer_index]
-        signed_weight = self.entry_first_signed_weight if layer_index is None else self.entry_signed_weight[layer_index]
+        unsigned_weight = self.entry_first_unsigned_weight if layer_index is None else self.entry_unsigned_weight[self.parameter_layer(layer_index)]
+        signed_weight = self.entry_first_signed_weight if layer_index is None else self.entry_signed_weight[self.parameter_layer(layer_index)]
         source_state = node_major_state[self.entry_edge_source]  # [num_entry_edges, batch_size, node_state_dim]
         per_edge = ((source_state * self.entry_edge_weight[:, None, None]) @ unsigned_weight
                     + (source_state * self.entry_edge_signed_weight[:, None, None]) @ signed_weight)
@@ -535,7 +619,8 @@ class RelationalMessagePassingEncoder(nn.Module):
                 # the targets enter the first layer already holding the drug's signal, as a seed on them would
                 node_major_state = node_major_state + self.entry_messages(node_major_state, None)
         for layer_index in range(self.num_message_passing_layers):
-            self_messages = node_major_state @ self.self_weight[layer_index]
+            parameter_layer = self.parameter_layer(layer_index)
+            self_messages = node_major_state @ self.self_weight[parameter_layer]
             if member_edges:
                 self_messages = self_messages + self.conjunction_messages(node_major_state, layer_index, member_edges)
             if node_major_presence is not None and self.entry_edge_source.numel():
@@ -545,11 +630,11 @@ class RelationalMessagePassingEncoder(nn.Module):
             if segments:
                 flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
                 aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
-                transformed = torch.cat([aggregated[start:end] @ self.relation_weight[layer_index, relation_index] for relation_index, start, end in segments], dim=0)
+                transformed = torch.cat([self.relation_transform(relation_index, parameter_layer)(aggregated[start:end]) for relation_index, start, end in segments], dim=0)
                 relation_messages = torch.zeros_like(self_messages).index_add(0, row_target.to(flattened.device), transformed)
-                pre_activation = self_messages + relation_messages + self.layer_bias[layer_index]
+                pre_activation = self_messages + relation_messages + self.layer_bias[parameter_layer]
             else:
-                pre_activation = self_messages + self.layer_bias[layer_index]
+                pre_activation = self_messages + self.layer_bias[parameter_layer]
             node_major_state = torch.relu(pre_activation)
             if node_major_presence is not None:  # the layer bias alone would give an absent node a state
                 node_major_state = node_major_state * node_major_presence

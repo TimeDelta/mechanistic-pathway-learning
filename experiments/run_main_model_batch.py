@@ -78,7 +78,8 @@ V4_SHARED_MODEL = ["--head", "noisy_or", "--field", "difference", "--pooling", "
                    "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
                    "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05", "--node-features", "typed",
                    "--descriptor-treatment", "seed_masked"]
-V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "--message-passing-edge-signs", "graph", "--num-layers", "3"]
+V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "--message-passing-edge-signs", "graph", "--num-layers", "3",
+                            "--relation-parameterisation", "shared_low_rank", "--relation-factor-rank", "2"]
 V4_LINEAR_RESPONSE_MODEL = [*V4_SHARED_MODEL, "--encoder", "linear_response", "--fixed-point-tolerance", "0.001",
                             "--class-weight-rule", "limiting_step", "--input-weights", "positive", "--cofactor-relations",
                             "--extracellular-coupling", "--compartment-ph", "--channels-per-cell-class", "1"]

@@ -100,6 +100,8 @@ from mechanistic_pathway_learning.models.linear_response_encoder import (
 )
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import (
+    DEFAULT_RELATION_FACTOR_RANK,
+    RELATION_PARAMETERISATIONS,
     CONJUNCTION_AGGREGATIONS,
     DEFAULT_CONJUNCTION_RELATIONS,
     DEFAULT_SOFT_MINIMUM_TEMPERATURE,
@@ -207,6 +209,29 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
         if descriptors.shape[1] == 0:
             raise ValueError("--drop-descriptor-blocks leaves no descriptor column; leave out --node-descriptors instead")
     return np.concatenate([structural, descriptors.loc[data.node_ids].to_numpy(dtype=np.float32)], axis=1)
+
+
+# The nine relations amendment item 8 names, measured on development training pairs: 2,100 to 2,468 pairs reach each,
+# against 451 or fewer for the other eleven.
+REGISTERED_FACTORISED_RELATIONS = ("encodes", "catalyzed_by", "substrate_of", "activates", "product_of", "binds",
+                                   "regulates_transcription_of", "inhibits", "member_of")
+
+
+def relation_parameterisation_inputs(data, arguments) -> dict:
+    """The encoder keywords of --relation-parameterisation (amendment item 8). A named relation the graph does not have
+    is left out and reported, rather than shifting the indices of the ones it does have."""
+    if getattr(arguments, "relation_parameterisation", "per_layer_dense") != "shared_low_rank":
+        return {}
+    named = list(getattr(arguments, "factorised_relations", REGISTERED_FACTORISED_RELATIONS) or ())
+    present = [relation for relation in named if relation in set(data.relation_types)]
+    missing = [relation for relation in named if relation not in set(data.relation_types)]
+    indices = tuple(list(data.relation_types).index(relation) for relation in present)
+    parameters = len(data.relation_types) * arguments.node_state_dim + len(indices) * 2 * arguments.node_state_dim * arguments.relation_factor_rank
+    print(f"relation transforms: one shared set at every round, {len(data.relation_types)} diagonals and "
+          f"{len(present)} rank-{arguments.relation_factor_rank} factorisations, {parameters:,} parameters"
+          + (f"; named but not in this graph: {missing}" if missing else ""))
+    return {"relation_parameterisation": "shared_low_rank", "factorised_relation_indices": indices,
+            "relation_factor_rank": arguments.relation_factor_rank}
 
 
 def descriptor_treatment_inputs(data, arguments) -> dict:
@@ -339,7 +364,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
     "placebo_negative_weight": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
-    "compartment_ph": False,
+    "compartment_ph": False, "relation_parameterisation": "per_layer_dense",
 }
 
 
@@ -554,6 +579,7 @@ def build_models(data, arguments, device):
                                                   conjunction_relation_indices=conjunction_indices,
                                                   conjunction_aggregation=arguments.conjunction_aggregation,
                                                   soft_minimum_temperature=arguments.soft_minimum_temperature,
+                                                  **relation_parameterisation_inputs(data, arguments),
                                                   **descriptor_treatment_inputs(data, arguments), **entry_inputs).to(device)
         if arguments.conjunction_aggregation == "mean":
             print("conjunction relations: none; every relation is aggregated by its in-degree mean")
@@ -1143,6 +1169,17 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
     parser.add_argument("--num-layers", type=int, default=3, help="message passing: layers; 3 on a graph that splits genes from proteins (registered)")
+    parser.add_argument("--relation-parameterisation", choices=list(RELATION_PARAMETERISATIONS), default="shared_low_rank",
+                        help="message passing: how a relation's transform is parameterised (amendment item 8). shared_low_rank, the registered "
+                             "form, applies one set at every round, each relation owning a diagonal and the relations enough training examples "
+                             "reach a rank-r factorisation, with a norm bound; per_layer_dense is a full matrix per relation per layer, which "
+                             "every run before 13 October 2026 built")
+    parser.add_argument("--relation-factor-rank", type=int, default=DEFAULT_RELATION_FACTOR_RANK,
+                        help="message passing with --relation-parameterisation shared_low_rank: the factorisation's rank. Amendment item 8 "
+                             "registers 2 and names 4 as the only step up that may be taken")
+    parser.add_argument("--factorised-relations", nargs="*", default=list(REGISTERED_FACTORISED_RELATIONS),
+                        help="message passing with --relation-parameterisation shared_low_rank: the relations that own a factorisation beside "
+                             "their diagonal; the registered nine are the default, and a relation the graph does not have is left out")
     parser.add_argument("--num-modules", type=int, default=8)
     parser.add_argument("--sigmoid-hidden-dim", type=int, default=64)
     parser.add_argument("--gate-initial-log-alpha", type=float, default=-1.0)
