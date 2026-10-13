@@ -151,9 +151,10 @@ def figure_model_pipeline() -> None:
                      "message passing: node states from structural\nfeatures and descriptors, 3 layers of typed\n"
                      "messages (mean per relation), one more than on\na merged graph because a perturbed gene reaches\n"
                      "its protein one hop later\n\n"
-                     "linear response, to a fixed point:\nh(t+1) = (1 - d) h(t) + d w_k (sum_r g_r S_r h(t) + u)\n"
+                     "linear response, to a fixed point:\nh(t+1) = (1 - d) h(t) + d (sum_r g_r S_r h(t) + u)\n"
                      "S_r: signed adjacency of relation r, normalised\ng_r: learned gain per relation and channel\n"
-                     f"w_k: node weight in cell class k ({len(cell_classes)} classes and all\ncells), extracellular pools shared across classes\n\n"
+                     f"class k reads b_k h*: b_k, the weakest node weight on\nthe widest route in class k ({len(cell_classes)} classes and all\n"
+                     "cells), extracellular pools shared across classes\n\n"
                      "both read the difference field:\nperturbed minus unperturbed", BOX_COLOURS["propagation"]),
     ]
     second_row = [
@@ -227,7 +228,7 @@ def toy_chain_encoder(cell_class_weights: torch.Tensor, extracellular_pool: torc
         cell_class_weights=cell_class_weights, channels_per_cell_class=1, extracellular_pool_nodes=extracellular_pool)
     with torch.no_grad():
         encoder.gain_logit.zero_()
-        encoder.input_weight.fill_(1.0)
+        encoder.log_input_weight.fill_(0.0)  # an input weight of exp(0) = 1 in every channel
     return encoder
 
 

@@ -608,8 +608,10 @@ def test_edge_wise_propagation_equals_the_stacked_product_with_gradients():
     sign = torch.where(relation == 1, -1.0, 1.0)
     for cell_classes in (None, torch.rand(num_nodes, 3)):
         pool = None if cell_classes is None else torch.rand(num_nodes) < 0.2
+        # the reference below is the product rule at a fixed step count, so the encoder is built in that regime
         encoder = LinearResponseEncoder(num_nodes, relations, source, target, relation, sign, torch.randn(num_nodes, 4), 8,
-                                        cell_class_weights=cell_classes, extracellular_pool_nodes=pool, channels_per_cell_class=2)
+                                        cell_class_weights=cell_classes, extracellular_pool_nodes=pool, channels_per_cell_class=2,
+                                        fixed_point_tolerance=None, class_weight_rule="product")
         node_index, sign_and_magnitude = torch.randint(0, num_nodes, (4, 2)), torch.randn(4, 2, 2)
 
         def stacked_product_response():
@@ -656,10 +658,11 @@ def test_the_propagation_runs_to_a_fixed_point_and_reports_the_rounds_it_took():
 
     node_index = torch.tensor([[0]])
     sign_and_magnitude = torch.tensor([[[1.0, 1.0]]])
-    fixed = encoder_with(num_propagation_steps=8)
+    fixed = encoder_with(num_propagation_steps=8, fixed_point_tolerance=None)
     with torch.no_grad():
         fixed.response(node_index, sign_and_magnitude)
-    assert fixed.propagation_steps_taken == 8  # the registered count, unchanged without a tolerance
+    assert fixed.propagation_steps_taken == 8  # a fixed count when the tolerance is turned off explicitly
+    assert encoder_with().fixed_point_tolerance == DEFAULT_FIXED_POINT_TOLERANCE  # the fixed point is the default
 
     settling = encoder_with(fixed_point_tolerance=DEFAULT_FIXED_POINT_TOLERANCE, max_propagation_steps=60)
     with torch.no_grad():
@@ -821,3 +824,111 @@ def test_an_unknown_class_weight_rule_is_refused_and_the_bottleneck_needs_the_we
         build_diamond_encoder(torch.ones(5, 1), class_weight_rule="minimum")
     with pytest.raises(ValueError):
         build_encoder().class_bottleneck(torch.tensor([[0]]), rounds=4)
+
+
+def test_the_bottleneck_shares_the_extracellular_pool_across_the_pooled_classes_only():
+    """Class 1 cannot run reaction 1, so its only route to product 3 is through the shared pool. Without sharing, the
+    rule would set its ceiling at the pool to zero and undo --extracellular-coupling; the all-cells class (the last,
+    not pooled) keeps its own value."""
+    weights = torch.ones(6, 3)
+    weights[1, 1] = 0.0  # class 1 cannot run reaction 1
+    weights[1, 2] = 0.0  # neither can class 2, which is not pooled
+    pool = torch.tensor([False, False, False, True, False, False])
+    encoder = build_cell_class_encoder(weights, extracellular_pool_nodes=pool, shared_pool_classes=torch.tensor([True, True, False]))
+    with torch.no_grad():
+        bottleneck = encoder.class_bottleneck(torch.tensor([[0]]))[:, 0, :]
+    assert bottleneck[3, 0] == 1.0 and bottleneck[3, 1] == 1.0  # shared
+    assert bottleneck[4, 1] == 1.0  # and it continues out of the pool in class 1
+    assert bottleneck[3, 2] == 0.0  # the unpooled class has no route
+
+
+def test_the_limiting_step_rule_keeps_the_pool_carrying_a_product_into_a_class_that_cannot_make_it():
+    weights = torch.ones(6, 2)
+    weights[1, 1] = 0.0
+    pool = torch.tensor([False, False, False, True, False, False])
+    encoder = build_cell_class_encoder(weights, extracellular_pool_nodes=pool)
+    assert encoder.class_weight_rule == "limiting_step"  # the default since 13 October 2026
+    with torch.no_grad():
+        pooled = encoder.response(*perturb(0, -1.0))[0]
+    assert pooled[3, 1] != 0 and pooled[4, 1] != 0
+    assert torch.allclose(pooled[3, 0], pooled[3, 1])
+
+
+def test_an_entry_node_the_perturbation_does_not_seed_carries_no_route_in_the_bottleneck():
+    """Node 2 is an entry node standing between the seed and node 3: absent unless seeded, so the only route to node 3
+    is the thin one through node 1."""
+    weights = torch.tensor([[1.0], [0.1], [1.0], [1.0], [1.0]])
+    torch.manual_seed(0)
+    encoder = LinearResponseEncoder(
+        5, DIAMOND_RELATIONS, edge_source=torch.tensor(DIAMOND_SOURCE), edge_target=torch.tensor(DIAMOND_TARGET),
+        edge_relation=torch.zeros(len(DIAMOND_SOURCE), dtype=torch.long), edge_sign=torch.ones(len(DIAMOND_SOURCE)),
+        node_features=torch.eye(5), node_state_dim=4, cell_class_weights=weights,
+        entry_node_mask=torch.tensor([False, False, True, False, False]))
+    with torch.no_grad():
+        without_the_entry = encoder.class_bottleneck(torch.tensor([[0]]))[:, 0, 0]
+        with_the_entry = encoder.class_bottleneck(torch.tensor([[0, 2]]))[:, 0, 0]
+    assert without_the_entry[2] == 0.0 and without_the_entry[3] == pytest.approx(0.1)
+    assert with_the_entry[3] == pytest.approx(1.0)
+
+
+def test_the_steady_state_bottleneck_counts_every_route_and_does_not_depend_on_the_batch():
+    """At the fixed point every route contributes, so a route longer than the round the propagation stopped at still
+    sets the ceiling, and a perturbation's bottleneck is the same alone or batched with others."""
+    weights = torch.rand(5, 2)
+    encoder = build_diamond_encoder(weights)
+    with torch.no_grad():
+        settled = encoder.class_bottleneck(torch.tensor([[0]]))
+        assert torch.equal(settled, encoder.class_bottleneck(torch.tensor([[0]]), rounds=50))
+        alone = encoder.cached_class_bottleneck(torch.tensor([[0]]))
+        encoder.clear_class_bottleneck_cache()
+        batched = encoder.cached_class_bottleneck(torch.tensor([[2, -1], [0, -1], [1, 3]]))
+    assert torch.equal(alone[:, 0], batched[:, 1])
+    assert torch.equal(alone, settled)
+
+
+def test_the_cache_is_reused_and_emptied_when_the_demands_change():
+    encoder = build_diamond_encoder(torch.tensor([[1.0], [0.1], [0.4], [1.0], [0.5]]))
+    with torch.no_grad():
+        first = encoder.response(*perturb(0, 1.0))
+        assert len(encoder.class_bottleneck_cache) == 1
+        again = encoder.response(*perturb(0, 1.0))
+        assert torch.equal(first, again) and len(encoder.class_bottleneck_cache) == 1
+        demand = torch.ones(encoder.bottleneck_edge_source.shape[0])
+        demand[[index for index, pair in enumerate(zip(encoder.bottleneck_edge_source.tolist(), encoder.bottleneck_edge_target.tolist()))
+                if pair == (2, 3)]] = 2.0
+        encoder.set_bottleneck_edge_demand(demand)
+        assert len(encoder.class_bottleneck_cache) == 0
+        halved = encoder.response(*perturb(0, 1.0))
+    assert abs(halved[0, 4, 0]) < abs(first[0, 4, 0])
+    with pytest.raises(ValueError):
+        encoder.set_bottleneck_edge_demand(torch.full_like(demand, 0.5))  # below 1 would raise availability past a step
+
+
+def test_the_input_weights_are_positive_and_start_equal_so_the_pool_does_not_cancel():
+    """The owner, 13 October 2026: "each class should be consistently signed within itself". A positive perturbation on
+    an all-activating chain must reach the shared pool positive in every class, at every seed; the former signed draw
+    is kept only to reproduce earlier runs."""
+    pool = torch.tensor([False, False, False, True, False, False])
+    for seed in range(6):
+        torch.manual_seed(seed)
+        encoder = LinearResponseEncoder(
+            6, ["activates"], edge_source=torch.tensor([0, 1, 2, 3, 4]), edge_target=torch.tensor([1, 2, 3, 4, 5]),
+            edge_relation=torch.zeros(5, dtype=torch.long), edge_sign=torch.ones(5), node_features=torch.eye(6), node_state_dim=4,
+            cell_class_weights=torch.ones(6, 6), extracellular_pool_nodes=pool)
+        weights = encoder.injection_weights()
+        assert bool((weights > 0).all()) and torch.allclose(weights, weights[0].expand_as(weights))
+        with torch.no_grad():
+            assert bool((encoder.response(*perturb(0, 1.0))[0, 3] > 0).all())
+    torch.manual_seed(0)
+    signed = build_encoder()
+    assert "input_weight" not in dict(signed.named_parameters())  # the default is positive
+    torch.manual_seed(0)
+    legacy = LinearResponseEncoder(6, RELATION_TYPES, edge_source=torch.tensor([edge[0] for edge in EDGES]),
+                                   edge_target=torch.tensor([edge[1] for edge in EDGES]),
+                                   edge_relation=torch.tensor([RELATION_TYPES.index(edge[2]) for edge in EDGES]),
+                                   edge_sign=torch.tensor([edge[3] for edge in EDGES]), node_features=torch.eye(6), node_state_dim=4,
+                                   input_weights="signed")
+    assert "input_weight" in dict(legacy.named_parameters())
+    with pytest.raises(ValueError):
+        build_diamond_encoder(torch.ones(5, 1)).__class__(5, DIAMOND_RELATIONS, torch.tensor(DIAMOND_SOURCE), torch.tensor(DIAMOND_TARGET),
+                                                          torch.zeros(5, dtype=torch.long), torch.ones(5), torch.eye(5), 4, input_weights="free")

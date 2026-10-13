@@ -36,6 +36,7 @@ import numpy as np
 import torch
 
 from experiments.run_main_model import (
+    VALUES_BEFORE_THE_V4_DEFAULTS,
     build_argument_parser,
     build_models,
     macro_auprc,
@@ -53,13 +54,15 @@ REPRODUCTION_TOLERANCE = 1e-4
 
 
 def stored_arguments(results: dict) -> Namespace:
-    """The trainer's arguments of a finished run: parser defaults, overwritten by the values in its results.json, with
-    path arguments turned back into paths."""
+    """The trainer's arguments of a finished run: parser defaults, overwritten by the value each argument had before the
+    v4 defaults of 13 October 2026 (so an argument the run's results.json does not record, because it did not exist
+    yet, takes the value the run was trained under), overwritten by the values in its results.json, with path
+    arguments turned back into paths."""
     parser = build_argument_parser()
     defaults = vars(parser.parse_args([]))
     path_arguments = {action.dest for action in parser._actions if action.type is Path}
     stored = {key: (Path(value) if key in path_arguments and value is not None else value) for key, value in results["arguments"].items()}
-    return Namespace(**{**defaults, **stored})
+    return Namespace(**{**defaults, **VALUES_BEFORE_THE_V4_DEFAULTS, **stored})
 
 
 def refuse_unsupported(results: dict, arguments: Namespace, fold_directory: Path) -> None:

@@ -42,7 +42,10 @@ def build_encoder(data, carrier_rule: str | None, steps: int) -> LinearResponseE
                                                          carrier_rule=carrier_rule)) if carrier_rule is not None else None
     return LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                  torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(data.structural_node_features()),
-                                 32, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges, num_propagation_steps=steps)
+                                 32, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges, num_propagation_steps=steps,
+                                 # this check reads the response at chosen step counts and divides by the input weight's sign, as documented
+                                 # on 7 October 2026; the defaults of 13 October (fixed point, positive input weights) would change both
+                                 fixed_point_tolerance=None, input_weights="signed")
 
 
 def responses_at_labels(encoder, data, labels: pd.DataFrame, batch_size: int = 32) -> pd.DataFrame:

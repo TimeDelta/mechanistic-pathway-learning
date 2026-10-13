@@ -78,7 +78,8 @@ def test_plain_keeps_the_parameters_it_had_before_the_treatments() -> None:
     encoder, _ = message_passing_encoder("plain")
     assert set(encoder.state_dict()) == {"node_features", "feature_projection.weight", "feature_projection.bias", "perturbation_injection.weight",
                                          "perturbation_injection.bias", "relation_weight", "self_weight", "layer_bias"}
-    assert set(linear_response_encoder("plain").state_dict()) == {"gain_logit", "input_weight", "channel_expansion", "output_gate.weight", "output_gate.bias"}
+    # the input weight is exp of log_input_weight under the default positive form (13 October 2026); plain adds nothing to either
+    assert set(linear_response_encoder("plain").state_dict()) == {"gain_logit", "log_input_weight", "channel_expansion", "output_gate.weight", "output_gate.bias"}
 
 
 @pytest.mark.parametrize("build, field", [(message_passing_encoder, message_passing_field), (linear_response_encoder, linear_response_field)])

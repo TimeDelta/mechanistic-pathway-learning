@@ -144,7 +144,10 @@ def linear_response_encoder(data, num_steps: int, entry: bool) -> LinearResponse
     if entry:
         keywords = {"entry_node_mask": torch.as_tensor(data.entry_node_mask), "entry_relation_names": ENTRY_RELATIONS, "edge_weight": torch.as_tensor(data.edge_weight)}
     return LinearResponseEncoder(len(data.node_ids), data.relation_types, *edge_tensors(data), torch.as_tensor(data.structural_node_features()), NODE_STATE_DIM,
-                                 non_propagating_nodes=torch.as_tensor(data.is_currency), num_propagation_steps=num_steps, **keywords)
+                                 non_propagating_nodes=torch.as_tensor(data.is_currency), num_propagation_steps=num_steps,
+                                 # the measurements of 10 October 2026 compare graphs at chosen step counts with shared signed input
+                                 # weights; the defaults of 13 October (fixed point, positive input weights) would change what they read
+                                 fixed_point_tolerance=None, input_weights="signed", **keywords)
 
 
 def share_linear_response_parameters(reference: LinearResponseEncoder, other: LinearResponseEncoder) -> None:

@@ -86,9 +86,12 @@ from mechanistic_pathway_learning.models.baselines.zero_field_encoder import Zer
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
+    CLASS_WEIGHT_RULES,
     CROSS_RELATION_AGGREGATORS,
+    DEFAULT_FIXED_POINT_TOLERANCE,
     DEFAULT_MAX_PROPAGATION_STEPS,
     EDGE_SIGNS,
+    INPUT_WEIGHT_FORMS,
     MIXTURE_WEIGHTINGS,
     NORMALISATIONS,
     RELATION_GAINS,
@@ -196,7 +199,8 @@ def node_feature_matrix(data, arguments) -> np.ndarray:
 def descriptor_treatment_inputs(data, arguments) -> dict:
     """The encoder keywords of --descriptor-treatment: the treatment and the number of descriptor columns at the end of
     node_feature_matrix."""
-    treatment = getattr(arguments, "descriptor_treatment", "plain")
+    resolve_registered_defaults(arguments)
+    treatment = arguments.descriptor_treatment
     if treatment == "plain":
         return {}
     if not getattr(arguments, "node_descriptors", None):
@@ -301,6 +305,50 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
         data.cell_class_weight_table = weights
         record["class_expression_table_sha256"] = file_sha256(arguments.class_expression_table)
     return record
+
+
+# The registered v4 model is the trainer's default (the owner, 13 October 2026: "all of the v4 stuff should be ON by
+# default. the other models were shit quite frankly because they didn't even follow the physiology very well").
+# experiments/run_main_model_batch.py states the same model as explicit flags (V4_MESSAGE_PASSING_MODEL,
+# V4_LINEAR_RESPONSE_MODEL) and tests/test_registered_defaults.py holds the two equal, so a default cannot drift from the
+# registration without a test failing. A run made before a default changed is rebuilt (experiments/
+# evaluate_on_rewired_graph.py) with the value it was trained under, which is the value below for any argument its
+# results.json does not record, because the argument did not exist yet.
+VALUES_BEFORE_THE_V4_DEFAULTS = {
+    "group_by": "gene", "refit_on_validation": False, "keep_large_groups_in_training": False, "node_features": "identity",
+    "descriptor_treatment": "plain", "extracellular_coupling": False, "class_weight_rule": "product", "input_weights": "signed",
+    "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
+    "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
+    "placebo_negative_weight": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
+}
+
+
+def tolerance_or_none(value: str) -> float | None:
+    """--fixed-point-tolerance: a positive number, or 'none' for a fixed number of steps."""
+    if value.strip().lower() == "none":
+        return None
+    tolerance = float(value)
+    if tolerance <= 0:
+        raise argparse.ArgumentTypeError("the tolerance must be positive; use 'none' for a fixed number of steps")
+    return tolerance
+
+
+def resolve_registered_defaults(arguments) -> None:
+    """Fill the arguments whose registered value depends on the rest of the run (left at None by the parser). Runs in
+    place and is idempotent, so a caller that builds a model without main() reaches the same model."""
+    linear_response = getattr(arguments, "encoder", None) == "linear_response"
+    if getattr(arguments, "descriptor_treatment", None) is None:
+        masks = getattr(arguments, "node_descriptors", None) and getattr(arguments, "encoder", None) in ("message_passing", "linear_response")
+        arguments.descriptor_treatment = "seed_masked" if masks else "plain"
+    if getattr(arguments, "cofactor_relations", None) is None:
+        arguments.cofactor_relations = linear_response
+    if getattr(arguments, "extracellular_coupling", None) is None:
+        arguments.extracellular_coupling = linear_response and bool(getattr(arguments, "cell_class_weights", None))
+    if getattr(arguments, "refit_on_validation", None) is None:
+        not_implemented = getattr(arguments, "laboratory_label_weight", 0) > 0 or getattr(arguments, "time_split_cutoff", None) is not None
+        arguments.refit_on_validation = not not_implemented
+        if not_implemented:
+            print("--refit-on-validation is off: it is not implemented with the laboratory readout or the time split")
 
 
 # arguments a resumed process may change without changing what the checkpoint was trained for
@@ -418,6 +466,7 @@ def file_sha256(path) -> str | None:
 
 
 def build_models(data, arguments, device):
+    resolve_registered_defaults(arguments)
     if arguments.encoder == "none":
         encoder = ZeroFieldEncoder(len(data.node_ids), arguments.node_state_dim).to(device)
     elif arguments.encoder == "local_descriptors":
@@ -443,6 +492,7 @@ def build_models(data, arguments, device):
                                         num_propagation_steps=arguments.propagation_steps,
                                         fixed_point_tolerance=arguments.fixed_point_tolerance,
                                         max_propagation_steps=arguments.max_propagation_steps,
+                                        class_weight_rule=arguments.class_weight_rule, input_weights=arguments.input_weights,
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
@@ -962,7 +1012,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
                              "(negative_controls.reciprocated_relations, fast_degree_preserving_rewiring); off by default, which reproduces earlier rewired runs")
     parser.add_argument("--time-split-cutoff", type=date.fromisoformat, default=None,
                         help="monogenic time split (design 6.1): train on pairs dated on or before this day across all perturbations; score the pairs that could still become positive")
-    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="gene")
+    parser.add_argument("--group-by", choices=["gene", "disease_cluster", "disease_cluster_and_targets"], default="disease_cluster_and_targets")
     parser.add_argument("--label-grades", nargs="*", default=["A", "B"], help="evidence grades that count as positive labels; pass A B C to keep grade C rows as the version 0.3 ablation did")
     parser.add_argument("--message-passing-edge-signs", choices=MESSAGE_PASSING_EDGE_SIGNS, default="graph",
                         help="whether the message-passing encoder's adjacency carries the graph's edge signs and weights. \"graph\" is the registered "
@@ -974,10 +1024,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--label-selection", type=Path, default=None,
                         help="parquet of (perturbation_id, symptom, keep) from experiments/build_label_selection.py; positive pairs with keep False are masked out of the loss and every metric")
     parser.add_argument("--validation-fraction", type=float, default=0.15)
-    parser.add_argument("--refit-on-validation", action="store_true",
+    parser.add_argument("--refit-on-validation", action=argparse.BooleanOptionalAction, default=None,
                         help="after early stopping, train a fresh model on the training and validation perturbations together for best epoch + 1 epochs "
-                             "and score the test with it (the early-stopped model's test predictions are kept in test_predictions_early_stopped.npy)")
-    parser.add_argument("--keep-large-groups-in-training", action="store_true",
+                             "and score the test with it (the early-stopped model's test predictions are kept in test_predictions_early_stopped.npy). "
+                             "On by default (registered); off by default only where it is not implemented, the laboratory readout and the time split")
+    parser.add_argument("--keep-large-groups-in-training", action=argparse.BooleanOptionalAction, default=True,
                         help="leakage groups larger than half the expected validation set stay in training and never form the early-stopping validation set "
                              "(without it the largest group goes there first; see early_stopping_validation)")
     parser.add_argument("--validation-draw", choices=["fold0", "rotated_stratified"], default="fold0",
@@ -990,7 +1041,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--head", choices=["noisy_or", "sigmoid"], default="noisy_or")
     parser.add_argument("--field", choices=["difference", "absolute"], default="difference")
-    parser.add_argument("--node-features", choices=["identity", "typed"], default="identity",
+    parser.add_argument("--node-features", choices=["identity", "typed"], default="typed",
                         help="identity: a learned embedding per node; typed: fixed structural features only (type, compartment, degree, flags), the inductive variant")
     parser.add_argument("--pooling", choices=["sum", "mean"], default="sum")
     parser.add_argument("--conjunction-relations", nargs="*", default=list(DEFAULT_CONJUNCTION_RELATIONS),
@@ -1013,30 +1064,39 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--drop-descriptor-blocks", nargs="*", choices=list(DESCRIPTOR_BLOCK_PREFIXES), default=[],
                         help="with --node-descriptors, leave these blocks out (graph/node_descriptors.py DESCRIPTOR_BLOCK_PREFIXES); the descriptors of gene "
                              "nodes are protein and gene_brain, and reaction_brain carries gene expression onto reactions")
-    parser.add_argument("--descriptor-treatment", choices=list(DESCRIPTOR_TREATMENTS), default="plain",
+    parser.add_argument("--descriptor-treatment", choices=list(DESCRIPTOR_TREATMENTS), default=None,
                         help="with --node-descriptors, how they enter the message passing base state or the linear-response output gate (models/descriptor_treatments.py): "
                              "plain (one map of all the columns), seed_masked (each perturbation's perturbed nodes read their structural columns only) or "
-                             "zero_init_slow (a separate descriptor map, initialised at zero and trained at --descriptor-learning-rate)")
+                             "zero_init_slow (a separate descriptor map, initialised at zero and trained at --descriptor-learning-rate). Left out: seed_masked "
+                             "with --node-descriptors (the owner, 13 October 2026), plain without them, since there is nothing to mask")
     parser.add_argument("--descriptor-learning-rate", type=float, default=0.0,
                         help="--descriptor-treatment zero_init_slow: learning rate of the descriptor map (required there)")
     parser.add_argument("--cell-class-weights", type=Path, default=None,
                         help="linear-response encoder: parquet of per-node cell-class weights (experiments/build_cell_class_weights.py); the response then propagates once per class")
     parser.add_argument("--channels-per-cell-class", type=int, default=1, help="linear-response encoder with --cell-class-weights: channels (time scales) per class")
-    parser.add_argument("--extracellular-coupling", action="store_true",
-                        help="linear-response encoder with --cell-class-weights: extracellular metabolites are one pool shared by every class but all_cells")
+    parser.add_argument("--extracellular-coupling", action=argparse.BooleanOptionalAction, default=None,
+                        help="linear-response encoder with --cell-class-weights: extracellular metabolites are one pool shared by every class but all_cells. "
+                             "Left out, on whenever the linear-response encoder has cell-class weights (registered)")
+    parser.add_argument("--class-weight-rule", choices=list(CLASS_WEIGHT_RULES), default="limiting_step",
+                        help="linear-response encoder with --cell-class-weights: how a class's node weights attenuate the response. limiting_step (the owner, "
+                             "13 October 2026), the weakest weight on the widest route; product, the weights multiplied along the path, every run before")
+    parser.add_argument("--input-weights", choices=list(INPUT_WEIGHT_FORMS), default="positive",
+                        help="linear-response encoder: positive (the owner, 13 October 2026: each class consistently signed), every channel's input weight "
+                             "positive and starting equal; signed, one free weight per channel drawn with a random sign, every run before")
     parser.add_argument("--degree-offset", action="store_true",
                         help="give the head the standardised log degree of each perturbation: a degree-dependent leak (noisy-OR) or logit offset (sigmoid), so the field only has to explain what degree does not")
     parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges); ignored under --fixed-point-tolerance")
-    parser.add_argument("--fixed-point-tolerance", type=float, default=None,
+    parser.add_argument("--fixed-point-tolerance", type=tolerance_or_none, default=DEFAULT_FIXED_POINT_TOLERANCE,
                         help="run the propagation until the relative change of the state falls below this, in place of a fixed number of steps "
-                             "(amendment item 7 of 12 October 2026 registers 1e-3). Left out, the encoder takes --propagation-steps rounds, which "
+                             "(amendment item 7 of 12 October 2026 registers 1e-3, the default). 'none' takes --propagation-steps rounds, which "
                              "reproduces every run before that date")
     parser.add_argument("--max-propagation-steps", type=int, default=DEFAULT_MAX_PROPAGATION_STEPS,
                         help="the cap on the rounds under --fixed-point-tolerance, so a graph that does not settle still terminates; a run that "
                              "reaches it has not settled and the run record says so")
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
-    parser.add_argument("--cofactor-relations", action="store_true",
-                        help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains")
+    parser.add_argument("--cofactor-relations", action=argparse.BooleanOptionalAction, default=None,
+                        help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains. "
+                             "Left out, on for the linear-response encoder (registered)")
     parser.add_argument("--carrier-rule", choices=CARRIER_RULES, default="all",
                         help="which clause of the carrier rule applies (cofactor_edges.py): all is the curated list and the recurring-pair "
                              "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")
@@ -1055,21 +1115,21 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="linear-response encoder: how --cross-relation-aggregator softmax_mixture turns its logits into weights; sparsemax can place exactly zero weight on a statistic, softmax cannot")
     parser.add_argument("--propagation-damping", type=float, default=0.5, help="linear-response encoder: weight of the new state per step (sets the transient, not the fixed point)")
     parser.add_argument("--node-state-dim", type=int, default=32)
-    parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--num-layers", type=int, default=3, help="message passing: layers; 3 on a graph that splits genes from proteins (registered)")
     parser.add_argument("--num-modules", type=int, default=8)
     parser.add_argument("--sigmoid-hidden-dim", type=int, default=64)
     parser.add_argument("--gate-initial-log-alpha", type=float, default=-1.0)
     parser.add_argument("--init-leak-from-base-rate", action="store_true", help="noisy-OR head: start each symptom's leak at its training base rate")
-    parser.add_argument("--start-at-weighted-optimum", action="store_true",
+    parser.add_argument("--start-at-weighted-optimum", action=argparse.BooleanOptionalAction, default=True,
                         help="start the noisy-OR leaks (in place of --init-leak-from-base-rate) or the sigmoid head's output biases at each symptom's "
                              "loss-optimal constant over the fitted perturbations, the weighted mean of the loss's targets (docs/best_epoch_zero.md)")
-    parser.add_argument("--module-bias-init", type=float, default=0.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
-    parser.add_argument("--gate-init-noise", type=float, default=0.01, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
-    parser.add_argument("--link-learning-rate", type=float, default=0.0,
+    parser.add_argument("--module-bias-init", type=float, default=-3.0, help="noisy-OR head: initial readout bias of every module; negative values make modules off by default")
+    parser.add_argument("--gate-init-noise", type=float, default=0.5, help="noisy-OR head: standard deviation of the per-gate noise added to the initial log-alpha (symmetry breaking between modules)")
+    parser.add_argument("--link-learning-rate", type=float, default=0.02,
                         help="noisy-OR head: learning rate of the module-to-symptom links (0 = the main rate); links start at logit -3 and Adam moves them about one rate per step, so at 0.002 they need about 1,500 steps to reach 0.5")
-    parser.add_argument("--leak-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the symptom leaks (0 = the main rate); slow, so a leak started at the base rate stays there")
+    parser.add_argument("--leak-learning-rate", type=float, default=0.0002, help="noisy-OR head: learning rate of the symptom leaks (0 = the main rate); slow, so a leak started at the base rate stays there")
     parser.add_argument("--module-bias-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the module readout biases (0 = the main rate)")
-    parser.add_argument("--gate-learning-rate", type=float, default=0.0, help="noisy-OR head: learning rate of the support gate log-alphas (0 = the main rate); fast, so gates no field reaches can close within the epochs early stopping allows")
+    parser.add_argument("--gate-learning-rate", type=float, default=0.05, help="noisy-OR head: learning rate of the support gate log-alphas (0 = the main rate); fast, so gates no field reaches can close within the epochs early stopping allows")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=0.002)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
@@ -1083,10 +1143,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="open question 8: use the reported HPO or label frequency (floored at --minimum-frequency-target) as the target of a positive pair instead of --positive-target")
     parser.add_argument("--minimum-frequency-target", type=float, default=0.05)
     parser.add_argument("--negative-weight", type=float, default=0.2)
-    parser.add_argument("--placebo-negative-weight", type=float, default=None,
+    parser.add_argument("--placebo-negative-weight", type=float, default=0.5,
                         help="loss weight of a negative that rests on a controlled comparison rather than on silence: the never-above-placebo pairs of a selection "
-                             "built with --never-above-placebo-as-negative. Unset, they take --negative-weight like any other negative")
-    parser.add_argument("--equal-drug-shares", action="store_true",
+                             "built with --never-above-placebo-as-negative. 0.5 is registered (amendment item 3 of 12 October 2026)")
+    parser.add_argument("--equal-drug-shares", action=argparse.BooleanOptionalAction, default=True,
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
                         help="rescale each drug's seed magnitudes to sum to 1, so a drug with more targets does not push more field; genes unchanged")
@@ -1132,6 +1192,7 @@ def refuse_a_negative_loss_weight(arguments) -> None:
 
 def main() -> None:
     arguments = build_argument_parser().parse_args()
+    resolve_registered_defaults(arguments)
     refuse_a_negative_loss_weight(arguments)
     signal.signal(signal.SIGUSR1, request_checkpoint)
     torch.manual_seed(arguments.seed)

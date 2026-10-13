@@ -318,16 +318,18 @@ def linear_response_pair(num_propagation_steps: int = 60):
                 torch.tensor([relation_list.index(relation) for relation in edge_table.relation_type]), torch.tensor(list(edge_table.sign), dtype=torch.float32))
 
     torch.manual_seed(1)
+    # a fixed step count, not the fixed point: these are equalities between two graphs at the same round, which the
+    # tolerance would blur to its own size
     source_encoder = LinearResponseEncoder(len(nodes), RELATIONS, *tensors(edges, RELATIONS), typed_features(list(nodes.node_type), all_types), 6,
-                                           num_propagation_steps=num_propagation_steps, propagation_channels=3)
+                                           num_propagation_steps=num_propagation_steps, propagation_channels=3, fixed_point_tolerance=None)
     magnitude = {(source, target): weight for source, target, weight in zip(entry_table.drug_node_id, entry_table.target_node_id, entry_table.magnitude)}
     edge_weight = torch.tensor([magnitude.get(pair, 1.0) for pair in zip(new_edges.source_id, new_edges.target_id)])
     encoder = LinearResponseEncoder(len(new_nodes), relations, *tensors(new_edges, relations), typed_features(list(new_nodes.node_type), all_types), 6,
-                                    num_propagation_steps=num_propagation_steps, propagation_channels=3,
+                                    num_propagation_steps=num_propagation_steps, propagation_channels=3, fixed_point_tolerance=None,
                                     entry_node_mask=torch.tensor(list(new_nodes.node_type == DRUG_NODE_TYPE)), entry_relation_names=ENTRY_RELATIONS, edge_weight=edge_weight)
     with torch.no_grad():  # the gains of the relations both graphs have, and the input weights
         encoder.gain_logit[: len(RELATIONS)] = source_encoder.gain_logit
-        encoder.input_weight.copy_(source_encoder.input_weight)
+        encoder.log_input_weight.copy_(source_encoder.log_input_weight)
     return source_encoder, encoder, index_of, len(nodes)
 
 
@@ -346,7 +348,7 @@ def test_linear_response_of_a_drug_on_its_node_is_its_response_on_its_targets_sc
     on_targets = source_encoder.response(torch.tensor([[index_of["GENE:A"], index_of["GENE:B"]]]), torch.tensor([[[-1.0, 0.5], [-1.0, 0.5]]]))
     entry_gain = torch.sigmoid(encoder.entry_gain_logit)[0]  # one positive gain per channel
     torch.testing.assert_close(on_node[:, :num_source_nodes], on_targets * entry_gain, atol=1e-6, rtol=0)
-    torch.testing.assert_close(on_node[0, index_of["DRUG:drug_one"]], encoder.input_weight, atol=1e-6, rtol=0)  # the node holds its own input
+    torch.testing.assert_close(on_node[0, index_of["DRUG:drug_one"]], encoder.injection_weights(), atol=1e-6, rtol=0)  # the node holds its own input
     assert float(on_node[0, index_of["DRUG:drug_two"]].abs().max()) == 0.0  # the other drug is absent
     # drug_two alone targets B with sign 0.5 and weight 1: B is not divided by the two drugs that share it
     two_on_node = encoder.response(torch.tensor([[index_of["DRUG:drug_two"]]]), torch.tensor([[[1.0, 1.0]]]))

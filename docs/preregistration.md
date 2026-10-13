@@ -1286,6 +1286,111 @@ of its test probabilities below 1e-6 and above 1 - 1e-6 and how many labelled po
 (`clamped_probabilities` in the run record). If labelled positives sit below the clamp in any development run, the
 option is reconsidered before the confirmatory runs and not after.
 
+Amendment, 13 October 2026, written before any lockbox run and before the v4 graph is rebuilt. Items 20 to 23 are
+built and their tests pass; item 24 lists what the owner's decisions of this date leave open.
+
+**20. A cell class attenuates a response by its limiting step, not by a product along the path** (the owner, 13
+October 2026: "min along the path makes WAY more sense to me. do that so it aligns with the physiology"). In place of
+multiplying the messages arriving at a node by that node's weight in the class on every round, which charges a route a
+factor at every step, the settled response of class k is multiplied once by
+`b_k(t) = max over routes to t of min over nodes n on the route of w_k(n)`,
+the weakest weight on the widest route, computed by a max-min recurrence over every route (`class_bottleneck`). The
+throughput of a chain at steady state is set by its weakest step, which is the same rule the gene rule already applies
+inside a reaction, where an "and" takes the minimum. A per-edge stoichiometric demand divides the bottleneck, so a step
+consuming two copies of its source is limited at half its availability (the owner: "ACh needing to bind two molecules
+to the receptor in order to activate it, which would cut that expression in half"); the graph does not carry those
+coefficients yet, so every demand is 1 until the rebuild writes them. At an extracellular pool node shared by the
+classes the bottleneck is the largest over the pooled classes, because the pool is one compartment, and an entry node
+the perturbation does not seed carries no route. Three things this changes and one it does not. It conditions the
+magnitude of a class's response on that class's expression and no longer the route, because a factor applied on every
+round compounds whichever factor it is, so the bottleneck has to be factored out of the propagation. The pool then
+mixes states no class has attenuated. And the two rules err in opposite directions: the product understates, charging
+a route of expressed nodes at every step, while the bottleneck overstates, scaling the sum over every route by the
+widest route's ceiling, since masking the thin routes would need a cut-off and the weights have no natural one. What
+it does not change is the fixed point, which is reached before the bottleneck is applied. The cost against the product
+rule is to be measured on the rebuilt graph (`experiments/measure_limiting_step_rule.py`); the only measurement so far
+was taken on a retired graph and is not carried here.
+
+**21. A perturbed node does not read its own descriptors: `seed_masked` in both encoders** (the owner, 13 October
+2026: "it HAS to use seed_masked to be physiological and to avoid signal leakage"). This replaces the reading of the
+treatment rule of 8 October, which picked `seed_masked` for message passing and `zero_init_slow` for the linear
+response; under `zero_init_slow` a perturbed node still reads its own descriptors, through a map that starts at zero,
+so it does not meet the decision. The reason is a shortcut and not leakage of held-out information: no descriptor block
+is derived from the labels, and what `plain` permits is a readout that learns which protein was perturbed and skips the
+propagation, which is what the descriptors-only control measures. On the split graph the mask also covers each seed's
+`encodes` partner and, for a drug seeded on its entry node, its mechanism targets and their partners. **The seed's
+cell-class weights are not masked, and that is deliberate** (the owner, 13 October: "whether the cell class expresses
+that knocked out gene at all determines whether the effect even matters in that cell type"): the weights are a separate
+input from the descriptors, they set how far a class carries the response rather than naming the node, and under item
+20 they are the class's ceiling. The seed's own brain-expression *descriptor* columns (`gene_brain`, `reaction_brain`)
+are masked with the rest. The limit already registered holds: a seed's reactions still carry its EC numbers and the
+expression its gene rule copied onto them.
+
+**22. Every channel carries the perturbation with the same sign, and the channels start equal** (the owner, 13
+October 2026: "each class should be consistently signed within itself"). Each channel's input weight is `exp` of a free
+parameter, so it is positive, and all start at one value; the classes stay free to learn different sizes. Before this
+each channel held one free weight drawn from a normal distribution, so the sign and the size of the perturbation in a
+channel were set by the draw. A readout absorbs a flipped sign everywhere but the extracellular pool, whose mean across
+classes is fixed: it averaged copies of one extracellular quantity carrying opposite signs. Measured on a toy chain
+with every class weight at 1, the pool lost a factor of 1.2 to 3.1 to that cancellation over six seeds, read negative
+for a positive perturbation at one of them, and the channel sizes differed by up to 26 times.
+
+**23. The registered model is the trainer's default** (the owner, 13 October 2026: "all of the v4 stuff should be ON by
+default"). Every registered choice that is built is now the default of `experiments/run_main_model.py`: the grouped
+split by disease cluster and targets, typed node features, `seed_masked`, the fixed point at 1e-3, the limiting-step
+rule, positive input weights, carrier relations and extracellular coupling for the linear response, the graph's edge
+signs for message passing, equal drug shares, the placebo negative weight of 0.5, the weighted-optimum start, the
+noisy-OR initialisation and learning rates, and the refit on validation. Three safeguards come with it, because a
+default that carries a registered choice is how commit `9df62ee` changed a registered model silently
+(`docs/confirmatory_architecture_review.md`, row 8). `experiments/run_main_model_batch.py` states the same model as
+explicit flags, `tests/test_registered_defaults.py` holds the two equal so a default cannot drift from the
+registration without a test failing, and `VALUES_BEFORE_THE_V4_DEFAULTS` gives every such argument the value it held
+before this date, so a finished run is rebuilt as the model it was trained as and not as the current default. Each
+choice can still be turned off by name. No data path is a default: the graph, evidence, label selection, descriptors,
+cell-class weights and combined perturbations are named per run and belong to the rebuild.
+
+**24. What the decisions of 13 October leave open, registered as open so it is not settled by default later.**
+- **Message passing is not at its registered form.** Item 8 of 12 October (one repeated layer, rank-factored, run to a
+  fixed point) is not built, so the encoder keeps its three layers with weights per layer and does not reach a fixed
+  point. Until it is built the two encoders differ in more than their response law, and item 7 is met by the
+  linear-response encoder only.
+- **Three registered items have no code.** The per-pair placebo weights of item 3 (`configs/placebo_negative_weights.csv`
+  is written but not read by the trainer, which applies the 0.5 default to every such negative), the Open Targets
+  weight of 0.45 of item 12, and the Holm procedure of item 18. Each is registered and unbuilt, and a run made before
+  they are built does not implement them.
+- **A gene knockout and an inhibitor of that gene's protein are nearly the same input.** Both reach the protein with
+  sign -1 and magnitude 1, differing only in the entry hop, although a knockout removes the protein and everything it
+  does while an inhibitor blocks activity and leaves it in place, at a partial occupancy, in the cells the drug
+  reaches. The owner's direction of 13 October is that all three differences are to be made (occupancy from item 5's
+  measured chain, exposure through the unbound brain ratio, and amount against activity), and that the third needs no
+  node of its own for the inhibitor. None is built, and the first two change the graph's inputs, so they belong to the
+  rebuild and to the physiology review it waits on.
+- **Partial agonism is a halved magnitude in the agonist's direction, which is not what a partial agonist does.**
+  `ACTION_TYPE_SIGN` maps a partial agonist, a positive allosteric modulator, a positive modulator and a stabiliser to
+  +0.5 and a negative allosteric modulator to -0.5; on the v4 graph that is 357 entry rows at +0.5 and 19 at -0.5, over
+  41 of the 222 drugs, of which 33 have no other kind of target. Two distinct errors sit in that bucket. A partial
+  agonist's direction depends on the ambient tone, lowering signalling where the tone is above its intrinsic efficacy
+  and raising it below, so a fixed +0.5 states one direction for both: aripiprazole at `DRD2` and `HTR1A`, varenicline
+  at `CHRNA4` and `CHRNB2`, butorphanol at the opioid receptors, buspirone at `HTR1A`, with nalmefene, vilazodone and
+  memantine alongside. And a positive allosteric modulator has no effect without the endogenous ligand, since it
+  multiplies an existing signal rather than supplying one, which covers the benzodiazepines and the Z-drugs. Both would
+  be answered by the same change, the drug's effect at a receptor scaling the endogenous ligand's state instead of
+  adding to it, and that change is not linear, so it cannot sit inside the linear-response encoder without ending the
+  linearity items 20 and 22 rest on. Registered as open.
+- **Ligand binding competition is surveyed, computable and unbuilt.** `docs/label_source_review.md` 13.4 measured ten
+  sources on 12 October: none labels competition for these drugs, and one route computes it from a shared binding site
+  plus the two concentrations and affinities, which item 5's table holds for about half the drugs. The widest piece is
+  already on disk, DrugCentral's displaced tracer per drug-gene record, which gives 1,021 of 1,307 same-gene drug pairs
+  a shared tracer, with ChEMBL's curated site for 21 drugs where the GABA-A sites must be separated. Three limits are
+  registered with it. Competition is saturable and so not linear, so it can enter only as a model input computed before
+  the propagation and not as a relation inside it. The drug-against-endogenous half needs the endogenous ligand's
+  concentration at the synapse, which no source constrains to within orders of magnitude, while its binding site is
+  known for 85 of 147 targets. And there is almost nothing to test it on: of the 80 positive two-drug triples only 2
+  have opposing actions at one target, and of the two-drug combination statements 19 distinct pairs share a target,
+  7 of them with an affinity for both drugs at every shared target. It would therefore be pharmacology built into an
+  input, not a tested claim, which is why it is registered as open rather than added (the owner, 12 October: "I don't
+  want to add extra confirmatory model variations because that starts increasing probability of winning by luck").
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the

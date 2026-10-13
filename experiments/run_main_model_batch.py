@@ -65,6 +65,24 @@ SLICE_MODULE_FIX_LINEAR_RESPONSE = ["--head", "noisy_or", "--field", "difference
 SLICE_GATE_TIME_SCALES_MESSAGE_PASSING = [argument for argument in SLICE_MODULE_FIX_MESSAGE_PASSING if argument != "--start-at-weighted-optimum"]
 SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE = [argument for argument in SLICE_MODULE_FIX_LINEAR_RESPONSE if argument != "--start-at-weighted-optimum"]
 
+# The registered v4 model as explicit flags (the owner, 13 October 2026: "all of the v4 stuff should be ON by default").
+# The trainer's defaults equal these (tests/test_registered_defaults.py), and a v4 configuration names them anyway, so a
+# later change of a default cannot change a registered model without a configuration saying so (the problem of
+# docs/confirmatory_architecture_review.md, row 8). No data path is here: the v4 graph is not rebuilt yet, and the
+# graph, evidence, label selection, descriptors, cell-class weights and combined perturbations belong to the rebuild.
+# Message passing is not yet at its registered form: amendment item 8 (one repeated layer, rank-factored, run to a fixed
+# point) is not built, so it keeps the registered three layers until it is.
+V4_SHARED_MODEL = ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--group-by", "disease_cluster_and_targets",
+                   "--label-grades", "A", "B", "--negative-weight", "0.2", "--placebo-negative-weight", "0.5", "--equal-drug-shares",
+                   "--keep-large-groups-in-training", "--refit-on-validation", "--start-at-weighted-optimum",
+                   "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
+                   "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05", "--node-features", "typed",
+                   "--descriptor-treatment", "seed_masked"]
+V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "--message-passing-edge-signs", "graph", "--num-layers", "3"]
+V4_LINEAR_RESPONSE_MODEL = [*V4_SHARED_MODEL, "--encoder", "linear_response", "--fixed-point-tolerance", "0.001",
+                            "--class-weight-rule", "limiting_step", "--input-weights", "positive", "--cofactor-relations",
+                            "--extracellular-coupling", "--channels-per-cell-class", "1"]
+
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
     "b6_absolute_mean": ["--head", "noisy_or", "--field", "absolute", "--pooling", "mean"],

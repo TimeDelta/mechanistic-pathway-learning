@@ -190,9 +190,22 @@ MIXTURE_WEIGHTINGS = ("softmax", "sparsemax")
 #     steps - five reactions each at 2 percent of capacity pass about 2 percent of the flux, not 0.02^5. So the
 #     attenuation at a node is the bottleneck of its least-limited route from the perturbed nodes,
 #         b(t) = max over routes to t of min over nodes n on the route of w(n),
-#     computed by the max-min recurrence of class_bottleneck below over the rounds the propagation itself took to
-#     reach its fixed point, so a route the response never travelled does not set the ceiling. The same limiting-step
-#     logic is already used inside a reaction's gene rule, where evaluate_gene_rule takes the minimum over "and".
+#     computed by the max-min recurrence of class_bottleneck below. The same limiting-step logic is already used
+#     inside a reaction's gene rule, where evaluate_gene_rule takes the minimum over "and".
+#     Over which routes. The propagation runs to a fixed point because the model's claim is the steady state, and at
+#     a steady state every route contributes, so b is taken over every route and the recurrence runs until it stops
+#     changing. Bounding it by the round at which the propagation stopped would make the stopping rule, which is a
+#     numerical tolerance and is decided for a whole batch at once, set a physiological ceiling, and would make one
+#     perturbation's ceiling depend on the perturbations it happened to share a batch with. Taken over every route, b
+#     depends on nothing but the graph, the class weights and the perturbation's own seeds, so it is computed once per
+#     perturbation and kept (cached_class_bottleneck). A run that reads the state at a chosen round (num_steps, or a
+#     fixed step count with no tolerance) takes b over that many rounds, so a transient reading stays coherent.
+#     Two places the recurrence follows the propagation rather than the classes' weights alone. The extracellular pool
+#     (--extracellular-coupling) is one compartment shared by the pooled classes, so a metabolite one class releases
+#     reaches a class that cannot make it; b at a pool node is therefore the largest over the pooled classes, which is
+#     what a route that enters the pool in one class and leaves it in another gives. Without that the rule would set a
+#     ceiling of zero at the pool in every class that cannot make the metabolite and so undo the coupling. And an entry
+#     node (a drug) that a perturbation does not seed is absent, as in present_nodes, so no route passes through it.
 # What the limiting-step rule is not: a per-path minimum. The state at a node sums contributions from routes of
 # different lengths and no per-node scalar can hold a different minimum for each, so b is the bottleneck of the best
 # route and scales everything the node holds.
@@ -223,6 +236,15 @@ MIXTURE_WEIGHTINGS = ("softmax", "sparsemax")
 # lies in [0, 1], so multiplying by it cannot raise a norm. The fixed point is reached by the propagation before b is
 # applied, so the contraction the stopping rule rests on is the unweighted one and is untouched.
 CLASS_WEIGHT_RULES: tuple[str, ...] = ("product", "limiting_step")
+# How the perturbation is scaled into each channel (the owner, 13 October 2026: "each class should be consistently
+# signed within itself"). "signed", every run before that date: one free weight per channel drawn from a normal
+# distribution, so each channel started with a random sign and size. The readout absorbs a flipped sign everywhere
+# except the extracellular pool, whose mean across classes is fixed and averaged copies of one extracellular quantity
+# carrying opposite signs: on a toy graph the pool lost a factor of 1.2 to 3.1 to cancellation and read negative for a
+# positive perturbation at one seed. "positive": the weight is exp of a free parameter, so every channel of every class
+# carries a perturbation with its own sign, and all channels start at the same value, so no class starts out weighing
+# more in the pool than another. The classes stay free to learn different sizes.
+INPUT_WEIGHT_FORMS: tuple[str, ...] = ("positive", "signed")
 BOTTLENECK_CHUNK = 32  # columns of the flattened batch-by-class gather taken at once; see class_bottleneck
 DEFAULT_FIXED_POINT_TOLERANCE = 1e-3
 DEFAULT_MAX_PROPAGATION_STEPS = 60
@@ -395,8 +417,10 @@ class LinearResponseEncoder(nn.Module):
         non_propagating_nodes: Tensor | None = None,
         cofactor_edges: Tensor | None = None,
         num_propagation_steps: int = 8,
-        fixed_point_tolerance: float | None = None,
-        class_weight_rule: str = "product",
+        fixed_point_tolerance: float | None = DEFAULT_FIXED_POINT_TOLERANCE,
+        class_weight_rule: str = "limiting_step",
+        input_weights: str = "positive",
+        cache_class_bottlenecks: bool = True,
         max_propagation_steps: int = DEFAULT_MAX_PROPAGATION_STEPS,
         propagation_channels: int = 4,
         response_scale: str = "linear",
@@ -469,6 +493,11 @@ class LinearResponseEncoder(nn.Module):
         if class_weight_rule not in CLASS_WEIGHT_RULES:
             raise ValueError(f"class_weight_rule must be one of {CLASS_WEIGHT_RULES}, not {class_weight_rule!r}")
         self.class_weight_rule = class_weight_rule
+        if input_weights not in INPUT_WEIGHT_FORMS:
+            raise ValueError(f"input_weights must be one of {INPUT_WEIGHT_FORMS}, not {input_weights!r}")
+        self.input_weights = input_weights
+        self.cache_class_bottlenecks = cache_class_bottlenecks
+        self.class_bottleneck_cache: dict[tuple[int, ...], Tensor] = {}  # seeds -> [N, K]; see cached_class_bottleneck
         self.damping = damping
         if cross_relation_aggregator not in CROSS_RELATION_AGGREGATORS:
             raise ValueError(f"cross_relation_aggregator must be one of {CROSS_RELATION_AGGREGATORS}, not {cross_relation_aggregator!r}")
@@ -541,7 +570,10 @@ class LinearResponseEncoder(nn.Module):
             if carrier_relation in relation_names and relation_gains == "per_relation":  # carrier pools are recycled and buffered: coupling through them starts weak (gain about 0.04)
                 initial_gain_logit[relation_names.index(carrier_relation)] += CARRIER_INITIAL_GAIN_LOGIT_OFFSET
         self.gain_logit = nn.Parameter(initial_gain_logit)
-        self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
+        if input_weights == "positive":  # one shared starting value, so no class starts out weighing more in the pool
+            self.log_input_weight = nn.Parameter(torch.full((propagation_channels,), -0.5 * math.log(propagation_channels)))
+        else:
+            self.input_weight = nn.Parameter(torch.randn(propagation_channels) / propagation_channels**0.5)
         self.channel_expansion = nn.Parameter(torch.randn(propagation_channels, node_state_dim) / propagation_channels**0.5)
         if descriptor_treatment == "zero_init_slow":
             self.num_structural_columns = node_features.shape[1] - num_descriptor_columns
@@ -655,41 +687,42 @@ class LinearResponseEncoder(nn.Module):
         return self.maximum_gain * torch.where(self.relation_is_unsigned[:, None], either_sign, positive)
 
     def sustained_input(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor) -> Tensor:
-        """u: [B, N, C], sign * magnitude * input_weight at each perturbed node (index -1 is padding)."""
+        """u: [B, N, C], sign * magnitude * the channel's input weight at each perturbed node (index -1 is padding)."""
         batch_size = perturbation_node_index.shape[0]
         valid = (perturbation_node_index >= 0).to(perturbation_sign_and_magnitude.dtype)
         signed_magnitude = perturbation_sign_and_magnitude[:, :, 0] * perturbation_sign_and_magnitude[:, :, 1] * valid
-        injected = signed_magnitude[:, :, None] * self.input_weight[None, None, :]
+        injected = signed_magnitude[:, :, None] * self.injection_weights()[None, None, :]
         field = torch.zeros(batch_size, self.num_graph_nodes, self.propagation_channels, device=injected.device, dtype=injected.dtype)
         index = perturbation_node_index.clamp_min(0)[:, :, None].expand(-1, -1, self.propagation_channels)
         return field.scatter_add(1, index, injected)
 
-    def class_bottleneck(self, perturbation_node_index: Tensor, rounds: int, chunk: int = BOTTLENECK_CHUNK) -> Tensor:
+    def injection_weights(self) -> Tensor:
+        """[C]: the scale of the perturbation in each channel, positive under input_weights "positive"."""
+        return torch.exp(self.log_input_weight) if self.input_weights == "positive" else self.input_weight
+
+    def class_bottleneck(self, perturbation_node_index: Tensor, rounds: int | None = None, chunk: int = BOTTLENECK_CHUNK) -> Tensor:
         """[N, B, K]: per cell class, the bottleneck of the least-limited route from the perturbed nodes to each node.
 
-        The max-min recurrence, run for the number of rounds the response itself took so a route longer than the
-        propagation's reach does not count:
+        The max-min recurrence, run until it stops changing (rounds None, the steady state; see CLASS_WEIGHT_RULES) or
+        for a given number of rounds:
 
             b(t)   = w(t) at a perturbed node, 0 elsewhere
             b(t) <- max( b(t), min( w(t), max over edges s -> t of b(s) / demand(s -> t) ) )
 
-        b only grows and is bounded by 1, so the recurrence settles, and the loop stops at the round that changes
-        nothing. demand is how many copies of the source a step consumes, which is the stoichiometry of that
-        participant: a receptor that needs two molecules of its transmitter is limited at half the transmitter's
-        availability (the owner, 13 October 2026: "we also have to incorporate things like ACh needing to bind two
-        molecules to the receptor in order to activate it, which would cut that expression in half for the final
-        response amount"). The graph does not carry those coefficients on its edges yet - Reactome's and Human-GEM's
-        SBML both state them and the build reads them for the membrane potential, then discards them - so
-        bottleneck_edge_demand is None and every demand is 1 until a build writes them, and nothing here changes when
-        it does.
+        then, at each extracellular pool node, b of every pooled class is the largest over the pooled classes, and an
+        entry node the perturbation does not seed has w = 0. b only grows and is bounded by 1, and a widest route is a
+        simple path, so the recurrence settles within num_graph_nodes rounds. demand is how many copies of the source
+        a step consumes, which is the stoichiometry of that participant: a receptor that needs two molecules of its
+        transmitter is limited at half the transmitter's availability (the owner, 13 October 2026: "we also have to
+        incorporate things like ACh needing to bind two molecules to the receptor in order to activate it, which would
+        cut that expression in half for the final response amount"). The graph does not carry those coefficients on its
+        edges yet - Reactome's and Human-GEM's SBML both state them and the build reads them for the membrane
+        potential, then discards them - so bottleneck_edge_demand is None and every demand is 1 until a build writes
+        them (set_bottleneck_edge_demand).
 
         No parameter enters this, only the fixed buffers and which nodes are perturbed, so it carries no gradient and
-        runs under no_grad. Two consequences the caller can use: it is the same tensor on every round of training for
-        the same perturbations, so it can be computed once and kept, and the per-class pass is over num_cell_classes
-        columns rather than propagation_channels, because every channel of a class shares that class's weights.
-        Memory is why the edge gather is chunked: it is [edges, B * K], which at a batch of 32 with a dozen classes is
-        a few hundred thousand rows by a few hundred columns. Its cost against a whole response is to be measured on
-        the rebuilt v4 graph by experiments/measure_limiting_step_rule.py.
+        runs under no_grad. The pass is per class rather than per channel, because every channel of a class shares that
+        class's weights, and the edge gather is taken chunk columns at a time to bound its memory.
         """
         if self.cell_class_node_weight is None:
             raise ValueError("class_bottleneck needs cell_class_weights")
@@ -697,17 +730,21 @@ class LinearResponseEncoder(nn.Module):
             weights = self.cell_class_node_weight  # [N, K]
             batch_size = perturbation_node_index.shape[0]
             num_classes = weights.shape[1]
+            node_limit = weights[:, None, :].expand(-1, batch_size, -1)  # [N, B, K]
+            presence = self.present_nodes(perturbation_node_index)  # [N, B, 1], or None without entry nodes
+            if presence is not None:
+                node_limit = node_limit * presence
             seeded = torch.zeros((batch_size, self.num_graph_nodes + 1), dtype=torch.bool, device=weights.device)
             seeded.scatter_(1, torch.where(perturbation_node_index >= 0, perturbation_node_index,
                                            torch.full_like(perturbation_node_index, self.num_graph_nodes)), True)
             seeded = seeded[:, : self.num_graph_nodes].permute(1, 0)[:, :, None]  # [N, B, 1]
-            bottleneck = torch.where(seeded, weights[:, None, :], torch.zeros_like(weights[:, None, :]))  # [N, B, K]
+            bottleneck = self.share_bottleneck_at_the_pool(torch.where(seeded, node_limit, torch.zeros_like(node_limit)))
             source, target = self.bottleneck_edge_source, self.bottleneck_edge_target
             demand = None if self.bottleneck_edge_demand is None else self.bottleneck_edge_demand[:, None]
             flat_width = batch_size * num_classes
-            node_limit = weights[:, None, :].expand(-1, batch_size, -1).reshape(self.num_graph_nodes, flat_width).contiguous()
+            flat_limit = node_limit.reshape(self.num_graph_nodes, flat_width)
             flat = bottleneck.reshape(self.num_graph_nodes, flat_width)
-            for _ in range(rounds):
+            for _ in range(self.num_graph_nodes if rounds is None else rounds):
                 arriving = torch.zeros_like(flat)
                 for start in range(0, flat_width, chunk):
                     per_edge = flat[:, start : start + chunk][source]
@@ -715,11 +752,60 @@ class LinearResponseEncoder(nn.Module):
                         per_edge = per_edge / demand
                     arriving[:, start : start + chunk] = arriving[:, start : start + chunk].index_reduce(
                         0, target, per_edge, "amax", include_self=True)
-                updated = torch.maximum(flat, torch.minimum(node_limit, arriving))
+                updated = torch.maximum(flat, torch.minimum(flat_limit, arriving))
+                updated = self.share_bottleneck_at_the_pool(updated.reshape(self.num_graph_nodes, batch_size, num_classes)
+                                                            ).reshape(self.num_graph_nodes, flat_width)
                 if torch.equal(updated, flat):
                     break
                 flat = updated
             return flat.reshape(self.num_graph_nodes, batch_size, num_classes)
+
+    def share_bottleneck_at_the_pool(self, bottleneck: Tensor) -> Tensor:
+        """[N, B, K] with each extracellular pool node's pooled classes set to their largest value: the pool is one
+        compartment, so a route into it in one class continues out of it in another (see CLASS_WEIGHT_RULES)."""
+        if self.extracellular_pool_nodes is None:
+            return bottleneck
+        pooled_largest = bottleneck[:, :, self.shared_pool_classes].amax(dim=2, keepdim=True).expand_as(bottleneck)
+        replace = self.extracellular_pool_nodes[:, None, None] & self.shared_pool_classes[None, None, :]
+        return torch.where(replace, pooled_largest, bottleneck)
+
+    def cached_class_bottleneck(self, perturbation_node_index: Tensor) -> Tensor:
+        """[N, B, K]: class_bottleneck at the steady state, computed once per set of seeds and kept.
+
+        The steady-state bottleneck depends only on the graph, the class weights, the demands and the perturbation's own
+        seeds, all fixed while a model trains, so every epoch after the first reads it from here. Memory: one [N, K]
+        float tensor per distinct set of seeds, on the device of the weights. The cache is emptied when the module moves
+        device or dtype and when the demands change."""
+        keys = [tuple(sorted({int(node) for node in row.tolist() if node >= 0})) for row in perturbation_node_index]
+        missing = [key for key in dict.fromkeys(keys) if key not in self.class_bottleneck_cache]
+        if missing:
+            widest = max(1, max(len(key) for key in missing))
+            missing_index = torch.full((len(missing), widest), -1, dtype=torch.long, device=perturbation_node_index.device)
+            for row, key in enumerate(missing):
+                missing_index[row, : len(key)] = torch.as_tensor(key, dtype=torch.long)
+            computed = self.class_bottleneck(missing_index)  # [N, M, K]
+            for row, key in enumerate(missing):
+                self.class_bottleneck_cache[key] = computed[:, row, :].clone()
+        return torch.stack([self.class_bottleneck_cache[key] for key in keys], dim=1)
+
+    def clear_class_bottleneck_cache(self) -> None:
+        self.class_bottleneck_cache.clear()
+
+    def set_bottleneck_edge_demand(self, demand: Tensor | None) -> None:
+        """Per adjacency entry (bottleneck_edge_source, bottleneck_edge_target), how many copies of the source the step
+        consumes; at least 1. Empties the cache, since every bottleneck in it was taken under the old demands."""
+        if demand is not None:
+            if demand.shape != self.bottleneck_edge_source.shape:
+                raise ValueError("demand needs one value per adjacency entry of the bottleneck pass")
+            if bool((demand < 1).any()):
+                raise ValueError("a demand below 1 would raise availability past a step, and b would leave [0, 1]")
+            demand = demand.to(self.bottleneck_edge_source.device, torch.float32)
+        self.bottleneck_edge_demand = demand
+        self.clear_class_bottleneck_cache()
+
+    def _apply(self, fn, *args, **kwargs):
+        self.clear_class_bottleneck_cache()  # cached tensors do not move with the buffers
+        return super()._apply(fn, *args, **kwargs)
 
     def response(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, num_steps: int | None = None) -> Tensor:
         """The propagated response h, [B, N, C], before expansion and gating.
@@ -781,9 +867,14 @@ class LinearResponseEncoder(nn.Module):
             previous_state = state
         self.propagation_steps_taken = steps_taken
         if self.class_weight_rule == "limiting_step" and self.cell_class_node_weight is not None:
-            # the bottleneck over the rounds the propagation actually took, so a route the response never travelled
-            # does not set the ceiling; repeat_interleave puts the per-class value on that class's channels
-            bottleneck = self.class_bottleneck(perturbation_node_index, steps_taken)  # [N, B, K]
+            # at the steady state the bottleneck over every route, kept per perturbation; a transient reading (a chosen
+            # round, or a fixed step count) takes it over the rounds the propagation took. repeat_interleave puts the
+            # per-class value on that class's channels. See CLASS_WEIGHT_RULES.
+            if num_steps is None and self.fixed_point_tolerance is not None:
+                bottleneck = self.cached_class_bottleneck(perturbation_node_index) if self.cache_class_bottlenecks \
+                    else self.class_bottleneck(perturbation_node_index)
+            else:
+                bottleneck = self.class_bottleneck(perturbation_node_index, rounds=steps_taken)
             state = state * bottleneck.repeat_interleave(self.channels_per_cell_class, dim=2)
         return state.permute(1, 0, 2)
 
