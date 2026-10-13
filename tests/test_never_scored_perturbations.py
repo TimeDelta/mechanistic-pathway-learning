@@ -52,3 +52,39 @@ def test_nothing_changes_when_no_row_is_of_a_never_scored_type():
     kept_test, train_pool, taken_out, dropped = withhold_never_scored_rows(data, np.array([True, False]), np.array([1]))
     assert kept_test.tolist() == [True, False] and train_pool.tolist() == [1] and (taken_out, dropped) == (0, 0)
     assert not never_scored_rows(data).any()
+
+
+def test_a_never_scored_row_does_not_reach_the_validation_set_either():
+    """The validation set picks the stopping epoch by macro AUPRC, which is a score. Item 12c keeps these rows out
+    of every reading because macro AUPRC is taken per symptom and 43 percent of their labels are one symptom, so a
+    row that reaches validation chooses the epoch on the very quantity it is excluded from."""
+    import numpy as np
+    from argparse import Namespace
+
+    from run_main_model import split_indices
+
+    num_perturbations = 40
+    types = ["gene"] * num_perturbations
+    types[5] = types[11] = ACTIVATION
+    outcomes = np.zeros((num_perturbations, 3))
+    outcomes[:, 0] = 1.0
+    data = SimpleNamespace(
+        perturbation_ids=[f"P{i}" for i in range(num_perturbations)], perturbation_types=types,
+        # each never-scored row shares its gene's group, as a real receptor-activation row does; with a group of its
+        # own the group would vanish from the test set the moment the row was taken out of it
+        group_ids=[f"g{i - 1 if i in (5, 11) else i}" for i in range(num_perturbations)], outcomes=outcomes,
+        label_mask=np.ones_like(outcomes, dtype=bool), perturbation_seeds=[[0]] * num_perturbations)
+    arguments = Namespace(time_split_cutoff=None, holdout_module="", holdout_subsystem="", fold=0, num_folds=5,
+                          validation_fraction=0.2, seed=0, group_by="disease_cluster")
+    train, validation, test, _ = split_indices(data, arguments)
+    never_scored = {5, 11}
+    assert not (set(validation.tolist()) & never_scored), "a never-scored row reached the validation set"
+    assert not (set(test.tolist()) & never_scored), "a never-scored row reached the test set"
+    # Each such row is either trained on or dropped because its own group is held out; neither is a loss, and a row
+    # whose group is held out MUST be dropped rather than trained, which is the leak the rule exists for.
+    held_out_groups = {data.group_ids[index] for index in test.tolist()}  # visible because the partner row stays in test
+    for index in never_scored:
+        in_training = index in set(train.tolist())
+        assert in_training != (data.group_ids[index] in held_out_groups), (
+            f"P{index} is {'trained' if in_training else 'dropped'} while its group is "
+            f"{'held out' if data.group_ids[index] in held_out_groups else 'not held out'}")

@@ -748,6 +748,16 @@ def placebo_negative_weight_matrix(path, perturbation_ids: list[str], symptoms: 
                     "pairs_matched": matched, "pairs_not_in_this_evidence_table": unmatched}
 
 
+def placebo_weight_pairs_in_force(matrix: np.ndarray, outcomes: np.ndarray, evidenced_negative) -> int:
+    """Pairs a per-pair placebo weight actually acts on: named by the file, negative, and marked evidenced negative
+    by the selection. Matching an id and a symptom is not enough, because the weight reaches only the pairs the
+    selection relabelled; a selection that stops relabelling a pair leaves the file matching 61 of 61 while no
+    weight applies to it, which is the drift the run record has to make visible."""
+    if evidenced_negative is None:
+        return 0
+    return int((np.isfinite(matrix) & (np.asarray(outcomes) <= 0) & np.asarray(evidenced_negative, dtype=bool)).sum())
+
+
 def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
     """The loss's weight per (perturbation, symptom): a positive at its evidence weight (at 1 when the frequency is the
     target), a negative at --negative-weight, a pair set aside by the selection at zero; under --equal-drug-shares each
@@ -1089,6 +1099,15 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
     validation = np.array([], dtype=int)
     if arguments.validation_fraction > 0 and len(train_pool) >= 20:
         train_pool, validation = early_stopping_validation(data, train_pool, arguments)
+        # The validation set picks the stopping epoch by macro AUPRC, which is a score, so a never-scored row must
+        # not reach it either: item 12c keeps these rows out of every reading precisely because macro AUPRC is taken
+        # per symptom and 43 percent of their labels are one symptom. They go back to training instead of being lost.
+        never_scored = never_scored_rows(data)
+        if never_scored[validation].any():
+            moved = validation[never_scored[validation]]
+            validation = validation[~never_scored[validation]]
+            train_pool = np.sort(np.concatenate([train_pool, moved]))
+            print(f"never-scored perturbation types: {len(moved)} rows moved out of the validation set into training")
     return train_pool, validation, all_indices[test_mask], split_name
 
 
@@ -1382,9 +1401,12 @@ def main() -> None:
         else:
             data.placebo_negative_weight_matrix, placebo_negative_weights_summary = placebo_negative_weight_matrix(
                 arguments.placebo_negative_weights_file, list(data.perturbation_ids), list(data.symptoms))
+            placebo_negative_weights_summary["pairs_the_weight_acts_on"] = placebo_weight_pairs_in_force(
+                data.placebo_negative_weight_matrix, data.outcomes, data.evidenced_negative)
             print(f"placebo negative weights: {placebo_negative_weights_summary['pairs_matched']} of "
-                  f"{placebo_negative_weights_summary['pairs_in_file']} pairs of {arguments.placebo_negative_weights_file} are in this evidence table"
-                  + (f"; not in it: {', '.join(placebo_negative_weights_summary['pairs_not_in_this_evidence_table'])}"
+                  f"{placebo_negative_weights_summary['pairs_in_file']} pairs of {arguments.placebo_negative_weights_file} are in this evidence table, "
+                  f"and the weight acts on {placebo_negative_weights_summary['pairs_the_weight_acts_on']} of them"
+                  + (f"; not in the table: {', '.join(placebo_negative_weights_summary['pairs_not_in_this_evidence_table'])}"
                      if placebo_negative_weights_summary["pairs_not_in_this_evidence_table"] else ""))
     combined_perturbations_summary = None
     if arguments.combined_perturbations is not None:

@@ -531,10 +531,15 @@ def main() -> None:
               "the two rewiring readings. Rewiring: the model on the real graph minus the same model on its rewired graph. Permutation (secondary, in neither "
               "hypothesis): the advantage on the real labels minus the advantage when model and baseline are trained and scored on labels permuted within "
               "degree strata.", "",
-              f"Multiplicity (amendment item 18): H1 at {arguments.alpha} and, only once it is confirmed, H2 and P1 together by Holm at the same level, so the "
-              f"smaller of the two p-values faces {arguments.alpha / 2:.4f} and the larger faces {arguments.alpha:.4f} once the smaller has been rejected. "
-              "\"level H2 faced\" is the one Holm gave it, which depends on where P1's p-value fell. P1 carries the stability and faithfulness gates G1 and "
-              "G2 of docs/pathway_test_options.md besides its p-value; they are a conjunction on the P1 claim alone and do not change any level."]
+              (f"Multiplicity (amendment item 18): H1 at {arguments.alpha} and, only once it is confirmed, H2 and P1 together by Holm at the same level, so "
+               f"the smaller of the two p-values faces {arguments.alpha / 2:.4f} and the larger faces {arguments.alpha:.4f} once the smaller has been rejected. "
+               "\"level H2 faced\" is the one Holm gave it, which depends on where P1's p-value fell. P1 carries the stability and faithfulness gates G1 and "
+               "G2 of docs/pathway_test_options.md besides its p-value; they are a conjunction on the P1 claim alone and do not change any level."
+               if any(model in pathway_test_results for model in entries) else
+               f"Multiplicity (amendment item 18): H1 at {arguments.alpha} and, only once it is confirmed, its second-stage family at the same level. **No "
+               f"pathway test was scored**, so that family is H2 alone and H2 faced the full {arguments.alpha:.4f} rather than the "
+               f"{arguments.alpha / 2:.4f} it would have faced beside P1. Item 18 registers the family as H2 and P1; this run tested the smaller family, "
+               "which is the correct level for the hypotheses actually tested and is recorded here because it is not the family the item describes.")]
     arguments.markdown_output.write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

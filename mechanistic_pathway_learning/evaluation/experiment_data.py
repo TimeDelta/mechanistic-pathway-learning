@@ -183,7 +183,13 @@ GROUPING_COLUMNS = {"gene": "group_id", "disease_cluster": "disease_cluster_id",
 
 
 PER_PERTURBATION_LISTS = ("perturbation_ids", "perturbation_labels", "perturbation_types", "group_ids", "perturbation_seeds", "perturbation_signs", "perturbation_magnitudes")
-PER_PERTURBATION_ARRAYS = ("outcomes", "weights", "in_metabolic_layer", "frequencies", "evidence_dates", "evidence_date_is_publication", "label_mask")
+# Every [num_perturbations, ...] array, so restrict_to_perturbations slices them all. A field left out of this tuple
+# keeps its full length while outcomes is cut to the development rows, and the first loss that multiplies the two
+# raises a broadcast error: evidenced_negative and placebo_negative_weight_matrix were both missing until
+# 13 October 2026, which broke every development run that used a placebo-negative label selection.
+PER_PERTURBATION_ARRAYS = ("outcomes", "weights", "in_metabolic_layer", "frequencies", "evidence_dates",
+                           "evidence_date_is_publication", "label_mask", "evidenced_negative",
+                           "placebo_negative_weight_matrix")
 
 
 def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "ExperimentData":
