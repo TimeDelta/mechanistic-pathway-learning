@@ -1537,10 +1537,10 @@ alkalinising by it move pH by different amounts, so the weight is **not** even i
 gain-of-function does not take the same weight as a loss-of-function at a node whose compartment the perturbation
 moves. That asymmetry is the chemistry and not a defect.
 
-*(An earlier draft of this item registered the even form `exp(-(sensitivity * deviation) ** 2)` and listed
-evenness, and a mirror between gain and loss, among its properties. The owner never agreed to a mirror property
-and it should not have been in the registration; it is withdrawn, 13 October 2026, and nothing else in the
-registration rests on it.)*
+*(An earlier draft of this item registered the even form `exp(-(sensitivity * deviation) ** 2)` and listed among
+its properties a **gain-versus-loss mirror**: that a gain of function produces the exact negative of the field a
+loss of function produces. The owner never accepted that property and it should not have been in the registration.
+It is withdrawn, 13 October 2026. It appears nowhere else in the registration, so nothing rests on it.)*
 
 **What the weight does and does not do.** It is a multiplier on each node's settled value, applied once after the
 fixed point and after the bottleneck. It therefore does **not** attenuate the messages a node passes during the

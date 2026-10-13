@@ -318,9 +318,10 @@ underneath the study's worst measured result, and the nominal-direction build re
 
 **Two things this review got wrong, corrected by the owner on 13 October.** It treated the limiting-step rule's
 missing measurement as a gap; no measurement decides whether a rule that mirrors the physiology is used, and what
-needs checking is narrower - whether the implementation is the rule. And it reported item 22a's mirror property as
-a divergence between registration and code, when the property should never have been registered: the owner never
-agreed to it, and it is withdrawn rather than corrected.
+needs checking is narrower - whether the implementation is the rule. And it reported item 22a's gain-versus-loss
+mirror - the claim that a gain of function produces the exact negative of the field a loss of function produces -
+as a divergence between registration and code, when the property should never have been registered at all: the
+owner never accepted it, and it is withdrawn rather than corrected.
 
 **The pattern worth naming.** Most of the costed deviations are the same deviation: the in-degree mean. It erases
 reaction counts (section 1), cancels reversible reactions (2), dilutes the proton node to 1/4,096 (5) and the
