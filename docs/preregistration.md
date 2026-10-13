@@ -1901,6 +1901,47 @@ is a declared secondary, reported beside it.
 - **Whether the readout is published with the confirmatory result or apart from it.** Registering it here fixes the
   procedure either way.
 
+**27. A perturbation can drive a reversible reaction backwards: `product_opposes`, product -> reaction at -1** (the
+owner, 13 October 2026: "The reaction should only be able to follow the reversal path under certain conditions",
+and "I don't want to accept a perturbation not being able to reverse the reaction").
+
+**Linearised mass action gives reversal without a nonlinearity.** The net rate of a reversible reaction is
+`v = k_f [S] - k_r [P]`, so around the steady state `dv = k_f dS - k_r dP`: the product enters the rate at a
+negative sign. A perturbation that accumulates the product therefore makes the rate deviation negative and the
+reaction runs backwards against its baseline, regenerating the substrate and pulling the product back down; a
+perturbation that raises the substrate drives it forwards as before. That is the conditional reversal the owner
+described - it happens only when the local state calls for it - and it is linear, so it needs one derived edge and
+no gate on the state. The encoder already iterates to a fixed point and could carry a contracting nonlinearity
+(the softmax-mixture aggregator runs inside the loop), so linearity was never the obstacle; the obstacle was that
+I had framed reversal as switching edges on and off, when in a deviation model it is the sign of the rate.
+
+**What is built.** The linear-response encoder derives, for every `product_of` edge of a reaction flagged
+reversible, the edge product -> reaction at sign -1 under its own relation `product_opposes`, whose gain is learned
+and stands for k_r as the other gains stand for elasticities. An irreversible reaction gets none, because a
+thermodynamically irreversible step is insensitive to its product. Carrier products, which have no depletion edge,
+get none either, for the same consistency. `--reversible-reactions`, on for the linear-response encoder.
+`tests/test_reversible_reactions.py` runs the encoder's own adjacency to a fixed point on a three-node chain and
+reads the signs: a product rise gives a negative rate and a rising substrate, an irreversible reaction ignores it,
+and the forward direction is unchanged.
+
+**What it replaces.** `build_physiology_graph` wrote the mirror pair for every reversible reaction, substrate_of
+and product_of in both directions at +1, so the reaction received +1 from its product instead of -1 and every
+participant received +1 and -1 from the same reaction. 15,851 such pairs over the 5,713 reversible Human-GEM
+reactions, and 1,809 metabolites whose field was identically zero under every perturbation. The build now writes
+the nominal direction only, from the stoichiometric sign it already read, and the encoder **refuses** a graph that
+still carries the mirror, because on that graph the nominal direction is lost and the derived edge would sit on top
+of the cancellation. It therefore reaches a run only at the rebuild; `--no-reversible-reactions` runs the old graph
+as it was.
+
+**What it does not do.** It is linear, so it does not saturate: a reaction cannot run backwards faster than its
+reverse capacity in the physiology, and here nothing bounds it. That is the limit of the linear response
+everywhere and not particular to reversal. The resting direction is Human-GEM's nominal one; a thermodynamic or
+flux source could set it per reaction before the propagation (decision 4.10). The message-passing encoder does not
+yet carry the relation. And 16 pairs on Reactome reactions not flagged reversible still cancel: species listed on
+both sides because one step consumes and regenerates them - GRIP1 and GRIP2, PICK1, the AP2 complex, CoQ and CoQH2,
+neuronal K+ in channel gating. Their net stoichiometry is zero, and the right encoding is a modifier edge that
+enables the reaction without being consumed or produced. Not built.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the

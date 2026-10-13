@@ -71,6 +71,7 @@ class ExperimentData:
     node_base_metabolite_id: np.ndarray | None = None  # metabolite id without compartment ("" for other node types)
     node_display_name: np.ndarray | None = None
     evidenced_negative: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a negative rests on a controlled comparison, not on silence (a label selection's counts_as_negative rows)
+    is_reversible_reaction: np.ndarray | None = None  # [num_nodes] the reaction node's reversible flag, from which the linear-response encoder derives product_opposes (item 27)
     placebo_negative_weight_matrix: np.ndarray | None = None  # [num_perturbations, num_symptoms] per-pair loss weight of those negatives, NaN where none is stated (amendment item 3; set by run_main_model.py, not by the loader)
     label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
     label_selection_summary: dict | None = None
@@ -605,6 +606,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_index=node_index,
         node_types=nodes.node_type.to_numpy(),
         is_currency=nodes.is_currency.fillna(False).to_numpy().astype(bool),
+        is_reversible_reaction=(nodes.reversible.astype("boolean").fillna(False).to_numpy().astype(bool)
+                                if "reversible" in nodes.columns else np.zeros(len(nodes), dtype=bool)),
         node_degree=nodes.degree.to_numpy().astype(float),
         edge_source=edges.source_id.map(node_index).to_numpy(),
         edge_target=edges.target_id.map(node_index).to_numpy(),

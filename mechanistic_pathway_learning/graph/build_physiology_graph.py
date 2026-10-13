@@ -169,9 +169,14 @@ def build_metabolic_layer(model, symbol_by_ensembl: dict[str, str], model_yaml_p
         })
         for metabolite, coefficient in reaction.metabolites.items():
             is_substrate = coefficient < 0
+            # The nominal direction only, from the stoichiometric sign, for reversible reactions as for the rest. The
+            # build used to add the mirror pair for every reversible reaction, substrate_of and product_of in both
+            # directions at +1, so every participant received +1 and -1 from the same reaction and cancelled: 15,867
+            # such pairs, 1,809 metabolites with a field identically zero under every perturbation. Reversal is carried
+            # instead by the `reversible` flag on the reaction node, from which the linear-response encoder derives
+            # product -> reaction at sign -1 (product_opposes, preregistration item 27): linearised mass action, under
+            # which a perturbation that accumulates the product drives the reaction backwards.
             edge_rows.append({"source_id": metabolite.id if is_substrate else reaction.id, "target_id": reaction.id if is_substrate else metabolite.id, "relation_type": "substrate_of" if is_substrate else "product_of", "sign": 1.0, "evidence_source": "Human-GEM"})
-            if reaction.reversibility:
-                edge_rows.append({"source_id": reaction.id if is_substrate else metabolite.id, "target_id": metabolite.id if is_substrate else reaction.id, "relation_type": "product_of" if is_substrate else "substrate_of", "sign": 1.0, "evidence_source": "Human-GEM"})
         for gene in reaction.genes:
             edge_rows.append({"source_id": metabolic_gene_node(gene.id), "target_id": reaction.id, "relation_type": "catalyzed_by", "sign": 1.0, "evidence_source": "Human-GEM GPR"})
     nodes = pd.DataFrame(node_rows)

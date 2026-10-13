@@ -79,11 +79,15 @@ two ways.**
   "it can enter only as a model input computed before the propagation and not as a relation inside it"
   (`docs/label_source_review.md` 13.4) - and it is the template here rather than an obstacle.
 
-**What is genuinely out** is a perturbation *flipping* the direction: that depends on the state the propagation
-produces, so it is a state-dependent adjacency and a real nonlinearity. Splitting each reversible reaction into a
-forward and a reverse node does not recover it either, since both would be catalysed by the same gene, carry the
-same field and cancel again. So the loss is narrower than this review first claimed: not "reversible reactions
-cannot have a direction", but "a perturbation cannot change one". Decision 4.10.
+**And a perturbation can reverse one - this review was wrong a second time.** It said flipping the direction
+under perturbation was a state-dependent adjacency and therefore a nonlinearity. It is not: in a deviation model
+reversal is the **sign of the rate**, not a switch on the edges. Linearised mass action, `dv = k_f dS - k_r dP`,
+puts the product into the rate at a negative sign, so a perturbation that accumulates the product makes the rate
+deviation negative and the reaction runs backwards, regenerating the substrate. One derived edge per product of a
+reversible reaction, product -> reaction at -1, carries it, with no gate on the state. Built as amendment item 27
+(`product_opposes`); the build now writes the nominal direction only, and the encoder refuses a graph that still
+has the mirror. What remains is the limit of linearity everywhere: nothing saturates, so a reaction can run
+backwards faster than its reverse capacity would allow.
 
 *(The pralidoxime example is a near neighbour rather than this case: reactivating a covalently inhibited enzyme is
 a displacement at a binding site, which belongs with the competition work of section 12 and is equally

@@ -83,7 +83,7 @@ V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "-
                             "--relation-parameterisation", "shared_low_rank", "--relation-factor-rank", "2"]
 V4_LINEAR_RESPONSE_MODEL = [*V4_SHARED_MODEL, "--encoder", "linear_response", "--fixed-point-tolerance", "0.001",
                             "--class-weight-rule", "limiting_step", "--input-weights", "positive", "--cofactor-relations",
-                            "--extracellular-coupling", "--compartment-ph", "--channels-per-cell-class", "1"]
+                            "--extracellular-coupling", "--compartment-ph", "--reversible-reactions", "--channels-per-cell-class", "1"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],

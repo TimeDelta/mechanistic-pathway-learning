@@ -374,7 +374,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
     "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
-    "compartment_ph": False, "relation_parameterisation": "per_layer_dense",
+    "compartment_ph": False, "relation_parameterisation": "per_layer_dense", "reversible_reactions": False,
 }
 
 
@@ -404,6 +404,8 @@ def resolve_registered_defaults(arguments) -> None:
         arguments.cofactor_relations = linear_response
     if getattr(arguments, "compartment_ph", None) is None:
         arguments.compartment_ph = linear_response
+    if getattr(arguments, "reversible_reactions", None) is None:
+        arguments.reversible_reactions = linear_response
     if getattr(arguments, "extracellular_coupling", None) is None:
         arguments.extracellular_coupling = linear_response and bool(getattr(arguments, "cell_class_weights", None))
     if getattr(arguments, "refit_on_validation", None) is None:
@@ -551,6 +553,8 @@ def build_models(data, arguments, device):
         encoder = LinearResponseEncoder(len(data.node_ids), data.relation_types, torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(node_feature_matrix(data, arguments)),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
+                                        reversible_reactions=(torch.as_tensor(data.is_reversible_reaction)
+                                                              if arguments.reversible_reactions and data.is_reversible_reaction is not None else None),
                                         num_propagation_steps=arguments.propagation_steps,
                                         fixed_point_tolerance=arguments.fixed_point_tolerance,
                                         max_propagation_steps=arguments.max_propagation_steps,
@@ -1268,6 +1272,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cofactor-relations", action=argparse.BooleanOptionalAction, default=None,
                         help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains. "
                              "Left out, on for the linear-response encoder (registered)")
+    parser.add_argument("--reversible-reactions", action=argparse.BooleanOptionalAction, default=None,
+                        help="linear-response encoder: derive product -> reaction at sign -1 for every reversible reaction (product_opposes, "
+                             "preregistration item 27), so a perturbation that accumulates a product drives the reaction backwards. Needs a graph "
+                             "built without the old mirror edges and refuses one that has them. Left out, on for the linear-response encoder (registered)")
     parser.add_argument("--carrier-rule", choices=CARRIER_RULES, default="all",
                         help="which clause of the carrier rule applies (cofactor_edges.py): all is the curated list and the recurring-pair "
                              "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")

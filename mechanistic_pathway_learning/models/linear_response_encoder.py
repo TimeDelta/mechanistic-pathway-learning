@@ -110,6 +110,19 @@ PRODUCT_RELATION = "product_of"
 DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
 COSUBSTRATE_RELATION = "cosubstrate_of"
 COPRODUCT_RELATION = "coproduct_of"
+# A reversible reaction's net rate falls when its product rises (preregistration item 27; the owner, 13 October 2026:
+# "I don't want to accept a perturbation not being able to reverse the reaction"). Linearised mass action gives
+# dv = k_f dS - k_r dP: the product drives the net rate backwards, so a perturbation that accumulates the product
+# makes the rate deviation negative and the reaction runs in reverse against its baseline - raising the substrate
+# and lowering the product. That is reversal by perturbation, and it is linear: it needs one derived edge per
+# product of a reversible reaction, product -> reaction at sign -1, and no gate on the state. An irreversible
+# reaction gets none, because a thermodynamically irreversible step is insensitive to its product (k_r near 0).
+#
+# This replaces the mirror pair the graph build used to write for every reversible reaction (substrate_of and
+# product_of in both directions at +1), which made the reaction receive +1 from its product instead of -1 and gave
+# every participant +1 and -1 from the same reaction: 15,867 such pairs, and 1,809 metabolites whose field was
+# identically zero under every perturbation (docs/physiological_adherence_review.md section 2).
+PRODUCT_OPPOSES_RELATION = "product_opposes"
 UNSIGNED_RELATIONS = ("binds",)
 # Where the edge signs come from. "graph" uses the stored signs and the -1 of the derived depletes_substrate relation;
 # "all_positive" sets every edge to +1 and keeps every gain positive, the sign ablation of the same pipeline on the
@@ -438,6 +451,7 @@ class LinearResponseEncoder(nn.Module):
         node_state_dim: int,
         non_propagating_nodes: Tensor | None = None,
         cofactor_edges: Tensor | None = None,
+        reversible_reactions: Tensor | None = None,
         num_propagation_steps: int = 8,
         fixed_point_tolerance: float | None = DEFAULT_FIXED_POINT_TOLERANCE,
         class_weight_rule: str = "limiting_step",
@@ -554,7 +568,8 @@ class LinearResponseEncoder(nn.Module):
         uses_mixture = cross_relation_aggregator == "softmax_mixture"
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
                                                                           non_propagating_nodes, cofactor_edges, normalisation,
-                                                                          divide_by_relations_feeding=not uses_mixture, edge_signs=edge_signs)
+                                                                          divide_by_relations_feeding=not uses_mixture, edge_signs=edge_signs,
+                                                                          reversible_reactions=reversible_reactions)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         # the stacked rows that hold an edge, as their own matrix [K, N] with the relation and target of each row: with the
@@ -677,7 +692,8 @@ class LinearResponseEncoder(nn.Module):
     def signed_stacked_adjacency(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
                                  cofactor_edges: Tensor | None = None, normalisation: str = "in_degree",
-                                 divide_by_relations_feeding: bool = True, edge_signs: str = "graph") -> tuple[Tensor, list[str]]:
+                                 divide_by_relations_feeding: bool = True, edge_signs: str = "graph",
+                                 reversible_reactions: Tensor | None = None) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
         depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
         given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order."""
@@ -698,6 +714,24 @@ class LinearResponseEncoder(nn.Module):
             targets.append(edge_source[forward_edges].long())
             relations.append(torch.full((int(forward_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
             signs.append(-torch.ones(int(forward_edges.sum())))
+        if reversible_reactions is not None and PRODUCT_RELATION in relation_names and SUBSTRATE_RELATION in relation_names:
+            reversible = reversible_reactions.bool()
+            product_edges = (edge_relation == relation_names.index(PRODUCT_RELATION)) & reversible[edge_source.long()]
+            substrate_edges = (edge_relation == relation_names.index(SUBSTRATE_RELATION)) & reversible[edge_target.long()]
+            mirrored = set(zip(edge_source[substrate_edges].tolist(), edge_target[substrate_edges].tolist())) & \
+                set(zip(edge_target[product_edges].tolist(), edge_source[product_edges].tolist()))
+            if mirrored:
+                raise ValueError(
+                    f"{len(mirrored)} metabolite-reaction pairs have the metabolite as both substrate and product of the same reversible reaction, which is the "
+                    f"mirror pair the graph build wrote before 13 October 2026. On that graph every participant receives +1 and "
+                    f"-1 from one reaction and the reverse direction cannot be derived, because the nominal direction is lost. "
+                    f"Rebuild the graph (build_physiology_graph no longer writes the mirror), or pass --no-reversible-reactions "
+                    f"to run the old graph as it was")
+            relation_names.append(PRODUCT_OPPOSES_RELATION)
+            sources.append(edge_target[product_edges].long())  # product -> reaction
+            targets.append(edge_source[product_edges].long())
+            relations.append(torch.full((int(product_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
+            signs.append(-torch.ones(int(product_edges.sum())))
         source, target, relation, sign = torch.cat(sources), torch.cat(targets), torch.cat(relations), torch.cat(signs)
         if non_propagating_nodes is not None:
             keep = ~non_propagating_nodes.bool()[source]
