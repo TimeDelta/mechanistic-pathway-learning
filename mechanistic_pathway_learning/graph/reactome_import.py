@@ -57,6 +57,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import retag_currency_by_name
 from mechanistic_pathway_learning.graph.membrane_potential import driving_force_edge_weights
 
 SBML_NAMESPACE = {"sbml": "http://www.sbml.org/sbml/level3/version1/core"}
@@ -537,4 +538,15 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
                "human_gem_reactions_replaced_by_curated_ones": {reaction: why for reaction, why in dict(replaced_human_gem_reactions).items() if reaction in deleted_nodes},
                "vesicular_shortcut_catalysis_removed": shortcut_catalysis_removed,
                "small_molecules_without_human_gem_metabolite": sorted(unmapped_small_molecules)}
+    # Every node this module adds carries is_currency=False as written, which until 13 October 2026 left a species'
+    # copies disagreeing: the vacuolar water and oxygen, the mitochondrial and intermembrane sodium and five
+    # compartments of calcium propagated while their other copies did not (defect 3 of tag_currency_metabolites). The
+    # name rule is re-applied over the completed table, which also keeps the neuronal pools this module creates out of
+    # the currency set whatever their degree, since the membrane potential reads them.
+    before = set(node_table.loc[node_table.is_currency.fillna(False).astype(bool), "node_id"])
+    after = retag_currency_by_name(list(node_table.node_id), list(node_table.display_name), before)
+    node_table = node_table.copy()
+    node_table["is_currency"] = node_table.node_id.isin(after)
+    summary["currency_added_by_the_name_rule"] = sorted(after - before)
+    summary["currency_removed_by_the_name_rule"] = sorted(before - after)
     return node_table, edge_table, new_relations, summary

@@ -50,7 +50,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from mechanistic_pathway_learning.graph.tag_currency_metabolites import tag_currency_metabolites
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import retag_currency_by_name, tag_currency_metabolites
 
 RELATION_TYPES: list[str] = [
     "substrate_of",
@@ -346,12 +346,18 @@ def restrict_transcription_edges_to_brain_expressed(nodes: pd.DataFrame, edges: 
 
 
 def tag_currency(nodes: pd.DataFrame, degree_quantile_threshold: float) -> pd.DataFrame:
+    """The degree rule over the metabolites, then the name rule over every node.
+
+    The second pass is what keeps a species' copies agreeing: a node added after this runs would otherwise carry
+    whatever is_currency its adder wrote, which gave thirteen species copies that disagreed (defect 3 of
+    tag_currency_metabolites). A build that adds nodes afterwards calls retag_currency_by_name again at the end."""
     metabolites = nodes[nodes.node_type == "metabolite"]
     tagged = tag_currency_metabolites(
         dict(zip(metabolites.node_id, metabolites.display_name)),
         dict(zip(metabolites.node_id, metabolites.degree)),
         degree_quantile_threshold=degree_quantile_threshold,
     )
+    tagged = retag_currency_by_name(list(nodes.node_id), list(nodes.display_name), tagged)
     nodes = nodes.copy()
     nodes["is_currency"] = nodes.node_id.isin(tagged)
     return nodes

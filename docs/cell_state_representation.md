@@ -95,7 +95,31 @@ degree reaches the 0.995 quantile of metabolite degrees. Both parts misfire.
 
 And one that is a modelling error rather than an inconsistency: **glycine's cytosolic copy is tagged currency** by the
 degree rule, with 171 edges, while its other six copies propagate. Glycine is an inhibitory neurotransmitter and the
-NMDA co-agonist, so it is not a cofactor in any sense the tag intends. L-carnitine is tagged the same way.
+NMDA co-agonist, so it is not a cofactor in any sense the tag intends. Every other transmitter in the graph
+propagates: glutamate at 296 edges, glutamine at 258, aspartate at 107, and dopamine, serotonin, acetylcholine,
+noradrenaline, histamine, adenosine, taurine and D-serine below those.
+
+### Fixed in the code on 13 October 2026, and reaching the graph only at the rebuild
+
+The owner directed the third of these ("glycine can be removed as currency as long as there's still a mechanism for
+the amount of glycine reaching a receptor to vary ... it should also be consistent with other NTs"), and consistency
+with the other transmitters is what the fix gives it: a transmitter is now on `NEVER_CURRENCY_NAMES` and no rule can
+tag it, so the amount of glycine reaching a receptor varies the way glutamate's does.
+
+- A name is matched with its trailing charge stripped as well as whole, so `NAD+`, `NADP+`, `HCO3-` reach the list,
+  and `GSH` and `GSSG` are named outright since they are not charge variants of `glutathione`.
+- `retag_currency_by_name` re-applies the name rule once a graph is complete. `build_physiology_graph.tag_currency`
+  and `reactome_import.import_reactome_layer` both call it, so a node added after the degree rule ran no longer keeps
+  whatever `is_currency` its adder wrote.
+- **A fourth thing, which fixing the third exposed.** The degree rule would have tagged `NEURON_MAM02519c`, the
+  cytosolic sodium pool the membrane potential reads, because it carries 369 edges and sits above the 0.995 quantile.
+  Until now it was protected only by accident, by the very defect that left late-added nodes untagged. Tagging it
+  would have stopped it reaching `VM_c` and silenced the electrical layer. Identifiers a build creates in order to
+  propagate are now on `NEVER_CURRENCY_IDENTIFIER_PREFIXES` and no rule may tag them.
+
+Run over the node table as it stands, the fix takes the currency set from 222 to 290: 69 copies of H2O2, H+, NH4+,
+O2-, NADP+, Ca2+, GSSG, NAD+, GSH, Fe2+, Cl-, Na+, Fe3+, FMN, H2O, Mg2+, HCO3- and O2 gained, glycine released, and
+all five neuronal pools left propagating. None of this reaches the graph until it is rebuilt.
 
 ## What a reader should take from the figure
 
