@@ -165,10 +165,10 @@ def main() -> None:
 
 
 def write_document(path: Path, summary: dict) -> None:
-    lines = ["# What the v4 rebuild costs in leakage", "",
-             "Measured by `experiments/label_review/rebuild_leakage_cost.py` before the rebuild is run, with the "
-             "definitions of `docs/label_source_review.md` 26.1 so the numbers compare with the table there. Nothing is "
-             "rebuilt, no held-out set is drawn.", "",
+    provenance = ("Measured by `experiments/label_review/rebuild_leakage_cost.py` before the rebuild is run, with the "
+                  "definitions of `docs/label_source_review.md` 26.1 so the numbers compare with the table there. "
+                  "Nothing is rebuilt, no held-out set is drawn.")
+    lines = ["# What the v4 rebuild costs in leakage", "", provenance, "",
              "| scheme | drugs | kept positive pairs | drug-holding groups | two largest blocks, by drugs | largest block's share of drugs / of kept pairs |",
              "| --- | --- | --- | --- | --- | --- |"]
     for name, reading in summary["readings"].items():
@@ -176,9 +176,10 @@ def write_document(path: Path, summary: dict) -> None:
         lines.append(f"| {name} | {reading['drugs']} | {reading['kept_positive_pairs']} | {reading['drug_holding_groups']} | "
                      f"{blocks} | {reading['largest_block_share_of_drugs']:.0%} / {reading['largest_block_share_of_kept_pairs']:.0%} |")
     for name, entries in summary["bridging_after_the_rebuild"].items():
-        lines += ["", f"## Bridging drugs after the rebuild ({name})", "",
-                  "Each row is the number of drugs the largest block loses when that drug alone is removed, which is the "
-                  "stated rule for finding a bridge.", "", "| drug | drugs removed from the largest block |", "| --- | --- |"]
+        how = ("Each row is the number of drugs the largest block loses when that drug alone is removed, which is the "
+               "stated rule for finding a bridge.")
+        lines += ["", f"## Bridging drugs after the rebuild ({name})", "", how, "",
+                  "| drug | drugs removed from the largest block |", "| --- | --- |"]
         lines += [f"| {entry['drug']} | {entry['drugs_removed_from_the_largest_block']} |" for entry in entries]
     lines.append("")
     path.write_text("\n".join(lines))
