@@ -33,11 +33,17 @@ the variance when perturbations of one group co-vary, is reported beside it as a
 The two permutation readings are secondary (the user's decision of 8 October 2026): reported with their intervals and
 p-values, outside both hypotheses.
 Each model is tested on its own at one-sided --alpha (the user's decision of 8 October 2026: every model is a
-candidate with the full level): H1 first and, only if H1 is confirmed, H2 at the same level. With a missing or refused
-run the scorer stops before writing anything, so the run can be resumed; with --allow-incomplete it scores and that
-model is not confirmed. No correction is made across the models, so the chance that at least one of the two models is
-confirmed by luck is above --alpha: at most 2 x alpha = 0.05 whatever the dependence between the two tests (1 - (1 -
-alpha)^2, about 0.049, if they were independent); the output states this beside the results.
+candidate with the full level): H1 first and, only if H1 is confirmed, its second-stage family by Holm at the same
+level (amendment item 18). The family is H2 and P1, the pathway test, whose per-model p-value and two gates are read
+from --pathway-test; with no such file the family is H2 alone and H2 faces the full level, which the output states
+because it decides the level. Under Holm the smaller of the two p-values faces alpha / 2 and the larger faces alpha
+once the smaller is rejected, so H2 needs p at or below 0.0125 unless P1 clears 0.0125 first. P1 is claimed only
+behind its stability and faithfulness gates G1 and G2 (docs/pathway_test_options.md), which are a conjunction on that
+claim and change no level. With a missing or refused run the scorer stops before writing anything, so the run can be
+resumed; with --allow-incomplete it scores and that model is not confirmed. No correction is made across the models,
+so the chance that at least one of the two models is confirmed by luck is above --alpha: at most 2 x alpha = 0.05
+whatever the dependence between the two tests (1 - (1 - alpha)^2, about 0.049, if they were independent); the output
+states this beside the results.
 Floors (the user's decision of 8 October 2026, --floor-rule half_width_plus_margin): computed in the scoring itself, for
 each model and for the macro and the micro reading, as the half-width of that difference's 95 percent interval under the
 deciding bootstrap plus --floor-margin (0.005). A difference reaching its floor then lies 0.005 above what the lockbox
@@ -107,11 +113,47 @@ def micro_auprc(predictions: np.ndarray, outcomes: np.ndarray, mask: np.ndarray,
     return average_precision(predictions[:, columns][labelled], outcomes[:, columns][labelled])
 
 
-def fixed_sequence_decisions(complete: bool, p_h1: float, p_h2: float, meets_minimum_differences: bool, alpha: float) -> dict[str, bool]:
-    """H1 then H2 at the same level: H2 is tested only once H1 is confirmed, so the chance of any false confirmation stays at
-    alpha (the fixed-sequence test, one of the procedures Bretz et al., Statistics in Medicine 28, 586, 2009, write as a graph)."""
+def holm_rejections(p_value_of_hypothesis: dict[str, float], alpha: float) -> dict[str, dict]:
+    """Holm's step-down procedure over one family (Holm, Scandinavian Journal of Statistics 6, 65, 1979): the p-values are
+    ordered upwards and the i-th of m is tested at alpha / (m - i), 0-based, so the smallest faces alpha / m and the
+    largest alpha; the first failure stops the procedure and every larger p-value stays unrejected. The level of the
+    family is alpha whatever the dependence between its hypotheses. Each entry carries the level the hypothesis faced,
+    so the report can say why a hypothesis with a small p-value was not rejected."""
+    ordered = sorted(p_value_of_hypothesis.items(), key=lambda item: item[1])
+    family_size, still_rejecting, rejections = len(ordered), True, {}
+    for position, (hypothesis, p_value) in enumerate(ordered):
+        level = alpha / (family_size - position)
+        still_rejecting = still_rejecting and p_value <= level
+        rejections[hypothesis] = {"rejected": still_rejecting, "level": level, "p_one_sided": p_value}
+    return rejections
+
+
+def confirmatory_decisions(complete: bool, p_h1: float, p_h2: float, meets_minimum_differences: bool, alpha: float,
+                           p_p1: float | None = None, pathway_gates_passed: bool = False) -> dict:
+    """H1 first and, only once it is confirmed, H2 and P1 together by Holm at the same alpha (amendment item 18; the
+    user, 12 October 2026, on the three ways set out in docs/pathway_test_options.md: "Accepted"). The chance of a false
+    claim stays at most alpha for the model: the first stage is a single test at alpha and the second is a Holm family
+    whose level is alpha, entered only when the first rejects.
+
+    With two hypotheses in the second stage H2 needs p at or below alpha / 2 unless P1's p-value is the smaller one and
+    clears alpha / 2 itself, which is what item 18 states. P1 carries two preconditions besides its p-value, the
+    stability gate G1 and the faithfulness gate G2 of docs/pathway_test_options.md; they are a conjunction on the P1
+    claim alone, so they can only lower the chance of claiming and do not change the level.
+
+    p_p1 None means no pathway test was scored, so the second-stage family is H2 alone and H2 faces the full alpha.
+    The output records the family, because which it was decides the level H2 faced."""
     h1_confirmed = bool(complete and meets_minimum_differences and p_h1 <= alpha)
-    return {"H1_confirmed": h1_confirmed, "H2_confirmed": bool(h1_confirmed and p_h2 <= alpha)}
+    second_stage = {"H2": p_h2} if p_p1 is None else {"H2": p_h2, "P1": p_p1}
+    rejections = holm_rejections(second_stage, alpha) if h1_confirmed else {
+        hypothesis: {"rejected": False, "level": alpha / len(second_stage), "p_one_sided": p_value} for hypothesis, p_value in second_stage.items()}
+    decisions = {"H1_confirmed": h1_confirmed,
+                 "H2_confirmed": bool(rejections["H2"]["rejected"]),
+                 "second_stage_family": sorted(second_stage),
+                 "second_stage_holm": rejections}
+    if p_p1 is not None:
+        decisions["pathway_gates_passed"] = bool(pathway_gates_passed)
+        decisions["P1_confirmed"] = bool(rejections["P1"]["rejected"] and pathway_gates_passed)
+    return decisions
 
 
 def model_floors(readings: dict, floor_rule: str, floor_margin: float, projected_floors: dict[str, float]) -> dict[str, float]:
@@ -249,7 +291,13 @@ def main() -> None:
                         help="accept rewired runs without --recompute-reaction-expression-on-rewired-graph (tests on older runs only; the user's decision of 8 October 2026)")
     parser.add_argument("--allow-asymmetric-rewiring", action="store_true",
                         help="accept rewired runs without --keep-reciprocated-relations-symmetric (tests on older runs only; the user adopted it on 8 October 2026)")
-    parser.add_argument("--alpha", type=float, default=0.025, help="one-sided level of each model's H1 and then H2 (a two-sided 95 percent interval excluding zero)")
+    parser.add_argument("--alpha", type=float, default=0.025,
+                        help="one-sided level of each model's H1 and then of its Holm family H2 and P1 (a two-sided 95 percent interval excluding zero)")
+    parser.add_argument("--pathway-test", type=Path, default=Path("runs/confirmatory/pathway_test.json"),
+                        help="the P1 result per model, which joins H2 in the second-stage Holm family of amendment item 18: "
+                             "{\"models\": {\"<configuration>\": {\"p_one_sided\": float, \"G1_stability_passed\": bool, "
+                             "\"G2_faithfulness_passed\": bool}}}. A model absent from the file, or no file at all, leaves that "
+                             "model's second stage as H2 alone at the full level, which the output states")
     parser.add_argument("--floor-rule", choices=["half_width_plus_margin", "fixed"], default="half_width_plus_margin",
                         help="half_width_plus_margin (the user's decision of 8 October 2026): each model's macro and micro floor is the half-width of that "
                              "difference's 95 percent interval under the deciding bootstrap plus --floor-margin; fixed: the two values below")
@@ -407,6 +455,7 @@ def main() -> None:
         return {"p_one_sided": one_sided_p(values), "lower_95": float(np.quantile(finite, 0.025)) if finite.size else float("nan"),
                 "upper_95": float(np.quantile(finite, 0.975)) if finite.size else float("nan"), "num_resamples_defined": int(finite.size)}
 
+    pathway_test_results = json.loads(arguments.pathway_test.read_text())["models"] if arguments.pathway_test and arguments.pathway_test.exists() else {}
     entries = {}
     for model in arguments.models:
         entry = {"complete": model in complete_models, "missing_runs": missing_runs[model]}
@@ -423,7 +472,11 @@ def main() -> None:
             entry["p_h2"] = max([entry["p_h1"]] + [readings[reading]["p_one_sided"] for reading in H2_EXTRA_READINGS])
             entry["model_scores"] = {variant: {reading: seed_mean(observed["models"][model][variant], reading) for reading in base_readings} for variant in VARIANT_SUFFIXES}
             entry["seed_scores_real"] = {str(seed): observed["models"][model]["real"][seed] for seed in arguments.seeds}
-        entry.update(fixed_sequence_decisions(entry["complete"], entry.get("p_h1", 1.0), entry.get("p_h2", 1.0), entry.get("meets_minimum_differences", False), arguments.alpha))
+        pathway_result = pathway_test_results.get(model)
+        entry.update(confirmatory_decisions(
+            entry["complete"], entry.get("p_h1", 1.0), entry.get("p_h2", 1.0), entry.get("meets_minimum_differences", False), arguments.alpha,
+            p_p1=None if pathway_result is None else float(pathway_result["p_one_sided"]),
+            pathway_gates_passed=bool(pathway_result and pathway_result.get("G1_stability_passed") and pathway_result.get("G2_faithfulness_passed"))))
         entries[model] = entry
 
     scoring = {"scored_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -449,7 +502,8 @@ def main() -> None:
     lines = ["# Confirmatory test on the lockbox (generated by experiments/score_confirmatory.py)", "",
              f"Lockbox {arguments.lockbox} ({len(rows)} perturbations, SHA-256 {lockbox_sha256[:12]}); label selection {str(selection_sha256)[:12]}; seeds {arguments.seeds}; "
              f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox {'leakage groups (' + str(len(members_of_group)) + ')' if arguments.bootstrap_unit == 'group' else 'perturbations'}; "
-             f"each model tested on its own, H1 and then H2 at one-sided {arguments.alpha}; "
+             f"each model tested on its own, H1 at one-sided {arguments.alpha} and then its second-stage family by Holm at the same level "
+             f"({'H2 and P1' if any(model in pathway_test_results for model in entries) else 'H2 alone, no pathway test scored, so H2 faced the full level'}); "
              + (f"floors: each model's 95 percent half-width plus {arguments.floor_margin} (projected {arguments.minimum_macro_difference} macro, {arguments.minimum_micro_difference} micro). "
                 if arguments.floor_rule == "half_width_plus_margin" else f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. ")
              + f"With {len(entries)} models "
@@ -457,21 +511,30 @@ def main() -> None:
              f"({1 - (1 - arguments.alpha) ** len(entries):.3f} if they were independent). Scorings: {len(previous_scorings) + 1}.", "",
              "Best baseline per reading (the highest seed-mean lockbox score on real labels; no model score enters the choice): "
              + "; ".join(f"{reading} {name} ({output['baseline_scores']['real'][name][reading]:.3f})" for reading, name in best_baseline.items()) + ".", "",
-             "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | macro and micro floors | p(H1) | H1 confirmed | p(H2) | H2 confirmed |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| model | complete | macro | micro | macro within strata | micro within strata | macro rewiring | micro rewiring | macro permutation (secondary) | micro permutation (secondary) | macro and micro floors | p(H1) | H1 confirmed | p(H2) | level H2 faced | H2 confirmed | p(P1) | P1 gates | P1 confirmed |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for model, entry in entries.items():
         if not entry["complete"]:
-            lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 9 + " 1 | no | 1 | no |")
+            lines.append(f"| {model} | no ({len(entry['missing_runs'])} runs missing) |" + " n/a |" * 9 + " 1 | no | 1 | n/a | no | n/a | n/a | no |")
             continue
         cells = [f"{entry['readings'][reading]['difference']:+.3f} [{entry['readings'][reading]['lower_95']:+.3f}, {entry['readings'][reading]['upper_95']:+.3f}]"
                  for reading in ALL_READINGS]
-        lines.append(f"| {model} | yes | " + " | ".join(cells) + f" | {entry['floors']['macro']:.3f}, {entry['floors']['micro']:.3f} | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'} | {entry['p_h2']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'} |")
+        pathway = entry["second_stage_holm"].get("P1")
+        lines.append(f"| {model} | yes | " + " | ".join(cells)
+                     + f" | {entry['floors']['macro']:.3f}, {entry['floors']['micro']:.3f} | {entry['p_h1']:.4f} | {'yes' if entry['H1_confirmed'] else 'no'}"
+                     + f" | {entry['p_h2']:.4f} | {entry['second_stage_holm']['H2']['level']:.4f} | {'yes' if entry['H2_confirmed'] else 'no'}"
+                     + (" | n/a | n/a | n/a |" if pathway is None else
+                        f" | {pathway['p_one_sided']:.4f} | {'passed' if entry['pathway_gates_passed'] else 'failed'} | {'yes' if entry['P1_confirmed'] else 'no'} |"))
     lines += ["", f"Sensitivity reading, resampling {bootstrap_units[1]}s instead: "
               + "; ".join(f"{model} p(H1) {entry['sensitivity_bootstrap']['p_h1']:.4f}" for model, entry in entries.items() if entry["complete"]) + "."]
     lines += ["", "Each cell: seed-mean difference with the 2.5 and 97.5 percentiles of its bootstrap distribution. H1 takes the first four readings, H2 adds "
               "the two rewiring readings. Rewiring: the model on the real graph minus the same model on its rewired graph. Permutation (secondary, in neither "
               "hypothesis): the advantage on the real labels minus the advantage when model and baseline are trained and scored on labels permuted within "
-              "degree strata."]
+              "degree strata.", "",
+              f"Multiplicity (amendment item 18): H1 at {arguments.alpha} and, only once it is confirmed, H2 and P1 together by Holm at the same level, so the "
+              f"smaller of the two p-values faces {arguments.alpha / 2:.4f} and the larger faces {arguments.alpha:.4f} once the smaller has been rejected. "
+              "\"level H2 faced\" is the one Holm gave it, which depends on where P1's p-value fell. P1 carries the stability and faithfulness gates G1 and "
+              "G2 of docs/pathway_test_options.md besides its p-value; they are a conjunction on the P1 claim alone and do not change any level."]
     arguments.markdown_output.write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

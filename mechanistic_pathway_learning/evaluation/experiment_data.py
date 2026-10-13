@@ -71,6 +71,7 @@ class ExperimentData:
     node_base_metabolite_id: np.ndarray | None = None  # metabolite id without compartment ("" for other node types)
     node_display_name: np.ndarray | None = None
     evidenced_negative: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a negative rests on a controlled comparison, not on silence (a label selection's counts_as_negative rows)
+    placebo_negative_weight_matrix: np.ndarray | None = None  # [num_perturbations, num_symptoms] per-pair loss weight of those negatives, NaN where none is stated (amendment item 3; set by run_main_model.py, not by the loader)
     label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
     label_selection_summary: dict | None = None
     node_descriptor_table: pd.DataFrame | None = None  # set by a rewired run whose reaction expression follows the rewiring; None: read --node-descriptors

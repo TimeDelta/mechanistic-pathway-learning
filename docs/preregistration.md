@@ -1098,12 +1098,21 @@ instead, because chaining would pull 149 further perturbations into the held-out
 **3. The loss.** `--equal-drug-shares` is on in every confirmatory configuration and its ablations: each drug's
 positives and, apart, its negatives are rescaled to the mean counts over the training drugs (user, 12 October: "let's
 do the control version and the equal loss per share version"). The negatives of item 1(d) take a weight of **0.5 by
-default**, and where the drug's label states the trial arm sizes the weight is `n_effective / (n_effective + 214)`
-with `n_effective = 1 / (1/n_drug + 1/n_placebo)` and 214 the median effective size over the pairs that have one, so
-a comparison of typical size weighs exactly the default (user, 12 October: "I think -.5 is best unless you disagree"
-and "look for placebo arm sizes for those specific studies and then calculate negative weight based on that then use
-.5 as default for nothing found"). 41 of the 61 pairs carry a measured weight and 20 the default
-(`configs/placebo_negative_weights.csv`). A loss weight below zero is refused by the trainer.
+default**, and where the drug's label states the trial arm sizes the weight is `n_effective / (n_effective + 214.39)`
+with `n_effective = 1 / (1/n_drug + 1/n_placebo)` and 214.39 the median effective size over the **25 drugs** that
+state both arm sizes, so a drug of typical size weighs exactly the default (user, 12 October: "I think -.5 is best
+unless you disagree" and "look for placebo arm sizes for those specific studies and then calculate negative weight
+based on that then use .5 as default for nothing found"). 41 of the 61 pairs carry a measured weight and 20 the
+default, and the weights run from 0.057 to 0.772 (`configs/placebo_negative_weights.csv`). A loss weight below zero
+is refused by the trainer, and so is a file that gives one.
+
+**Corrected 13 October 2026 to the constant the file was built with.** This item read "214 the median effective size
+over the pairs that have one". Both halves were wrong: the median over the 41 pairs is 196.56, and the file's weights
+solve to 214.3877, the median over the 25 drugs. The drug median is the right statistic, because the effective size
+is a property of the drug's trial and a drug with many symptoms repeats the same number in several pairs, so a pair
+median lets those drugs set the constant. The text is corrected to the file rather than the file to the text; the
+difference in any weight is below 0.0005 and nothing has been run on either. `tests/test_placebo_negative_weights.py`
+now holds the file to the formula, so the two cannot drift apart again.
 
 **4. Reported beside the score, changing no model.** The input-size baseline, macro AUPRC within strata of a drug's
 number of targets, and the permuted-target negative control. All three were named before any run on this table.

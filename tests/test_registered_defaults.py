@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from experiments.run_main_model import VALUES_BEFORE_THE_V4_DEFAULTS, build_argument_parser, resolve_registered_defaults  # noqa: E402
+from experiments.run_main_model import (  # noqa: E402
+    REGISTERED_PLACEBO_NEGATIVE_WEIGHTS,
+    VALUES_BEFORE_THE_V4_DEFAULTS,
+    build_argument_parser,
+    resolve_registered_defaults,
+)
 from experiments.run_main_model_batch import V4_LINEAR_RESPONSE_MODEL, V4_MESSAGE_PASSING_MODEL  # noqa: E402
 
 # data paths stand in for the rebuilt v4 graph's files; the parser does not open them
@@ -42,6 +47,9 @@ def test_the_registered_choices_of_13_october_are_on_by_default():
     message_passing = resolved([*DATA_PATHS, "--encoder", "message_passing"])
     assert message_passing["descriptor_treatment"] == "seed_masked"
     assert message_passing["message_passing_edge_signs"] == "graph"
+    # amendment item 3: the per-pair placebo weights are read by default, and 'none' is how a run opts out
+    assert message_passing["placebo_negative_weights_file"] == REGISTERED_PLACEBO_NEGATIVE_WEIGHTS
+    assert resolved([*DATA_PATHS, "--placebo-negative-weights-file", "none"])["placebo_negative_weights_file"] is None
 
 
 def test_without_descriptors_there_is_nothing_to_mask_and_an_explicit_request_still_fails_loudly():

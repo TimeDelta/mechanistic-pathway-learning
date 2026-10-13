@@ -369,9 +369,14 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "descriptor_treatment": "plain", "extracellular_coupling": False, "class_weight_rule": "product", "input_weights": "signed",
     "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
-    "placebo_negative_weight": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
+    "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
     "compartment_ph": False, "relation_parameterisation": "per_layer_dense",
 }
+
+
+def path_or_none(value: str) -> Path | None:
+    """A file path, or 'none' (or the empty string) for no file."""
+    return None if value.strip().lower() in ("", "none") else Path(value)
 
 
 def tolerance_or_none(value: str) -> float | None:
@@ -700,6 +705,45 @@ def initialise_leaks_from_base_rates(head, data, fit_indices: np.ndarray, label_
     head.initialize_leak_from_base_rates(torch.as_tensor(base_rates, dtype=torch.float32, device=device))
 
 
+REGISTERED_PLACEBO_NEGATIVE_WEIGHTS = Path("configs/placebo_negative_weights.csv")
+PLACEBO_WEIGHT_FILE_COLUMNS = ("perturbation_id", "symptom", "weight")
+
+
+def placebo_negative_weight_matrix(path, perturbation_ids: list[str], symptoms: list[str]) -> tuple[np.ndarray, dict]:
+    """The per-pair placebo negative weights of amendment item 3, as a [perturbation, symptom] array of NaN except
+    where the file names the pair, with a record of what matched.
+
+    The file (configs/placebo_negative_weights.csv) holds one row per never-above-placebo pair: weight
+    n_effective / (n_effective + 214) where the drug's label states both arm sizes, and the registered default of 0.5
+    where it does not. A row naming a perturbation or a symptom this data set does not hold is counted rather than
+    applied, because the file is written against one evidence table and a rebuild may drop a drug; the counts go into
+    the run record so a file that has gone stale is visible instead of silently weighing fewer pairs than registered.
+    A file that matches no pair at all is refused, since that is the wrong file rather than a stale one."""
+    table = pd.read_csv(path)
+    missing_columns = [column for column in PLACEBO_WEIGHT_FILE_COLUMNS if column not in table.columns]
+    if missing_columns:
+        raise ValueError(f"{path} has no column {missing_columns[0]}; it is not a placebo negative weight file")
+    below_zero = table[table.weight < 0]
+    if len(below_zero):
+        raise ValueError(f"{path} gives {below_zero.iloc[0].perturbation_id} / {below_zero.iloc[0].symptom} a weight of "
+                         f"{below_zero.iloc[0].weight}; a loss weight below zero inverts the gradient for that pair")
+    row_of_perturbation = {perturbation_id: row for row, perturbation_id in enumerate(perturbation_ids)}
+    column_of_symptom = {symptom: column for column, symptom in enumerate(symptoms)}
+    matrix = np.full((len(perturbation_ids), len(symptoms)), np.nan)
+    matched, unmatched = 0, []
+    for entry in table.itertuples():
+        row, column = row_of_perturbation.get(entry.perturbation_id), column_of_symptom.get(entry.symptom)
+        if row is None or column is None:
+            unmatched.append(f"{entry.perturbation_id}/{entry.symptom}")
+            continue
+        matrix[row, column] = float(entry.weight)
+        matched += 1
+    if matched == 0:
+        raise ValueError(f"{path} names {len(table)} pairs and none is in this evidence table; it is the wrong file")
+    return matrix, {"file": str(path), "sha256": file_sha256(path), "pairs_in_file": int(len(table)),
+                    "pairs_matched": matched, "pairs_not_in_this_evidence_table": unmatched}
+
+
 def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
     """The loss's weight per (perturbation, symptom): a positive at its evidence weight (at 1 when the frequency is the
     target), a negative at --negative-weight, a pair set aside by the selection at zero; under --equal-drug-shares each
@@ -709,12 +753,21 @@ def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, freq
     selection built with --never-above-placebo-as-negative, marked in data.evidenced_negative) takes
     --placebo-negative-weight, which defaults to --negative-weight so that nothing changes unless it is set. The user,
     11 October 2026, asked for a better-evidenced absence to count more in the loss share.
+
+    Amendment item 3 makes that weight per pair where the drug's label states the two arm sizes: the pair takes
+    n_effective / (n_effective + 214) rather than the default, read from --placebo-negative-weights-file into
+    data.placebo_negative_weight_matrix (NaN where the file has no row for the pair, which then keeps the default).
     """
     positive = data.outcomes > 0
     weights = np.where(positive, 1.0 if frequency_targets else np.maximum(data.weights, 1e-3), arguments.negative_weight)
     evidenced_negative = getattr(data, "evidenced_negative", None)
     if evidenced_negative is not None and getattr(arguments, "placebo_negative_weight", None) is not None:
-        weights = np.where(~positive & np.asarray(evidenced_negative, dtype=bool), arguments.placebo_negative_weight, weights)
+        is_evidenced_negative = ~positive & np.asarray(evidenced_negative, dtype=bool)
+        weights = np.where(is_evidenced_negative, arguments.placebo_negative_weight, weights)
+        per_pair = getattr(data, "placebo_negative_weight_matrix", None)
+        if per_pair is not None:
+            per_pair = np.asarray(per_pair, dtype=float)
+            weights = np.where(is_evidenced_negative & np.isfinite(per_pair), per_pair, weights)
     if label_mask is not None:
         weights = weights * label_mask
     if getattr(arguments, "equal_drug_shares", False):
@@ -1215,7 +1268,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--negative-weight", type=float, default=0.2)
     parser.add_argument("--placebo-negative-weight", type=float, default=0.5,
                         help="loss weight of a negative that rests on a controlled comparison rather than on silence: the never-above-placebo pairs of a selection "
-                             "built with --never-above-placebo-as-negative. 0.5 is registered (amendment item 3 of 12 October 2026)")
+                             "built with --never-above-placebo-as-negative. 0.5 is registered (amendment item 3 of 12 October 2026), and it is the weight of a "
+                             "pair the file below does not name")
+    parser.add_argument("--placebo-negative-weights-file", type=path_or_none, default=REGISTERED_PLACEBO_NEGATIVE_WEIGHTS,
+                        help="per-pair weights for those negatives (amendment item 3): n_effective / (n_effective + 214) where the drug's label states both arm "
+                             "sizes, the default above where it does not. 'none' falls back to --placebo-negative-weight for every pair")
     parser.add_argument("--equal-drug-shares", action=argparse.BooleanOptionalAction, default=True,
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
@@ -1254,6 +1311,8 @@ def refuse_a_negative_loss_weight(arguments) -> None:
     the run instead of producing a model that is wrong in a way no metric would show."""
     for option, value in (("--negative-weight", arguments.negative_weight),
                           ("--placebo-negative-weight", getattr(arguments, "placebo_negative_weight", None))):
+        # the per-pair file is checked when it is read (placebo_negative_weight_matrix), because its weights are
+        # not on the command line
         if value is not None and value < 0:
             raise ValueError(f"{option} is {value}; a loss weight below zero inverts the gradient for those pairs, "
                              f"so the run would train the model towards the outcome the evidence argues against. "
@@ -1275,6 +1334,18 @@ def main() -> None:
             raise ValueError("--normalise-drug-input rescales seed magnitudes, and a drug seeded on its entry node has one seed of magnitude 1; "
                              "its targets' shares are the mechanism edges' weights. Use --drug-entry targets with it")
         print(f"drug entry: {int(np.asarray(data.entry_node_mask).sum())} drug nodes in the graph, each drug perturbation seeded on its own")
+    placebo_negative_weights_summary = None
+    if getattr(arguments, "placebo_negative_weights_file", None) is not None:
+        if data.evidenced_negative is None:
+            print(f"--placebo-negative-weights-file {arguments.placebo_negative_weights_file} is not read: this label selection marks no "
+                  f"never-above-placebo negative, so there is no pair for a per-pair weight to act on")
+        else:
+            data.placebo_negative_weight_matrix, placebo_negative_weights_summary = placebo_negative_weight_matrix(
+                arguments.placebo_negative_weights_file, list(data.perturbation_ids), list(data.symptoms))
+            print(f"placebo negative weights: {placebo_negative_weights_summary['pairs_matched']} of "
+                  f"{placebo_negative_weights_summary['pairs_in_file']} pairs of {arguments.placebo_negative_weights_file} are in this evidence table"
+                  + (f"; not in it: {', '.join(placebo_negative_weights_summary['pairs_not_in_this_evidence_table'])}"
+                     if placebo_negative_weights_summary["pairs_not_in_this_evidence_table"] else ""))
     combined_perturbations_summary = None
     if arguments.combined_perturbations is not None:
         is_combination = np.array([kind == COMBINATION_PERTURBATION_TYPE for kind in data.perturbation_types])
@@ -1722,6 +1793,7 @@ def main() -> None:
         "node_descriptors_sha256": file_sha256(getattr(arguments, "node_descriptors", None)),
         "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
+        "placebo_negative_weights": placebo_negative_weights_summary,
         "combined_perturbations": combined_perturbations_summary,
         "clamped_probabilities": clamped_probabilities,
         "propagation_steps_taken": getattr(encoder, "propagation_steps_taken", None),

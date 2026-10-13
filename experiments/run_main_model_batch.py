@@ -73,7 +73,8 @@ SLICE_GATE_TIME_SCALES_LINEAR_RESPONSE = [argument for argument in SLICE_MODULE_
 # Message passing is not yet at its registered form: amendment item 8 (one repeated layer, rank-factored, run to a fixed
 # point) is not built, so it keeps the registered three layers until it is.
 V4_SHARED_MODEL = ["--head", "noisy_or", "--field", "difference", "--pooling", "sum", "--group-by", "disease_cluster_and_targets",
-                   "--label-grades", "A", "B", "--negative-weight", "0.2", "--placebo-negative-weight", "0.5", "--equal-drug-shares",
+                   "--label-grades", "A", "B", "--negative-weight", "0.2", "--placebo-negative-weight", "0.5",
+                   "--placebo-negative-weights-file", "configs/placebo_negative_weights.csv", "--equal-drug-shares",
                    "--keep-large-groups-in-training", "--refit-on-validation", "--start-at-weighted-optimum",
                    "--module-bias-init", "-3", "--gate-init-noise", "0.5", "--link-learning-rate", "0.02",
                    "--leak-learning-rate", "0.0002", "--gate-learning-rate", "0.05", "--node-features", "typed",

@@ -133,14 +133,20 @@ def test_scorer_average_precision_equals_sklearn_with_ties():
     assert np.isclose(micro_auprc(predictions, outcomes, mask, [0, 2]), average_precision_score(outcomes[:, [0, 2]][mask[:, [0, 2]]], predictions[:, [0, 2]][mask[:, [0, 2]]]))
 
 
-def test_fixed_sequence_tests_h2_only_after_h1_and_needs_the_floors():
-    from score_confirmatory import fixed_sequence_decisions, one_sided_p
+def test_the_second_stage_is_reached_only_after_h1_and_needs_the_floors():
+    """H2 alone in the second stage, so it faces the full level; the Holm family with P1 is tested in
+    tests/test_confirmatory_multiplicity.py."""
+    from score_confirmatory import confirmatory_decisions, one_sided_p
 
-    assert fixed_sequence_decisions(True, 0.01, 0.02, True, alpha=0.025) == {"H1_confirmed": True, "H2_confirmed": True}
-    assert fixed_sequence_decisions(True, 0.01, 0.04, True, alpha=0.025) == {"H1_confirmed": True, "H2_confirmed": False}
-    assert fixed_sequence_decisions(True, 0.03, 0.03, True, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}
-    assert fixed_sequence_decisions(True, 0.001, 0.001, False, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a floor missed
-    assert fixed_sequence_decisions(False, 0.001, 0.001, True, alpha=0.025) == {"H1_confirmed": False, "H2_confirmed": False}  # a run missing
+    def confirmations(complete, p_h1, p_h2, meets_floors):
+        decisions = confirmatory_decisions(complete, p_h1, p_h2, meets_floors, alpha=0.025)
+        return {key: decisions[key] for key in ("H1_confirmed", "H2_confirmed")}
+
+    assert confirmations(True, 0.01, 0.02, True) == {"H1_confirmed": True, "H2_confirmed": True}
+    assert confirmations(True, 0.01, 0.04, True) == {"H1_confirmed": True, "H2_confirmed": False}
+    assert confirmations(True, 0.03, 0.03, True) == {"H1_confirmed": False, "H2_confirmed": False}
+    assert confirmations(True, 0.001, 0.001, False) == {"H1_confirmed": False, "H2_confirmed": False}  # a floor missed
+    assert confirmations(False, 0.001, 0.001, True) == {"H1_confirmed": False, "H2_confirmed": False}  # a run missing
     assert one_sided_p(np.array([0.1, 0.2, -0.1, np.nan])) == (1 + 1) / (3 + 1)
 
 
