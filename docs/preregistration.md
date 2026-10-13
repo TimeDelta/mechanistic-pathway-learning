@@ -1698,15 +1698,43 @@ labels. the point is to check for stability".
 perturbations are registered, the symptoms and the perturbations, and both measure agreement of structure rather
 than prediction.
 
-**d1. The symptom folds.** The shared low-rank output matrix and the symptom vectors are fitted once on all the
-evidence and then **frozen**. Each fold holds out one symptom and refits the encoder and the modules without it. The
-reading is the agreement between the fold's structure and the full-data structure: the module supports by one-to-one
-Jaccard through the Hungarian assignment (kuhn1955hungarian), and the symptom profiles by the clustering comparison
-of (e). Nothing is scored as a prediction of the held-out symptom, so there is no estimand for the leak to bias, and
-the leak is therefore stated and not corrected for: the frozen matrix was fitted with the held-out symptom's labels,
-and that is admissible here for the same reason it would be fatal to a prediction claim. This is the perturbation of
-the data set that (benhur2002stability) measures stability by: "the method exploits measurements of the stability of
-clustering solutions obtained by perturbing the data set".
+**d1. The symptom folds, and what they do not show.** The readout is fitted once on all the evidence and then
+**frozen** (the link matrix and the leaks; decision 4.9). Each fold drops one symptom and refits the encoder and the
+modules on the other 23. The reading is the agreement between the fold's module supports and the full-data supports,
+one to one by Jaccard through the Hungarian assignment (kuhn1955hungarian). Nothing is scored as a prediction of the
+held-out symptom, so there is no estimand for the leak to bias, and the leak is stated and not corrected for. This
+is the perturbation of the data set that (benhur2002stability) measures stability by: "the method exploits
+measurements of the stability of clustering solutions obtained by perturbing the data set".
+
+**An earlier version of this item said the fold answers whether a module is "one symptom wearing a module's name",
+and that the answer bears on the circularity of the nosology. Neither half survives examination and both are
+withdrawn** (the owner, 13 October 2026: "why does a module not surviving a one-symptom drop mean circularity?!").
+
+- **A single-symptom module cannot produce a false grouping.** If module k is driven only by symptom s, no other
+  symptom loads on it, so s becomes an outlier in the clustering rather than being grouped with anything. The
+  failure such a module produces is a vacuous attribution - "s is caused by the module defined as what causes s" -
+  and not the circular grouping the readout has to rule out. Those are different faults and the fold was being
+  credited with the wrong one.
+- **The direct measure of a single-symptom module needs no folds at all.** It is the concentration of module k's
+  links over the symptoms in the frozen matrix, `max_s link_ks / sum_s link_ks`, which is read off the fitted model.
+  24 refits are not the way to measure a quantity the readout already states.
+- **What the fold does measure is narrower and is not the same quantity:** whether a module rests on evidence that
+  one symptom uniquely supplies. Dropping s removes one column of the label matrix, and the module's gradient
+  changes by that column's contribution, which is large only when link_ks is large **and** s's column is not
+  redundant with the other 23. The redundancy half is what the link concentration cannot see, and it is the part
+  worth measuring.
+- **Leave-one-out is a weak perturbation.** Dropping 1 of 24 symptoms leaves almost the whole sample, so most
+  modules will survive and a high agreement is close to guaranteed. The reading is therefore informative in one
+  direction only: a module that moves is evidence about that module, and a module that holds is weak evidence of
+  anything. The subsampling of (d2) is the perturbation with power.
+- **Only responding, nonempty modules are read.** A module whose frozen links are near zero for the 23 kept symptoms
+  has no gradient in that fold and drifts for want of a signal, which looks exactly like dependence on the dropped
+  symptom. The responding and nonempty conditions of `docs/module_health.md` are applied before the agreement is
+  computed, and the count set aside by them is reported.
+
+**So the circularity of the nosology is not tested here.** It is tested by the label co-occurrence baseline of (e),
+which is the only reading in this item that can separate a grouping the mechanism supplies from one the labels
+already carry.
 
 **Freezing the output matrix is what makes the folds comparable, and it is not only a convenience.** Modules are
 exchangeable: refit without a symptom, they may come back permuted, and a symptom vector from one fold would then
