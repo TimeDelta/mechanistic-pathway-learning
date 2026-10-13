@@ -3122,3 +3122,71 @@ own error. The goal set was matched on display names, and Reactome's joint compl
 ("(Gi alpha1:GTP:Adenylate cyclase):(G alpha-olf...)") contain both strings. Read properly the coupling is right:
 `DRD2` activates `GNAI1`, `GNAI2`, `GNAI3` and `GNAZ`, `ADRB1` activates `GNAS`, and the signs at the cyclase follow.
 `ADRB1` also reaches `GNAL` and `GNA14`, which are Reactome's own annotations and not an error either.
+
+## 29. The central-action rule, built and measured (12 October, 20:45)
+
+The owner: "The revised rule seems good for the beta blockers." Built as `experiments/apply_central_action_rule.py`,
+writing `configs/centrally_acting_drugs.csv` and `docs/central_action_rule.md`. Nothing is applied to any table.
+
+### 29.1 It works for the beta blockers, and only with a threshold I had left out
+
+**The first run admitted atenolol.** The rule as I put it to the owner says "has a measured Kp,uu,brain", which tests
+that a measurement exists and not what it says, so atenolol came through at 0.030 — the drug the rule was asked to
+exclude. That is my error and it is worth stating because it is the kind that survives review: the rule read well and
+did the opposite of its purpose.
+
+The threshold is now part of the rule, and it is read off the measured distribution of the class rather than chosen.
+Within the beta blockers the values fall either side of a gap with nothing measured in it between 0.054 and 0.20:
+
+| verdict at a threshold of 0.1 | drugs |
+| --- | --- |
+| admitted | propranolol 0.95 (monkey), metoprolol 0.64, pindolol 0.50, oxprenolol 0.20 |
+| below the threshold | nadolol 0.037, atenolol 0.030 |
+| no measured value | acebutolol, betaxolol, bisoprolol, carteolol, carvedilol, celiprolol, esmolol, labetalol, levobunolol, nebivolol, penbutolol, sotalol, timolol |
+
+That is the separation the owner asked for. The cost is the third row: 13 of the 19 have no measured Kp,uu,brain, so
+carvedilol, labetalol, nebivolol, bisoprolol, timolol and sotalol stay out for want of a measurement rather than for a
+finding about them.
+
+### 29.2 As a general rule it misfires, and the reason is diagnosable
+
+Over the 924-drug any-ATC pool the rule admits 40 drugs the nervous-system filter had left out. The list is the
+argument against generalising it:
+
+> celecoxib, codeine, cyclobenzaprine, dextromethorphan, diclofenac, diltiazem, etoposide, etoricoxib, felodipine,
+> flumazenil, flurbiprofen, granisetron, hydrocodone, ibuprofen, indomethacin, isradipine, ketoprofen, loratadine,
+> mecamylamine, metformin, metoclopramide, metoprolol, naproxen, nicardipine, nifedipine, nimodipine, nisoldipine,
+> omeprazole, ondansetron, oxprenolol, pindolol, pioglitazone, pitavastatin, prazosin, propranolol, sulfasalazine,
+> theophylline, valdecoxib, verapamil, warfarin
+
+It admits metformin, warfarin, omeprazole, etoposide and six NSAIDs while leaving carvedilol and timolol out. Two
+things cause that, and both are mine to own rather than the owner's to adjudicate:
+
+- **"a brain-expressed target" is almost no constraint.** 757 of the 924 candidates have one, because most drug targets
+  are expressed somewhere in the brain: `PTGS1` and `PTGS2` are, so every NSAID passes, and `IMPDH1` is, so ribavirin
+  passes — which corrects what I told the owner an hour ago, that ribavirin has no central target. It has one; what it
+  does not have is a reason to think the drug acts through it centrally.
+- **"has a measured Kp,uu,brain" selects on having been studied for brain penetration.** The drugs with such values are
+  disproportionately the reference compounds of brain-penetration studies, which is why metformin and warfarin are
+  measured and carvedilol is not. That is the measurement-coverage confound the project already built strata for
+  (`evaluation/measurement_coverage_strata.py`), imported into the drug set.
+
+And the rule cannot be applied in both directions: only 89 of the 222 drugs already in the table have a measured
+Kp,uu,brain at all, so used as a filter it would turn away 152 of them.
+
+### 29.3 What I would do with it
+
+**Apply it to the beta blockers, which is the scope the owner approved**, and admit the four that pass with their
+measured values recorded; keep atenolol and nadolol out on the measurement; list the 13 unmeasured ones as a data gap.
+That is six measured verdicts and no judgment.
+
+**Do not generalise it yet**, because of 29.2. What would make it general is a criterion that separates by
+concentration at the target rather than by whether a ratio was published, which is exactly what the registered
+occupancy anchor computes: θ at a brain-expressed mechanism target, at the brain site. Measured on the drugs where the
+full chain exists, that criterion is coherent — 48 of the 52 drugs with a brain-site mechanism occupancy reach 0.1, and
+the ordering is pharmacological (cocaine 0.001 and modafinil 0.005 at the bottom, memantine 0.999 and doxepin 1.0 at
+the top). But the chain needs therapeutic concentration, fraction unbound, Kp,uu,brain and affinity together, and only
+52 of the 222 admitted drugs have all four, so it is not an admission gate today either.
+
+So the honest state: one class settled on measurement, a general rule that needs the occupancy chain extended before it
+can be trusted, and the ATC list still unsigned.
