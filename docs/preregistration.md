@@ -1485,6 +1485,15 @@ one-seventh only relocates the choice to one seventh, which is itself a conventi
   What makes one seventh legitimate is not that it is derived but that it was fixed long before this split rule
   existed and is not tuned here.
 
+**The rule governs the drug side; the gene side keeps the grouping it has.** Measured on the live graph, the rule
+holds out 14.5 percent of the 222 drugs and so only 2.0 percent of the 1,636 perturbations, because 1,414 of them are
+genes and a gene is drawn into it only when its own node is a held-out target. That is as it should be: the leakage
+this rule exists to stop is between drugs sharing a mechanism, and the gene side does not have it. Genes are already
+in 943 distinct groups with the largest holding 12 percent of them, against the drugs' 17 groups with the largest
+holding 51 percent. So the held-out set is drawn on **each side at its own registered fraction**: the genes by the
+registered disease-cluster grouping and the drugs by the rule below, one seventh of each rather than one seventh of
+the whole.
+
 The target count follows from that fraction: the targets are taken in the order the split's seed fixes and added until
 the held-out share of drugs is as near one seventh as a whole number of targets allows. Measured over 200 draws
 (`experiments/label_review/target_split_options.py`), that is **3.2 percent of targets**, 6.1 of 192, giving **14.4
