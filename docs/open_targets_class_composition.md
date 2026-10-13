@@ -2,15 +2,20 @@
 
 | | statements |
 |---|---|
-| human-worded curated triples | 118 |
-| a study drug acts on the target in that direction | 70 |
-| of those, a kept drug label confirms the symptom | 44 |
-| **the class: no kept drug label confirms it, and the target is a graph gene** | **71** |
-| of the class, inhibition (the study's own knockout) | 33 |
-| of the class, activation (a perturbation row the study does not have) | 38 |
-| of the class, the target is already a gene perturbation | 29 |
+| human-worded curated triples | 111 |
+| a study drug acts on the target in that direction | 67 |
+| of those, a kept drug label confirms the symptom | 43 |
+| **the class: no kept drug label confirms it, and the target is a graph gene** | **65** |
+| of the class, inhibition (the study's own knockout) | 30 |
+| of the class, activation (a perturbation row the study does not have) | 35 |
+| of the class, the target is already a gene perturbation | 26 |
 | kept pairs in better_v2_full_v4.parquet | 2975 |
-| the class as a share of those | 2.39% |
+| the class as a share of those | 2.18% |
+| **agreement of the class with the study's own labels** | **0.6418** (43 of 67) |
+| the weight that agreement gives (grade B x agreement, rounded down to 0.05) | **0.35** |
+| the weight registered in amendment item 12 | 0.45 |
+
+The agreement is the number amendment item 12 derives its weight from, and this script recomputes it rather than quoting it. A disagreement with the registered 0.7606 is expected while the table carries the three-target limit of item 1: a drug's `perturbation_nodes` then names at most three targets, so a drug that acts on a statement's target through a fourth is neither testable nor confirming here. The number that settles the weight is this one, computed on the rebuilt table.
 
 Every statement of the class, with the curated wording the keyword crosswalk read. The wording column is what a reviewer checks before the class is built: the crosswalk is a keyword match and experiments/scope_open_targets_symptom_labels.py calls it a scoping estimate rather than the crosswalk a label build would use.
 
@@ -18,11 +23,8 @@ Every statement of the class, with the curated wording the keyword crosswalk rea
 |---|---|---|---|---|
 | ADORA2A | inhibition | insomnia | insomnia | no |
 | ADORA2A | inhibition | psychomotor_agitation | agitation | nervousness (tremors, agitation) | no |
-| ADRA2A | activation | increased_appetite | weight gain | no |
 | AR | inhibition | cognitive_impairment | decreased memory | yes |
-| AR | inhibition | decreased_libido | sexual dysfunction | yes |
 | AR | inhibition | depressed_mood | depression | yes |
-| AR | inhibition | increased_appetite | increased body weight | yes |
 | CCKAR | activation | anxiety | anxiety | no |
 | CCKAR | activation | fatigue | fatigue | no |
 | CCKAR | activation | insomnia | decreased sleep | no |
@@ -61,7 +63,6 @@ Every statement of the class, with the curated wording the keyword crosswalk rea
 | GRIN1 | activation | psychosis | hallucinations | psychosis (schizophrenia-like) | yes |
 | GRIN3B | inhibition | cognitive_impairment | decreased memory | no |
 | GRIN3B | inhibition | psychosis | psychosis | no |
-| HRH1 | inhibition | increased_appetite | increased body weight | no |
 | HTR1A | activation | cognitive_impairment | decreased memory | no |
 | HTR1B | inhibition | irritability_or_aggression | increased aggression | no |
 | HTR2A | activation | cognitive_impairment | decreased memory | potential memory impairments | yes |
@@ -78,10 +79,8 @@ Every statement of the class, with the curated wording the keyword crosswalk rea
 | NPY1R | inhibition | anxiety | increase in anxiety-related effects | no |
 | NR3C1 | inhibition | cognitive_impairment | decreased memory | yes |
 | NR3C1 | inhibition | fatigue | fatigue | yes |
-| NR3C1 | activation | increased_appetite | increased body weight | yes |
 | OPRD1 | activation | elevated_mood_or_mania | euphoria | no |
 | OPRK1 | activation | cognitive_impairment | confusion | no |
-| PPARG | activation | increased_appetite | increased body weight | no |
 | SCN1B | inhibition | psychomotor_agitation | agitation | yes |
 | SCN2B | inhibition | psychomotor_agitation | agitation | yes |
 | SCN3B | inhibition | psychomotor_agitation | agitation | yes |

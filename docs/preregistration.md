@@ -1191,33 +1191,50 @@ not exist: no loader writes those records, and
 `experiments/label_review/open_targets_class_composition.py` recomputes on the live table what item 12 states from
 the table of 10 October. Two of the three numbers move, and the second is not a number at all.
 
-| | 9.3, on the v3 table | recomputed on `evidence_full_v4` |
+| | as registered | recomputed on `evidence_full_v4`, after the crosswalk ruling of 13 October |
 | --- | --- | --- |
-| the class: no kept drug label confirms it and the target is a graph gene | 49 statements, 33 of them training | **71 statements** |
-| share of kept pairs | 1.4 percent | **2.39 percent** |
-| of the class, inhibition | 16 of 33 | 33 of 71 |
-| of the class, activation | 17 of 33 | **38 of 71** |
+| the class: no kept drug label confirms it and the target is a graph gene | 49 statements, 33 of them training | **65 statements** |
+| share of kept pairs | 1.4 percent | **2.18 percent** |
+| of the class, inhibition | 16 of 33 | 30 of 65 |
+| of the class, activation | 17 of 33 | **35 of 65** |
+| agreement of the class with the study's own labels | 0.7606 (54 of 71) | **0.6418 (43 of 67)** |
+| the weight that agreement gives | 0.45 | **0.35** |
 
-- **The share is 2.39 percent, not 1.4.** The reasoning that the two arms are expected to agree is weakened rather
+- **The agreement does not reproduce, and the weight turns on it.** Item 12 derives 0.45 from an agreement of 0.7606
+  (54 of 71). Recomputed on the capped v4 table the agreement is 0.6418 (43 of 67), which gives **0.35**, one step
+  of the weight scale below the registered number. Four constructions were tried and none returns 54 of 71: matching
+  the direction and reading kept labels gives 44 of 70, reading every label the selection lists gives 57 of 70, and
+  ignoring the direction gives 72 of 94 (an agreement of 0.766, but on 94 statements rather than 71). The likeliest
+  cause is item 1's three-target limit, which the table still carries: a drug's recorded targets stop at three, so a
+  drug acting on a statement's target through a fourth is neither testable nor confirming here, and lifting the
+  limit adds drugs to both counts. **The weight is therefore provisional at 0.45 and the number that settles it is
+  the one the script computes on the rebuilt table, not the one quoted here.** If the rebuild leaves the agreement
+  near 0.64 the registered weight becomes 0.35 by the same derivation, and that is a change to make before the
+  lockbox is drawn rather than after.
+- **The share is 2.18 percent, not 1.4.** The reasoning that the two arms are expected to agree is weakened rather
   than overturned, and the figure moves again at the rebuild, so what is registered is the rule for recomputing it
   and not a number from a table that no longer exists: the script above, on the table the lockbox is drawn from, run
   before the class is built.
 - **More than half the class is activation, and an activation is not a label on a row the study has.** The study
   perturbs a gene by knocking it out, bar the 17 seeded as gain of function. "Activation of X causes Y" is a
-  different perturbation of the same node, so 38 of the 71 statements would arrive as **new perturbation rows**
+  different perturbation of the same node, so 35 of the 65 statements would arrive as **new perturbation rows**
   rather than as labels on existing ones. That changes the perturbation set, so it changes the leakage groups, so it
   changes the held-out draw. Item 12 does not say this, and it is why the class cannot be added once the lockbox is
   drawn: it enters at the same rebuild as item 1 or not at all.
-- **The crosswalk is a keyword match and has not been reviewed.**
-  `experiments/scope_open_targets_symptom_labels.py` says so of itself: "a scoping estimate, not the crosswalk a
-  label build would use". Most mappings read correctly ("decreased memory" to cognitive impairment, "hallucinations"
-  to psychosis), and two do not: "weight gain" is mapped to increased appetite, which is an inference about the
-  cause rather than the effect reported, and "sexual dysfunction" to decreased libido, which is narrower than the
-  wording. The script prints every statement beside the wording it was mapped from, which is what that review reads.
+- **Two crosswalk mappings are ruled out, and both symptoms leave the class with them** (the owner, 13 October 2026:
+  "weight gain -> increased appetite is unsupported as a 1:1 causal inference as is sexual_dysfunction -> decreased
+  libido"). A weight change is one outcome of appetite among others and is not a report of appetite; sexual
+  dysfunction is wider than libido, covering arousal and orgasmic disorders the symptom does not claim. The two
+  wordings were the whole of what those patterns caught: `increased_appetite` had 13 rows of "increased body weight"
+  and 2 of "weight gain", `decreased_libido` 7 of "sexual dysfunction", and no row of either says appetite or libido.
+  So 22 of 452 curated rows go and **neither symptom is reachable from this curation**. The rejected wordings are
+  listed in `REJECTED_WORDINGS` rather than deleted, so a later crosswalk cannot pick them up without reopening the
+  ruling. The rest of the crosswalk stands on the same reading ("decreased memory" to cognitive impairment,
+  "hallucinations" to psychosis), and the script prints every remaining statement beside the wording it was mapped
+  from, which is the review that has not been done.
 
-So the class stays unbuilt, with its weight ready, until the owner rules on the crosswalk and on whether an
-activation is admitted as a perturbation. Building it now would fix a label set this project's own documents say is
-not the one a build should use.
+So the class stays unbuilt, with its weight ready but provisional, until the agreement is recomputed on the rebuilt
+table and the owner rules on whether an activation is admitted as a perturbation.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that

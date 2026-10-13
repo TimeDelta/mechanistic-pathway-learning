@@ -27,6 +27,19 @@ import pandas as pd
 
 ADVERSE_EFFECTS = Path("data/raw/opentargets_curation/adverse_effects.tsv")
 SECONDARY_PHARMACOLOGY = Path("data/raw/opentargets_curation/secondary_pharmacology.json")
+# Wordings the owner ruled out of the crosswalk on 13 October 2026 ("weight gain -> increased appetite is unsupported
+# as a 1:1 causal inference as is sexual_dysfunction -> decreased libido"). A weight change is an outcome of appetite
+# among other things and is not a report of appetite, and sexual dysfunction is wider than libido: it covers arousal
+# and orgasmic disorders that this symptom does not claim. They are listed rather than deleted so a later crosswalk
+# cannot pick them up again without reopening the ruling, and they are the whole of what those two patterns caught in
+# this curation, so neither symptom is now reachable from it: increased_appetite had 13 rows of "increased body
+# weight" and 2 of "weight gain", decreased_libido 7 of "sexual dysfunction", and no row of either says appetite or
+# libido. 22 of the 452 curated rows go.
+REJECTED_WORDINGS = {
+    "increased_appetite": ("increased body weight", "weight gain"),
+    "decreased_libido": ("sexual dysfunction",),
+}
+
 # One pattern per target symptom of configs/evaluation.yaml. Written against the curation's own effect names.
 SYMPTOM_PATTERNS = {
     "anxiety": r"\banxi",
@@ -34,14 +47,14 @@ SYMPTOM_PATTERNS = {
     "catatonia": r"\bcataton|\bcatalep",
     "cognitive_impairment": r"cognit|\bmemory\b|\bamnes|\blearning\b|\bconfusion\b|\bdementia\b|\bdelirium\b",
     "compulsive_behavior": r"compulsi|stereotyp",
-    "decreased_libido": r"\blibido\b|sexual dysfunction",
+    "decreased_libido": r"\blibido\b",  # not "sexual dysfunction": see REJECTED_WORDINGS below
     "depressed_mood": r"\bdepress(ion|ed|ive)\b|dysphor",
     "disinhibition_or_impulsivity": r"disinhibit|impulsiv",
     "elevated_mood_or_mania": r"\bmania\b|\bmanic\b|\beuphor",
     "emotional_lability": r"emotional lability|mood swing",
     "fatigue": r"\bfatigue\b|\basthenia\b|\blethargy\b|\btired",
     "hyperactivity": r"hyperactiv|increased (locomotor|motor|spontaneous) activity|\bhyperkine",
-    "increased_appetite": r"increased (appetite|food intake|body weight)|\bweight gain\b|hyperphag",
+    "increased_appetite": r"increased (appetite|food intake)|hyperphag",  # not weight wording: see REJECTED_WORDINGS below
     "insomnia": r"\binsomnia\b|\bsleep disturb|decreased sleep",
     "irritability_or_aggression": r"irritab|aggress",
     "psychomotor_agitation": r"\bagitat|\brestless|akathisia",
