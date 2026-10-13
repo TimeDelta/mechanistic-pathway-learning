@@ -1470,20 +1470,31 @@ owner, 13 October 2026: "i'm actually thinking that's a better fit"). The drug i
 it is presented complete, so **the label is exact**: the drug's own observed symptoms are scored against the drug's
 own targets.
 
-**How many targets are held out is solved for, not chosen** (the owner, the same day: "we need a principled way of
-doing it instead of arbitrarily choosing a number of targets for hold out, right?"). He is right that a target
-fraction picked to reproduce the size the drug split happened to give is convenience and not principle. The held-out
-fraction of **perturbations** is already registered at one seventh; the target count is whatever delivers it. The
-construction, which has no free number in it:
+**What is principled here is the rule, and what is a convention is the size. The registration says which is which**
+(the owner, 13 October 2026: "we need a principled way of doing it instead of arbitrarily choosing a number of targets
+for hold out, right?", and then, of an attempt to derive the size from the registered held-out fraction: "that's not
+principled; it's just pushing the arbitrariness further down the chain"). He is right twice. A target fraction chosen
+to reproduce the size the drug split happened to give is convenience; and deriving it instead from the registered
+one-seventh only relocates the choice to one seventh, which is itself a convention.
 
-> Take the targets in a random order fixed by the split's seed. Add them to the held-out set one at a time, recording
-> the held-out share of drugs after each. Keep the prefix whose share lands closest to the registered held-out
-> fraction.
+- **The rule is determined by the hypothesis.** A drug is held out when any of its targets is, because the claim under
+  test is about mechanism rather than drug identity, and this is what puts a mechanism the model never trained on into
+  every held-out drug. Nothing about it is tunable.
+- **The size is a convention**, and no construction inside a one-shot lockbox design can make it otherwise. The
+  lockbox is drawn once and scored once; only cross-validation removes the choice, and that is a different design.
+  What makes one seventh legitimate is not that it is derived but that it was fixed long before this split rule
+  existed and is not tuned here.
 
-Measured over 200 draws (`experiments/label_review/target_split_options.py`): it holds out **3.2 percent of targets**,
-6.1 of 192, giving **14.4 percent of drugs** against the registered 14.3, with a spread of 2.3 points. The target
-count is a consequence of the registered fraction and of how promiscuous the drugs happen to be, and it moves on its
-own when the rebuild changes the target sets, which is the property a chosen number would not have.
+The target count follows from that fraction: the targets are taken in the order the split's seed fixes and added until
+the held-out share of drugs is as near one seventh as a whole number of targets allows. Measured over 200 draws
+(`experiments/label_review/target_split_options.py`), that is **3.2 percent of targets**, 6.1 of 192, giving **14.4
+percent of drugs** against 14.3, with a spread of 2.3 points.
+
+**The design that has no convention in it, costed and not taken.** Leave-one-target-out: 192 folds, one per target,
+nothing chosen. Median 2 drugs held out per fold, mean 6.4, largest 38 (17.1 percent), and 40.7 percent of a held-out
+drug's targets seen in training, which is the same split quality the construction above gives (38.8 percent). Its cost
+is 192 folds against the registered 60 runs: 192 x 4 configurations x 5 seeds is 3,840 runs. It is recorded here so
+that the convention above is a decision taken against a measured alternative rather than for want of one.
 
 What that buys: a held-out drug carries at least one mechanism training never saw, and **61.2 percent of its
 mechanisms are new on average**, against the drug split where 84.4 percent of held-out drugs have **every** target
