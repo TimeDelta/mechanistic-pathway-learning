@@ -52,6 +52,17 @@ DEFAULT_GRADE_WEIGHTS: dict[EvidenceGrade, float] = {
     "E": 0.05,
 }
 
+# The Open Targets target-level statements do not take a grade: amendment item 12 fixes their weight at grade B's 0.6
+# times the measured agreement of the class with the study's own labels, 0.761, which is 0.457 and rounds to 0.45
+# (docs/label_source_review.md 27.3). The agreement is measured on the triples whose target already has a study drug
+# and the statements that train are by construction the ones no study drug label makes, so the two subsets are
+# disjoint and the extrapolation is disclosed rather than hidden in a grade. OPEN_TARGETS_WEIGHT_WITHOUT_THE_CLASS is
+# the registered secondary arm, which keeps the class out of training and reports it as a held-out stratum only.
+OPEN_TARGETS_EVIDENCE_CLASS = "open_targets"
+DEFAULT_OPEN_TARGETS_WEIGHT = 0.45
+OPEN_TARGETS_WEIGHT_WITHOUT_THE_CLASS = 0.0
+OPEN_TARGETS_GRADE = "B"  # the grade the weight is derived from, recorded so the table says where 0.45 came from
+
 # HPO frequency 25 percent or more keeps the full weight; Occasional (midpoint 0.17) -> 0.68; Very rare -> floor
 MONOGENIC_FREQUENCY_SCALE = 4.0
 MONOGENIC_FREQUENCY_FLOOR = 0.25
@@ -65,7 +76,7 @@ class EvidenceRecord:
     perturbation_identifier: str
     symptom_identifier: str
     relation: str  # "induces" or "relieves"
-    evidence_class: str  # "monogenic", "pharmacological", "human_association", "animal", "literature"
+    evidence_class: str  # "monogenic", "pharmacological", "open_targets", "human_association", "animal", "literature"
     source: str = ""
     evidence_available_date: date | None = None
     independent_case_series_count: int = 0
@@ -108,6 +119,8 @@ def assign_evidence_grade(record: EvidenceRecord, grade_a_policy: str = DEFAULT_
         if record.cns_penetrant and record.has_dominant_target:
             return "B"
         return "E"  # label event without a clean molecular entry point: soft prior at most
+    if record.evidence_class == OPEN_TARGETS_EVIDENCE_CLASS:
+        return OPEN_TARGETS_GRADE  # the class takes a fixed weight, not this grade; the grade records its derivation
     if record.evidence_class == "human_association":
         return "C"
     if record.evidence_class == "animal":
@@ -123,10 +136,18 @@ def loss_weight_for_record(
     predication_weights: dict[str, float] | None = None,
     grade_a_policy: str = DEFAULT_GRADE_A_POLICY,
     scale_by_frequency: bool = True,
+    open_targets_weight: float = DEFAULT_OPEN_TARGETS_WEIGHT,
 ) -> float:
-    """Loss weight for one observation; zero means the observation is not trained on."""
+    """Loss weight for one observation; zero means the observation is not trained on.
+
+    An Open Targets statement takes open_targets_weight whatever its grade (amendment item 12): the class is a
+    target-level review statement with no frequency and no recorded absence, so the grade ladder and the frequency
+    scaling below have nothing to read. Pass OPEN_TARGETS_WEIGHT_WITHOUT_THE_CLASS for the registered secondary arm.
+    """
     grade_weights = grade_weights or DEFAULT_GRADE_WEIGHTS
     predication_weights = predication_weights or DEFAULT_PREDICATION_WEIGHTS
+    if record.evidence_class == OPEN_TARGETS_EVIDENCE_CLASS:
+        return open_targets_weight
     grade = assign_evidence_grade(record, grade_a_policy)
     base_weight = grade_weights[grade]
     if grade == "A" and record.evidence_class == "monogenic" and scale_by_frequency:

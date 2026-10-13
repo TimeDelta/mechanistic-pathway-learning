@@ -1167,10 +1167,15 @@ only"). Nothing is built for it.
 
 **12. The Open Targets evidence class carries weight 0.45, with 0.0 as a declared secondary.** The number is grade
 B's 0.6 times the measured agreement of the class with the study's own labels: of the 118 human-worded Open Targets
-triples, 71 name a target that a study drug acts on in the same direction, and 54 of those 71 (0.761) carry the symptom
+triples, 71 name a target that a study drug acts on in the same direction, and 54 of those 71 (0.7606) carry the symptom
 on a kept label of that drug, 9 more on a label the selection masked, and 3 (0.042) are contradicted by a placebo
-comparison. 0.6 x 0.761 = 0.457, rounded to 0.45. This replaces the 0.3 of the 12 October draft, which was a judgment
-with no measurement behind it and is withdrawn. **The limitation is registered with the number**: the testable triples
+comparison. 0.6 x 0.7606 = 0.4563, **rounded down to the nearest 0.05**, which is 0.45. The direction of the rounding
+is not free and is fixed here: the agreement is measured on the triples whose target already has a study drug while
+the statements that train are the ones no study drug label makes, so where the rounding has to go one way it goes
+towards the lower weight. (Corrected 13 October 2026: this item read "0.6 x 0.761 = 0.457, rounded to 0.45", and
+0.457 rounds to 0.46, not 0.45. The registered weight is unchanged at 0.45; what is corrected is the statement of how
+it was reached, and `tests/test_open_targets_class_weight.py` now holds the number to the derivation.) This replaces
+the 0.3 of the 12 October draft, which was a judgment with no measurement behind it and is withdrawn. **The limitation is registered with the number**: the testable triples
 are the ones whose target already has a study drug, and the statements that would train are by construction the ones no
 study drug label makes (docs/label_source_review.md 9.3), so the two subsets are disjoint and whether 0.761 carries over
 is not something this measurement can say. For that reason a second arm is registered now, before any run: the same
@@ -1178,6 +1183,41 @@ configuration with the class at weight 0.0 and its statements reported as a held
 percent of training pairs, so the two arms are expected to agree; registering both makes that checkable instead of
 assumed. The user expressed no preference between them on 12 October and the standing instruction of that day was to
 lock in what I have no objection to.
+
+**12a. The weight is built; the class itself is not, and what the recomputation shows has to be decided before it
+is** (13 October 2026). `loss_weight_for_record` now gives an `open_targets` record the fixed 0.45 whatever its
+grade, with 0.0 available as the registered secondary, so the arm exists the moment the class does. The class does
+not exist: no loader writes those records, and
+`experiments/label_review/open_targets_class_composition.py` recomputes on the live table what item 12 states from
+the table of 10 October. Two of the three numbers move, and the second is not a number at all.
+
+| | 9.3, on the v3 table | recomputed on `evidence_full_v4` |
+| --- | --- | --- |
+| the class: no kept drug label confirms it and the target is a graph gene | 49 statements, 33 of them training | **71 statements** |
+| share of kept pairs | 1.4 percent | **2.39 percent** |
+| of the class, inhibition | 16 of 33 | 33 of 71 |
+| of the class, activation | 17 of 33 | **38 of 71** |
+
+- **The share is 2.39 percent, not 1.4.** The reasoning that the two arms are expected to agree is weakened rather
+  than overturned, and the figure moves again at the rebuild, so what is registered is the rule for recomputing it
+  and not a number from a table that no longer exists: the script above, on the table the lockbox is drawn from, run
+  before the class is built.
+- **More than half the class is activation, and an activation is not a label on a row the study has.** The study
+  perturbs a gene by knocking it out, bar the 17 seeded as gain of function. "Activation of X causes Y" is a
+  different perturbation of the same node, so 38 of the 71 statements would arrive as **new perturbation rows**
+  rather than as labels on existing ones. That changes the perturbation set, so it changes the leakage groups, so it
+  changes the held-out draw. Item 12 does not say this, and it is why the class cannot be added once the lockbox is
+  drawn: it enters at the same rebuild as item 1 or not at all.
+- **The crosswalk is a keyword match and has not been reviewed.**
+  `experiments/scope_open_targets_symptom_labels.py` says so of itself: "a scoping estimate, not the crosswalk a
+  label build would use". Most mappings read correctly ("decreased memory" to cognitive impairment, "hallucinations"
+  to psychosis), and two do not: "weight gain" is mapped to increased appetite, which is an inference about the
+  cause rather than the effect reported, and "sexual dysfunction" to decreased libido, which is narrower than the
+  wording. The script prints every statement beside the wording it was mapped from, which is what that review reads.
+
+So the class stays unbuilt, with its weight ready, until the owner rules on the crosswalk and on whether an
+activation is admitted as a perturbation. Building it now would fix a label set this project's own documents say is
+not the one a build should use.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that
