@@ -52,6 +52,23 @@ TWIN_COMPARISONS = Path("runs/twin_comparisons.json")
 SLICE_BASELINES = Path("runs/baselines_disease_cluster/results.json")
 SLICE_AGGREGATE = Path("runs/phase3_aggregate.json")
 # 150 left the dense pipeline figure soft on a high-density display (the user, 9 October 2026)
+# the v4 graph, which carries the drug nodes, the neuronal ion pools and both proton pools: the cell-state figure is
+# about what the graph holds, so it reads the graph the rebuild will be based on rather than a retired one
+CELL_STATE_GRAPH_DIRECTORY = Path("data/processed/graph_full_neuronal_split_binders_drugs_v4_enzymes")
+NEURONAL_POOL_PREFIX = "NEURON_"
+# the species whose deviation is a piece of cell state rather than a metabolite of interest in itself; grouped as the
+# quantity each one reports, since most of them are read as a ratio (graph/compartment_ph.py for the argument)
+CELL_STATE_GROUPS = {
+    "pH (H+)": ("H+",),
+    "energy charge (ATP, ADP, AMP)": ("ATP", "ADP", "AMP"),
+    "redox (NAD, NADP, FAD, GSH)": ("NAD+", "NADH", "NADP+", "NADPH", "FAD", "FADH2", "GSH", "GSSG", "FMN", "FMNH2"),
+    "acyl carriers (CoA, carnitine)": ("CoA", "acetyl-CoA", "L-carnitine"),
+    "acid-base (HCO3-, CO2)": ("HCO3-", "CO2"),
+    "oxygen (O2)": ("O2",),
+    "methylation (SAM, SAH, THF)": ("SAM", "SAH", "THF"),
+    "metabolic ion pools": ("Na+", "K+", "Ca2+", "Mg2+", "Cl-"),
+    "nitrogen and sulfur (NH3, H2S)": ("NH3", "H2S"),
+}
 SAVE_DPI = 240
 BOX_COLOURS = {"input": "#dbe9f6", "graph": "#e3f1df", "propagation": "#fdebd3", "readout": "#efe3f4", "output": "#f4f4f4"}
 
@@ -423,7 +440,9 @@ def figure_slice_baselines_and_models() -> None:
 
 
 def draw_node_link_diagram(axis, nodes: dict, edges: list) -> None:
-    """nodes: name -> (x, y, label, colour); edges: (source, target, label). Arrows are clipped to the text boxes."""
+    """nodes: name -> (x, y, label, colour); edges: (source, target, label). Arrows are clipped to the text boxes.
+
+    Returns the text object of each node, so a caller can draw further arrows clipped to the same boxes."""
     text_of_node = {}
     for name, (x, y, label, colour) in nodes.items():
         text_of_node[name] = axis.text(x, y, label, ha="center", va="center", fontsize=7.8,
@@ -437,6 +456,7 @@ def draw_node_link_diagram(axis, nodes: dict, edges: list) -> None:
             source_x, source_y = nodes[source][:2]
             target_x, target_y = nodes[target][:2]
             axis.text((source_x + target_x) / 2 + 0.01, (source_y + target_y) / 2, label, fontsize=7, color="#555555", ha="left", va="center")
+    return text_of_node
 
 
 def figure_gene_protein_split() -> None:
@@ -552,6 +572,84 @@ def figure_plasma_carriage() -> None:
     save(figure, "plasma_carriage")
 
 
+def currency_state_counts(graph_directory: Path) -> dict:
+    """Per group of currency species, the copies and the total degree: what the graph computes and does not pass on."""
+    nodes = pd.read_parquet(graph_directory / "nodes.parquet")
+    nodes = nodes.assign(currency=nodes.is_currency.fillna(False).astype(bool),
+                         species=nodes.display_name.astype(str).str.strip())
+    counts = {}
+    for group, species_names in CELL_STATE_GROUPS.items():
+        rows = nodes[nodes.species.isin(species_names)]
+        counts[group] = {"copies": int(len(rows)),
+                         "currency_copies": int(rows.currency.sum()),
+                         "degree": int(rows.degree.sum()),
+                         "currency_degree": int(rows[rows.currency].degree.sum())}
+    neuronal = nodes[nodes.node_id.astype(str).str.startswith(NEURONAL_POOL_PREFIX)]
+    counts["neuronal ion pools"] = {"copies": int(len(neuronal)), "currency_copies": int(neuronal.currency.sum()),
+                                    "degree": int(neuronal.degree.sum()), "currency_degree": 0}
+    return counts
+
+
+def figure_cell_state() -> None:
+    """What the model holds as the state of a cell, and which parts of it travel.
+
+    The distinction the figure exists to make (the owner, 13 October 2026: "please include an explanatory figure for
+    things like representation of the ph and other pieces of the cell state"): a node's state either propagates along
+    edges or it caps what passes through a node, and the second is how everything that would otherwise be a hub
+    enters. The counts are read from the graph rather than written here."""
+    counts = currency_state_counts(CELL_STATE_GRAPH_DIRECTORY)
+    figure, axes = plt.subplots(1, 2, figsize=(14.6, 6.6), gridspec_kw={"width_ratios": [1.1, 1.0]})
+    axes[0].set_axis_off()  # only the diagram; the bar panel needs its axis for the group names
+    for spine in ("top", "right"):
+        axes[1].spines[spine].set_visible(False)
+
+    travels, caps = "#e3f1df", "#fdebd3"
+    nodes = {
+        "seed": (0.5, 0.92, "perturbation\n(gene lowered, drug at its node)", BOX_COLOURS["input"]),
+        "graph": (0.5, 0.66, "the response travels the graph\nto a fixed point: reactions, proteins,\nmetabolites, transcription", travels),
+        "ion": (0.13, 0.40, "neuronal ion pools\n(Na+, K+, Cl-, Ca2+)", travels),
+        "vm": (0.13, 0.17, "membrane potential\nV$_m$, computed", travels),
+        "class": (0.84, 0.845, "cell-class expression\nw$_k$(node)", caps),
+        "bottleneck": (0.84, 0.60, "limiting step: the weakest\nw$_k$ on the widest route", caps),
+        "ph": (0.60, 0.30, "compartment pH\nfrom the proton pools", caps),
+        "ratios": (0.86, 0.30, "energy charge, NAD+/NADH,\nNADPH/NADP+, GSH/GSSG, SAM/SAH\n(proposed, not built)", caps),
+        "readout": (0.5, 0.045, "symptom probabilities", BOX_COLOURS["readout"]),
+    }
+    edges = [("seed", "graph", ""), ("graph", "ion", ""), ("ion", "vm", ""), ("graph", "readout", ""), ("vm", "readout", "")]
+    text_of_node = draw_node_link_diagram(axes[0], nodes, edges)
+    for capping, target in (("class", "graph"), ("bottleneck", "graph"), ("ph", "readout"), ("ratios", "readout")):
+        axes[0].annotate("", xy=(0.5, 0.5), xycoords=text_of_node[target], xytext=(0.5, 0.5), textcoords=text_of_node[capping],
+                         arrowprops={"arrowstyle": "-|>", "color": "#b36b00", "linestyle": (0, (3, 2)),
+                                     "patchA": text_of_node[capping].get_bbox_patch(),
+                                     "patchB": text_of_node[target].get_bbox_patch(), "shrinkA": 2, "shrinkB": 2})
+    axes[0].set_xlim(0, 1)
+    axes[0].set_ylim(0, 1)
+    axes[0].set_title("What the state is, and what travels", fontsize=12, fontweight="bold")
+    axes[0].text(0.5, 0.985, "solid: the state propagates along edges     dashed amber: the state caps throughput and does not propagate",
+                 ha="center", va="top", fontsize=7.6, color="#555555")
+
+    labels = list(counts)
+    computed = [counts[label]["currency_degree"] for label in labels]
+    passed = [counts[label]["degree"] - counts[label]["currency_degree"] for label in labels]
+    positions = np.arange(len(labels))
+    axes[1].barh(positions, computed, color="#fdebd3", edgecolor="#b36b00", label="reaction edges whose effect is computed and not passed on")
+    axes[1].barh(positions, passed, left=computed, color="#e3f1df", edgecolor="#2f6b3a", label="reaction edges whose effect propagates")
+    axes[1].set_yticks(positions)
+    axes[1].set_yticklabels(labels, fontsize=8.5)
+    axes[1].invert_yaxis()
+    axes[1].set_xlabel("edges at the nodes of that state, summed over compartmental copies", fontsize=9)
+    axes[1].set_title("The state the graph computes and discards", fontsize=12, fontweight="bold")
+    axes[1].legend(fontsize=7.6, loc="lower right", framealpha=0.95)
+    for position, label in zip(positions, labels):
+        total = counts[label]["degree"]
+        axes[1].text(total + max(1, total * 0.015), position,
+                     f"{counts[label]['currency_copies']}/{counts[label]['copies']} copies held back", va="center", fontsize=7.2, color="#555555")
+    axes[1].set_xlim(0, max(counts[label]["degree"] for label in labels) * 1.46)
+    figure.suptitle("The cell state the model carries", fontsize=14, fontweight="bold")
+    figure.tight_layout(rect=(0, 0, 1, 0.94))
+    save(figure, "cell_state")
+
+
 FIGURES = {
     "model_pipeline": (figure_model_pipeline, [CONFIRMATORY_GRAPH_DIRECTORY / "edges.parquet", BINDER_SUMMARY,
                                                LABEL_SELECTION_SUMMARY, CELL_CLASS_WEIGHTS]),
@@ -562,6 +660,7 @@ FIGURES = {
     "slice_baselines_and_models": (figure_slice_baselines_and_models, [SLICE_BASELINES, SLICE_AGGREGATE]),
     "gene_protein_split": (figure_gene_protein_split, [SPLIT_GRAPH_DIRECTORY / "split_summary.json", SPLIT_GRAPH_DIRECTORY / "gene_to_protein.parquet"]),
     "plasma_carriage": (figure_plasma_carriage, [CONFIRMATORY_GRAPH_DIRECTORY / "edges.parquet", BINDER_SUMMARY]),
+    "cell_state": (figure_cell_state, [CELL_STATE_GRAPH_DIRECTORY / "nodes.parquet"]),
 }
 
 
