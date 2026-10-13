@@ -1694,118 +1694,53 @@ whole data THEN uses those output matrix params for the per-symptom-folds xval, 
 being used to test the ability to generalize to new symptoms", and "it doesn't matter how much it leaks held-out
 labels. the point is to check for stability".
 
-**d. The symptom folds are a stability check, and the leak does not bias it because nothing is scored.** Two data
-perturbations are registered, the symptoms and the perturbations, and both measure agreement of structure rather
-than prediction.
+**d. Stability is measured by resampling perturbations. No symptom fold is registered** (the owner, 13 October
+2026: "i don't know that the joint reading refit is worth it, tbh"). The folds were pursued through this item's
+drafting and are recorded here as not taken, with the reasons, because the construction is an obvious one to
+propose again.
 
-**d1. The symptom folds, and what they do not show.** The readout is fitted once on all the evidence and then
-**frozen** (the link matrix and the leaks; decision 4.9). Each fold drops one symptom and refits the encoder and the
-modules on the other 23. The reading is the agreement between the fold's module supports and the full-data supports,
-one to one by Jaccard through the Hungarian assignment (kuhn1955hungarian). Nothing is scored as a prediction of the
-held-out symptom, so there is no estimand for the leak to bias, and the leak is stated and not corrected for. This
-is the perturbation of the data set that (benhur2002stability) measures stability by: "the method exploits
-measurements of the stability of clustering solutions obtained by perturbing the data set".
+**d1. Why no symptom fold.** Four findings, in the order they arrived, and each narrowed the fold until nothing
+was left worth the runs.
 
-**An earlier version of this item said the fold answers whether a module is "one symptom wearing a module's name",
-and that the answer bears on the circularity of the nosology. Neither half survives examination and both are
-withdrawn** (the owner, 13 October 2026: "why does a module not surviving a one-symptom drop mean circularity?!").
+- **A fold cannot predict the held-out symptom**, by the identity of (c). That rules out the first thing a symptom
+  fold is usually wanted for.
+- **The construction that does work predicts nothing either.** Fit the readout on all the evidence, freeze it,
+  refit the encoder and modules on the other 23 symptoms, and read the agreement of the supports (decision 4.9).
+  The leak of the held-out symptom's labels into the frozen readout is admissible precisely because nothing is
+  scored, which is the owner's point ("it doesn't matter how much it leaks held-out labels. the point is to check
+  for stability").
+- **It does not test circularity**, which is what the fold was being kept for. A module driven by one symptom gives
+  that symptom its own module and makes it an outlier, so it produces a vacuous attribution rather than a false
+  grouping. Circularity is (e)'s question and only (e)'s.
+- **What it does measure is covered, or thin.** Whether a module rests on evidence one symptom uniquely supplies
+  decomposes into a degenerate module (module health and gate G1 catch it, with harder perturbations than removing
+  one of 24 label columns), a module whose links sit on one symptom (the concentration below, exact and free) and a
+  grouping resting on co-occurrence ((e), and the raw label column correlations). What no combination of those
+  strictly implies is the joint reading, since the optimiser's behaviour is not a function of them, and that is a
+  thin residue against 24 folds x 2 models x 5 seeds, 240 runs where the whole confirmatory is 60. Leave-one-out
+  also perturbs weakly, 1 of 24 symptoms, so a module that holds says little and only a module that moves says
+  anything.
 
-- **A single-symptom module cannot produce a false grouping.** If module k is driven only by symptom s, no other
-  symptom loads on it, so s becomes an outlier in the clustering rather than being grouped with anything. The
-  failure such a module produces is a vacuous attribution - "s is caused by the module defined as what causes s" -
-  and not the circular grouping the readout has to rule out. Those are different faults and the fold was being
-  credited with the wrong one.
-- **The direct measure of a single-symptom module needs no folds at all.** It is the concentration of module k's
-  links over the symptoms in the frozen matrix, `max_s link_ks / sum_s link_ks`, which is read off the fitted model.
-  24 refits are not the way to measure a quantity the readout already states.
-- **What the fold does measure is narrower and is not the same quantity:** whether a module rests on evidence that
-  one symptom uniquely supplies. Dropping s removes one column of the label matrix, and the module's gradient
-  changes by that column's contribution, which is large only when link_ks is large **and** s's column is not
-  redundant with the other 23. The redundancy half is what the link concentration cannot see, and it is the part
-  worth measuring.
-- **Leave-one-out is a weak perturbation.** Dropping 1 of 24 symptoms leaves almost the whole sample, so most
-  modules will survive and a high agreement is close to guaranteed. The reading is therefore informative in one
-  direction only: a module that moves is evidence about that module, and a module that holds is weak evidence of
-  anything. The subsampling of (d2) is the perturbation with power.
-- **Only responding, nonempty modules are read.** A module whose frozen links are near zero for the 23 kept symptoms
-  has no gradient in that fold and drifts for want of a signal, which looks exactly like dependence on the dropped
-  symptom. The responding and nonempty conditions of `docs/module_health.md` are applied before the agreement is
-  computed, and the count set aside by them is reported.
+**What is reported instead, at no cost beyond runs already registered**: the link concentration
+`max_s link_ks / sum_s link_ks` of every module in the full-data fit, beside the same statistic from the
+permuted-label runs, which is what concentration looks like when no symptom leans on anything and is the
+comparison gate G1 already makes for supports. No threshold is drawn on it: (b) fixes that this item makes no
+decision, so the concentration is reported as the continuous quantity it is. Were a module's dependence ever
+wanted end to end, the scale for "it moved" is the seed-to-seed support Jaccard the five registered seeds already
+produce, on the principle the registered floor rule uses, and the route that avoids refitting altogether is an
+influence function, recorded and not taken because (basu2021influence) finds such estimates "often erroneous" for
+deeper networks and the quantity here runs through the encoder rather than the head alone.
 
-**So the circularity of the nosology is not tested here.** It is tested by the label co-occurrence baseline of (e),
-which is the only reading in this item that can separate a grouping the mechanism supplies from one the labels
-already carry.
-
-**What the fold adds over the controls already registered, costed** (the owner, 13 October 2026: "is it just that
-the individual module might be degenerately trained, which can be inferred from other controls?"). Mostly yes, and
-the three parts of the question are each covered better elsewhere.
-
-| what the fold would catch | what already catches it, more directly |
-| --- | --- |
-| a degenerate or underdetermined module | `docs/module_health.md` (responding, nonempty, support size) and gate G1's agreement across seeds and resampled training sets, which perturb the fit harder than removing one of 24 label columns |
-| a module whose links sit on one symptom | the link concentration `max_s link_ks / sum_s link_ks` of the fitted readout: exact, per module, and free |
-| a grouping that rests on symptoms co-occurring rather than sharing a mechanism | the label co-occurrence baseline of (e), and the column correlations of the raw outcome matrix, which are read without fitting anything |
-
-What is left that none of them gives is the **joint** reading: whether, in the model as actually fitted, removing
-one symptom's evidence moves the mechanism attribution. The optimiser's behaviour is not a function of those three
-statistics, so none of them strictly implies it. That is a thin residue to buy at the price: 24 folds x 2 models x
-5 seeds is 240 runs against the registered 60, four times the whole confirmatory budget for a diagnostic whose
-power runs one way, and the same arithmetic ruled out leave-one-target-out in item 25.
-
-**No threshold is registered, because none is needed** (the owner, 13 October 2026: "there's no viable principled
-way to choose instead of the threshold?"). There is, and it is the one this item should have reached first.
-
-**The readout is descriptive, so there is nothing to select.** A threshold exists only where a decision is made,
-and (b) already fixes that this item makes none: it tests no hypothesis and enters no sequence. So the link
-concentration `max_s link_ks / sum_s link_ks` is **reported for every module** beside the clustering, as a
-continuous quantity, and a reader sees which modules lean on one symptom without anyone having drawn a line. The
-threshold was an artefact of my framing the fold as a gate in an analysis that gates nothing.
-
-**Where a scale is genuinely needed, the design already produces two, and neither is a chosen number.**
-
-- **Is a concentration more than chance?** The permuted-label runs are the null. They are registered, they are run
-  for every seed, and their links are fitted to labels permuted within degree strata, so the spread of their
-  concentrations is what concentration looks like when no symptom leans on anything. This is the comparison gate G1
-  already makes for supports ("real mean above permuted").
-- **Did a module actually move when a symptom was dropped?** The five registered seeds already disagree with one
-  another about every module's support. The seed-to-seed Jaccard spread is therefore the scale: a support that
-  moves less under dropping a symptom than it moves under changing the seed has not moved. This is the same
-  principle as the registered floor rule, which sets each floor from the half-width of that comparison's own
-  bootstrap interval rather than from a number someone picked, and it answers the power objection above directly
-  instead of working around it.
-
-**A third route exists and is not taken.** The leave-one-symptom-out effect can be approximated by an influence
-function rather than by refitting, which would give all 24 symptoms against every module at the cost of one set of
-Hessian-vector products and no folds at all. It is not registered, because the approximation is least trustworthy
-in the setting this model is in: (basu2021influence) reports that "influence estimates are fairly accurate for
-shallow networks, while for deeper networks the estimates are often erroneous", and the quantity wanted here runs
-through the encoder rather than the head alone, in a model with hard-concrete gates and a stopping rule that halts
-before convergence. It is recorded as the route to take if the joint reading is ever wanted at scale, and it would
-need checking against real refits before any of it was believed.
-
-**What runs, then.** The concentrations and their permuted-label null for every module, which cost nothing beyond
-runs already registered. Refits only if the owner wants the joint reading for a particular module, read against
-the seed spread. The sweep of 24 folds per model is not registered.
-
-**Freezing the output matrix is what makes the folds comparable, and it is not only a convenience.** Modules are
-exchangeable: refit without a symptom, they may come back permuted, and a symptom vector from one fold would then
-mean nothing against another's. A frozen output matrix pins them, because a module's contribution to the output runs
-through a fixed row, so module `k` of a fold has to play the role that row assigns it. Without the freezing the
-folds would need module matching before anything could be compared, and splits and merges would confound the
-reading.
-
-**What it costs, and the null that keeps the cost visible.** Pinning the folds to the full-data solution biases the
-agreement upward: the quantity measured is the stability of what the modules do given a readout basis that already
-saw every symptom, not the stability of the whole estimation. The number is therefore read only against its null,
-the same per-symptom folds on labels permuted within degree strata, which carries the same pinning and so prices it
-in. An agreement that does not separate from that null is reported as no evidence of stability, whatever its
-absolute value.
+**Decision 4.9 falls with the folds.** Freezing the readout existed to pin module identity across symptom folds.
+With no symptom folds, nothing in item 26 freezes anything, and nothing in it asks for a change to the registered
+head.
 
 **d2. The perturbation resampling, which is where symptom profile stability is measured** (the owner, 13 October
 2026: "resampling on perturbations instead is fine", and "i guess i don't need profile stability under symptom folds
 so much as symptom profile stability in general"). Complementary-pair subsamples of the training perturbations
 (shah2013variable), refit with nothing frozen, and compare. The profiles move here because the readout is refitted,
-which is exactly what a symptom fold under (d1) cannot give.
+which is the other reason a symptom fold could not have carried this reading: under (d1)'s frozen readout every
+fold's profiles are identical by construction.
 
 **The reading is at the level of the partition, not of the profile vectors, and that removes the alignment problem
 rather than solving it.** The items being clustered are the 24 symptoms, which are the same in every subsample, so
@@ -1853,16 +1788,15 @@ are placed afterwards at their nearest cluster and reported with their counts an
 is a declared secondary, reported beside it.
 
 **g. What this item does not settle, and stays the owner's.**
-- **The head refactor of (a) is not needed by this item, on the owner's reading of 13 October.** It went through
-  three states in one day and the last is the one that holds. It was proposed to make symptom folds possible; the
-  folds turned out not to need it, since (d1) can freeze the link matrix the head already has; it then looked
-  load-bearing again as the only way to make profile stability measurable *under symptom folds*; and the owner does
-  not want profile stability under symptom folds, he wants it in general, which (d2) measures without freezing
-  anything. So nothing in item 26 requires the refactor. What is left for it is shrinkage across symptoms for the
-  thin ones, against an imposed rank, a latent basis in place of named modules, a free rank `d`, and another
-  confirmatory variation unless it replaces the current head outright ("I don't want to add extra confirmatory
-  model variations because that starts increasing probability of winning by luck"). Decisions 4.7 to 4.9 record
-  the three forms and what separates them.
+- **The head refactor of (a) is not needed by this item, and nothing else in it is either.** The refactor was
+  proposed to make symptom folds possible, then looked load-bearing again as the only way to make profile stability
+  measurable under those folds; the owner wants profile stability in general, which (d2) gives without freezing
+  anything, and then the folds went altogether. So item 26 asks for no change to the registered head: no latent
+  layer, no frozen readout, no new parameter and no free rank. What is left arguing for a refactor is shrinkage
+  across symptoms for the thin ones, against an imposed rank, a latent basis in place of named modules, a free
+  rank `d`, and another confirmatory variation unless it replaces the current head outright ("I don't want to add
+  extra confirmatory model variations because that starts increasing probability of winning by luck"). Decisions
+  4.7 and 4.8 keep the two latent forms and what separates them, set aside rather than refused.
 - **Whether the readout is published with the confirmatory result or apart from it.** Registering it here fixes the
   procedure either way.
 
