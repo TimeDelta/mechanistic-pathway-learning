@@ -1528,6 +1528,23 @@ read as the primary answer to whether the model uses mechanism or drug identity,
 structurally. Permuting which targets each drug has and retraining must lower the score; a score that survives the
 permutation is drug identity and not mechanism, whatever the split.
 
+**b2. A symptom is scored only when both sides of the split support it** (the owner, 13 October 2026: "the target
+version doesn't guarantee all symptoms being trained either"). He is right, and it is measurable. Over 100 draws of
+the rule in (a), a mean of **0.12 symptoms lose every training positive** (at most 1) and **1.05 fall below five**
+(at most 2). The cause is visible in the table: one symptom carries a single positive in the whole of it and two more
+carry 14 and 15, so a draw that takes that one positive leaves the symptom with nothing. A symptom in that state is
+not merely unlearnable, it is **degenerate**: with its links and leak at their initial values the noisy-OR head
+returns one fixed ranking of the perturbations for it, identical for every untrained symptom (measured: the
+correlation between any two such rankings is 1.000000), driven by total module activation, which is the degree-like
+quantity the input-size and degree controls already account for. Scoring it would be scoring the degree baseline under
+a symptom's name.
+
+The registered rule already requires **five kept positives in the lockbox** for a symptom to be scored. It now
+requires **five in training as well**, which is the same condition on the other side. The failing symptoms are
+excluded from the score and named in the run record. **The draw is not repeated until the condition holds**: rejecting
+draws on a property of the split would bias which targets end up held out, which is exactly what the registration
+exists to prevent. Exclusion costs a symptom; rejection would cost the split's meaning.
+
 **c. A pre-registered secondary stratum for unseen mechanisms.** Scored apart on the held-out drugs **none** of whose
 targets appears in training: the strictest reading available under the primary split, and **21.2 percent of the
 held-out side** under the construction above, against the 15.6 percent the drug split would have given. It is the study's only estimate of extrapolation to a
