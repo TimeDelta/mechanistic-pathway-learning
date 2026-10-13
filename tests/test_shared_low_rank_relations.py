@@ -102,3 +102,64 @@ def test_the_dense_parameterisation_is_untouched():
     assert encoder.relation_weight.shape == (2, 20, 32, 32)
     assert encoder.relation_diagonal is None and encoder.relation_factor_left is None
     assert encoder.parameter_layers == 2
+
+
+# amendment item 7 for the message-passing encoder, which item 8's shared weights are what made possible
+def toy_graph(num_nodes=40, num_edges=160, seed=3):
+    torch.manual_seed(seed)
+    source, target = torch.randint(0, num_nodes, (num_edges,)), torch.randint(0, num_nodes, (num_edges,))
+    relation = torch.randint(0, len(REGISTERED_RELATIONS), (num_edges,))
+    return RelationalMessagePassingEncoder.build_relation_adjacencies(
+        torch.stack([source, target]), relation, num_nodes, len(REGISTERED_RELATIONS))
+
+
+def build_settling(tolerance=1e-3, cap=60, layers=3, parameterisation="shared_low_rank"):
+    torch.manual_seed(0)
+    return RelationalMessagePassingEncoder(
+        num_graph_nodes=40, num_relation_types=len(REGISTERED_RELATIONS), node_state_dim=32,
+        num_message_passing_layers=layers, relation_parameterisation=parameterisation,
+        factorised_relation_indices=FACTORISED if parameterisation == "shared_low_rank" else None,
+        fixed_point_tolerance=tolerance, max_message_passing_rounds=cap)
+
+
+def test_the_rounds_run_to_a_fixed_point_and_report_what_they_took():
+    adjacencies = toy_graph()
+    seeds, sign_and_magnitude = torch.tensor([[0], [7]]), torch.tensor([[[-1.0, 1.0]], [[1.0, 1.0]]])
+    settling = build_settling()
+    with torch.no_grad():
+        settled = settling(seeds, sign_and_magnitude, relation_adjacencies=adjacencies)
+    assert 1 < settling.rounds_taken < 60  # it settles, and before the cap
+    assert bool(torch.isfinite(settled).all())
+    # another round moves the state by less than the tolerance, which is what settled means
+    once_more = build_settling(tolerance=None, layers=settling.rounds_taken + 1)
+    once_more.load_state_dict(settling.state_dict())
+    with torch.no_grad():
+        further = once_more(seeds, sign_and_magnitude, relation_adjacencies=adjacencies)
+    change = torch.linalg.vector_norm(further - settled) / torch.linalg.vector_norm(settled).clamp_min(1e-12)
+    assert float(change) < 1e-3
+
+
+def test_a_fixed_round_count_is_unchanged_and_still_reports_its_rounds():
+    adjacencies = toy_graph()
+    fixed = build_settling(tolerance=None, layers=3)
+    with torch.no_grad():
+        fixed(torch.tensor([[0]]), torch.tensor([[[-1.0, 1.0]]]), relation_adjacencies=adjacencies)
+    assert fixed.rounds_taken == 3
+
+
+def test_convergence_is_refused_without_shared_weights():
+    """With one set of weights per layer the depth is the parameter count, so a run to convergence would be a
+    different model at every round. The two amendments depend on each other and the constructor says so."""
+    with pytest.raises(ValueError, match="shared_low_rank"):
+        build_settling(parameterisation="per_layer_dense")
+    with pytest.raises(ValueError):
+        build_settling(tolerance=-1.0)
+    with pytest.raises(ValueError):
+        build_settling(cap=0)
+
+
+def test_the_cap_ends_a_run_that_does_not_settle():
+    encoder = build_settling(tolerance=1e-12, cap=5)  # a tolerance it cannot reach
+    with torch.no_grad():
+        encoder(torch.tensor([[0]]), torch.tensor([[[-1.0, 1.0]]]), relation_adjacencies=toy_graph())
+    assert encoder.rounds_taken == 5

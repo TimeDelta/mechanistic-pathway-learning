@@ -230,8 +230,14 @@ def relation_parameterisation_inputs(data, arguments) -> dict:
     print(f"relation transforms: one shared set at every round, {len(data.relation_types)} diagonals and "
           f"{len(present)} rank-{arguments.relation_factor_rank} factorisations, {parameters:,} parameters"
           + (f"; named but not in this graph: {missing}" if missing else ""))
-    return {"relation_parameterisation": "shared_low_rank", "factorised_relation_indices": indices,
-            "relation_factor_rank": arguments.relation_factor_rank}
+    inputs = {"relation_parameterisation": "shared_low_rank", "factorised_relation_indices": indices,
+              "relation_factor_rank": arguments.relation_factor_rank}
+    if arguments.fixed_point_tolerance is not None:  # amendment item 7, which item 8's shared weights made possible
+        inputs["fixed_point_tolerance"] = arguments.fixed_point_tolerance
+        inputs["max_message_passing_rounds"] = arguments.max_propagation_steps
+        print(f"message passing runs to a fixed point at tolerance {arguments.fixed_point_tolerance}, "
+              f"at most {arguments.max_propagation_steps} rounds")
+    return inputs
 
 
 def descriptor_treatment_inputs(data, arguments) -> dict:
@@ -1720,6 +1726,7 @@ def main() -> None:
         "clamped_probabilities": clamped_probabilities,
         "propagation_steps_taken": getattr(encoder, "propagation_steps_taken", None),
         "compartment_ph_sensitivity": getattr(encoder, "compartment_ph_sensitivity_report", None),
+        "message_passing_rounds_taken": getattr(encoder, "rounds_taken", None),
         "propagation_reached_the_cap": bool(getattr(encoder, "fixed_point_tolerance", None) is not None
                                             and getattr(encoder, "propagation_steps_taken", 0) >= getattr(encoder, "max_propagation_steps", 0)),
         "laboratory_labels": laboratory_results,

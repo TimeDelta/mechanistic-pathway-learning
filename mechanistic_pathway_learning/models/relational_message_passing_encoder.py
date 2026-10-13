@@ -105,6 +105,26 @@ PERMITTED_RELATION_FACTOR_RANKS: tuple[int, ...] = (2, 4)
 # sides' spectral norms would exceed it, so the whole transform's induced norm stays at or below the bound.
 DEFAULT_RELATION_NORM_BOUND = 0.9
 RELATION_NORM_EPSILON = 1e-12
+# Amendment item 7, for this encoder: the rounds run until the relative change of the state falls below a tolerance
+# rather than to a fixed count (the owner, 12 October 2026: "Use the convergence instead of 8 steps. 8 steps is
+# arbitrary, not physiological"; "Propagation window is settled. It goes to a fixed point to simulate steady state").
+# This needs shared weights, which is why it waited on item 8: with one set per layer the depth IS the parameter
+# count, and a run to convergence would be a different model at every round. With one shared set, bounded by
+# DEFAULT_RELATION_NORM_BOUND, the update is the same contraction each round and the limit is what the encoder means.
+# The perturbation is held on at every round for the same reason as in the linear encoder: given once, a stable
+# shared layer forgets it.
+MESSAGE_PASSING_FIXED_POINT_NORM_EPSILON = 1e-12
+# What the bound has to cover for the update to contract, which the first attempt at the fixed point got wrong and the
+# measurement caught: it ran to the cap of 60 rounds without settling. Each relation's adjacency is in-degree
+# normalised, so one relation's message is bounded by its transform, but the relations are **summed** into a node, so a
+# node fed by R relations receives up to R times that. And the self weight carried no bound at all. The update's
+# Lipschitz constant is therefore ||self|| + R * relation bound, which is above 1 for any R worth having.
+# Two things follow, and both are what the linear-response encoder already does. The summed relation messages are
+# divided by the number of relations feeding the node, so the aggregate is bounded by one transform; and the self
+# weight is spectrally bounded. The two then share relation_norm_bound, half each, so the whole update is bounded by
+# it and the iteration contracts. Without shared weights none of this arises, because there is no repeated map, so the
+# division and the self bound apply under "shared_low_rank" only and every earlier run is untouched.
+SELF_AND_RELATION_SHARE_OF_THE_BOUND = 0.5
 
 
 class RelationalMessagePassingEncoder(nn.Module):
@@ -118,6 +138,8 @@ class RelationalMessagePassingEncoder(nn.Module):
         num_descriptor_columns: int = 0,
         descriptor_columns_kept: Tensor | None = None,
         relation_parameterisation: str = "per_layer_dense",
+        fixed_point_tolerance: float | None = None,
+        max_message_passing_rounds: int = 60,
         factorised_relation_indices: "tuple[int, ...] | None" = None,
         relation_factor_rank: int = DEFAULT_RELATION_FACTOR_RANK,
         relation_norm_bound: float = DEFAULT_RELATION_NORM_BOUND,
@@ -205,6 +227,18 @@ class RelationalMessagePassingEncoder(nn.Module):
         self.num_relation_types = num_relation_types
         self.node_state_dim = node_state_dim
         self.num_message_passing_layers = num_message_passing_layers
+        if fixed_point_tolerance is not None:
+            if fixed_point_tolerance <= 0:
+                raise ValueError("fixed_point_tolerance must be positive, or None to run a fixed number of rounds")
+            if relation_parameterisation != "shared_low_rank":
+                raise ValueError("fixed_point_tolerance needs relation_parameterisation 'shared_low_rank': with one "
+                                 "set of weights per layer the depth is the parameter count, so a run to convergence "
+                                 "would be a different model at every round (amendment items 7 and 8)")
+        if max_message_passing_rounds < 1:
+            raise ValueError("max_message_passing_rounds must be at least 1")
+        self.fixed_point_tolerance = fixed_point_tolerance
+        self.max_message_passing_rounds = max_message_passing_rounds
+        self.rounds_taken = 0  # what the last call took, for the run record
         self.descriptor_treatment = descriptor_treatment
         self.num_descriptor_columns = num_descriptor_columns
         self.descriptor_projection = None
@@ -261,6 +295,7 @@ class RelationalMessagePassingEncoder(nn.Module):
                 torch.randn(num_message_passing_layers, num_relation_types, node_state_dim, node_state_dim) * scale
             )
         self.self_weight = nn.Parameter(torch.randn(parameter_layers, node_state_dim, node_state_dim) * scale)
+        self.bounds_the_update = relation_parameterisation == "shared_low_rank"
         self.layer_bias = nn.Parameter(torch.zeros(parameter_layers, node_state_dim))
         # created last and only with entry nodes, so an encoder without them draws the parameters it always drew
         self.entry_unsigned_weight, self.entry_signed_weight = None, None
@@ -286,7 +321,8 @@ class RelationalMessagePassingEncoder(nn.Module):
         if self.relation_parameterisation == "per_layer_dense":
             weight = self.relation_weight[layer_index, relation_index]
             return lambda messages: messages @ weight
-        diagonal = self.relation_norm_bound * torch.tanh(self.relation_diagonal[relation_index])
+        bound = self.relation_norm_bound * SELF_AND_RELATION_SHARE_OF_THE_BOUND
+        diagonal = bound * torch.tanh(self.relation_diagonal[relation_index])
         position = (self.factorised_relation_indices == relation_index).nonzero()
         if position.numel() == 0:
             return lambda messages: messages * diagonal
@@ -295,9 +331,21 @@ class RelationalMessagePassingEncoder(nn.Module):
         left_norm = torch.linalg.matrix_norm(left, ord=2).clamp_min(RELATION_NORM_EPSILON)
         right_norm = torch.linalg.matrix_norm(right, ord=2).clamp_min(RELATION_NORM_EPSILON)
         # the diagonal already spends up to relation_norm_bound, so the factor is held to what is left of it
-        room = (self.relation_norm_bound - diagonal.abs().max()).clamp_min(0.0)
+        room = (bound - diagonal.abs().max()).clamp_min(0.0)
         rescale = torch.clamp(room / (left_norm * right_norm), max=1.0)
         return lambda messages: messages * diagonal + ((messages @ left) @ right.transpose(0, 1)) * rescale
+
+    def bounded_self_weight(self, layer_index: int) -> Tensor:
+        """The self transform, spectrally bounded to its share of relation_norm_bound under shared weights.
+
+        Unbounded it is what stopped the first fixed-point attempt settling: a repeated map whose self term can grow
+        without limit has no fixed point to run to."""
+        weight = self.self_weight[layer_index]
+        if not self.bounds_the_update:
+            return weight
+        bound = self.relation_norm_bound * SELF_AND_RELATION_SHARE_OF_THE_BOUND
+        norm = torch.linalg.matrix_norm(weight, ord=2).clamp_min(RELATION_NORM_EPSILON)
+        return weight * torch.clamp(bound / norm, max=1.0)
 
     def relation_transform_norm_bound(self) -> float:
         """The largest induced norm any relation's transform can have, which is what makes the repeated map a
@@ -618,9 +666,11 @@ class RelationalMessagePassingEncoder(nn.Module):
             if self.entry_first_unsigned_weight is not None and self.entry_edge_source.numel():
                 # the targets enter the first layer already holding the drug's signal, as a seed on them would
                 node_major_state = node_major_state + self.entry_messages(node_major_state, None)
-        for layer_index in range(self.num_message_passing_layers):
+        rounds = self.max_message_passing_rounds if self.fixed_point_tolerance is not None else self.num_message_passing_layers
+        previous_state, self.rounds_taken = node_major_state, 0
+        for layer_index in range(rounds):
             parameter_layer = self.parameter_layer(layer_index)
-            self_messages = node_major_state @ self.self_weight[parameter_layer]
+            self_messages = node_major_state @ self.bounded_self_weight(parameter_layer)
             if member_edges:
                 self_messages = self_messages + self.conjunction_messages(node_major_state, layer_index, member_edges)
             if node_major_presence is not None and self.entry_edge_source.numel():
@@ -632,10 +682,21 @@ class RelationalMessagePassingEncoder(nn.Module):
                 aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
                 transformed = torch.cat([self.relation_transform(relation_index, parameter_layer)(aggregated[start:end]) for relation_index, start, end in segments], dim=0)
                 relation_messages = torch.zeros_like(self_messages).index_add(0, row_target.to(flattened.device), transformed)
+                if self.bounds_the_update:  # the summed relations are a mean, so the aggregate is bounded by one transform
+                    feeding = torch.zeros(self.num_graph_nodes, device=relation_messages.device).index_add(
+                        0, row_target.to(relation_messages.device), torch.ones(row_target.numel(), device=relation_messages.device))
+                    relation_messages = relation_messages / feeding.clamp_min(1.0)[:, None, None]
                 pre_activation = self_messages + relation_messages + self.layer_bias[parameter_layer]
             else:
                 pre_activation = self_messages + self.layer_bias[parameter_layer]
             node_major_state = torch.relu(pre_activation)
             if node_major_presence is not None:  # the layer bias alone would give an absent node a state
                 node_major_state = node_major_state * node_major_presence
+            self.rounds_taken += 1
+            if self.fixed_point_tolerance is not None:
+                change = torch.linalg.vector_norm(node_major_state - previous_state) / \
+                    torch.linalg.vector_norm(previous_state).clamp_min(MESSAGE_PASSING_FIXED_POINT_NORM_EPSILON)
+                if float(change) < self.fixed_point_tolerance:
+                    break
+                previous_state = node_major_state
         return node_major_state.permute(1, 0, 2).contiguous()
