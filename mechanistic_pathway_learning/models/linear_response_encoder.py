@@ -255,8 +255,18 @@ INPUT_WEIGHT_FORMS: tuple[str, ...] = ("positive", "signed")
 # because the model's deviations are in arbitrary units, and PH_SENSITIVITY_TARGET_ARGUMENT is what
 # calibrate_ph_sensitivity sets the argument's root mean square to on the batch it is given, since an uncalibrated
 # sensitivity against deviations of order 1e-11 would leave the weight at exactly 1 with no gradient.
+# The weight is a bell curve in pH units, not in [H+] (the owner, 13 October 2026: "why not use true pH on the log
+# scale so it fits nicely into equations?"). The deviation is read as a fractional change in [H+], so
+#     pH = resting pH - log10(1 + sensitivity * deviation),   w_pH = exp(-(delta pH / width) ** 2)
+# with the optimum taken as the compartment's resting state, which makes w_pH a function of delta pH alone. The log is
+# why this needs the resting values at all and why the ratios of the other cell-state quantities do not: a ratio is
+# dimensionless but says nothing about how many protons there are, and a reaction consuming H+ is limited by the count.
+# The fraction is clamped above -1 so the logarithm stays defined; a deviation that would empty the compartment of
+# protons is held just above empty rather than being allowed to produce a NaN.
 PH_SENSITIVITY_TARGET_ARGUMENT = 0.5  # root mean square of (sensitivity * deviation) after calibration
 PH_WEIGHT_EPSILON = 1e-30
+DEFAULT_PH_ACTIVITY_WIDTH = 1.0  # pH units; the half-width of a typical enzyme pH-activity curve, and a learned floor
+SMALLEST_PROTON_FRACTION = -0.999999
 BOTTLENECK_CHUNK = 32  # columns of the flattened batch-by-class gather taken at once; see class_bottleneck
 DEFAULT_FIXED_POINT_TOLERANCE = 1e-3
 DEFAULT_MAX_PROPAGATION_STEPS = 60
@@ -530,7 +540,12 @@ class LinearResponseEncoder(nn.Module):
             self.register_buffer("ph_proton_node_index", ph_proton_node_index.long(), persistent=False)
             self.register_buffer("ph_compartment_of_node", ph_compartment_of_node.long(), persistent=False)
             self.log_ph_sensitivity = nn.Parameter(torch.zeros(ph_proton_node_index.shape[0]))
+            # the half-width of each compartment's pH-activity curve, in pH units; one per compartment and learned,
+            # because no per-reaction pH optimum exists at the scale of this graph
+            self.log_ph_activity_width = nn.Parameter(
+                torch.full((ph_proton_node_index.shape[0],), math.log(DEFAULT_PH_ACTIVITY_WIDTH)))
             self.ph_sensitivity_calibrated = False
+            self.compartment_ph_sensitivity_report: dict[str, float] | None = None
         self.class_bottleneck_cache: dict[tuple[int, ...], Tensor] = {}  # seeds -> [N, K]; see cached_class_bottleneck
         self.damping = damping
         if cross_relation_aggregator not in CROSS_RELATION_AGGREGATORS:
@@ -734,13 +749,21 @@ class LinearResponseEncoder(nn.Module):
         """[N, B, C] multiplier from the settled proton deviation of each node's compartment, 1 where a node has none.
 
         state is the settled response, node-major. The deviation is read per channel, so each cell class carries its own
-        proton balance. Even in the deviation, so a gain-of-function and a loss-of-function take the same weight and the
-        response of one stays the exact negative of the other; bounded in (0, 1], so it cannot raise a norm; and applied
-        after the fixed point, so the contraction is untouched. It does break positive homogeneity, which is registered.
+        proton balance, and it is taken as a fractional change in [H+] so that the shift in pH is its negative base-ten
+        logarithm (see PH_SENSITIVITY_TARGET_ARGUMENT above). Bounded in (0, 1], so it cannot raise a norm, and applied
+        after the fixed point, so the contraction is untouched.
+
+        One property is weaker on the log scale than it was on the linear one, and it is the registered cost. The
+        linear form was even in the deviation, so a gain-of-function was the exact negative of a loss-of-function. A
+        pH shift is not even: acidifying by a given fraction and alkalinising by it move pH by different amounts,
+        which is what the logarithm is for and is the physiology. So a gain and a loss now take different weights at a
+        node whose compartment the perturbation moves, and the two stop being exact negatives there. Positive
+        homogeneity was already broken by the linear form.
         """
         deviation = state[self.ph_proton_node_index]  # [compartments, B, C]
-        argument = torch.exp(self.log_ph_sensitivity)[:, None, None] * deviation
-        per_compartment = torch.exp(-(argument ** 2))
+        fraction = torch.exp(self.log_ph_sensitivity)[:, None, None] * deviation  # the fractional change in [H+]
+        change_in_ph = -torch.log10(torch.clamp(1.0 + fraction, min=1.0 + SMALLEST_PROTON_FRACTION))
+        per_compartment = torch.exp(-(change_in_ph / torch.exp(self.log_ph_activity_width)[:, None, None]) ** 2)
         ones = torch.ones_like(per_compartment[:1])
         with_none = torch.cat([per_compartment, ones], dim=0)  # the last row is the weight of a node in no compartment
         has_none = torch.full_like(self.ph_compartment_of_node, per_compartment.shape[0])
@@ -763,8 +786,10 @@ class LinearResponseEncoder(nn.Module):
             self.log_ph_sensitivity[reached] = torch.log(PH_SENSITIVITY_TARGET_ARGUMENT / root_mean_square[reached])
             self.ph_sensitivity_calibrated = True
             names = self.ph_compartment_names or [str(index) for index in range(len(root_mean_square))]
-            return {name: float(torch.exp(self.log_ph_sensitivity[index]))
-                    for index, name in enumerate(names) if bool(reached[index])}
+            self.compartment_ph_sensitivity_report = {
+                name: float(torch.exp(self.log_ph_sensitivity[index]))
+                for index, name in enumerate(names) if bool(reached[index])}
+            return self.compartment_ph_sensitivity_report
 
     def injection_weights(self) -> Tensor:
         """[C]: the scale of the perturbation in each channel, positive under input_weights "positive"."""

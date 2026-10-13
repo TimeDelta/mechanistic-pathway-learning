@@ -969,13 +969,35 @@ def test_the_ph_weight_is_one_where_a_node_has_no_compartment_and_falls_with_the
     assert float(large_weight[1].max()) < float(small_weight[1].max())
 
 
-def test_the_ph_weight_keeps_a_gain_the_exact_negative_of_a_loss():
-    """exp(-(s * d) ** 2) is even in the deviation, so flipping the perturbation flips the response and not the weight."""
-    encoder = build_ph_encoder(sensitivity=1e5)
+def test_the_log_scale_costs_the_exact_negative_and_that_is_the_physiology():
+    """The owner, 13 October 2026: "why not use true pH on the log scale so it fits nicely into equations?" A pH shift
+    is not even in the deviation - acidifying by a fraction and alkalinising by it move pH by different amounts - so a
+    gain-of-function stops being the exact negative of a loss-of-function where the compartment moves, which the
+    previous linear form preserved. Outside the compartment the two are still exact negatives."""
+    encoder = build_ph_encoder(sensitivity=1.0)
     with torch.no_grad():
         raised = encoder.response(torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]]))
         lowered = encoder.response(torch.tensor([[0]]), torch.tensor([[[-1.0, 1.0]]]))
-    assert torch.allclose(raised, -lowered, atol=1e-12)
+    assert torch.allclose(raised[0, 0], -lowered[0, 0], atol=1e-6)  # node 0 is in no compartment
+    assert not torch.allclose(raised[0, 1], -lowered[0, 1], atol=1e-6)  # node 1 is, and its weight differs
+    # acidifying costs more throughput than alkalinising by the same fraction, since -log10(1 + x) is steeper below 0
+    acidified = encoder.compartment_ph_weight(raised.permute(1, 0, 2))[1]
+    alkalinised = encoder.compartment_ph_weight(lowered.permute(1, 0, 2))[1]
+    assert float(acidified.min()) != float(alkalinised.min())
+
+
+def test_the_resting_ph_values_cover_every_compartment_the_graph_names():
+    """The constants the log scale needs, with their provenance separated: a value read from the review and a value
+    reasoned where the review has none."""
+    from mechanistic_pathway_learning.graph.compartment_resting_ph import RESTING_PH_BY_COMPARTMENT, resting_ph
+
+    assert resting_ph("c") == 7.2 and resting_ph("l") == 4.7 and resting_ph("m") == 8.0
+    assert resting_ph("c;m") is None  # a transport reaction is in no single compartment
+    assert resting_ph("not a compartment") is None
+    assert all(4.0 <= value <= 8.5 for value, _ in RESTING_PH_BY_COMPARTMENT.values())
+    reasoned = {letter for letter, (_, why) in RESTING_PH_BY_COMPARTMENT.items() if why.startswith("reasoned")}
+    assert reasoned == {"e", "i", "v"}  # the three the review does not cover, each with its reasoning recorded
+    assert all(why.startswith(("review", "reasoned")) for _, why in RESTING_PH_BY_COMPARTMENT.values())
 
 
 def test_the_ph_weight_breaks_positive_homogeneity_which_is_the_registered_cost():

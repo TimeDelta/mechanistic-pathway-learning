@@ -49,7 +49,8 @@ from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import (  # n
 
 
 def rederived_seeds(data, graph_directory: Path, gtopdb_directory: Path, chembl_directory: Path,
-                    subunits_needed: int, narrowing_only: bool = False) -> tuple[dict[str, list[int]], dict[str, int]]:
+                    subunits_needed: int, narrowing_only: bool = False,
+                    brain_expressed_only: bool = False) -> tuple[dict[str, list[int]], dict[str, int]]:
     """perturbation id -> the node indices its re-derived targets map to, and how many drugs changed.
 
     A gene the graph has no protein node for is dropped, as it is today; a drug with no GtoPdb row, or none the rule
@@ -63,6 +64,10 @@ def rederived_seeds(data, graph_directory: Path, gtopdb_directory: Path, chembl_
     chembl_rows = chembl_rows_per_drug(drugs, chembl_directory)
     node_of_gene = {str(node_id).split(":", 1)[1]: index for index, node_id in enumerate(data.node_ids)
                     if str(node_id).startswith("PROTEIN:")}
+    # the graph's own brain-expression flag, which amendment item 14's part (b) reads for drug admission
+    nodes_table = pd.read_parquet(graph_directory / "nodes.parquet")
+    brain_expressed_genes = {str(symbol) for symbol, expressed in zip(nodes_table.gene_symbol, nodes_table.brain_expressed)
+                             if bool(expressed)}
     seeds_of_drug, changed = {}, 0
     for drug in drugs:
         rows = per_drug.get(drug)
@@ -74,6 +79,9 @@ def rederived_seeds(data, graph_directory: Path, gtopdb_directory: Path, chembl_
         signs, reasons = replace_complex_rows(chembl_rows[drug], usable, subunits_needed=subunits_needed)
         if narrowing_only:  # keep GtoPdb's narrowing of a complex, drop its targets outside every ChEMBL row
             signs = {gene: sign for gene, sign in signs.items() if reasons[gene] != "gtopdb, outside every chembl row"}
+        elif brain_expressed_only:  # additions restricted to brain-expressed targets
+            signs = {gene: sign for gene, sign in signs.items()
+                     if reasons[gene] != "gtopdb, outside every chembl row" or gene in brain_expressed_genes}
         nodes = sorted({node_of_gene[gene] for gene in signs if gene in node_of_gene})
         if nodes:
             seeds_of_drug[drug] = nodes
@@ -119,12 +127,13 @@ def main() -> None:
 
     record = {"graph_dir": str(arguments.graph_dir), "evidence_dir": str(arguments.evidence_dir), "arms": {}}
     record["arms"]["as built (ChEMBL)"] = summarise(scheme(data, keep, kept_positive))
-    for label, subunits_needed, narrowing_only in (
-            ("re-derived, narrowing only (no GtoPdb target outside a ChEMBL row)", 2, True),
-            ("re-derived, narrowing and additions", 2, False),
-            ("re-derived, narrowing on one subunit and additions (the rejected rule)", 1, False)):
+    for label, subunits_needed, narrowing_only, brain_only in (
+            ("re-derived, narrowing only (no GtoPdb target outside a ChEMBL row)", 2, True, False),
+            ("re-derived, narrowing and brain-expressed additions only", 2, False, True),
+            ("re-derived, narrowing and every addition", 2, False, False),
+            ("re-derived, narrowing on one subunit and every addition (the rejected rule)", 1, False, False)):
         seeds_of_drug, changed = rederived_seeds(data, arguments.graph_dir, arguments.gtopdb_dir,
-                                                 arguments.chembl_dir, subunits_needed, narrowing_only)
+                                                 arguments.chembl_dir, subunits_needed, narrowing_only, brain_only)
         reading = summarise(reading_with_seeds(data, keep, kept_positive, seeds_of_drug))
         reading["drugs_whose_seeds_changed"] = changed
         record["arms"][label] = reading
