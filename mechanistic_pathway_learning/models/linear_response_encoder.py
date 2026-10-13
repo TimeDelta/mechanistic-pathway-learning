@@ -99,7 +99,11 @@ import math
 import torch
 from torch import Tensor, nn
 
-from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_unit_mask
+from mechanistic_pathway_learning.models.descriptor_treatments import (
+    check_descriptor_treatment,
+    features_without_descriptors,
+    seed_unit_mask,
+)
 
 SUBSTRATE_RELATION = "substrate_of"
 PRODUCT_RELATION = "product_of"
@@ -168,6 +172,15 @@ MIXTURE_STATISTICS = ("mean", "signed_maximum_magnitude", "median", "signed_stan
 # never return; entmax with the exponent between one and two interpolates, and MIXTURE_EXPONENT_SPARSEMAX
 # names the endpoint rather than hard-coding it.
 MIXTURE_WEIGHTINGS = ("softmax", "sparsemax")
+# Running to a fixed point (amendment item 7 of 12 October 2026). The tolerance is on the relative change of the state
+# between rounds; 1e-3 is the registered value. The cap exists so the loop terminates even where the update is not a
+# contraction in practice, and 60 is chosen from the measurement rather than for roundness: at the encoder's contraction
+# bound of 0.9 the structural propagation reaches 1e-3 at 23 rounds, and at gains of 0.7 and 0.5 at 14 and 11
+# (docs/label_source_review.md 17.2), so 60 leaves room for a slower graph while still ending. A run that reaches the
+# cap has not settled, and propagation_steps_taken says so in the run record.
+DEFAULT_FIXED_POINT_TOLERANCE = 1e-3
+DEFAULT_MAX_PROPAGATION_STEPS = 60
+FIXED_POINT_NORM_EPSILON = 1e-12
 # how the signed adjacency is scaled so the iteration contracts: "in_degree" divides each entry by the
 # destination's in-degree under its relation times the number of relations feeding it, which averages and so
 # decays the response steeply with path length; "spectral" divides every entry by one global constant, the
@@ -336,6 +349,8 @@ class LinearResponseEncoder(nn.Module):
         non_propagating_nodes: Tensor | None = None,
         cofactor_edges: Tensor | None = None,
         num_propagation_steps: int = 8,
+        fixed_point_tolerance: float | None = None,
+        max_propagation_steps: int = DEFAULT_MAX_PROPAGATION_STEPS,
         propagation_channels: int = 4,
         response_scale: str = "linear",
         damping: float = 0.5,
@@ -397,6 +412,13 @@ class LinearResponseEncoder(nn.Module):
         self.num_graph_nodes = num_graph_nodes
         self.node_state_dim = node_state_dim
         self.num_propagation_steps = num_propagation_steps
+        if fixed_point_tolerance is not None and fixed_point_tolerance <= 0:
+            raise ValueError("fixed_point_tolerance must be positive, or None to run a fixed number of rounds")
+        if max_propagation_steps < 1:
+            raise ValueError("max_propagation_steps must be at least 1")
+        self.fixed_point_tolerance = fixed_point_tolerance
+        self.max_propagation_steps = max_propagation_steps
+        self.propagation_steps_taken = 0  # the rounds the last call took, for the run record
         self.damping = damping
         if cross_relation_aggregator not in CROSS_RELATION_AGGREGATORS:
             raise ValueError(f"cross_relation_aggregator must be one of {CROSS_RELATION_AGGREGATORS}, not {cross_relation_aggregator!r}")
@@ -581,7 +603,19 @@ class LinearResponseEncoder(nn.Module):
         return field.scatter_add(1, index, injected)
 
     def response(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, num_steps: int | None = None) -> Tensor:
-        """The propagated response h after num_steps (default num_propagation_steps), [B, N, C], before expansion and gating."""
+        """The propagated response h, [B, N, C], before expansion and gating.
+
+        With fixed_point_tolerance set (amendment item 7 of 12 October 2026; the owner: "Use the convergence instead of
+        8 steps. 8 steps is arbitrary, not physiological") the iteration runs until the relative change of the state
+        falls below that tolerance, to at most max_propagation_steps rounds, and the number of rounds taken is kept in
+        propagation_steps_taken for the run record. Otherwise it runs num_propagation_steps rounds, which is what every
+        run before that date did. num_steps overrides both, for the measurements that read the state at a chosen round.
+
+        The relative change is ||h(t+1) - h(t)|| / max(||h(t)||, eps) in the Frobenius norm over the whole batch, so one
+        number decides for the batch and a perturbation with a large field cannot be declared settled by a neighbour with
+        a small one. The update is a contraction by construction (the gains are bounded and the adjacency is normalised),
+        without which there is no fixed point to reach; the bound is what makes the stopping rule a statement about the
+        steady state rather than about the arithmetic running out."""
         sustained = self.sustained_input(perturbation_node_index, perturbation_sign_and_magnitude)
         batch_size = sustained.shape[0]
         gain = self.relation_gain()  # [R, C]
@@ -591,13 +625,17 @@ class LinearResponseEncoder(nn.Module):
         if node_weight is not None:
             node_major_input = node_major_input * node_weight  # a class that does not express the perturbed node does not feel it there
         state = node_major_input  # h(0) = u, so after k steps the response reaches k edges from the perturbed nodes
+        previous_state = state
         presence = self.present_nodes(perturbation_node_index)  # [N, B, 1], or None without entry nodes
         entry_edge_gain = None
         if self.entry_gain_logit is not None and self.entry_edge_source.numel():
             # sign * weight * gain per entry edge and channel; the gain is positive, so the sign is the mechanism's
             entry_edge_gain = (self.entry_edge_signed_weight[:, None] * torch.sigmoid(self.entry_gain_logit)[self.entry_edge_relation])[:, None, :]  # [E, 1, C]
         row_gain = gain[self.row_relation_index][:, None, :] if self.cross_relation_mixture is None else None  # [K, 1, C]
-        for _ in range(self.num_propagation_steps if num_steps is None else num_steps):
+        rounds = (self.num_propagation_steps if num_steps is None else num_steps) if (num_steps is not None or self.fixed_point_tolerance is None) \
+            else self.max_propagation_steps
+        steps_taken = 0
+        for _ in range(rounds):
             if row_gain is not None:  # the sum over relations of gain times the relation's messages, over the rows that hold an edge
                 row_messages = torch.sparse.mm(self.compressed_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
                 relation_messages = torch.zeros_like(state).index_add(0, self.row_target_index, row_messages.view(-1, batch_size, self.propagation_channels) * row_gain)
@@ -614,6 +652,13 @@ class LinearResponseEncoder(nn.Module):
                 state = self.share_extracellular_pool(state)
             if presence is not None:  # an entry node that is not a seed is absent: it holds nothing and so sends nothing
                 state = state * presence
+            steps_taken += 1
+            if self.fixed_point_tolerance is not None and num_steps is None:
+                change = torch.linalg.vector_norm(state - previous_state) / torch.linalg.vector_norm(previous_state).clamp_min(FIXED_POINT_NORM_EPSILON)
+                if float(change) < self.fixed_point_tolerance:
+                    break
+            previous_state = state
+        self.propagation_steps_taken = steps_taken
         return state.permute(1, 0, 2)
 
     def present_nodes(self, perturbation_node_index: Tensor) -> Tensor | None:
@@ -635,7 +680,7 @@ class LinearResponseEncoder(nn.Module):
         replace = self.extracellular_pool_nodes[:, None, None, None] & self.shared_pool_classes[None, None, :, None]
         return torch.where(replace, pooled_mean, by_class).reshape(num_nodes, batch_size, -1)
 
-    def forward(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
+    def forward(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:
         """The gated response field [B, N, D]; relation_adjacencies is accepted for the message passing signature and
         ignored, since the signed adjacency is built once from the edges given at construction."""
         gate = self.node_gate(perturbation_node_index)  # [1, N, D], or [B, N, D] under seed_masked
@@ -662,6 +707,6 @@ class LinearResponseEncoder(nn.Module):
         seed_rows = seed_unit_mask(perturbation_node_index, self.num_graph_nodes, self.seed_mask_partner_index)
         return torch.where(seed_rows[:, :, None], gate_without_descriptors, gate)
 
-    def perturbation_difference_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:  # noqa: ARG002
+    def perturbation_difference_field(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:
         """The response is linear in the input, so the unperturbed field is zero and the difference field is the field."""
         return self.forward(perturbation_node_index, perturbation_sign_and_magnitude)

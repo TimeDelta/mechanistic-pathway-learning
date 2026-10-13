@@ -131,3 +131,29 @@ def test_a_negative_loss_weight_is_refused_because_it_inverts_the_gradient() -> 
     refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.0, placebo_negative_weight=0.0))
     refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.2, placebo_negative_weight=None))
     refuse_a_negative_loss_weight(SimpleNamespace(negative_weight=0.2, placebo_negative_weight=0.5))
+
+
+def test_the_clamp_report_names_a_labelled_positive_that_carries_no_gradient():
+    """Amendment item 19 of 12 October 2026: the clamp stays off and every development run reports whether a labelled
+    positive sits below it, because the evidence that raised the question was measured on a head the family no longer
+    holds."""
+    from types import SimpleNamespace
+
+    from experiments.run_main_model import clamped_probability_report
+    from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON
+
+    outcomes = np.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+    data = SimpleNamespace(outcomes=outcomes)
+    indices = np.array([0, 1, 2])
+    # row 0's positive is below the clamp, row 1's is not, and row 2's negative is above it
+    predictions = np.array([[PROBABILITY_EPSILON / 10, 0.5], [0.4, 0.5], [1.0 - PROBABILITY_EPSILON / 10, 0.9]])
+    report = clamped_probability_report(predictions, data, indices, None)
+    assert report["below_the_clamp"] == 1 and report["above_the_clamp"] == 1
+    assert report["labelled_positives_below_the_clamp"] == 1
+    assert report["labelled_negatives_above_the_clamp"] == 1
+    assert report["reopens_bce_in_log_space"] is True
+    # a pair the label selection set aside is not a labelled positive, so it does not reopen the option
+    masked = np.array([[False, True], [True, True], [True, True]])
+    quiet = clamped_probability_report(predictions, data, indices, masked)
+    assert quiet["below_the_clamp"] == 1 and quiet["labelled_positives_below_the_clamp"] == 0
+    assert quiet["reopens_bce_in_log_space"] is False

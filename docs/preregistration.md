@@ -1267,6 +1267,25 @@ labels (user: "That's fine"): their statement is that nothing is expected, and a
 symptom does not occur, which no source states. Under `--equal-drug-shares` a combination shares its drug's loss slot,
 so a drug with a statement does not take two drugs' share.
 
+**18. Multiplicity: H1 first, then H2 and P1 by Holm at one-sided 0.025 per model** (user, 12 October 2026, on the
+three ways set out in docs/pathway_test_options.md: "Accepted"). The chance of a false claim stays at most 0.025 per
+model and at most 0.05 across the two. H2 therefore needs p below 0.0125 unless P1 also passes. P1 is read only behind
+the two gates, G1 (stability) and G2 (faithfulness), which are preconditions and not tests at a level: the claim passes
+only if G1, G2 and the Holm-adjusted test all pass, and a precondition can only lower the chance of passing, so the
+conjunction keeps the level. The option this rejects is P1 on its own at 0.025, which would let the chance that at least
+one of the four claims (two models x H1 and P1) passes by luck reach 0.10. Registered before any confirmatory module
+exists, which is the condition docs/pathway_test_options.md set for fixing it at all.
+
+**19. The probability clamp stays off, and is checked on the development runs** (user, 12 October 2026: "Leave the
+clamp off for now but make sure you check for the issue in the dev runs"). The training loss keeps the logarithms of P
+clamped to [1e-6, 1 - 1e-6], so a pair beyond the clamp has a constant loss and no gradient, and `--bce-in-log-space`
+is not taken. The evidence that motivated it was measured on the sigmoid head, which is no longer in the confirmatory
+family (user: "No sigmoid head will be used"), so for the noisy-OR head the clamp is **untested** rather than known to
+be harmless, and that is why the check is registered rather than the option. Every development run reports the number
+of its test probabilities below 1e-6 and above 1 - 1e-6 and how many labelled positives and negatives are among them
+(`clamped_probabilities` in the run record). If labelled positives sit below the clamp in any development run, the
+option is reconsidered before the confirmatory runs and not after.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the

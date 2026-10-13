@@ -2,10 +2,14 @@
 import pytest
 import torch
 
-from mechanistic_pathway_learning.models.linear_response_encoder import (CrossRelationAggregator, LinearResponseEncoder,
-                                                                           project_onto_simplex,
-                                                                           MIXTURE_STATISTICS, MIXTURE_WEIGHTINGS,
-                                                                           NORMALISATIONS)
+from mechanistic_pathway_learning.models.linear_response_encoder import (
+    MIXTURE_STATISTICS,
+    MIXTURE_WEIGHTINGS,
+    NORMALISATIONS,
+    CrossRelationAggregator,
+    LinearResponseEncoder,
+    project_onto_simplex,
+)
 
 # gene 0 catalyses reaction 1, which turns substrate 2 into product 3; product 3 is the substrate of reaction 4,
 # which makes product 5
@@ -632,3 +636,51 @@ def test_edge_wise_propagation_equals_the_stacked_product_with_gradients():
         for edge_wise_gradient, reference_gradient in zip(edge_wise_gradients, reference_gradients):
             if reference_gradient is not None:
                 assert torch.allclose(edge_wise_gradient, reference_gradient, atol=1e-5, rtol=1e-4)
+
+
+def test_the_propagation_runs_to_a_fixed_point_and_reports_the_rounds_it_took():
+    """Amendment item 7 of 12 October 2026: both encoders iterate until the relative change falls below 1e-3, in place
+    of the fixed eight steps (the owner: "8 steps is arbitrary, not physiological")."""
+    from mechanistic_pathway_learning.models.linear_response_encoder import (
+        DEFAULT_FIXED_POINT_TOLERANCE,
+        LinearResponseEncoder,
+    )
+
+    def encoder_with(**overrides):
+        torch.manual_seed(0)
+        return LinearResponseEncoder(
+            num_graph_nodes=6, relation_types=["activates"],
+            edge_source=torch.tensor([0, 1, 2, 3, 4]), edge_target=torch.tensor([1, 2, 3, 4, 5]),
+            edge_relation=torch.zeros(5, dtype=torch.long), edge_sign=torch.ones(5),
+            node_features=torch.eye(6), node_state_dim=4, **overrides)
+
+    node_index = torch.tensor([[0]])
+    sign_and_magnitude = torch.tensor([[[1.0, 1.0]]])
+    fixed = encoder_with(num_propagation_steps=8)
+    with torch.no_grad():
+        fixed.response(node_index, sign_and_magnitude)
+    assert fixed.propagation_steps_taken == 8  # the registered count, unchanged without a tolerance
+
+    settling = encoder_with(fixed_point_tolerance=DEFAULT_FIXED_POINT_TOLERANCE, max_propagation_steps=60)
+    with torch.no_grad():
+        settled = settling.response(node_index, sign_and_magnitude)
+    assert 1 < settling.propagation_steps_taken < 60  # it settles, and does so before the cap
+    # another round changes the state by less than the tolerance, which is what settled means
+    with torch.no_grad():
+        one_more = settling.response(node_index, sign_and_magnitude, num_steps=settling.propagation_steps_taken + 1)
+    change = torch.linalg.vector_norm(one_more - settled) / torch.linalg.vector_norm(settled)
+    assert float(change) < DEFAULT_FIXED_POINT_TOLERANCE
+
+    # a cap of one round stops after one, so a graph that does not settle still terminates
+    capped = encoder_with(fixed_point_tolerance=DEFAULT_FIXED_POINT_TOLERANCE, max_propagation_steps=1)
+    with torch.no_grad():
+        capped.response(node_index, sign_and_magnitude)
+    assert capped.propagation_steps_taken == 1
+    # num_steps overrides both, for the measurements that read a chosen round
+    with torch.no_grad():
+        settling.response(node_index, sign_and_magnitude, num_steps=3)
+    assert settling.propagation_steps_taken == 3
+    with pytest.raises(ValueError, match="fixed_point_tolerance must be positive"):
+        encoder_with(fixed_point_tolerance=0.0)
+    with pytest.raises(ValueError, match="max_propagation_steps must be at least 1"):
+        encoder_with(fixed_point_tolerance=1e-3, max_propagation_steps=0)

@@ -29,22 +29,33 @@ from __future__ import annotations
 
 import argparse
 import copy
-from collections import Counter
 import hashlib
 import json
 import os
 import signal
 import subprocess
 import time
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.metrics import average_precision_score, roc_auc_score
 
-from mechanistic_pathway_learning.evaluation.experiment_data import DRUG_ENTRY_MODES, load_experiment_data, read_lockbox, restrict_to_perturbations
-from mechanistic_pathway_learning.evaluation.negative_controls import degree_stratified_row_permutation, duplicate_edge_count, fast_degree_preserving_rewiring, reciprocated_relations
+from mechanistic_pathway_learning.evaluation.experiment_data import (
+    DRUG_ENTRY_MODES,
+    load_experiment_data,
+    read_lockbox,
+    restrict_to_perturbations,
+)
+from mechanistic_pathway_learning.evaluation.negative_controls import (
+    degree_stratified_row_permutation,
+    duplicate_edge_count,
+    fast_degree_preserving_rewiring,
+    reciprocated_relations,
+)
 from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import (
     assign_grouped_folds,
     perturbations_anchored_in_module,
@@ -63,38 +74,45 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scorable_symptom,
     scored_rows,
 )
-from sklearn.metrics import average_precision_score, roc_auc_score
-from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
-from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
-from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
-from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
+from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE, DRUG_ROW_KINDS
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
-from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE, DRUG_ROW_KINDS
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
+from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
+from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
+from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
+from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
+from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CROSS_RELATION_AGGREGATORS,
+    DEFAULT_MAX_PROPAGATION_STEPS,
     EDGE_SIGNS,
-    RELATION_GAINS,
-    LinearResponseEncoder,
     MIXTURE_WEIGHTINGS,
     NORMALISATIONS,
+    RELATION_GAINS,
+    LinearResponseEncoder,
 )
-from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
 from mechanistic_pathway_learning.models.noisy_or_pathway_module_model import NoisyOrPathwayModuleHead
-from mechanistic_pathway_learning.models.relational_message_passing_encoder import (CONJUNCTION_AGGREGATIONS, DEFAULT_CONJUNCTION_RELATIONS,
-                                                                                      DEFAULT_SOFT_MINIMUM_TEMPERATURE,
-                                                                                      RelationalMessagePassingEncoder)
-from mechanistic_pathway_learning.models.soft_constraint_losses import PROBABILITY_EPSILON, equal_drug_loss_shares, evidence_weighted_binary_cross_entropy
+from mechanistic_pathway_learning.models.relational_message_passing_encoder import (
+    CONJUNCTION_AGGREGATIONS,
+    DEFAULT_CONJUNCTION_RELATIONS,
+    DEFAULT_SOFT_MINIMUM_TEMPERATURE,
+    RelationalMessagePassingEncoder,
+)
+from mechanistic_pathway_learning.models.soft_constraint_losses import (
+    PROBABILITY_EPSILON,
+    equal_drug_loss_shares,
+    evidence_weighted_binary_cross_entropy,
+)
 
 MESSAGE_PASSING_EDGE_SIGNS: tuple[str, ...] = ("graph", "unsigned")
 CHECKPOINT_REQUESTED = False
 MINIMUM_POSITIVES_TO_SCORE = 5
 
 
-def request_checkpoint(signal_number, frame) -> None:  # noqa: ARG001
+def request_checkpoint(signal_number, frame) -> None:
     global CHECKPOINT_REQUESTED
     CHECKPOINT_REQUESTED = True
 
@@ -133,7 +151,7 @@ def evaluate_laboratory_labels(encoder, readout, label_index, data, indices: np.
         return {"labels": 0}
     scores, directions = np.concatenate(scores), np.concatenate(directions)
     reached = scores != 0
-    return {"labels": int(len(scores)), "reached": int(reached.sum()),
+    return {"labels": len(scores), "reached": int(reached.sum()),
             "sign_agreement": float(np.mean(np.sign(scores[reached]) == directions[reached])) if reached.any() else None,
             "majority_direction_rate": float(np.mean(directions == 1)),
             "auroc": float(roc_auc_score(directions == 1, scores)) if len(set(directions.tolist())) == 2 else None}
@@ -258,7 +276,10 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
     (graph/rewired_expression_features.py), so a rewired run's node inputs follow its wiring (the user's decision of
     8 October 2026). Gene, metabolite and protein-entity rows and the intrinsic blocks stay as they are."""
     from mechanistic_pathway_learning.graph.rewired_expression_features import (
-        rewired_gene_reaction_rules, rewired_reaction_brain_block, rewired_reaction_cell_class_weights)
+        rewired_gene_reaction_rules,
+        rewired_reaction_brain_block,
+        rewired_reaction_cell_class_weights,
+    )
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
     if list(nodes.node_id) != list(data.node_ids):
         raise ValueError(f"{arguments.graph_dir}/nodes.parquet is not in the node order of the loaded graph")
@@ -420,6 +441,8 @@ def build_models(data, arguments, device):
                                         torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_sign), torch.as_tensor(node_feature_matrix(data, arguments)),
                                         arguments.node_state_dim, non_propagating_nodes=torch.as_tensor(data.is_currency), cofactor_edges=cofactor_edges,
                                         num_propagation_steps=arguments.propagation_steps,
+                                        fixed_point_tolerance=arguments.fixed_point_tolerance,
+                                        max_propagation_steps=arguments.max_propagation_steps,
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
@@ -593,6 +616,28 @@ def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, freq
         weights = equal_drug_loss_shares(weights, positive, np.array([kind in DRUG_ROW_KINDS for kind in data.perturbation_types]), fit_indices,
                                          drug_loss_slots(data))
     return weights
+
+
+def clamped_probability_report(predictions: np.ndarray, data, indices: np.ndarray, label_mask) -> dict:
+    """How many test probabilities sit beyond the loss's clamp, and how many labelled pairs are among them.
+
+    Registered as item 19 of the amendment of 12 October 2026 (the owner: "Leave the clamp off for now but make sure
+    you check for the issue in the dev runs"). The training loss takes the logarithm of P clamped to
+    [PROBABILITY_EPSILON, 1 - PROBABILITY_EPSILON], so a pair beyond the clamp has a constant loss and no gradient: a
+    positive below it cannot be pulled back. The evidence that raised this was measured on the sigmoid head, which the
+    confirmatory family no longer holds, so for the noisy-OR head the clamp is untested rather than harmless. A
+    labelled positive below the clamp in any development run is the finding that reopens --bce-in-log-space.
+    """
+    probabilities = np.asarray(predictions, dtype=float)
+    outcomes = np.asarray(data.outcomes)[indices] > 0
+    labelled = np.ones_like(outcomes, dtype=bool) if label_mask is None else np.asarray(label_mask)[indices].astype(bool)
+    below, above = probabilities < PROBABILITY_EPSILON, probabilities > 1.0 - PROBABILITY_EPSILON
+    return {"epsilon": PROBABILITY_EPSILON, "pairs": int(probabilities.size),
+            "below_the_clamp": int(below.sum()), "above_the_clamp": int(above.sum()),
+            "share_below_the_clamp": round(float(below.mean()), 6),
+            "labelled_positives_below_the_clamp": int((below & outcomes & labelled).sum()),
+            "labelled_negatives_above_the_clamp": int((above & ~outcomes & labelled).sum()),
+            "reopens_bce_in_log_space": bool((below & outcomes & labelled).any())}
 
 
 def message_passing_adjacencies(data, edge_signs: str) -> list:
@@ -877,7 +922,7 @@ def time_training_steps(data, encoder, head, optimizer, train_indices, validatio
     steps_per_epoch = int(np.ceil(len(train_indices) / arguments.batch_size))
     prediction_batches = int(np.ceil(len(validation_indices) / arguments.batch_size))
     print(json.dumps({"timing_batches": arguments.timing_batches, "first_step_seconds": round(step_seconds[0], 2), "median_step_seconds": round(steady, 2),
-                      "prediction_batch_seconds": round(prediction_seconds, 2), "train_perturbations": int(len(train_indices)), "steps_per_epoch": steps_per_epoch,
+                      "prediction_batch_seconds": round(prediction_seconds, 2), "train_perturbations": len(train_indices), "steps_per_epoch": steps_per_epoch,
                       "epoch_minutes_estimate": round((steady * steps_per_epoch + prediction_seconds * prediction_batches) / 60.0, 1),
                       "torch_threads": torch.get_num_threads()}))
 
@@ -981,7 +1026,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="linear-response encoder with --cell-class-weights: extracellular metabolites are one pool shared by every class but all_cells")
     parser.add_argument("--degree-offset", action="store_true",
                         help="give the head the standardised log degree of each perturbation: a degree-dependent leak (noisy-OR) or logit offset (sigmoid), so the field only has to explain what degree does not")
-    parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges)")
+    parser.add_argument("--propagation-steps", type=int, default=8, help="linear-response encoder: steps of the shared transition (the reach in edges); ignored under --fixed-point-tolerance")
+    parser.add_argument("--fixed-point-tolerance", type=float, default=None,
+                        help="run the propagation until the relative change of the state falls below this, in place of a fixed number of steps "
+                             "(amendment item 7 of 12 October 2026 registers 1e-3). Left out, the encoder takes --propagation-steps rounds, which "
+                             "reproduces every run before that date")
+    parser.add_argument("--max-propagation-steps", type=int, default=DEFAULT_MAX_PROPAGATION_STEPS,
+                        help="the cap on the rounds under --fixed-point-tolerance, so a graph that does not settle still terminates; a run that "
+                             "reaches it has not settled and the run record says so")
     parser.add_argument("--propagation-channels", type=int, default=4, help="linear-response encoder: channels propagated with their own gains (time scales), expanded linearly to --node-state-dim")
     parser.add_argument("--cofactor-relations", action="store_true",
                         help="linear-response encoder: give carrier edges (cofactor_edges.py) relations of their own, so their coupling gets learned gains")
@@ -1420,7 +1472,7 @@ def main() -> None:
         initialise_rates_at_weighted_optimum(head, data, refit_indices, label_mask, arguments, device)
         optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
         refit_state = {"epoch": 0, "next_batch_start": 0, "epoch_sums": [0.0, 0.0, 0.0], "history": [], "epochs": state["best_epoch"] + 1,
-                       "num_perturbations": int(len(refit_indices)), "code_provenance": []}
+                       "num_perturbations": len(refit_indices), "code_provenance": []}
         if arguments.resume and refit_checkpoint_path.exists():
             refit_checkpoint = torch.load(refit_checkpoint_path, map_location=device, weights_only=False)
             encoder.load_state_dict(refit_checkpoint["encoder"])
@@ -1463,6 +1515,12 @@ def main() -> None:
             print(f"early-stopped model on the test: macro AUPRC {early_stopped_scores['macro_auprc']:.3f}, micro AUPRC {early_stopped_scores['micro_auprc']:.3f}")
 
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
+    clamped_probabilities = clamped_probability_report(predictions, data, test_indices, label_mask)
+    print(f"clamped probabilities: {clamped_probabilities}")
+    if clamped_probabilities["reopens_bce_in_log_space"]:
+        print(f"warning: {clamped_probabilities['labelled_positives_below_the_clamp']} labelled positives sit below the loss's clamp of "
+              f"{PROBABILITY_EPSILON}, so they carry no gradient; amendment item 19 of 12 October 2026 asks that "
+              f"--bce-in-log-space be reconsidered before the confirmatory runs if this happens")
     test_outcomes = data.outcomes[test_indices]
     test_mask = None if label_mask is None else label_mask[test_indices]
     laboratory_results = None
@@ -1516,7 +1574,7 @@ def main() -> None:
         "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem or arguments.score_lockbox) else arguments.fold, "holdout_module": arguments.holdout_module or None,
         "holdout_subsystem": arguments.holdout_subsystem or None, "labels_permuted": bool(arguments.permute_labels), "seed": arguments.seed,
         "arguments": {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(arguments).items()},
-        "num_train": int(len(train_indices)), "num_validation": int(len(validation_indices)), "num_test": int(len(test_indices)),
+        "num_train": len(train_indices), "num_validation": len(validation_indices), "num_test": len(test_indices),
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
         "macro_auroc": float(np.mean([entry["auroc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
@@ -1534,6 +1592,10 @@ def main() -> None:
         "cell_class_weights_sha256": file_sha256(getattr(arguments, "cell_class_weights", None)),
         "label_selection": data.label_selection_summary, "label_selection_sha256": file_sha256(getattr(arguments, "label_selection", None)),
         "combined_perturbations": combined_perturbations_summary,
+        "clamped_probabilities": clamped_probabilities,
+        "propagation_steps_taken": getattr(encoder, "propagation_steps_taken", None),
+        "propagation_reached_the_cap": bool(getattr(encoder, "fixed_point_tolerance", None) is not None
+                                            and getattr(encoder, "propagation_steps_taken", 0) >= getattr(encoder, "max_propagation_steps", 0)),
         "laboratory_labels": laboratory_results,
         "lockbox": lockbox_summary, "rewiring": rewiring_summary, "refit": refit_summary,
     }
