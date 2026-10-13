@@ -1752,11 +1752,40 @@ statistics, so none of them strictly implies it. That is a thin residue to buy a
 5 seeds is 240 runs against the registered 60, four times the whole confirmatory budget for a diagnostic whose
 power runs one way, and the same arithmetic ruled out leave-one-target-out in item 25.
 
-**So the folds are registered conditionally rather than as a sweep.** The link concentration is computed for every
-module from the full-data fit, and a fold is run only for a (module, symptom) pair whose concentration passes the
-threshold set before the fit, which puts the refits in single figures rather than at 24 per model. A pair that the
-cheap statistic does not flag is not refitted, and the registration says so now so that the set cannot be chosen
-after the concentrations are seen. If no pair is flagged, no fold runs and that is the finding.
+**No threshold is registered, because none is needed** (the owner, 13 October 2026: "there's no viable principled
+way to choose instead of the threshold?"). There is, and it is the one this item should have reached first.
+
+**The readout is descriptive, so there is nothing to select.** A threshold exists only where a decision is made,
+and (b) already fixes that this item makes none: it tests no hypothesis and enters no sequence. So the link
+concentration `max_s link_ks / sum_s link_ks` is **reported for every module** beside the clustering, as a
+continuous quantity, and a reader sees which modules lean on one symptom without anyone having drawn a line. The
+threshold was an artefact of my framing the fold as a gate in an analysis that gates nothing.
+
+**Where a scale is genuinely needed, the design already produces two, and neither is a chosen number.**
+
+- **Is a concentration more than chance?** The permuted-label runs are the null. They are registered, they are run
+  for every seed, and their links are fitted to labels permuted within degree strata, so the spread of their
+  concentrations is what concentration looks like when no symptom leans on anything. This is the comparison gate G1
+  already makes for supports ("real mean above permuted").
+- **Did a module actually move when a symptom was dropped?** The five registered seeds already disagree with one
+  another about every module's support. The seed-to-seed Jaccard spread is therefore the scale: a support that
+  moves less under dropping a symptom than it moves under changing the seed has not moved. This is the same
+  principle as the registered floor rule, which sets each floor from the half-width of that comparison's own
+  bootstrap interval rather than from a number someone picked, and it answers the power objection above directly
+  instead of working around it.
+
+**A third route exists and is not taken.** The leave-one-symptom-out effect can be approximated by an influence
+function rather than by refitting, which would give all 24 symptoms against every module at the cost of one set of
+Hessian-vector products and no folds at all. It is not registered, because the approximation is least trustworthy
+in the setting this model is in: (basu2021influence) reports that "influence estimates are fairly accurate for
+shallow networks, while for deeper networks the estimates are often erroneous", and the quantity wanted here runs
+through the encoder rather than the head alone, in a model with hard-concrete gates and a stopping rule that halts
+before convergence. It is recorded as the route to take if the joint reading is ever wanted at scale, and it would
+need checking against real refits before any of it was believed.
+
+**What runs, then.** The concentrations and their permuted-label null for every module, which cost nothing beyond
+runs already registered. Refits only if the owner wants the joint reading for a particular module, read against
+the seed spread. The sweep of 24 folds per model is not registered.
 
 **Freezing the output matrix is what makes the folds comparable, and it is not only a convenience.** Modules are
 exchangeable: refit without a symptom, they may come back permuted, and a symptom vector from one fold would then
