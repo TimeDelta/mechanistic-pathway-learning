@@ -1233,39 +1233,44 @@ the table of 10 October. Two of the three numbers move, and the second is not a 
   "hallucinations" to psychosis), and the script prints every remaining statement beside the wording it was mapped
   from, which is the review that has not been done.
 
-**12b. The class is built, and it adds no perturbation row** (the owner, 13 October 2026: "just attach them to the
-drugs instead where one exists but make sure to not duplicate or attach to a drug that might not actually cause
-that symptom due to e.g. some other target or somethign (so it would have to at least be limited to drugs that
-currently have ONLY that receptor as a target)").
-`mechanistic_pathway_learning/evidence/load_open_targets_statements.py` carries each statement on a perturbation
-the table already holds, or drops it. That is the rule, and the lockbox is the reason for it: a new perturbation
-moves the leakage groups and so the held-out draw, and a class that invented perturbations could not be added once
-the draw was made.
+**12b. No Open Targets statement lands on a scored row** (the owner, 13 October 2026, of the inhibition
+statements: "oh ... they're weak evidence", then "ok. drop them"). The weight of 0.45 prices this class in
+training and does nothing where it would matter most: **AUPRC reads a label as a label**, so a statement in the
+lockbox would score exactly like a grade-A monogenic observation, with no frequency and no recorded absence behind
+it. And its effect would exceed its one point, because the macro average takes the symptoms with five or more kept
+positives in the lockbox: one such pair could decide **which** symptoms are scored.
+`docs/label_source_review.md` 9.3 recommended this when the class looked five times larger: "In the lockbox they
+would be scored against the weakest labels of the study".
 
-- **Inhibition is carried by the study's own knockout of that gene, and that is almost all the class there is.**
-  Run on the table of 13 October the loader places **14** of the 111 human-worded statements, over 11 genes, of
-  which **10 are pairs the table does not already hold**: AR with cognitive impairment, GABRA1, GABRA2, GABRA5 and
-  GABRG2 with insomnia, MAOA with fatigue and insomnia, and the three sodium-channel beta subunits with
-  psychomotor agitation. Ten new labels against 2,975 kept pairs is **0.34 percent**, not the 1.4 percent item 12
-  reasoned from or the 2.18 percent before the placement rules. What the other 97 do: 43 are already confirmed by
-  a kept drug label, 35 are activations with no single-target carrier, 16 name a graph gene that is not a
-  perturbation and 3 name a target the graph does not hold. What the 14 conflate is the registered open question
-  and not a new one: a knockout is constitutive and developmental where an inhibitor is acute, dosed and
-  reversible.
-- **Activation is carried only by a drug that agonises the target and has no other target at all.** On the table of
-  13 October that admits **nothing**. All 23 activation targets are receptors, and all 20 (statement, drug) pairs
-  run through drugs with 2 to 13 targets: meprobamate at 13 across the GABA-A subunits, cevimeline and pilocarpine
-  at 2, fenfluramine and the opioid agonists at 3. The rule is implemented rather than the count, because the
-  rebuild changes which drugs are admitted and with how many targets, and it is re-run there.
-- **A statement never overrides an evidenced negative.** Where the pair is a never-above-placebo pair relabelled as
-  a negative under item 3, the statement is dropped rather than entered as a positive: the two are a contradiction,
-  not independent evidence, and the placebo comparison is the better controlled of them.
+The two directions resolve differently, because the study already represents one of them.
+
+- **Inhibition carries nothing.** 30 statements. The study's knockout of that gene is a perturbation of the same
+  node in the same direction and it is scored, so putting the statement there puts weak evidence into the primary
+  score; giving it a row of its own would duplicate a perturbation the table already holds. The ten pairs it would
+  have added are not worth either.
+- **Activation becomes its own perturbation row, never scored** (the owner: "what about just adding the receptor
+  activations as a new perturbation type?", and "what about limiting that perturbation type to the training data
+  since it's rows are low and it doesn't have a full mechanism pathway?"). 35 statements on **23 rows**, typed
+  `receptor_activation` and seeded +1 at the gene node. Here nothing is duplicated: no other perturbation in the
+  table drives these receptors upward, and the activation direction is the one thing this curation uniquely
+  carries. The rows are 1.22 percent of perturbations and carry 1.52 labels each.
+
+**12c. What "never scored" means, which is not "always trained".** `run_main_model.withhold_never_scored_rows`
+takes a `receptor_activation` row out of every test set, and out of training whenever its leakage group is held
+out. The second half is the point: training the activation row of a gene whose knockout sits in the lockbox shows
+the model that node perturbed, which is the leak the leakage groups exist to stop. So such a row is **dropped**,
+neither trained nor scored, and trained only when its group is not held out. **The held-out draw over every other
+perturbation does not move**, because these rows leave the test set whatever group they fall in.
+
+Two reasons this type is kept out of the score rather than merely down-weighted. It carries **no pharmacology at
+all** - no exposure, occupancy, route or plasma binding - so the row is identifiable from its inputs alone, while
+**43 percent of its labels are one symptom** (cognitive impairment, against 14.4 percent of all kept positives):
+"identify the type, rank cognitive impairment" would be a strong rule with no mechanism in it, and macro-AUPRC is
+scored per symptom. The base rate is not the exposure it might appear to be: at 0.063 it is exactly the gene rate,
+so the type offset of decision 4.6 gains nothing from it.
 
 **What is still not settled** is the weight, which stays provisional at 0.45 until the agreement is recomputed on
-the rebuilt table, where it may become 0.35. At ten pairs the choice moves almost nothing, which is itself the
-reason to ask whether the class earns its place: the registration keeps it because it was registered before the
-counts were known and dropping it now would be a decision taken after seeing them, but a class of ten labels is
-reported with its size beside it so no reader takes it for more than that.
+the rebuilt table, where it may become 0.35. It now prices 35 training labels and nothing that is scored.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that

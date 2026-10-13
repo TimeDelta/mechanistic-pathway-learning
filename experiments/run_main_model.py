@@ -74,7 +74,11 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scorable_symptom,
     scored_rows,
 )
-from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE, DRUG_ROW_KINDS
+from mechanistic_pathway_learning.evidence.combined_perturbations import (
+    COMBINATION_PERTURBATION_TYPE,
+    DRUG_ROW_KINDS,
+    PERTURBATION_TYPES_NEVER_SCORED,
+)
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.graph.compartment_ph import compartment_ph_inputs
@@ -1004,6 +1008,38 @@ def rotated_stratified_validation(data, pool: np.ndarray, arguments, num_validat
     return np.array([i for i in pool if i not in in_validation], dtype=int), validation
 
 
+def never_scored_rows(data) -> np.ndarray:
+    """Rows of a perturbation type that is never scored (PERTURBATION_TYPES_NEVER_SCORED, item 12c). Data without a
+    perturbation type at all has no such row: the splits that hold out a module or a subsystem are built from seeds
+    and group ids and are given data that carries neither types nor outcomes."""
+    types = getattr(data, "perturbation_types", None)
+    if types is None:
+        return np.zeros(len(data.perturbation_ids), dtype=bool)
+    return np.array([kind in PERTURBATION_TYPES_NEVER_SCORED for kind in types], dtype=bool)
+
+
+def withhold_never_scored_rows(data, test_mask: np.ndarray, train_pool: np.ndarray) -> tuple[np.ndarray, np.ndarray, int, int]:
+    """Take the never-scored rows out of the test set, and out of training where their leakage group is held out.
+
+    "Training only" cannot mean "always trained", which would be the leak the leakage groups exist to stop: training
+    the receptor-activation row of a gene whose knockout sits in the held-out set shows the model that node perturbed.
+    So such a row is **dropped** - neither scored nor trained - whenever its group is held out, and trained
+    otherwise. The held-out draw over every other perturbation is untouched either way, because these rows leave the
+    test set whatever group they are in."""
+    never_scored = never_scored_rows(data)
+    if not never_scored.any():
+        return test_mask, train_pool, 0, 0
+    group_ids = np.asarray(data.group_ids)
+    held_out_groups = set(group_ids[test_mask])
+    taken_out_of_test = int((test_mask & never_scored).sum())
+    test_mask = test_mask & ~never_scored
+    in_a_held_out_group = never_scored & np.array([group in held_out_groups for group in group_ids])
+    kept_in_training = np.ones(len(group_ids), dtype=bool)
+    kept_in_training[in_a_held_out_group] = False
+    dropped = int(in_a_held_out_group.sum())
+    return test_mask, train_pool[kept_in_training[train_pool]], taken_out_of_test, dropped
+
+
 def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
     """Return (train, validation, test) index arrays and a name for the split directory. With in_lockbox (--score-lockbox)
     the test set is the lockbox and training and validation come from the development perturbations."""
@@ -1046,6 +1082,10 @@ def split_indices(data, arguments, in_lockbox: np.ndarray | None = None) -> tupl
         train_pool = all_indices[training_mask]
     else:  # whole groups: the lockbox (read_lockbox refuses a straddling group) and grouped folds
         train_pool = all_indices[~test_mask]
+    test_mask, train_pool, taken_out_of_test, dropped = withhold_never_scored_rows(data, test_mask, train_pool)
+    if taken_out_of_test or dropped:
+        print(f"never-scored perturbation types: {taken_out_of_test} rows taken out of the test set, "
+              f"{dropped} dropped from training because their leakage group is held out")
     validation = np.array([], dtype=int)
     if arguments.validation_fraction > 0 and len(train_pool) >= 20:
         train_pool, validation = early_stopping_validation(data, train_pool, arguments)

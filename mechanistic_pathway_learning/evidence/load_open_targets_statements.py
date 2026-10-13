@@ -6,29 +6,33 @@ the human-worded ones count, so a rodent readout, or wording the rodent assay an
 upstream by experiments/scope_open_targets_symptom_labels.py, as are the wordings the owner ruled out of the
 crosswalk on 13 October 2026.
 
-**The class adds no perturbation row.** That is the rule this module exists to enforce, and the reason is the
-lockbox: a new perturbation changes the leakage groups, so it changes the held-out draw, so a class that invented
-perturbations could not be added once the lockbox was drawn. Each direction is therefore carried by a perturbation
-the table already holds, or it is not carried at all.
+**No Open Targets statement lands on a scored row.** That is the rule this module enforces, and it follows from
+what the statements are (the owner, 13 October 2026, of the inhibition statements: "oh ... they're weak evidence",
+and then "ok. drop them"). They are review statements about a target class, with no frequency and no recorded
+absence, and the weight of 0.45 that prices them in training does nothing where it would matter most: AUPRC reads
+a label as a label, so a statement in the lockbox would score exactly like a grade-A monogenic observation. Worse
+than its one point, it could tip a symptom over the five-kept-positives line and so decide **which** symptoms the
+macro average takes. The two directions resolve differently because the study already represents one of them.
 
-- **Inhibition** is carried by the study's own knockout of that gene, which is a perturbation of the same node in
-  the same direction. What this conflates is registered and not new: a knockout is constitutive and developmental
-  where an inhibitor is acute, dosed and reversible, which is the knockout-versus-inhibitor question the
-  preregistration already carries as open.
-- **Activation** is carried only by a drug that agonises the target **and has no other target at all** (the owner,
-  13 October 2026: "make sure to not duplicate or attach to a drug that might not actually cause that symptom due
-  to e.g. some other target or somethign (so it would have to at least be limited to drugs that currently have ONLY
-  that receptor as a target)"). A drug with several targets cannot carry the statement, because the symptom it is
-  being given might come from any of them. On the table of 13 October this admits **nothing**: all 23 activation
-  targets are receptors, all 20 carrier pairs run through drugs with 2 to 13 targets, so every activation statement
-  is dropped. The rule is implemented rather than the count, because the rebuild changes which drugs are admitted.
+- **Inhibition is dropped.** The study's knockout of that gene is a perturbation of the same node in the same
+  direction, and it is scored. Putting the statement there would put weak evidence into the primary score; giving
+  it a row of its own would duplicate a perturbation the table already holds. Neither is worth ten labels, so the
+  direction carries nothing. `docs/label_source_review.md` 9.3 recommended as much when the class looked five
+  times larger: "In the lockbox they would be scored against the weakest labels of the study".
+- **Activation becomes its own perturbation row, never scored** (the owner: "what about just adding the receptor
+  activations as a new perturbation type?", "what about limiting that perturbation type to the training data since
+  it's rows are low and it doesn't have a full mechanism pathway?"). Here there is no duplication, because nothing
+  else in the table perturbs these receptors upward: the activation direction is the one thing this curation
+  uniquely carries. The rows are `RECEPTOR_ACTIVATION_PERTURBATION_TYPE`, seeded +1 at the gene node, and
+  run_main_model.withhold_never_scored_rows keeps them out of every test set and out of training whenever their
+  leakage group is held out.
 
 A statement whose pair is already an **evidenced negative** - a never-above-placebo pair relabelled as a negative
 under item 3 - does not become a positive. The two are a direct contradiction rather than independent evidence,
 and the placebo comparison is the better-controlled of the two.
 
-Nothing here is a perturbation, a node or an edge: the output is evidence records, and
-assign_evidence_grades.loss_weight_for_record gives them the registered weight of the class.
+The output is evidence records plus the perturbation rows the activation statements need; nothing here is a node
+or an edge, and assign_evidence_grades.loss_weight_for_record gives the records the registered weight of the class.
 """
 from __future__ import annotations
 
@@ -38,12 +42,20 @@ from pathlib import Path
 import pandas as pd
 
 from mechanistic_pathway_learning.evidence.assign_evidence_grades import OPEN_TARGETS_EVIDENCE_CLASS, EvidenceRecord
+from mechanistic_pathway_learning.evidence.combined_perturbations import RECEPTOR_ACTIVATION_PERTURBATION_TYPE
 
 CURATED_SYMPTOM_ROWS = Path("data/processed/off_target_scoping/open_targets_symptom_rows.parquet")
 SOURCE_NAME = "Open Targets target safety"
 GENE_NODE_PREFIX = "GENE:"
 SIGN_OF_CURATED_DIRECTION = {"inhibition": -1.0, "activation": 1.0}
-CARRIED_BY_THE_GENE_KNOCKOUT = "inhibition"
+DROPPED_DIRECTION = "inhibition"  # the gene knockout already represents it, and it is scored
+ROW_OF_ITS_OWN_DIRECTION = "activation"
+ACTIVATION_PERTURBATION_PREFIX = "ACTIVATION:"
+
+
+def activation_perturbation_id(target: str) -> str:
+    """The never-scored row that carries agonism at one receptor, distinct from the gene's own knockout row."""
+    return f"{ACTIVATION_PERTURBATION_PREFIX}{target}"
 
 
 @dataclass(frozen=True)
@@ -102,21 +114,32 @@ def place_statements(statements: list[CuratedStatement], graph_genes: set[str], 
             placements.append(StatementPlacement(statement, None, "a kept drug label already confirms it"))
         elif statement.target not in graph_genes:
             placements.append(StatementPlacement(statement, None, "the target is not a graph gene"))
-        elif statement.direction == CARRIED_BY_THE_GENE_KNOCKOUT:
-            if statement.target not in gene_perturbations:
-                placements.append(StatementPlacement(statement, None, "the target is a graph gene but not a perturbation"))
-            elif (statement.target, statement.symptom) in evidenced_negative_pairs:
-                placements.append(StatementPlacement(statement, None, "the pair is an evidenced negative"))
-            else:
-                placements.append(StatementPlacement(statement, statement.target, "carried by the gene knockout"))
+        elif statement.direction == DROPPED_DIRECTION:
+            placements.append(StatementPlacement(statement, None, "inhibition: the gene knockout already represents it and is scored"))
+        elif (activation_perturbation_id(statement.target), statement.symptom) in evidenced_negative_pairs:
+            placements.append(StatementPlacement(statement, None, "the pair is an evidenced negative"))
         else:
-            carriers = drugs_whose_only_target_is(targets_of_drug, signs_of_drug, statement.target, statement.direction)
-            carriers = [drug for drug in carriers if (drug, statement.symptom) not in evidenced_negative_pairs]
-            if not carriers:
-                placements.append(StatementPlacement(statement, None, "no drug whose only target is this receptor"))
-            else:
-                placements.extend(StatementPlacement(statement, drug, "carried by a single-target agonist") for drug in carriers)
+            placements.append(StatementPlacement(statement, activation_perturbation_id(statement.target),
+                                                 "a receptor activation row of its own, never scored"))
     return placements
+
+
+def activation_perturbation_rows(placements: list[StatementPlacement]) -> list[dict]:
+    """The perturbation rows the placed activation statements need: one per target, typed so that
+    run_main_model.withhold_never_scored_rows keeps it out of every test set, seeded +1 at the gene node, and given
+    the leakage group of that gene so a held-out group takes the activation row out of training with it."""
+    rows = {}
+    for placement in placements:
+        if placement.perturbation_identifier is None:
+            continue
+        rows.setdefault(placement.perturbation_identifier, {
+            "perturbation_id": placement.perturbation_identifier,
+            "perturbation_type": RECEPTOR_ACTIVATION_PERTURBATION_TYPE,
+            "perturbation_label": f"{placement.statement.target} activation",
+            "perturbation_nodes": [[f"{GENE_NODE_PREFIX}{placement.statement.target}", 1.0, 1.0]],
+            "groups_with_gene": placement.statement.target,
+        })
+    return sorted(rows.values(), key=lambda row: row["perturbation_id"])
 
 
 def evidence_records(placements: list[StatementPlacement]) -> list[EvidenceRecord]:

@@ -40,6 +40,16 @@ LOWERED_GENE_SIGN = -1.0  # a less active enzyme or a lower carrier: the same si
 # combination of a gene and a gene would not be one of these, and the builder writes none.
 DRUG_ROW_KINDS: tuple[str, ...] = ("drug", COMBINATION_PERTURBATION_TYPE)
 
+# A receptor activation row (preregistration item 12c) is a curated statement that agonism at one receptor causes a
+# symptom, seeded +1 at that gene node. It is a perturbation the study has no other way to express, and it is unlike
+# the rest in two ways that decide how it is used: there are 23 of them carrying 35 labels, and they carry no
+# pharmacology at all - no exposure, occupancy, route or plasma binding - so the row is identifiable from its inputs
+# alone while 43 percent of its labels are one symptom (cognitive impairment, against 14.4 percent of all kept
+# positives). A model could rank that symptom from the row's type rather than from any mechanism. So the type is
+# never scored: see never_scored_rows below for what that means precisely, which is not the same as "always trained".
+RECEPTOR_ACTIVATION_PERTURBATION_TYPE = "receptor_activation"
+PERTURBATION_TYPES_NEVER_SCORED: tuple[str, ...] = (RECEPTOR_ACTIVATION_PERTURBATION_TYPE,)
+
 
 @dataclass(frozen=True)
 class PerturbationPart:
