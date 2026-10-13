@@ -1722,11 +1722,28 @@ the same per-symptom folds on labels permuted within degree strata, which carrie
 in. An agreement that does not separate from that null is reported as no evidence of stability, whatever its
 absolute value.
 
-**d2. The perturbation resampling**, which the owner accepted on 13 October ("resampling on perturbations instead is
-fine") and which the clustering of (e) needs because a symptom fold leaves 23 of 24 profiles in place: the one
-already registered for module supports (`docs/pathway_test_options.md`, gate G1), complementary-pair subsamples of
-the training perturbations (shah2013variable), refit, cluster, match one to one by Jaccard, with the stability index
-and its interval of (nogueira2018stability). The permuted-label runs are the null here too.
+**d2. The perturbation resampling, which is where symptom profile stability is measured** (the owner, 13 October
+2026: "resampling on perturbations instead is fine", and "i guess i don't need profile stability under symptom folds
+so much as symptom profile stability in general"). Complementary-pair subsamples of the training perturbations
+(shah2013variable), refit with nothing frozen, and compare. The profiles move here because the readout is refitted,
+which is exactly what a symptom fold under (d1) cannot give.
+
+**The reading is at the level of the partition, not of the profile vectors, and that removes the alignment problem
+rather than solving it.** The items being clustered are the 24 symptoms, which are the same in every subsample, so
+two subsamples' clusterings are compared by one-to-one Jaccard over symptom membership (kuhn1955hungarian) with the
+stability index and its interval of (nogueira2018stability), and no coordinate has to mean the same thing in both.
+This matters because modules are exchangeable under a refit: a profile vector from one subsample is not comparable
+to another's until the modules are matched, and the matching is imperfect whenever modules split or merge. A
+partition reading never asks the question.
+
+**The profile vectors are read only behind the module-stability gate.** Where the vectors themselves are wanted -
+to say which mechanisms a cluster is built on rather than which symptoms are in it - the modules are first matched
+one to one across the subsamples by support Jaccard, and the matched Jaccard is reported beside the reading. A
+profile that moves when the module basis has moved says nothing about the symptom, so a low matched Jaccard makes
+the vector reading uninterpretable and it is reported as such rather than as instability of the profile. The
+partition reading of the paragraph above does not depend on this gate.
+
+The permuted-label runs are the null for both readings, as they are for the supports.
 
 **Neither fold is evidence that the nosology is right.** Both say the structure is reproducible under a perturbation
 of the data. A stable grouping of the wrong thing is stable, which is what (e) is for.
@@ -1757,15 +1774,16 @@ are placed afterwards at their nearest cluster and reported with their counts an
 is a declared secondary, reported beside it.
 
 **g. What this item does not settle, and stays the owner's.**
-- **The head refactor of (a), which (d1) now depends on.** An earlier version of this item said the refactor had
-  lost its argument once symptom folds were off the table. The folds are not off the table, and the refactor is what
-  they are built on: the frozen shared matrix of (d1) is the low-rank output matrix, and there is no other object in
-  the current head that can pin the module basis across folds. So the question is no longer whether it has a
-  purpose but whether the purpose is worth the cost: it imposes a rank on the link matrix and trades a basis of
-  named modules for a latent one, and unless it replaces the current head outright it is another confirmatory
-  variation, which the owner has ruled against ("I don't want to add extra confirmatory model variations because
-  that starts increasing probability of winning by luck"). The rank is the one free number it introduces and it is
-  not registered here.
+- **The head refactor of (a) is not needed by this item, on the owner's reading of 13 October.** It went through
+  three states in one day and the last is the one that holds. It was proposed to make symptom folds possible; the
+  folds turned out not to need it, since (d1) can freeze the link matrix the head already has; it then looked
+  load-bearing again as the only way to make profile stability measurable *under symptom folds*; and the owner does
+  not want profile stability under symptom folds, he wants it in general, which (d2) measures without freezing
+  anything. So nothing in item 26 requires the refactor. What is left for it is shrinkage across symptoms for the
+  thin ones, against an imposed rank, a latent basis in place of named modules, a free rank `d`, and another
+  confirmatory variation unless it replaces the current head outright ("I don't want to add extra confirmatory
+  model variations because that starts increasing probability of winning by luck"). Decisions 4.7 to 4.9 record
+  the three forms and what separates them.
 - **Whether the readout is published with the confirmatory result or apart from it.** Registering it here fixes the
   procedure either way.
 
