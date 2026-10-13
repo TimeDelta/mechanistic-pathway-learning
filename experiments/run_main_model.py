@@ -77,6 +77,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 from mechanistic_pathway_learning.evidence.combined_perturbations import COMBINATION_PERTURBATION_TYPE, DRUG_ROW_KINDS
 from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
+from mechanistic_pathway_learning.graph.compartment_ph import compartment_ph_inputs
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, columns_a_seed_still_reads, descriptor_blocks
@@ -338,6 +339,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "fixed_point_tolerance": None, "cofactor_relations": False, "num_layers": 2, "start_at_weighted_optimum": False,
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
     "placebo_negative_weight": None, "equal_drug_shares": False, "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
+    "compartment_ph": False,
 }
 
 
@@ -360,6 +362,8 @@ def resolve_registered_defaults(arguments) -> None:
         arguments.descriptor_treatment = "seed_masked" if masks else "plain"
     if getattr(arguments, "cofactor_relations", None) is None:
         arguments.cofactor_relations = linear_response
+    if getattr(arguments, "compartment_ph", None) is None:
+        arguments.compartment_ph = linear_response
     if getattr(arguments, "extracellular_coupling", None) is None:
         arguments.extracellular_coupling = linear_response and bool(getattr(arguments, "cell_class_weights", None))
     if getattr(arguments, "refit_on_validation", None) is None:
@@ -510,7 +514,8 @@ def build_models(data, arguments, device):
                                         num_propagation_steps=arguments.propagation_steps,
                                         fixed_point_tolerance=arguments.fixed_point_tolerance,
                                         max_propagation_steps=arguments.max_propagation_steps,
-                                        class_weight_rule=arguments.class_weight_rule, input_weights=arguments.input_weights,
+                                class_weight_rule=arguments.class_weight_rule, input_weights=arguments.input_weights,
+                                        **(compartment_ph_inputs(data) if arguments.compartment_ph else {}),
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
@@ -1095,6 +1100,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--extracellular-coupling", action=argparse.BooleanOptionalAction, default=None,
                         help="linear-response encoder with --cell-class-weights: extracellular metabolites are one pool shared by every class but all_cells. "
                              "Left out, on whenever the linear-response encoder has cell-class weights (registered)")
+    parser.add_argument("--compartment-ph", action=argparse.BooleanOptionalAction, default=None,
+                        help="linear-response encoder: the settled proton deviation of each compartment becomes a throughput ceiling on its "
+                             "nodes (graph/compartment_ph.py). Left out, on for the linear-response encoder wherever the graph names a proton "
+                             "node in a single compartment (registered)")
     parser.add_argument("--class-weight-rule", choices=list(CLASS_WEIGHT_RULES), default="limiting_step",
                         help="linear-response encoder with --cell-class-weights: how a class's node weights attenuate the response. limiting_step (the owner, "
                              "13 October 2026), the weakest weight on the widest route; product, the weights multiplied along the path, every run before")
@@ -1673,6 +1682,7 @@ def main() -> None:
         "combined_perturbations": combined_perturbations_summary,
         "clamped_probabilities": clamped_probabilities,
         "propagation_steps_taken": getattr(encoder, "propagation_steps_taken", None),
+        "compartment_ph_sensitivity": getattr(encoder, "compartment_ph_sensitivity_report", None),
         "propagation_reached_the_cap": bool(getattr(encoder, "fixed_point_tolerance", None) is not None
                                             and getattr(encoder, "propagation_steps_taken", 0) >= getattr(encoder, "max_propagation_steps", 0)),
         "laboratory_labels": laboratory_results,

@@ -1348,6 +1348,41 @@ classes is fixed: it averaged copies of one extracellular quantity carrying oppo
 with every class weight at 1, the pool lost a factor of 1.2 to 3.1 to that cancellation over six seeds, read negative
 for a positive perturbation at one of them, and the channel sizes differed by up to 26 times.
 
+**22a. Compartment pH is a throughput ceiling, read from the settled proton balance** (the owner, 13 October 2026:
+"i don't think we've incorporated compartment pH yet, which is important", and of this design: "perfect solution.
+implement it"). Protons are already nodes, one per compartment, with 6,271 reaction edges: 2,048 producing and 1,281
+consuming reactions at the cytosolic proton alone. Two things stopped that being used, both measured. The nine
+Human-GEM proton nodes carry `is_currency`, and a currency node's outgoing edges are dropped, so each one receives and
+its deviation is computed while it sends nothing; and the same species has two pools, Human-GEM's `MAM02039*` and
+Reactome's `CHEBI15378*`, with different base ids, so they never merged, the Human-GEM copy holding 50 to 100 times
+the reactions in every compartment both describe while only the Reactome copy propagates. So whatever pH signal
+existed travelled through one to two percent of the reactions that touch a proton. **Resolution:** the Human-GEM node
+governs each compartment it describes and Reactome's governs the vacuole, which only it names; and after the
+propagation settles, that node's deviation becomes a multiplier on every node in the compartment,
+`w_pH = exp(-(sensitivity * deviation) ** 2)`. On the v4 graph that is 18,928 of 49,574 nodes over ten compartments
+(cytosol 8,098, extracellular 3,713, mitochondrion 2,104, ER 1,909, peroxisome 984, lysosome 790, Golgi 670, nucleus
+568, vacuole 49, intermembrane 43). A weight does not propagate, which is the point: the cytosolic proton touches
+3,329 reactions, and a node that sent across all of them would make every pair of reactions neighbours, which is why
+the currency mask exists and why unmasking it would be worse than leaving it.
+Four properties and one cost. The form is even in the deviation, so a gain-of-function stays the exact negative of a
+loss-of-function; it is applied after the fixed point, so the contraction is untouched; it lies in (0, 1], so it cannot
+raise a norm; and a node in no compartment, or in several as a transport reaction is, takes no weight. The cost is
+**positive homogeneity of degree one**, which this breaks: doubling the input no longer doubles the response, because
+the weight reads the deviation's size. That is the first registered departure from linearity, it is confined to this
+factor, and the input-size controls change meaning accordingly.
+**No compartment pH constant enters, which is worth stating because it looks as though one should.** Converting a
+deviation to pH units would need a resting proton concentration and a scale from arbitrary units to molar, and a
+pH-activity curve would need each reaction's pH optimum, which is not available across 13,793 reactions. The
+simplification registered instead is that each reaction's optimum is its own compartment's resting state, so the
+weight depends on the deviation from rest alone and the resting value cancels out of the form. The module therefore
+claims only that moving a compartment away from its resting proton balance costs throughput; how much is learned, one
+sensitivity per compartment. Because the settled field is of order 1e-11, an uncalibrated sensitivity would leave the
+weight at exactly 1 with no gradient, so `calibrate_ph_sensitivity` sets each compartment's sensitivity once, before
+training, so that the root mean square of its argument is 0.5 on one batch, and the values it sets are reported in the
+run record. A compartment the batch does not reach keeps its sensitivity. The constants would be needed for a
+different question, a drug's ionisation against a compartment's pH and so the trapping of bases in the lysosome, which
+this is not and which stays open.
+
 **23. The registered model is the trainer's default** (the owner, 13 October 2026: "all of the v4 stuff should be ON by
 default"). Every registered choice that is built is now the default of `experiments/run_main_model.py`: the grouped
 split by disease cluster and targets, typed node features, `seed_masked`, the fixed point at 1e-3, the limiting-step

@@ -932,3 +932,120 @@ def test_the_input_weights_are_positive_and_start_equal_so_the_pool_does_not_can
     with pytest.raises(ValueError):
         build_diamond_encoder(torch.ones(5, 1)).__class__(5, DIAMOND_RELATIONS, torch.tensor(DIAMOND_SOURCE), torch.tensor(DIAMOND_TARGET),
                                                           torch.zeros(5, dtype=torch.long), torch.ones(5), torch.eye(5), 4, input_weights="free")
+
+
+# compartment pH as a throughput ceiling (the owner, 13 October 2026: "perfect solution. implement it")
+def build_ph_encoder(num_nodes=6, class_weights=None, sensitivity=None):
+    """A chain 0 -> 1 -> 2 -> 3 -> 4 with node 5 the proton of compartment "c"; nodes 1 and 2 are in "c", the rest in
+    no compartment, so only they take a pH weight."""
+    torch.manual_seed(0)
+    encoder = LinearResponseEncoder(
+        num_nodes, ["activates"], edge_source=torch.tensor([0, 1, 2, 3, 1]), edge_target=torch.tensor([1, 2, 3, 4, 5]),
+        edge_relation=torch.zeros(5, dtype=torch.long), edge_sign=torch.ones(5),
+        node_features=torch.eye(num_nodes), node_state_dim=4,
+        cell_class_weights=torch.ones(num_nodes, 1) if class_weights is None else class_weights,
+        ph_proton_node_index=torch.tensor([5]), ph_compartment_of_node=torch.tensor([-1, 0, 0, -1, -1, -1]),
+        ph_compartment_names=["c"])
+    if sensitivity is not None:
+        with torch.no_grad():
+            encoder.log_ph_sensitivity.fill_(float(torch.log(torch.tensor(sensitivity))))
+    return encoder
+
+
+def test_the_ph_weight_is_one_where_a_node_has_no_compartment_and_falls_with_the_proton_deviation():
+    encoder = build_ph_encoder()
+    node_index, sign_and_magnitude = torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]])
+    with torch.no_grad():
+        settled = encoder.response(node_index, sign_and_magnitude).permute(1, 0, 2)  # [N, B, C]
+        weight = encoder.compartment_ph_weight(settled)
+    assert torch.allclose(weight[[0, 3, 4, 5]], torch.ones_like(weight[[0, 3, 4, 5]]))  # no compartment, no weight
+    assert torch.equal(weight[1], weight[2])  # one compartment, one weight
+    assert bool((weight[1] > 0).all()) and bool((weight[1] <= 1).all())
+    # a larger sensitivity pushes the weight down, because the argument grows
+    small, large = build_ph_encoder(sensitivity=1.0), build_ph_encoder(sensitivity=1e6)
+    with torch.no_grad():
+        small_weight = small.compartment_ph_weight(small.response(node_index, sign_and_magnitude).permute(1, 0, 2))
+        large_weight = large.compartment_ph_weight(large.response(node_index, sign_and_magnitude).permute(1, 0, 2))
+    assert float(large_weight[1].max()) < float(small_weight[1].max())
+
+
+def test_the_ph_weight_keeps_a_gain_the_exact_negative_of_a_loss():
+    """exp(-(s * d) ** 2) is even in the deviation, so flipping the perturbation flips the response and not the weight."""
+    encoder = build_ph_encoder(sensitivity=1e5)
+    with torch.no_grad():
+        raised = encoder.response(torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]]))
+        lowered = encoder.response(torch.tensor([[0]]), torch.tensor([[[-1.0, 1.0]]]))
+    assert torch.allclose(raised, -lowered, atol=1e-12)
+
+
+def test_the_ph_weight_breaks_positive_homogeneity_which_is_the_registered_cost():
+    """A sensitivity where the weight is neither 1 nor saturated: on this chain the proton deviation is of order 1, so
+    sensitivity 1 puts the weight near 0.74 and leaves it responsive in both directions."""
+    encoder = build_ph_encoder(sensitivity=1.0)
+    with torch.no_grad():
+        single = encoder.response(torch.tensor([[0]]), torch.tensor([[[1.0, 1.0]]]))
+        doubled = encoder.response(torch.tensor([[0]]), torch.tensor([[[1.0, 2.0]]]))
+    assert not torch.allclose(doubled, 2.0 * single, atol=1e-6)  # the weight reads the deviation's size
+    # compared at node 1, which is in the compartment; a node outside it scales exactly, since its weight stays 1
+    assert float(doubled[0, 1].abs().max()) < float(2.0 * single[0, 1].abs().max())
+    assert torch.allclose(doubled[0, 0], 2.0 * single[0, 0], atol=1e-6)
+
+
+def test_calibration_sets_the_argument_to_its_target_and_reports_what_it_set():
+    encoder = build_ph_encoder()
+    node_index, sign_and_magnitude = torch.tensor([[0], [0]]), torch.tensor([[[1.0, 1.0]], [[-1.0, 2.0]]])
+    with torch.no_grad():
+        settled = encoder.response(node_index, sign_and_magnitude).permute(1, 0, 2)
+    assert not encoder.ph_sensitivity_calibrated
+    report = encoder.calibrate_ph_sensitivity(settled)
+    assert encoder.ph_sensitivity_calibrated and set(report) == {"c"}
+    deviation = settled[encoder.ph_proton_node_index]
+    argument = torch.exp(encoder.log_ph_sensitivity)[:, None, None] * deviation
+    assert float(argument.pow(2).mean().sqrt()) == pytest.approx(0.5, rel=1e-5)
+    assert float(encoder.compartment_ph_weight(settled)[1].max()) < 1.0  # the weight bites at the calibrated scale
+
+
+def test_an_uncalibrated_sensitivity_leaves_the_weight_at_one_on_a_realistic_deviation():
+    """The case calibration exists for: on the confirmatory graph the settled field is of order 1e-11, so at
+    sensitivity exp(0) = 1 the argument squares to 1e-22 and the weight is exactly 1 with no gradient."""
+    encoder = build_ph_encoder()
+    tiny = torch.zeros(6, 1, encoder.propagation_channels)
+    tiny[5] = 2.4e-11
+    assert float(encoder.compartment_ph_weight(tiny)[1].min()) == 1.0
+    assert encoder.calibrate_ph_sensitivity(tiny) == {"c": pytest.approx(0.5 / 2.4e-11, rel=1e-5)}
+    assert float(encoder.compartment_ph_weight(tiny)[1].max()) < 1.0
+
+
+def test_a_compartment_the_batch_does_not_reach_keeps_its_sensitivity():
+    encoder = build_ph_encoder()
+    before = float(encoder.log_ph_sensitivity[0])
+    report = encoder.calibrate_ph_sensitivity(torch.zeros(6, 1, encoder.propagation_channels))
+    assert report == {} and float(encoder.log_ph_sensitivity[0]) == before
+
+
+def test_the_ph_inputs_are_refused_unless_they_agree():
+    with pytest.raises(ValueError):
+        LinearResponseEncoder(6, ["activates"], torch.tensor([0]), torch.tensor([1]), torch.zeros(1, dtype=torch.long),
+                              torch.ones(1), torch.eye(6), 4, ph_proton_node_index=torch.tensor([5]))
+    with pytest.raises(ValueError):
+        LinearResponseEncoder(6, ["activates"], torch.tensor([0]), torch.tensor([1]), torch.zeros(1, dtype=torch.long),
+                              torch.ones(1), torch.eye(6), 4, ph_proton_node_index=torch.tensor([5]),
+                              ph_compartment_of_node=torch.tensor([0, 0]))  # not one entry per node
+    with pytest.raises(ValueError):
+        LinearResponseEncoder(6, ["activates"], torch.tensor([0]), torch.tensor([1]), torch.zeros(1, dtype=torch.long),
+                              torch.ones(1), torch.eye(6), 4, ph_proton_node_index=torch.tensor([5]),
+                              ph_compartment_of_node=torch.tensor([0, 1, 0, 0, 0, 0]))  # compartment 1 has no proton node
+
+
+def test_the_governing_proton_node_is_the_pool_the_reactions_use():
+    """Two pools describe one species: Human-GEM's node carries 50 to 100 times the reactions of Reactome's in every
+    compartment both describe, so it governs; a compartment only Reactome names is governed by its node."""
+    from mechanistic_pathway_learning.graph.compartment_ph import compartment_index_per_node, proton_node_of_compartment
+
+    node_ids = ["MAM02039c", "CHEBI15378c", "CHEBI15378v", "MAM02039e", "GENE:A", "REACTION:1"]
+    display = ["H+", "H+", "H+", "H+", "A", "r1"]
+    compartments = ["c", "c", "v", "e", "", "c;e"]
+    governing = proton_node_of_compartment(node_ids, display, compartments, [3329, 44, 14, 719, 2, 2])
+    assert governing == {"c": 0, "v": 2, "e": 3}  # Human-GEM wins in c; the vacuole is Reactome's alone
+    order = sorted(governing)
+    assert list(compartment_index_per_node(compartments, order)) == [0, 0, 2, 1, -1, -1]  # the transport reaction has none

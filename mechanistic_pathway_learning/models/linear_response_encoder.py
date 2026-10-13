@@ -245,6 +245,18 @@ CLASS_WEIGHT_RULES: tuple[str, ...] = ("product", "limiting_step")
 # carries a perturbation with its own sign, and all channels start at the same value, so no class starts out weighing
 # more in the pool than another. The classes stay free to learn different sizes.
 INPUT_WEIGHT_FORMS: tuple[str, ...] = ("positive", "signed")
+# Compartment pH as a throughput ceiling (graph/compartment_ph.py has the reasoning and the measurements; the owner,
+# 13 October 2026, of this design: "perfect solution. implement it"). After the propagation settles, the deviation at
+# the proton node governing each compartment becomes a multiplier on every node in it,
+#     w_pH = exp(-(sensitivity * proton deviation) ** 2),
+# so an acidified or alkalinised compartment passes less. A weight does not propagate, which is why this does not
+# reintroduce the hub the currency mask exists to stop: the cytosolic proton touches 3,329 reactions, and a node that
+# sent freely across them would make every pair of reactions neighbours. The sensitivity is learned per compartment
+# because the model's deviations are in arbitrary units, and PH_SENSITIVITY_TARGET_ARGUMENT is what
+# calibrate_ph_sensitivity sets the argument's root mean square to on the batch it is given, since an uncalibrated
+# sensitivity against deviations of order 1e-11 would leave the weight at exactly 1 with no gradient.
+PH_SENSITIVITY_TARGET_ARGUMENT = 0.5  # root mean square of (sensitivity * deviation) after calibration
+PH_WEIGHT_EPSILON = 1e-30
 BOTTLENECK_CHUNK = 32  # columns of the flattened batch-by-class gather taken at once; see class_bottleneck
 DEFAULT_FIXED_POINT_TOLERANCE = 1e-3
 DEFAULT_MAX_PROPAGATION_STEPS = 60
@@ -421,6 +433,9 @@ class LinearResponseEncoder(nn.Module):
         class_weight_rule: str = "limiting_step",
         input_weights: str = "positive",
         cache_class_bottlenecks: bool = True,
+        ph_proton_node_index: Tensor | None = None,
+        ph_compartment_of_node: Tensor | None = None,
+        ph_compartment_names: list[str] | None = None,
         max_propagation_steps: int = DEFAULT_MAX_PROPAGATION_STEPS,
         propagation_channels: int = 4,
         response_scale: str = "linear",
@@ -498,6 +513,24 @@ class LinearResponseEncoder(nn.Module):
             raise ValueError(f"input_weights must be one of {INPUT_WEIGHT_FORMS}, not {input_weights!r}")
         self.input_weights = input_weights
         self.cache_class_bottlenecks = cache_class_bottlenecks
+        # compartment pH (see PH_SENSITIVITY_TARGET_ARGUMENT). Both tensors or neither; a node whose compartment index
+        # is -1 (none, or several, as a transport reaction has) takes no pH weight.
+        self.ph_compartment_names = list(ph_compartment_names or [])
+        if (ph_proton_node_index is None) != (ph_compartment_of_node is None):
+            raise ValueError("ph_proton_node_index and ph_compartment_of_node are given together or not at all")
+        if ph_proton_node_index is None:
+            self.ph_proton_node_index = self.ph_compartment_of_node = self.log_ph_sensitivity = None
+        else:
+            if ph_compartment_of_node.shape[0] != num_graph_nodes:
+                raise ValueError("ph_compartment_of_node needs one entry per graph node")
+            if int(ph_compartment_of_node.max()) >= ph_proton_node_index.shape[0]:
+                raise ValueError("ph_compartment_of_node indexes a compartment with no proton node")
+            if self.ph_compartment_names and len(self.ph_compartment_names) != ph_proton_node_index.shape[0]:
+                raise ValueError("ph_compartment_names must name one compartment per proton node")
+            self.register_buffer("ph_proton_node_index", ph_proton_node_index.long(), persistent=False)
+            self.register_buffer("ph_compartment_of_node", ph_compartment_of_node.long(), persistent=False)
+            self.log_ph_sensitivity = nn.Parameter(torch.zeros(ph_proton_node_index.shape[0]))
+            self.ph_sensitivity_calibrated = False
         self.class_bottleneck_cache: dict[tuple[int, ...], Tensor] = {}  # seeds -> [N, K]; see cached_class_bottleneck
         self.damping = damping
         if cross_relation_aggregator not in CROSS_RELATION_AGGREGATORS:
@@ -697,6 +730,42 @@ class LinearResponseEncoder(nn.Module):
         index = perturbation_node_index.clamp_min(0)[:, :, None].expand(-1, -1, self.propagation_channels)
         return field.scatter_add(1, index, injected)
 
+    def compartment_ph_weight(self, state: Tensor) -> Tensor:
+        """[N, B, C] multiplier from the settled proton deviation of each node's compartment, 1 where a node has none.
+
+        state is the settled response, node-major. The deviation is read per channel, so each cell class carries its own
+        proton balance. Even in the deviation, so a gain-of-function and a loss-of-function take the same weight and the
+        response of one stays the exact negative of the other; bounded in (0, 1], so it cannot raise a norm; and applied
+        after the fixed point, so the contraction is untouched. It does break positive homogeneity, which is registered.
+        """
+        deviation = state[self.ph_proton_node_index]  # [compartments, B, C]
+        argument = torch.exp(self.log_ph_sensitivity)[:, None, None] * deviation
+        per_compartment = torch.exp(-(argument ** 2))
+        ones = torch.ones_like(per_compartment[:1])
+        with_none = torch.cat([per_compartment, ones], dim=0)  # the last row is the weight of a node in no compartment
+        has_none = torch.full_like(self.ph_compartment_of_node, per_compartment.shape[0])
+        return with_none[torch.where(self.ph_compartment_of_node >= 0, self.ph_compartment_of_node, has_none)]
+
+    def calibrate_ph_sensitivity(self, state: Tensor) -> dict[str, float]:
+        """Set each compartment's sensitivity so that the root mean square of (sensitivity * deviation) on this settled
+        state is PH_SENSITIVITY_TARGET_ARGUMENT, then let training move it.
+
+        The model's deviations are in arbitrary units set by the input magnitudes and the gains, so there is no scale to
+        derive one from; without this the weight starts at exactly 1 and has no gradient to learn from. Called once, on
+        one batch, before training, and the values it sets are reported in the run record. A compartment whose proton
+        node the batch does not reach keeps its sensitivity, because there is nothing to calibrate against."""
+        if self.ph_proton_node_index is None:
+            return {}
+        with torch.no_grad():
+            deviation = state[self.ph_proton_node_index]  # [compartments, B, C]
+            root_mean_square = deviation.pow(2).mean(dim=(1, 2)).sqrt()
+            reached = root_mean_square > PH_WEIGHT_EPSILON
+            self.log_ph_sensitivity[reached] = torch.log(PH_SENSITIVITY_TARGET_ARGUMENT / root_mean_square[reached])
+            self.ph_sensitivity_calibrated = True
+            names = self.ph_compartment_names or [str(index) for index in range(len(root_mean_square))]
+            return {name: float(torch.exp(self.log_ph_sensitivity[index]))
+                    for index, name in enumerate(names) if bool(reached[index])}
+
     def injection_weights(self) -> Tensor:
         """[C]: the scale of the perturbation in each channel, positive under input_weights "positive"."""
         return torch.exp(self.log_input_weight) if self.input_weights == "positive" else self.input_weight
@@ -877,6 +946,8 @@ class LinearResponseEncoder(nn.Module):
             else:
                 bottleneck = self.class_bottleneck(perturbation_node_index, rounds=steps_taken)
             state = state * bottleneck.repeat_interleave(self.channels_per_cell_class, dim=2)
+        if self.ph_proton_node_index is not None:  # read from the settled state, so after the loop and after no bottleneck
+            state = state * self.compartment_ph_weight(state)
         return state.permute(1, 0, 2)
 
     def present_nodes(self, perturbation_node_index: Tensor) -> Tensor | None:

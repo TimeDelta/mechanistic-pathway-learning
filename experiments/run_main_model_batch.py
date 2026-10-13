@@ -81,7 +81,7 @@ V4_SHARED_MODEL = ["--head", "noisy_or", "--field", "difference", "--pooling", "
 V4_MESSAGE_PASSING_MODEL = [*V4_SHARED_MODEL, "--encoder", "message_passing", "--message-passing-edge-signs", "graph", "--num-layers", "3"]
 V4_LINEAR_RESPONSE_MODEL = [*V4_SHARED_MODEL, "--encoder", "linear_response", "--fixed-point-tolerance", "0.001",
                             "--class-weight-rule", "limiting_step", "--input-weights", "positive", "--cofactor-relations",
-                            "--extracellular-coupling", "--channels-per-cell-class", "1"]
+                            "--extracellular-coupling", "--compartment-ph", "--channels-per-cell-class", "1"]
 
 CONFIGURATIONS: dict[str, list[str]] = {
     "b6_default": ["--head", "noisy_or", "--field", "difference", "--pooling", "sum"],
