@@ -1242,9 +1242,16 @@ the table already holds, or drops it. That is the rule, and the lockbox is the r
 moves the leakage groups and so the held-out draw, and a class that invented perturbations could not be added once
 the draw was made.
 
-- **Inhibition is carried by the study's own knockout of that gene.** 30 statements. What it conflates is the
-  registered open question and not a new one: a knockout is constitutive and developmental where an inhibitor is
-  acute, dosed and reversible.
+- **Inhibition is carried by the study's own knockout of that gene, and that is almost all the class there is.**
+  Run on the table of 13 October the loader places **14** of the 111 human-worded statements, over 11 genes, of
+  which **10 are pairs the table does not already hold**: AR with cognitive impairment, GABRA1, GABRA2, GABRA5 and
+  GABRG2 with insomnia, MAOA with fatigue and insomnia, and the three sodium-channel beta subunits with
+  psychomotor agitation. Ten new labels against 2,975 kept pairs is **0.34 percent**, not the 1.4 percent item 12
+  reasoned from or the 2.18 percent before the placement rules. What the other 97 do: 43 are already confirmed by
+  a kept drug label, 35 are activations with no single-target carrier, 16 name a graph gene that is not a
+  perturbation and 3 name a target the graph does not hold. What the 14 conflate is the registered open question
+  and not a new one: a knockout is constitutive and developmental where an inhibitor is acute, dosed and
+  reversible.
 - **Activation is carried only by a drug that agonises the target and has no other target at all.** On the table of
   13 October that admits **nothing**. All 23 activation targets are receptors, and all 20 (statement, drug) pairs
   run through drugs with 2 to 13 targets: meprobamate at 13 across the GABA-A subunits, cevimeline and pilocarpine
@@ -1255,7 +1262,10 @@ the draw was made.
   not independent evidence, and the placebo comparison is the better controlled of them.
 
 **What is still not settled** is the weight, which stays provisional at 0.45 until the agreement is recomputed on
-the rebuilt table, where it may become 0.35.
+the rebuilt table, where it may become 0.35. At ten pairs the choice moves almost nothing, which is itself the
+reason to ask whether the class earns its place: the registration keeps it because it was registered before the
+counts were known and dropping it now would be a decision taken after seeing them, but a class of ten labels is
+reported with its size beside it so no reader takes it for more than that.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that
