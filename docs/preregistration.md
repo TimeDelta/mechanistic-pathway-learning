@@ -1185,6 +1185,63 @@ all feed charge back into it, an excitable membrane is not contractive, and a mo
 contraction bound represents where the membrane settles under a sustained perturbation and not an action potential. It
 must not be read as showing excitability.
 
+**14. A drug outside the nervous-system code is admitted by a three-part rule, read rather than by group name**
+(user, 12 October 2026: "Can't exclude all beta blockers … just ones that don't act centrally because beta receptors
+are all throughout the brain"; "The revised rule seems good for the beta blockers"; "What about combining the rules?";
+"Sounds good. Do it."). All three must hold, and each is a property of the drug established before any outcome is
+looked at, which is what keeps the drug set from being selected on the symptoms the study predicts:
+
+  a. **the drug's own label states a central action** in a pharmacology section — mechanism of action, clinical
+     pharmacology, pharmacodynamics or description — in a sentence about that drug. The adverse-reaction, warning and
+     indication sections are not read, because admitting a drug for the psychiatric events on its label is the
+     circularity this rule exists to avoid. `experiments/read_label_central_action.py` finds the candidate sentences
+     from openFDA and quotes each with its set identifier; the sentence is then **read** and not counted, because
+     class boilerplate ("the mechanism of the antihypertensive effects … has not been established; factors may
+     include … vasomotor centers in the brain") appears on every beta blocker's label and says nothing about the drug
+     in hand, and a combination-product label can put a drug's only match on a sentence about the other ingredient;
+  b. **a mechanism target of the drug is a brain-expressed node** of the confirmatory graph, by the graph's own GTEx
+     annotation;
+  c. **the drug's measured Kp,uu,brain is at least 0.1.** The threshold is read off the measured distribution of the
+     class this came up over rather than chosen: nothing measured lies between nadolol's 0.037 and oxprenolol's 0.20
+     (docs/label_source_review.md 29.1).
+
+**A label that states the drug does not reach the brain excludes it, whatever the other two parts say.** That is
+positive evidence and it is quoted: nadolol "only minimal amounts of nadolol were detected in the brain", labetalol
+"Only negligible amounts of the drug crossed the blood-brain barrier", sotalol "Sotalol crosses the blood brain
+barrier poorly", montelukast "minimal distribution across the blood-brain barrier", etoposide "the concentrations are
+lower than in extracerebral tumors".
+
+On the evidence read (`configs/label_central_action.csv`, `configs/centrally_acting_drugs.csv`), the rule **admits
+metoprolol and propranolol** and holds pindolol (penetrant at 0.50, no label sentence of its own), oxprenolol
+(penetrant at 0.20, no US label in openFDA), timolol (a central-action sentence, no measured Kp,uu,brain) and
+carvedilol (neither). Nothing is added to a table by this registration: the drug set changes only in the v4 rebuild,
+which waits on the held-out draw.
+
+**This rule replaces the ATC-group list for additions.** `configs/admitted_atc_prefixes_draft.csv` was never signed
+off and is superseded: its content was a group name plus, for six drugs, a hand-read label sentence, and part (a) is
+that same evidence standard applied to every candidate. The three groups whose ATC name states central action
+(C02A, M03B, A08AA) and the hormone groups (H, G03) are not admitted by group any more; each of their drugs is subject
+to the rule. The list stays in the repository as the record of what was considered.
+
+**What the rule cannot do, registered with it.** It is not an automated gate. Over the 924-drug pool parts (b) and (c)
+alone admit metformin, warfarin, omeprazole, etoposide and six NSAIDs while leaving carvedilol out, because almost
+every drug has a target expressed somewhere in the brain and because having a measured Kp,uu,brain selects on having
+been a reference compound in a brain-penetration study (docs/label_source_review.md 29.2). Part (a) is what turns
+those out, and part (a) requires a reading. The screen's recall is also imperfect: metoclopramide, which is in the
+superseded list with a hand-read sentence, is missed by the screen at eight labels.
+
+**15. The unbound brain exposure reads more spellings of its own quantity, and its species limit is disclosed.**
+`experiments/build_drug_exposure_table.py` matches eight further spellings of the unbound-brain ratio that the corpus
+uses — `Kp,uu brain`, `Kp,uu, whole brain`, `Kp,uu,WB`, `Kp,uu,ISF`, `Kpuu,ECF`, `Kpuu,BBB`, the `Kp,uu from AUC…` and
+`Kp,uu from VT…` forms, and the cerebral-microdialysis form — with a fluid-or-regional exclusion beside it, so no
+cerebrospinal-fluid or regional value can enter (user, 12 October: "Yes keep additional kp,uu values"). 89 drugs become
+94, none are lost and 16 values change, five beyond 2-fold; the diff is in the decision log. Registered with it, because
+it bears on every occupancy the study computes: **the values are predominantly rodent**, and Fagerholm 2022 reports a
+rat-to-monkey R² of 0.74 against a rat-to-human R² of 0.01 (n=13), so the species translation is an unquantified error
+on this input and no claim rests on its absolute scale (docs/brain_exposure_data_feasibility.md). The cerebrospinal-fluid
+exclusion is kept and now has its own evidence: lumbar CSF runs more than 3-fold high for P-gp substrates and
+buprenorphine's own measured CSF range spans 46-fold.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
@@ -1203,12 +1260,10 @@ as pathways.
   combinations and 140 positive pairs are expressible, and training them in the linear-response encoder but not in
   message passing would make the two confirmatory models differ in what they are trained on, which the user has been
   avoiding. `--combined-perturbations` has no default, so no run loads them until it is passed.
-- **The rows of `configs/admitted_atc_prefixes_draft.csv`**, the list of admitted ATC drug groups and named centrally
-  acting drugs (docs/label_source_review.md 9.4), which have never been signed off. Named "the admitted-groups rows"
-  in my report of 12 October, which was ambiguous: the user read it as the admitted age subgroups and answered that
-  question instead ("As long as the admitted groups rows exclude only things toddler and earlier, it's fine"), which
-  settled the preschool band and left this list where it was. 73 drugs and 167 kept pairs; no build passes
-  `--admitted-atc-prefixes`.
+- **Which held drugs of item 14 are admitted once their missing part is supplied.** The rule itself is registered;
+  pindolol, oxprenolol, timolol and carvedilol each lack one part of it, and whether a label sentence is read for
+  pindolol and timolol, or a Kp,uu,brain is sought for timolol and carvedilol, is the user's to direct. The superseded
+  `configs/admitted_atc_prefixes_draft.csv` records what was considered under the old group rule.
 - **The reach of the electrical layer, which is an aggregation question and not a wiring one.** Item 13 below
   registers the computed potential. What it does not fix is the magnitude of what arrives at `VM_c`, and the
   measurement of 12 October withdrew the diagnosis this item used to carry: the binding divisor is the in-degree of the
