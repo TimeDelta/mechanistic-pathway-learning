@@ -1269,8 +1269,40 @@ all** - no exposure, occupancy, route or plasma binding - so the row is identifi
 scored per symptom. The base rate is not the exposure it might appear to be: at 0.063 it is exactly the gene rate,
 so the type offset of decision 4.6 gains nothing from it.
 
-**What is still not settled** is the weight, which stays provisional at 0.45 until the agreement is recomputed on
-the rebuilt table, where it may become 0.35. It now prices 35 training labels and nothing that is scored.
+**12d. The weight is provisional, and the construction behind it is weaker than the number suggests.** Asked how
+0.45 was decided (the owner, 13 October 2026: "how did you decide the .45 though?"), the honest answer is that no
+session decided it on evidence that reproduces. Its provenance, in order:
+
+1. **0.3**, on 12 October: half of grade B "because halving looked proportionate". Recorded at the time as "a
+   judgment with no measurement behind it", and withdrawn.
+2. **0.45**, as grade B's 0.6 times the class's measured agreement with the study's own labels, 54 of 71 testable
+   triples, 0.761.
+3. **The arithmetic does not give 0.45.** 54/71 is 0.7606 and 0.6 x 0.7606 is 0.4563, which rounds to 0.46. The
+   item now states the rounding as down to the nearest 0.05, with the extrapolation as the reason for the
+   direction, rather than claiming an arithmetic that does not hold.
+4. **The agreement does not reproduce.** On the capped table it is 0.6418, 43 of 67, which would give 0.35. Four
+   constructions were tried and none returns 54 of 71 (item 12a).
+
+**And the construction multiplies quantities that are not commensurable.** The grade weights are ordinal by
+design - `assign_evidence_grades.py`: "Grades are deliberately coarse; the weights are the initial values from the
+design" - so 0.6 is a rank expressed as a number and not a probability. The agreement, 0.76 or 0.64, **is** a
+probability. Multiplying one by the other treats the agreement as a discount on grade B, which would mean
+something only if 0.6 were itself a reliability. The product has no interpretation, and that is a defect in the
+derivation and not in the measurement.
+
+**The route that would settle it is already the registered default.** `configs/evidence_assembly.yaml` sets
+`weighting: mode: learned_reliability`, and `evidence_reliability_model.py` exists for exactly this reason: "Fixed
+grade weights and count-based weights share a flaw: they are set by hand." The Dawid-Skene fit estimates each
+source's sensitivity and specificity from the pattern of agreement across sources, with a Beta prior and an
+interval. `open_targets` is not in its source list. Adding it there would estimate from the same overlap the 0.761
+was hand-computed on, but properly: with a prior, an interval, and no multiplication by an ordinal. The
+extrapolation would remain - the sensitivity is estimated on the overlapping triples and applied to the
+disjoint ones that train - but it would be explicit in the model rather than buried in a product.
+
+**What this changes now: little, and that is the reason it is registered rather than acted on.** The class prices
+35 training labels and nothing scored, so 0.45 against 0.35 moves almost nothing. The weight stays at 0.45,
+provisional, until the agreement is recomputed on the rebuilt table; whether the class should instead enter the
+reliability model is decision 2.4 and is the owner's.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that
