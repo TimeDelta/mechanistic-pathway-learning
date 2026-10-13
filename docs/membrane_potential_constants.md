@@ -48,6 +48,25 @@ and its digest are in "How the pages were read" at the end.
 
 ### Set B — "typical rest" concentrations for a mammalian central neuron: Raimondo et al. 2015
 
+**Which cells of Table 1 are estimated, settled 13 October 2026 from the typeset PDF the owner supplied.** The
+question was recorded here as one about footnote markers, and that framing was wrong: the table marks estimates by
+**colour**, not by a marker. Its caption says so in as many words — "Values in gray have been estimated where data
+is not available" — and the superscripts 1 to 10 are reference indices into the table's own Reference column, not
+footnotes about provenance.
+
+Extracting the fill colour of every word on the page separates the greys that carry meaning from the lighter type
+Frontiers uses for running heads and citations, which is 70 percent black; the estimated values are set in a plain
+50 percent grey. **Exactly two cells are grey**, and both are in the *typical peak during seizure* column:
+
+| cell | value | why it is grey |
+| --- | --- | --- |
+| K⁺, peak during seizure, [ion]ᵢ | 94 mM | estimated; no measurement available |
+| Na⁺, peak during seizure, [ion]ᵢ | 55 mM | estimated; no measurement available |
+
+**Nothing this project takes from the table is estimated.** Set B uses the *typical rest* column, and every value
+in it is in black with a citation. The uncertainty this decision was opened to pin down does not reach any
+constant in use.
+
 | Quantity | Value | Unit | Source | Where it was read | Date read |
 |---|---|---|---|---|---|
 | [K⁺]ᵢ | 96 | mM | Raimondo, Burman, Katz & Akerman 2015, *Front. Cell. Neurosci.* 9:419; doi 10.3389/fncel.2015.00419; PMID 26539081 | Table 1, row `K+`, column `[ion]i` under "Typical rest" (cell reads "96 mM" with superscript marker 1) | 2026-10-12 |
