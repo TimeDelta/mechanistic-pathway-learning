@@ -1535,6 +1535,24 @@ run record. A compartment the batch does not reach keeps its sensitivity. The co
 different question, a drug's ionisation against a compartment's pH and so the trapping of bases in the lysosome, which
 this is not and which stays open.
 
+**22b. Corrected 13 October 2026: the weight in code is the log form, and the mirror property above does not hold.**
+Item 22a registers `w_pH = exp(-(sensitivity * deviation) ** 2)` and registers evenness as a property. The encoder
+implements `ΔpH = -log10(1 + sensitivity * deviation)` and `w = exp(-(ΔpH / width) ** 2)`, and says why: "A pH shift
+is not even: acidifying by a given fraction and alkalinising by it move pH by different amounts." The code is right
+and the physiology is on its side. **The registration was wrong**, and it asserted a property items 20 and 22 lean
+on - "the response must mirror: a gain of function has to produce the negative of the field a loss of function
+produces". That mirror holds everywhere except at a node whose compartment the perturbation moves, where a gain and
+a loss now take different weights. The sign-and-typing ablations read the mirror, so they are read with this
+exception stated beside them.
+
+**What the ceiling does not do, also corrected.** Item 22a calls the weight "a multiplier on the throughput of every
+node in that compartment". It is applied once, after the fixed point and after the bottleneck, so it multiplies each
+node's **final value** and attenuates no message during the propagation: a collapse of lysosomal pH cannot change the
+field at any cytosolic node. The cell-class bottleneck does carry its ceiling along routes; the pH weight does not.
+`docs/physiological_adherence_review.md` section 5 holds the reach (18,928 of 49,796 nodes; 5,127 transport
+reactions and all 25,741 gene, protein and drug nodes take no weight) and the conditioning of the proton node the
+ceiling is read from.
+
 **23. The registered model is the trainer's default** (the owner, 13 October 2026: "all of the v4 stuff should be ON by
 default"). Every registered choice that is built is now the default of `experiments/run_main_model.py`: the grouped
 split by disease cluster and targets, typed node features, `seed_masked`, the fixed point at 1e-3, the limiting-step
