@@ -79,7 +79,7 @@ from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELL
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
-from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, descriptor_blocks
+from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, columns_a_seed_still_reads, descriptor_blocks
 from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
@@ -174,6 +174,18 @@ def covariate_of(data, batch: np.ndarray, arguments, device):
     return torch.as_tensor(perturbation_covariate(data)[batch], device=device)
 
 
+def descriptor_column_names(data, arguments) -> list[str]:
+    """The descriptor table's columns in the order node_feature_matrix appends them, after --drop-descriptor-blocks."""
+    if not getattr(arguments, "node_descriptors", None):
+        return []
+    descriptors = data.node_descriptor_table if getattr(data, "node_descriptor_table", None) is not None else pd.read_parquet(arguments.node_descriptors)
+    dropped_blocks = getattr(arguments, "drop_descriptor_blocks", None) or []
+    if dropped_blocks:
+        blocks = descriptor_blocks(descriptors.columns)
+        descriptors = descriptors.drop(columns=[column for block in dropped_blocks for column in blocks[block]])
+    return [str(column) for column in descriptors.columns]
+
+
 def node_feature_matrix(data, arguments) -> np.ndarray:
     """The fixed structural features, followed by the node descriptors of --node-descriptors when given (one block per
     node type, zero outside it: mechanistic_pathway_learning/graph/node_descriptors.py)."""
@@ -215,6 +227,12 @@ def descriptor_treatment_inputs(data, arguments) -> dict:
     num_descriptor_columns = node_feature_matrix(data, arguments).shape[1] - num_structural_columns
     inputs = {"descriptor_treatment": treatment, "num_descriptor_columns": num_descriptor_columns}
     if treatment == "seed_masked":
+        kept = columns_a_seed_still_reads(descriptor_column_names(data, arguments))
+        if len(kept) != num_descriptor_columns:
+            raise ValueError(f"{sum(1 for _ in kept)} descriptor names against {num_descriptor_columns} descriptor columns")
+        inputs["descriptor_columns_kept"] = torch.as_tensor(kept)
+        print(f"seed masking leaves {sum(kept)} of {num_descriptor_columns} descriptor columns readable at a perturbed "
+              f"node: the perturbed gene's regional and whole-tissue expression (the owner, 13 October 2026)")
         partner_pairs = seed_mask_partner_pairs(data)
         if partner_pairs.shape[1]:
             inputs["seed_mask_partner_index"] = torch.as_tensor(partner_pairs, dtype=torch.long)

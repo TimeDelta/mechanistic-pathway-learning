@@ -46,6 +46,22 @@ DESCRIPTOR_BLOCK_PREFIXES = {
 }
 
 
+# Descriptor columns a perturbed node still reads under seed_masked (the owner, 13 October 2026: "that brain gene
+# expression masking not acceptable for perturbations ... can we either find a way to incorporate brain expression
+# levels more like the cell types or just not block those specific channels in the descriptors?"). Whether the
+# perturbed gene is expressed in a region at all decides whether its loss matters there, which is mechanism and not a
+# lookup of which gene was hit. The per-cell-class columns are NOT here: they are the same eleven classes as the
+# cell-class weight table, which is already a propagation input and the better form of them, so unmasking them would
+# add only shortcut capacity. The columns below are the regional and whole-tissue ones, which the propagation does not
+# carry in any form until the cluster-type channels replace them.
+SEED_READS_THESE_DESCRIPTOR_PREFIXES = ("gene_brain_region_", "gene_brain_gtex_", "gene_brain_has_expression")
+
+
+def columns_a_seed_still_reads(columns) -> list[bool]:
+    """Per column of a descriptor table, whether a perturbed node reads it under seed_masked."""
+    return [any(str(column).startswith(prefix) for prefix in SEED_READS_THESE_DESCRIPTOR_PREFIXES) for column in columns]
+
+
 def descriptor_blocks(columns) -> dict[str, list[str]]:
     """The columns of each block in DESCRIPTOR_BLOCK_PREFIXES; a column that belongs to no block, or to two, is an error."""
     blocks = {block: [] for block in DESCRIPTOR_BLOCK_PREFIXES}

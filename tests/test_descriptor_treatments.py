@@ -174,3 +174,45 @@ def test_descriptor_blocks_cover_every_column_once() -> None:
                                           "reaction_brain": ["reaction_brain_region_pons"], "protein": ["protein_rrr_1"], "gene_brain": ["gene_brain_has_expression"]}
     with pytest.raises(ValueError):
         descriptor_blocks(["unknown_column"])
+
+
+def test_a_perturbed_node_still_reads_its_regional_expression_but_not_its_identity():
+    """The owner, 13 October 2026: "that brain gene expression masking not acceptable for perturbations". Whether the
+    perturbed gene is expressed in a region decides whether its loss matters there, so those columns stay readable at
+    the seed; the per-cell-class columns do not, being the same classes as the cell-class weight table."""
+    from mechanistic_pathway_learning.graph.node_descriptors import columns_a_seed_still_reads
+    from mechanistic_pathway_learning.models.descriptor_treatments import features_without_descriptors
+
+    names = ["metabolite_logp", "protein_rrr_1", "gene_brain_region_amygdala", "gene_brain_gtex_brain_max",
+             "gene_brain_has_expression", "gene_brain_class_astrocyte"]
+    kept = columns_a_seed_still_reads(names)
+    assert kept == [False, False, True, True, True, False]
+
+    features = torch.arange(2 * (3 + len(names)), dtype=torch.float32).reshape(2, 3 + len(names))
+    masked = features_without_descriptors(features, len(names), torch.tensor(kept))
+    assert torch.equal(masked[:, :3], features[:, :3])  # structural columns untouched
+    for position, name in enumerate(names):
+        column = 3 + position
+        if kept[position]:
+            assert torch.equal(masked[:, column], features[:, column]), name
+        else:
+            assert torch.count_nonzero(masked[:, column]) == 0, name
+    # with no mask given, every descriptor column goes, which is what every run before 13 October 2026 did
+    assert torch.count_nonzero(features_without_descriptors(features, len(names))[:, 3:]) == 0
+    with pytest.raises(ValueError):
+        features_without_descriptors(features, len(names), torch.tensor(kept[:-1]))
+
+
+def test_both_encoders_read_the_kept_columns_at_a_seed_and_the_rest_nowhere():
+    """The gate (linear response) and the base state (message passing) must differ from the fully masked version by the
+    kept columns alone, at the perturbed node and at no other."""
+    from mechanistic_pathway_learning.models.descriptor_treatments import features_without_descriptors
+
+    kept = torch.zeros(NUM_DESCRIPTOR_COLUMNS, dtype=torch.bool)
+    kept[0] = True
+    features = node_features_with_descriptors()
+    fully_masked = features_without_descriptors(features, NUM_DESCRIPTOR_COLUMNS)
+    partly_masked = features_without_descriptors(features, NUM_DESCRIPTOR_COLUMNS, kept)
+    first = features.shape[1] - NUM_DESCRIPTOR_COLUMNS
+    differing = (fully_masked != partly_masked).any(dim=0)
+    assert bool(differing[first]) and not bool(differing[first + 1:].any()) and not bool(differing[:first].any())

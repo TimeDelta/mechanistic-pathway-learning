@@ -10,9 +10,9 @@ The node features are the structural columns followed by num_descriptor_columns 
   largest. A readout can then learn "which protein is this" and skip the propagation, the shortcut the descriptors-only
   control measures (Gillis and Pavlidis, PLoS ONE 6, e17258, 2011: "high-quality gene function predictions can be made
   using data that possesses no information on which gene interacts with which").
-- seed_masked: the perturbed nodes of each perturbation see their structural columns only (descriptor columns set to
-  zero, the mean of their node type, since each block is standardised within its type); every other node keeps its
-  descriptors. What a perturbation's own protein is reaches the readout only through the nodes around it. On a graph
+- seed_masked: the perturbed nodes of each perturbation see their structural columns, and the expression columns of
+  SEED_READS_THESE_DESCRIPTOR_PREFIXES, only (the other descriptor columns set to zero, the mean of their node type,
+  since each block is standardised within its type); every other node keeps its descriptors. What a perturbation's own protein is reaches the readout only through the nodes around it. On a graph
   split into gene and protein nodes (docs/gene_protein_split.md) the mask also covers the nodes joined to a seed by an
   encodes edge: a knockout seeds the gene and a drug the protein, and without it the knocked-out gene's protein
   descriptors, or the drug target's gene expression, would sit one hop from the seed, where the merged graph hid them.
@@ -43,10 +43,24 @@ def check_descriptor_treatment(descriptor_treatment: str, num_descriptor_columns
                          f"(got {num_descriptor_columns} descriptor columns of {num_feature_columns})")
 
 
-def features_without_descriptors(node_features: Tensor, num_descriptor_columns: int) -> Tensor:
-    """The node features with the descriptor columns (the last num_descriptor_columns) set to zero."""
+def features_without_descriptors(node_features: Tensor, num_descriptor_columns: int,
+                                 descriptor_columns_kept: Tensor | None = None) -> Tensor:
+    """The node features with the descriptor columns (the last num_descriptor_columns) set to zero.
+
+    descriptor_columns_kept, a boolean over those columns, names the ones a perturbed node still reads
+    (graph/node_descriptors.py, SEED_READS_THESE_DESCRIPTOR_PREFIXES: the regional and whole-tissue expression of the
+    perturbed gene, by the owner's decision of 13 October 2026, because whether the gene is expressed in a region
+    decides whether its loss matters there). None masks every descriptor column, which is what every run before that
+    date did."""
     masked = node_features.clone()
-    masked[:, node_features.shape[1] - num_descriptor_columns:] = 0.0
+    first = node_features.shape[1] - num_descriptor_columns
+    masked[:, first:] = 0.0
+    if descriptor_columns_kept is not None:
+        if descriptor_columns_kept.shape[0] != num_descriptor_columns:
+            raise ValueError(f"descriptor_columns_kept must have one entry per descriptor column "
+                             f"({descriptor_columns_kept.shape[0]} for {num_descriptor_columns})")
+        kept = descriptor_columns_kept.bool()
+        masked[:, first:][:, kept] = node_features[:, first:][:, kept]
     return masked
 
 

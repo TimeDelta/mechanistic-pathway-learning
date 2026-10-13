@@ -1326,6 +1326,19 @@ input from the descriptors, they set how far a class carries the response rather
 are masked with the rest. The limit already registered holds: a seed's reactions still carry its EC numbers and the
 expression its gene rule copied onto them.
 
+**21a. A perturbed node still reads its own regional expression** (the owner, 13 October 2026: "that brain gene
+expression masking not acceptable for perturbations ... whether the cell class expresses that knocked out gene at all
+determines whether the effect even matters in that cell type"). Of the 138 descriptor columns, the 16 that carry the
+perturbed gene's regional and whole-tissue expression stay readable at its seed under `seed_masked`
+(`SEED_READS_THESE_DESCRIPTOR_PREFIXES`: the 13 `gene_brain_region_` columns, the two GTEx maxima and the
+has-expression flag); the other 122 are masked as item 21 states. The 11 `gene_brain_class_` columns are **not** among
+them, because they are the same eleven cell classes as the cell-class weight table, which is already a propagation
+input and the better form of them, so unmasking them would add shortcut capacity and no mechanism. The honest residual:
+16 columns of expression are still a narrow fingerprint of a gene, so this reopens a small part of the route item 21
+closes. What closes it properly is item 23a, which makes the regional axis a propagation input and leaves these
+columns redundant in the way the class columns already are. Until that is built the columns are readable, and masking
+by column rather than by count is what makes the distinction expressible at all.
+
 **22. Every channel carries the perturbation with the same sign, and the channels start equal** (the owner, 13
 October 2026: "each class should be consistently signed within itself"). Each channel's input weight is `exp` of a free
 parameter, so it is positive, and all start at one value; the classes stay free to learn different sizes. Before this
@@ -1350,6 +1363,19 @@ choice can still be turned off by name. No data path is a default: the graph, ev
 cell-class weights and combined perturbations are named per run and belong to the rebuild.
 
 **24. What the decisions of 13 October leave open, registered as open so it is not settled by default later.**
+- **23a. The channel axis becomes HPA's cluster types, which is the region-by-class cross already in the source**
+  (the owner, 13 October 2026: "i thought the region already had cell type expression levels and that the cross just
+  has 0s in some spots, which would mean that particular sparse matrix can be mapped to a reduced one for faster
+  processing in the bottleneck pass"). Measured: the 11 cell classes are a pooling of HPA's single-nuclei table, whose
+  `Cluster type` column is already region-qualified, and its 34 types are that reduced matrix. About 20 are
+  region-specific neuronal types (amygdala excitatory; hippocampal CA1-3, CA4 and dentate gyrus; thalamic excitatory;
+  cerebellar inhibitory and Bergmann glia; midbrain-derived inhibitory; mammillary body; medium spiny and eccentric
+  medium spiny; seven cortical types) and about 10 are pan-regional glial, vascular and immune types that carry no
+  region because they have none. With the Siletti dopaminergic cluster, which HPA has no type for, that is 35 channels
+  against the present 12: three times the bottleneck pass rather than the thirteen times a full 12-by-13 cross would
+  cost, and the pass is cached per perturbation, so it is paid once per perturbation and not once per epoch. Registered
+  before it is built; the cost is to be measured on the rebuilt graph, and the 13 regional descriptor columns of item
+  21a become redundant when it lands.
 - **Message passing is not at its registered form.** Item 8 of 12 October (one repeated layer, rank-factored, run to a
   fixed point) is not built, so the encoder keeps its three layers with weights per layer and does not reach a fixed
   point. Until it is built the two encoders differ in more than their response law, and item 7 is met by the

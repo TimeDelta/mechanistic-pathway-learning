@@ -94,6 +94,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         num_message_passing_layers: int = 3,
         node_features: Tensor | None = None,
         num_descriptor_columns: int = 0,
+        descriptor_columns_kept: Tensor | None = None,
         descriptor_treatment: str = "plain",
         seed_mask_partner_index: Tensor | None = None,
         conjunction_relation_indices: tuple[int, ...] = (),
@@ -201,7 +202,7 @@ class RelationalMessagePassingEncoder(nn.Module):
             else:
                 self.feature_projection = nn.Linear(node_features.shape[1], node_state_dim)
             if descriptor_treatment == "seed_masked":
-                self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns), persistent=False)
+                self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns, descriptor_columns_kept), persistent=False)
         self.perturbation_injection = nn.Linear(PERTURBATION_FEATURE_DIM, node_state_dim)
         scale = 1.0 / math.sqrt(node_state_dim)
         self.relation_weight = nn.Parameter(

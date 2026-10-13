@@ -437,6 +437,7 @@ class LinearResponseEncoder(nn.Module):
         extracellular_pool_nodes: Tensor | None = None,
         shared_pool_classes: Tensor | None = None,
         num_descriptor_columns: int = 0,
+        descriptor_columns_kept: Tensor | None = None,
         descriptor_treatment: str = "plain",
         seed_mask_partner_index: Tensor | None = None,
         entry_node_mask: Tensor | None = None,
@@ -584,7 +585,7 @@ class LinearResponseEncoder(nn.Module):
             self.output_gate = nn.Linear(node_features.shape[1], node_state_dim)
             self.descriptor_gate = None
         if descriptor_treatment == "seed_masked":
-            self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns), persistent=False)
+            self.register_buffer("node_features_without_descriptors", features_without_descriptors(self.node_features, num_descriptor_columns, descriptor_columns_kept), persistent=False)
         if uses_mixture:
             rows_with_an_edge = torch.zeros(len(relation_names) * num_graph_nodes, dtype=torch.bool)
             rows_with_an_edge[stacked_adjacency.coalesce().indices()[0]] = True
