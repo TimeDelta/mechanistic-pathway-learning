@@ -167,3 +167,36 @@ def test_one_named_subunit_is_an_assay_and_does_not_narrow_a_complex():
     two_named = replace_complex_rows(pd.DataFrame([{"gene_symbols": sodium_channel, "sign": -1.0}]),
                                      pd.DataFrame([{"gene_symbol": "SCN5A", "sign": -1.0}, {"gene_symbol": "SCN9A", "sign": -1.0}]))
     assert sorted(two_named[0]) == ["SCN5A", "SCN9A"]  # selectivity was looked at, so the complex narrows
+
+
+def test_the_obligate_partners_of_a_site_survive_the_narrowing():
+    """The owner, 13 October 2026: "ya absolutely add back obligate partners. that sounds obvious". GtoPdb gives a row
+    per subunit it has affinity for, and affinity is measured against the subunit that differentiates the
+    pharmacology, so an obligate partner never earns a row: the narrowing dropped GABRG2 from all five
+    benzodiazepines while keeping GABRA1 to GABRA3, and the benzodiazepine site is the alpha/gamma2 interface."""
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import (
+        OBLIGATE_SUBUNITS_OF_A_SITE,
+        obligate_partners,
+        replace_complex_rows,
+    )
+
+    gaba_a = "|".join(["GABRA1", "GABRA2", "GABRA3", "GABRA4", "GABRA5", "GABRA6", "GABRB1", "GABRB2", "GABRB3",
+                       "GABRD", "GABRE", "GABRG1", "GABRG2", "GABRG3", "GABRP", "GABRQ"])
+    chembl = pd.DataFrame([{"gene_symbols": gaba_a, "sign": 0.5}])
+    gtopdb = pd.DataFrame([{"gene_symbol": gene, "sign": 0.5} for gene in ("GABRA1", "GABRA2", "GABRA3")])
+
+    benzodiazepine, reasons = replace_complex_rows(chembl, gtopdb, sites=("benzodiazepine site",))
+    assert sorted(benzodiazepine) == ["GABRA1", "GABRA2", "GABRA3", "GABRG2"]
+    assert reasons["GABRG2"].startswith("obligate partner")
+    assert "GABRA4" not in benzodiazepine and "GABRD" not in benzodiazepine  # still dropped, and correctly
+
+    # the barbiturate site is on the beta subunit, which is the distinction the complex expansion erased
+    barbiturate, _ = replace_complex_rows(chembl, gtopdb, sites=("barbiturate site",))
+    assert {"GABRB1", "GABRB2", "GABRB3"} <= set(barbiturate) and "GABRG2" not in barbiturate
+    assert set(benzodiazepine) != set(barbiturate)
+
+    # a partner the drug's own complex does not contain is not invented
+    assert obligate_partners(("alpha2delta-1",)) == {"CACNA2D1", "CACNA2D2"}
+    assert obligate_partners(("alpha2delta-1",), {"CACNA2D1", "CACNA1A"}) == {"CACNA2D1"}
+    assert obligate_partners(("a site nobody named",)) == set()
+    assert set(OBLIGATE_SUBUNITS_OF_A_SITE) == {"benzodiazepine site", "barbiturate site", "GABA site", "alpha2delta-1"}

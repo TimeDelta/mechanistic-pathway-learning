@@ -1465,10 +1465,38 @@ of the 192 targets are held by six or more drugs. No grouping fixes it. Grouping
 gives a single block of 90 percent of the drugs, and the rare-target rule mitigates without eliminating, as the owner
 said ("it doesn't truly stop leakage ... just mitigates it").
 
-**a. The split.** The unit is a (drug, target) mechanism edge. A partition of the targets puts every edge through a
-held-out target on the held-out side, so a drug keeps labels on both sides and what is held out is **the drug acting
-through a particular target**. Measured over 200 redraws (`experiments/label_review/target_split_options.py`), against
-the three other readings of the same sentence:
+**a. The split: a partition of the targets, and a drug is held out whole when any of its targets is in it** (the
+owner, 13 October 2026: "i'm actually thinking that's a better fit"). The drug is never trained on, and at test time
+it is presented complete, so **the label is exact**: the drug's own observed symptoms are scored against the drug's
+own targets.
+
+**How many targets are held out is solved for, not chosen** (the owner, the same day: "we need a principled way of
+doing it instead of arbitrarily choosing a number of targets for hold out, right?"). He is right that a target
+fraction picked to reproduce the size the drug split happened to give is convenience and not principle. The held-out
+fraction of **perturbations** is already registered at one seventh; the target count is whatever delivers it. The
+construction, which has no free number in it:
+
+> Take the targets in a random order fixed by the split's seed. Add them to the held-out set one at a time, recording
+> the held-out share of drugs after each. Keep the prefix whose share lands closest to the registered held-out
+> fraction.
+
+Measured over 200 draws (`experiments/label_review/target_split_options.py`): it holds out **3.2 percent of targets**,
+6.1 of 192, giving **14.4 percent of drugs** against the registered 14.3, with a spread of 2.3 points. The target
+count is a consequence of the registered fraction and of how promiscuous the drugs happen to be, and it moves on its
+own when the rebuild changes the target sets, which is the property a chosen number would not have.
+
+What that buys: a held-out drug carries at least one mechanism training never saw, and **61.2 percent of its
+mechanisms are new on average**, against the drug split where 84.4 percent of held-out drugs have **every** target
+already in training. The residual, stated: the other 38.8 percent of a held-out drug's targets do appear in training
+through other drugs, so the model knows part of its mechanism. That is the price of keeping the label exact.
+
+**The registered alternative, and why it is not the primary.** The same sentence also reads as a split on the (drug,
+target) **mechanism edge**, where a drug keeps labels on both sides and only its held-out target's contribution is
+tested. That guarantees more - the mechanism predicted from is wholly unseen, 0 percent covered - but it costs the
+label: the observed symptom was produced by the whole drug, so a partial mechanism is scored against a whole-drug
+label, and the noise is one-sided. Since the study's task is (drug to symptoms) with whole-drug labels, the exact
+label is worth more than the stronger novelty guarantee, and the edge split is registered here as the alternative
+rather than taken. Both readings, and the two weaker ones, were measured before choosing:
 
 | rule | held-out share | fully covered by training mechanisms | has a mechanism training never saw |
 |---|---|---|---|
@@ -1478,25 +1506,20 @@ the three other readings of the same sentence:
 | any target held | 46.0% | 0.0% | 100% |
 | **mechanism edge** | **13.8%** | **0.0%** | **100%** |
 
-The mechanism-edge rule holds out the same share as the drug split does today and leaves **none** of the held-out side
-covered by a training mechanism, by construction: a held-out target appears in no training edge of any drug.
-`any target held` achieves the same and holds out 46 percent of the drugs, which is why it is not taken.
-
-**The cost, stated because it is not small.** A label is a (drug, symptom) pair and the observed symptom was produced
-by the whole drug. Under this split the model is asked at test time to predict from the drug's held-out targets alone,
-so a partial mechanism is scored against a whole-drug label. The label is therefore noisy with respect to the input,
-and the noise is one-sided: a symptom the drug causes through a target that stayed in training still appears in the
-label. This lowers the ceiling on the achievable score and must be reported with it. It does not bias in favour of the
-hypothesis: a model that has learned nothing about the held-out mechanism cannot be helped by the label noise.
+(that table is drawn at a held-out target fraction of one seventh, which is why `any target held` reads 46 percent
+there; the fraction is a free knob and 3 percent is what the primary rule takes.) Neither of the two weaker readings
+is taken: holding a drug out only when **every** one of its targets is held out reaches 3.1 percent of drugs and still
+leaves 81.1 percent of them fully covered, and splitting on the **primary** target leaves 75.8 percent covered, since
+a drug's other targets go on appearing in training.
 
 **b. The permuted-target negative control carries the evidence on memorisation.** Already registered as item 4 and
 read as the primary answer to whether the model uses mechanism or drug identity, because no split can settle it
 structurally. Permuting which targets each drug has and retraining must lower the score; a score that survives the
 permutation is drug identity and not mechanism, whatever the split.
 
-**c. A pre-registered secondary stratum for unseen mechanisms.** Scored apart on the held-out edges whose target
-appears in no training edge, which under the mechanism-edge rule is all of them, and under the drug split would have
-been the 15.6 percent with a genuinely unseen mechanism. It is the study's only estimate of extrapolation to a
+**c. A pre-registered secondary stratum for unseen mechanisms.** Scored apart on the held-out drugs **none** of whose
+targets appears in training: the strictest reading available under the primary split, and **21.2 percent of the
+held-out side** under the construction above, against the 15.6 percent the drug split would have given. It is the study's only estimate of extrapolation to a
 mechanism never trained on, it is underpowered, and it is fixed here before the draw so it cannot be chosen after a
 result is seen.
 

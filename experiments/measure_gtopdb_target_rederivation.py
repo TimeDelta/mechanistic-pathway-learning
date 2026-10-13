@@ -41,7 +41,7 @@ from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import (
     targets_per_drug,
 )
 
-CHEMBL_SITE_TABLE = Path("data/processed/label_review/chembl_binding_sites.csv")
+CHEMBL_SITE_TABLE = Path("configs/binding_sites.csv")
 
 
 def drug_names(graph_directory: Path) -> dict[str, str]:
@@ -59,6 +59,14 @@ def chembl_targets_per_drug(graph_directory: Path) -> dict[str, set[str]]:
     entry = pd.read_parquet(graph_directory / "drug_entry_nodes.parquet")
     return {str(drug): {str(node).split(":", 1)[1] for node in group}
             for drug, group in entry.groupby("perturbation_id").target_node_id}
+
+
+def binding_sites_per_drug(site_table_path: Path = Path("configs/binding_sites.csv")) -> dict[str, tuple[str, ...]]:
+    """drug name (lowercased) -> the binding sites named for it, which decide its obligate partner subunits."""
+    if not site_table_path.exists():
+        return {}
+    table = pd.read_csv(site_table_path)
+    return {str(drug).lower(): tuple(sorted(set(group.site.astype(str)))) for drug, group in table.groupby("drug")}
 
 
 def chembl_rows_per_drug(perturbation_ids, chembl_directory: Path) -> dict[str, pd.DataFrame]:
@@ -100,6 +108,7 @@ def main() -> None:
     per_drug = targets_per_drug({drug: ligand for drug, ligand in ligand_of_drug.items() if drug in before}, interactions)
 
     chembl_rows = chembl_rows_per_drug(list(before), arguments.chembl_dir)
+    sites_of_drug = binding_sites_per_drug(CHEMBL_SITE_TABLE)
     after: dict[str, set[str]] = {}
     reasons_per_drug: dict[str, dict[str, str]] = {}
     unnamed_actions: dict[str, list[str]] = {}
@@ -111,7 +120,7 @@ def main() -> None:
             continue
         # the row-wise rule: a single-gene ChEMBL row is kept, a complex row is narrowed only by GtoPdb rows naming
         # its own subunits, and a GtoPdb target outside every ChEMBL row is added (the cocaine case)
-        signs, reasons = replace_complex_rows(chembl_rows[drug], usable)
+        signs, reasons = replace_complex_rows(chembl_rows[drug], usable, sites=sites_of_drug.get(names.get(drug, "").lower(), ()))
         after[drug] = {gene for gene in signs if gene in before[drug] or reasons[gene].startswith("gtopdb")}
         reasons_per_drug[drug] = reasons
         unnamed = rows[rows.sign.isna() & rows.Action.notna()]  # an action the table has a word for but no sign

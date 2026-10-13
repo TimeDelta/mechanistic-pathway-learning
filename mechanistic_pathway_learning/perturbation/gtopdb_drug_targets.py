@@ -175,6 +175,39 @@ def one_gene_per_row(rows: pd.DataFrame) -> pd.DataFrame:
     return single[single.sign.notna()]
 
 
+# Subunits a binding site needs that an affinity table will not name (the owner, 13 October 2026: "ya absolutely add
+# back obligate partners. that sounds obvious"). The narrowing drops them systematically, and the reason generalises:
+# GtoPdb gives a row per subunit it holds affinity data for, and affinity is measured against the subunit that
+# differentiates the pharmacology, so an obligate partner that does not change affinity never earns a row of its own.
+# Measured on this study's drugs, the narrowing dropped GABRG2 from all five benzodiazepines while keeping GABRA1 to
+# GABRA3 - and the benzodiazepine site IS the alpha/gamma2 interface, so that is half a binding site.
+# The sites are those `configs/binding_sites.csv` names, and each entry is a structural fact about the site rather
+# than a measurement: a subunit the site cannot form without.
+OBLIGATE_SUBUNITS_OF_A_SITE: dict[str, tuple[str, ...]] = {
+    # the classical benzodiazepine site sits at the interface between an alpha subunit and gamma2; receptors built on
+    # alpha4 or alpha6, and delta-containing receptors, which carry no gamma at all, are insensitive to it
+    "benzodiazepine site": ("GABRG2",),
+    # the barbiturate and general-anaesthetic site is on the beta subunit's transmembrane domain and needs no gamma,
+    # which is the distinction from the benzodiazepine site that the complex expansion erased
+    "barbiturate site": ("GABRB1", "GABRB2", "GABRB3"),
+    # the orthosteric GABA site is at the beta/alpha interface
+    "GABA site": ("GABRB1", "GABRB2", "GABRB3"),
+    # gabapentin and pregabalin bind the alpha-2-delta auxiliary subunits, both of them
+    "alpha2delta-1": ("CACNA2D1", "CACNA2D2"),
+}
+
+
+def obligate_partners(sites, gene_symbols_of_the_complex: set[str] | None = None) -> set[str]:
+    """The subunits the named sites cannot form without, restricted to the complex's own genes when one is given.
+
+    A partner the drug's complex does not contain is left out rather than invented: the restriction is what keeps this
+    a correction to the narrowing and not a second source of targets."""
+    partners: set[str] = set()
+    for site in sites:
+        partners.update(OBLIGATE_SUBUNITS_OF_A_SITE.get(str(site).strip(), ()))
+    return partners if gene_symbols_of_the_complex is None else partners & gene_symbols_of_the_complex
+
+
 # How many subunits of a complex GtoPdb must name before its rows narrow that complex. One row is an assay against
 # whichever subtype was convenient to test, not a statement of selectivity: GtoPdb holds a single human row for
 # lidocaine (SCN5A, the cardiac subtype its antiarrhythmic data comes from), for phenytoin (SCN2A) and for lacosamide
@@ -185,7 +218,8 @@ SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX = 2
 
 def replace_complex_rows(chembl_rows: pd.DataFrame, gtopdb_rows: pd.DataFrame,
                          gene_symbols_column: str = "gene_symbols",
-                         subunits_needed: int = SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX) -> tuple[dict[str, float], dict[str, str]]:
+                         subunits_needed: int = SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX,
+                         sites: "tuple[str, ...] | None" = None) -> tuple[dict[str, float], dict[str, str]]:
     """gene -> sign for one drug, and gene -> why it is there, under the row-wise rule in this module's docstring.
 
     chembl_rows are that drug's rows of the mechanism table, each with a gene_symbols field that may list several genes
@@ -208,6 +242,10 @@ def replace_complex_rows(chembl_rows: pd.DataFrame, gtopdb_rows: pd.DataFrame,
         if len(named_by_gtopdb) >= subunits_needed:
             for gene in named_by_gtopdb:
                 sign_of_gene[gene], reason_of_gene[gene] = gtopdb_sign[gene], "gtopdb, narrowing a chembl complex"
+            # the subunits the site cannot form without, which an affinity table does not name (see above)
+            for gene in sorted(obligate_partners(sites or (), set(genes)) - set(named_by_gtopdb)):
+                sign_of_gene[gene] = chembl_sign
+                reason_of_gene[gene] = "obligate partner of the site, which the narrowing would drop"
         else:
             reason = ("chembl complex, no gtopdb row names a subunit of it" if not named_by_gtopdb else
                       f"chembl complex, gtopdb names only {len(named_by_gtopdb)} of its subunits")
