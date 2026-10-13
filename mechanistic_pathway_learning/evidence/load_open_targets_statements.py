@@ -87,14 +87,24 @@ def human_worded_statements(curated_rows: pd.DataFrame) -> list[CuratedStatement
             for row in human.itertuples()]
 
 
-def drugs_whose_only_target_is(targets_of_drug: dict[str, set[str]], signs_of_drug: dict[str, dict[str, float]],
-                              target: str, direction: str) -> list[str]:
-    """Drugs that act on the target in the curated direction and have no other target. A drug with any second target
-    is excluded whatever its affinities: the statement names the receptor, and a symptom observed for the drug could
-    have come from the other target."""
+def drugs_acting_on_the_target(signs_of_drug: dict[str, dict[str, float]], target: str, direction: str) -> set[str]:
+    """Drugs that act on the target in the curated direction, whatever else they act on."""
     node = f"{GENE_NODE_PREFIX}{target}"
-    return sorted(drug for drug, targets in targets_of_drug.items()
-                  if targets == {node} and signs_of_drug[drug].get(node) == SIGN_OF_CURATED_DIRECTION[direction])
+    return {drug for drug, signs in signs_of_drug.items() if signs.get(node) == SIGN_OF_CURATED_DIRECTION[direction]}
+
+
+def drugs_whose_only_target_is(targets_of_drug: dict[str, set[str]], signs_of_drug: dict[str, dict[str, float]],
+                               target: str, direction: str) -> set[str]:
+    """Drugs that act on the target in the curated direction **and have no other target**. A drug with any second
+    target is excluded whatever its affinities: the statement names the receptor, and a symptom observed for the
+    drug could have come from the other target.
+
+    Used by the confirmation test below under the strict reading. Which reading applies is the owner's, and it
+    moves the agreement that prices the class: any drug gives 43 of 67, 0.6418; a sole-target drug gives 12 of 67,
+    0.1791."""
+    node = f"{GENE_NODE_PREFIX}{target}"
+    return {drug for drug in drugs_acting_on_the_target(signs_of_drug, target, direction)
+            if targets_of_drug.get(drug) == {node}}
 
 
 def place_statements(statements: list[CuratedStatement], graph_genes: set[str], gene_perturbations: set[str],
@@ -116,7 +126,13 @@ def place_statements(statements: list[CuratedStatement], graph_genes: set[str], 
             placements.append(StatementPlacement(statement, None, "the target is not a graph gene"))
         elif statement.direction == DROPPED_DIRECTION:
             placements.append(StatementPlacement(statement, None, "inhibition: the gene knockout already represents it and is scored"))
-        elif (activation_perturbation_id(statement.target), statement.symptom) in evidenced_negative_pairs:
+        elif any((perturbation, statement.symptom) in evidenced_negative_pairs
+                 for perturbation in ({statement.target} | drugs_acting_on_the_target(signs_of_drug, statement.target, statement.direction)
+                                      | {activation_perturbation_id(statement.target)})):
+            # Keyed on the perturbations an evidenced negative can actually live on - the gene and the drugs that
+            # produce this action - and not only on the ACTIVATION id this module invents, which appears in no
+            # prior table and so could never match. A never-above-placebo comparison on a drug with this action is
+            # the better-controlled observation, so the statement does not become a positive anywhere.
             placements.append(StatementPlacement(statement, None, "the pair is an evidenced negative"))
         else:
             placements.append(StatementPlacement(statement, activation_perturbation_id(statement.target),
@@ -142,8 +158,9 @@ def activation_perturbation_rows(placements: list[StatementPlacement]) -> list[d
     return sorted(rows.values(), key=lambda row: row["perturbation_id"])
 
 
-def reliability_reports(statements: list[CuratedStatement], existing_items: set[tuple[str, str, str]],
-                        perturbation_of_target: dict[str, str]) -> list[dict]:
+def reliability_reports(statements: list[CuratedStatement], items_with_a_positive_report: set[tuple[str, str, str]],
+                        perturbation_of_target: dict[str, str],
+                        evidenced_negative_pairs: set[tuple[str, str]] | None = None) -> list[dict]:
     """Report rows for the Dawid-Skene reliability fit (amendment item 12d; the owner, 13 October 2026: "add it to
     the Dawid-Skene fit estimates").
 
@@ -152,22 +169,32 @@ def reliability_reports(statements: list[CuratedStatement], existing_items: set[
     hand-computed over, which is the point: the fit redoes that measurement with a prior and an interval instead of
     multiplying an ordinal grade weight by a probability.
 
-    **A report is only ever emitted for an item that already exists.** The assembler makes one observation per
-    (perturbation, symptom, relation) with at least one explicit report, so emitting a report for a new item would
-    create a scored pair out of a review statement, which is what the owner ruled out. Joining an existing item
-    creates nothing: the pair is already there, and the grade ignores reports of another evidence class, so this
-    class reaches the reliability fit and not the grade - the same route the literature class takes.
+    **A report is only ever emitted for an item that already carries a positive report.** Existing is not enough,
+    and the difference is a defect this condition was written wrongly for once. The assembler makes an observation
+    per (perturbation, symptom, relation) with at least one explicit report **of either value**, and
+    `evidence_full_v4` holds 15 gene observations with `positive_report_count == 0` - documented absences, dropped
+    from the label matrix. A report of value 1 on one of those flips it to a positive with a nonzero weight, so a
+    target-safety review statement would manufacture a trained and scored positive out of a recorded absence.
+    Requiring a positive report means the pair is already a positive, so this class changes its weight through the
+    fit and nothing else. A pair the selection has relabelled an evidenced negative is skipped for the same
+    reason, in the other direction.
+
+    Joining such an item creates nothing: the grade ignores reports of another evidence class, so this class
+    reaches the reliability fit and not the grade - the same route the literature class takes.
 
     The identifiability this buys is also its limit, and it is the one item 12 already registers: the statements
     with an overlapping item are by construction not the statements that train, so the sensitivity is estimated on
     one subset and applied to a disjoint one. The fit makes that extrapolation explicit rather than hiding it in a
     product.
     """
+    evidenced_negative_pairs = evidenced_negative_pairs or set()
     reports = []
     for statement in statements:
         perturbation_identifier = perturbation_of_target.get(statement.target)
         item = (perturbation_identifier, statement.symptom, "induces")
-        if perturbation_identifier is None or item not in existing_items:
+        if perturbation_identifier is None or item not in items_with_a_positive_report:
+            continue
+        if (perturbation_identifier, statement.symptom) in evidenced_negative_pairs:
             continue
         references = [reference.strip() for reference in statement.references.split(";") if reference.strip()]
         reports.append({

@@ -54,19 +54,34 @@ def test_partition_agreement_is_one_for_a_relabelling_and_falls_when_the_groupin
     assert partition_agreement(np.array([1, 1, 2, 2]), np.array([1, 2, 1, 2])) < 0.5
 
 
-def test_the_number_of_clusters_is_taken_by_stability_and_finds_the_planted_count():
-    best, agreement_by_count = cluster_count_by_stability(profiles_with_known_groups(num_coordinates=16), seed=1)
+def noisy_refits_of(profiles: np.ndarray, num_fits: int = 6, noise: float = 0.25, seed: int = 0) -> list[np.ndarray]:
+    """What the perturbation subsamples of item 26 d2 give: the same structure refitted, each fit a little apart."""
+    generator = np.random.default_rng(seed)
+    return [profiles + noise * generator.normal(size=profiles.shape) for _ in range(num_fits)]
+
+
+def test_the_number_of_clusters_is_taken_across_refits_and_finds_the_planted_count():
+    planted = profiles_with_known_groups(num_coordinates=8, seed=1)  # three pairs
+    best, _ = cluster_count_by_stability(noisy_refits_of(planted, noise=0.05, seed=1), seed=1)
     assert best == 3
-    assert agreement_by_count[3] >= agreement_by_count[max(agreement_by_count)]
 
 
-def test_noise_alone_is_less_stable_than_structure():
-    """Ben-Hur et al.'s second claim, that the criterion 'can also detect the lack of structure in data': the planted
-    grouping has to score above profiles with nothing in them."""
+def test_noise_alone_is_reported_as_no_structure():
+    """Ben-Hur et al.'s second claim, that the criterion 'can also detect the lack of structure in data'. The
+    uncorrected version failed this in every seed, and so did a version corrected against uniform random labels:
+    average linkage makes unbalanced partitions, which agree with each other far more than uniform ones do."""
     generator = np.random.default_rng(3)
-    _, structured = cluster_count_by_stability(profiles_with_known_groups(num_coordinates=16), seed=1)
-    _, unstructured = cluster_count_by_stability(generator.normal(size=(16, 6)), seed=1)
-    assert max(structured.values()) > max(unstructured.values())
+    independent_noise = [generator.normal(size=(8, 24)) for _ in range(6)]
+    best, _ = cluster_count_by_stability(independent_noise, seed=3)
+    assert best is None
+
+
+def test_one_fit_cannot_choose_a_count_at_all():
+    """Neither resampling inside a single fit works: subsampling the mechanism coordinates estimates a 24 by 24
+    correlation matrix from four observations, and subsampling the symptoms perturbs nothing, because the distance
+    between two symptoms does not depend on which others are present."""
+    best, readings = cluster_count_by_stability([profiles_with_known_groups()], seed=0)
+    assert best is None and readings == {}
 
 
 def test_link_concentration_is_one_for_a_single_symptom_module_and_even_for_a_flat_one():

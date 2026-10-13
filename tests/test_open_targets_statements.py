@@ -67,11 +67,18 @@ def test_a_statement_a_kept_drug_label_already_confirms_adds_nothing():
     assert [p.reason for p in placed] == ["a kept drug label already confirms it"]
 
 
-def test_a_statement_never_overrides_an_evidenced_negative():
-    """A never-above-placebo pair and a review statement are a contradiction, not independent evidence."""
-    placed = placements_for([statement("HTR2C", "activation", "anxiety")],
-                            evidenced_negatives={(activation_perturbation_id("HTR2C"), "anxiety")})
-    assert [p.perturbation_identifier for p in placed] == [None] and placed[0].reason == "the pair is an evidenced negative"
+def test_a_statement_never_overrides_an_evidenced_negative_on_any_perturbation_it_could_live_on():
+    """A never-above-placebo pair and a review statement are a contradiction, not independent evidence. The guard
+    has to be keyed on the perturbations an evidenced negative can actually live on - the gene, and the drugs that
+    produce this action - and not only on the ACTIVATION id this module invents, which appears in no prior table
+    and so could never match."""
+    for perturbation in ("HTR2C", "single_target_agonist", "two_target_agonist", activation_perturbation_id("HTR2C")):
+        placed = placements_for([statement("HTR2C", "activation", "anxiety")],
+                                evidenced_negatives={(perturbation, "anxiety")})
+        assert [p.perturbation_identifier for p in placed] == [None], f"the guard missed an evidenced negative on {perturbation}"
+        assert placed[0].reason == "the pair is an evidenced negative"
+    assert placements_for([statement("HTR2C", "activation", "anxiety")],
+                          evidenced_negatives={("antagonist", "anxiety")})[0].perturbation_identifier is not None  # wrong direction
 
 
 def test_a_target_the_graph_does_not_hold_carries_nothing():
@@ -131,3 +138,27 @@ def test_the_report_carries_the_class_so_it_reaches_the_fit_and_not_the_grade():
 
 def test_a_target_with_no_perturbation_reports_nothing():
     assert reliability_reports([statement("CHRM1", "inhibition", "psychosis")], EXISTING_ITEMS, PERTURBATION_OF_TARGET) == []
+
+
+def test_a_reliability_report_needs_an_item_that_already_carries_a_positive():
+    """An item can exist as a recorded absence: evidence_full_v4 holds 15 gene observations with no positive
+    report. A report of value 1 on one of those would flip a documented absence into a trained and scored
+    positive, which is the outcome the module exists to prevent."""
+    only_an_absence = set()  # the item exists in the table but carries no positive report
+    assert reliability_reports([statement("GRIN1", "inhibition", "psychosis")], only_an_absence, PERTURBATION_OF_TARGET) == []
+    assert len(reliability_reports([statement("GRIN1", "inhibition", "psychosis")], EXISTING_ITEMS, PERTURBATION_OF_TARGET)) == 1
+
+
+def test_a_reliability_report_is_not_emitted_against_an_evidenced_negative():
+    assert reliability_reports([statement("GRIN1", "inhibition", "psychosis")], EXISTING_ITEMS, PERTURBATION_OF_TARGET,
+                               evidenced_negative_pairs={("GRIN1", "psychosis")}) == []
+
+
+def test_the_sole_target_rule_is_available_and_differs_from_any_drug():
+    from mechanistic_pathway_learning.evidence.load_open_targets_statements import (
+        drugs_acting_on_the_target,
+        drugs_whose_only_target_is,
+    )
+
+    assert drugs_acting_on_the_target(SIGNS_OF_DRUG, "HTR2C", "activation") == {"single_target_agonist", "two_target_agonist"}
+    assert drugs_whose_only_target_is(TARGETS_OF_DRUG, SIGNS_OF_DRUG, "HTR2C", "activation") == {"single_target_agonist"}
