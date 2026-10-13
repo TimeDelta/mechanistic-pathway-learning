@@ -50,7 +50,7 @@ what is still his to settle, and an entry left open after the fact costs him a s
 | 4.1 | **The reach of the electrical layer.** Restated 13 October, since the open part is narrower than it reads. **Goldman-Hodgkin-Katz is settled and was rejected with a reason**: GHK weights each ion by a permeability and the sources give conductances, which substituted into GHK miss their own -72.6 mV by 39 mV, so item 13 registers the parallel-conductance (Millman) equation. What is open is only the **magnitude** arriving at `VM_c`, set by the ion pool's in-degree rather than by the 405 edges at `VM_c` | 4.13's `total_in_degree` changes the divisor this rests on, so it is re-measured at the rebuild before anything further is decided |
 | 4.2 | **The cell-class weight of a protein complex.** 413 reactions regulated only by a complex carry a flat class weight, adenylyl cyclase among them, because the weight reaches a reaction through its catalysing gene. 1,527 of the 1,681 complexes have a member that already carries one, so a complex could take its limiting member's weight | measured; a build, not yet proposed as a change |
 | 4.3 | **The loss of class-specific routing under the limiting-step rule.** Under the registered default the weights are out of the propagation entirely and re-enter only as the post-hoc ceiling, so any prediction that turns on a route existing in one cell type and not another is unidentifiable. 34.0 percent of nodes are flat at 1 in every class, and under a max-min rule a route through a flat node costs nothing | **to be quantified after the rebuild** (the owner, 13 October: "4.3 should be quantified after the rebuild"), by `experiments/measure_limiting_step_rule.py` item 4, which was written for it |
-| 4.4 | **The weighted constant start** (`weighted_constant_optimum`): whether the confirmatory_v2 configurations take it | no configuration carries it |
+| ~~4.4~~ | **Closed 13 October as moot** (the owner: "Ya. Close 4.4 as moot"). The weighted constant start is on in the registered v4 model; the question was only whether the older confirmatory_v2 configurations take it, and none of them is being run | closed |
 | ~~4.7~~ | **Set aside 13 October: the two-level noisy-OR has no job left.** `z_j(p) = 1 - prod_k (1 - u_kj a_k(p))` then `P(s|p) = 1 - (1 - leak_s) prod_j (1 - v_js z_j(p))`, the owner's form ("what about just putting the noisy or in between the modules and the lower rank matrix?"). It was the better of the two latent forms, because the factor pools activations and two modules of one factor saturate rather than counting twice. What it bought item 26 was profile stability under symptom folds, and the owner does not need that ("i guess i don't need profile stability under symptom folds so much as symptom profile stability in general"), which 26 d2 measures without it. Kept here with its costs - a second multiplicative layer between the modules and the loss in a head whose links already travel 90 percent of what Adam can move them, dead factors, and a free `d` - in case shrinkage for thin symptoms is later wanted on its own | set aside, not refused |
 | ~~4.8~~ | **Set aside 13 October with 4.7.** `link_ks = 1 - prod_j (1 - u_kj v_js)`: the same rank reduction with no new layer, safer to fit and weaker as a model, since the factor structures the parameters only and every module reaches the symptom on its own. Falls with 4.7, for the same reason | set aside, not refused |
 | ~~4.9~~ | **Closed 13 October: nothing to freeze.** Freezing the link matrix existed to pin module identity across symptom folds, and the owner dropped the folds ("i don't know that the joint reading refit is worth it, tbh"). Item 26 now asks for no change to the registered head at all: no latent layer, no frozen readout, no new parameter, no free rank. What survives of the question the folds were for is the link concentration `max_s link_ks / sum_s link_ks`, reported per module against the permuted-label null, which costs nothing beyond runs already registered | closed |
@@ -87,8 +87,23 @@ Phase 1 counts per symptom and grade; the final symptom set after go/no-go; the 
 statement for the GWAS enrichment test; and the open questions 8 to 10 of design section 11 — frequency as a weight or
 as a target, the subsystem against curated pathway split, and the deterioration-term exclusion.
 
-## 8. Code registered and not yet written
+## 8. Registered or decided, and not yet written
 
-Not decisions, but they gate 1.1 as surely as a decision would: the fixed-point propagation loop, the one repeated
-layer with rank-factored relations and an explicit norm bound, and the signed adjacency for message passing are all
-registered in the amendment of 12 October and none is implemented. Nothing has been run on them.
+Checked against the code on 13 October 2026, not recalled. Everything the amendment of 12 October listed here is
+now built: the fixed-point propagation loop, the repeated layer with rank-factored relations and its norm bound,
+and the signed adjacency for message passing. What is outstanding:
+
+| | what | state |
+| --- | --- | --- |
+| 8.1 | **Item 29's calibration.** The 2.1x offset on the placeholder concentration is measured and registered; nothing applies it. No model path reads `has_measured_occupancy` either, so the stratum item 29 and item 5a both rest on does not exist yet | registered today, unbuilt |
+| 8.2 | **Decision 4.11, the linear encoder reading `edge_weight`.** The owner said yes on 13 October; `signed_stacked_adjacency` still takes no such argument, so item 13's six conductance weights remain inert in that encoder | decided, unbuilt |
+| 8.3 | **Decision 4.12, the bottleneck over routes of the settled sign.** Accepted 13 October, unbuilt | decided, unbuilt |
+| 8.4 | **Decision 4.6, a baseline per perturbation type.** The owner said yes on 13 October; `BASELINES` in the scorer is unchanged | decided, unbuilt |
+| 8.5 | **Item 12's loader is not called.** `load_open_targets_statements.py` exists and is tested, but `assemble_evidence_table.py` does not call it, so the class reaches no evidence table. It enters at the rebuild | built, unwired |
+| 8.6 | **Item 20's per-edge stoichiometric demand.** `bottleneck_edge_demand` is None, so every demand is 1 and the owner's two-molecule acetylcholine example is registered and inert. Needs the coefficients the build currently reads and discards | registered, unbuilt |
+| 8.7 | **Decision 4.2, a complex taking its limiting member's cell-class weight.** 413 reactions flat in every class; awaiting the owner's confirmation of where the weight applies, then a build | open, unbuilt |
+| 8.8 | **The power simulation of 5.2**, which now also gates decision 1.3(b): whether 121 drugs and 810 kept pairs carry the design | outstanding |
+| 8.9 | **The four held drugs of 3.1**, whose missing parts have not been looked for outside the sources already tried | not started |
+| 8.10 | **The nosology readout of item 26** is written and tested but cannot run: `runs/` holds no trained checkpoints, and both its cluster count and its stability need several fits | built, waiting on runs |
+
+Decision 4.3 is deliberately not here: the owner asked for it to be quantified after the rebuild.
