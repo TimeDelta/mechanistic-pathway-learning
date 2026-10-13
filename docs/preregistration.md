@@ -1242,6 +1242,31 @@ on this input and no claim rests on its absolute scale (docs/brain_exposure_data
 exclusion is kept and now has its own evidence: lumbar CSF runs more than 3-fold high for P-gp substrates and
 buprenorphine's own measured CSF range spans 46-fold.
 
+**16. The bridging rule is applied once, and only orphenadrine is set aside** (user, 12 October 2026: "I don't know
+about excluding tapentadol. It's got NE effects which are very important. I'm leaning towards leaving only orphenadrine
+out."). The rule registered in item 1 had no stopping condition, which was an omission in my drafting: applied again to
+the rebuilt table it names tapentadol, which seeds `OPRM1` and `SLC6A2` and so joins the 18-drug opioid block to the
+97-drug monoamine block, and a third pass names agomelatine. **One pass is the rule.** The reason given for stopping
+there is pharmacological and is recorded as such: tapentadol's noradrenaline reuptake inhibition is part of what the
+study is trying to represent, so removing the drug to tidy the split would remove a mechanism rather than an artefact.
+The cost is stated with it: the opioid and monoamine blocks stay joined, so the largest block holds 116 of 231 drugs,
+50.2 percent of the drugs and 27.0 percent of the kept positive pairs. That is no worse than the table in use, whose
+largest block holds 51.4 percent and 27.2 percent, so the rebuild does not degrade the split it inherits
+(docs/rebuild_leakage_cost.md). The held-out draw therefore cannot separate opioids from monoamines, and no claim may
+rest on its doing so.
+
+**17. The enzyme, carrier and two-drug statements are training labels, in both encoders** (user, 12 October 2026:
+"Implement"). 106 combinations and 317 positive pairs from `configs/comparative_checks.csv`, carried as the combined
+perturbation type (`mechanistic_pathway_learning/evidence/combined_perturbations.py`). Both confirmatory models train
+on them, so the two stay symmetric: the asymmetry I warned of on 12 October rested on the `clears` relation being the
+only route these examples inform, and that was wrong. Lowering a clearing enzyme also moves the 61 to 103 reactions it
+catalyses, through `catalyzed_by`, a relation with 24,266 edges that every reaction-touching label already trains, so a
+combination constrains the net of two routes and the message-passing encoder is not being asked to fit 3,072 fresh
+weights from 140 pairs (docs/label_source_review.md 27.1). The 21 negative controls of the check table are **not**
+labels (user: "That's fine"): their statement is that nothing is expected, and a labelled negative would assert the
+symptom does not occur, which no source states. Under `--equal-drug-shares` a combination shares its drug's loss slot,
+so a drug with a statement does not take two drugs' share.
+
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
 stopping rule, which stays validation loss with patience 8 and at most 60 epochs. The head choice is not reopened: the
@@ -1254,12 +1279,6 @@ as pathways.
   under any concentration scheme, takes the largest leakage group from 241 perturbations and 71 drugs to between 203
   and 209 of the 222 drugs, which ends the drug split that item 2 depends on (docs/label_source_review.md 14.3). The
   objection is recorded and the decision is the user's.
-- **The enzyme statements as training labels.** The user asked for them on 12 October. The combined perturbation type
-  they needed is now built (`mechanistic_pathway_learning/evidence/combined_perturbations.py`;
-  docs/label_source_review.md 27.1), so what blocked registration is gone and what remains is the decision: 17 enzyme
-  combinations and 140 positive pairs are expressible, and training them in the linear-response encoder but not in
-  message passing would make the two confirmatory models differ in what they are trained on, which the user has been
-  avoiding. `--combined-perturbations` has no default, so no run loads them until it is passed.
 - **Which held drugs of item 14 are admitted once their missing part is supplied.** The rule itself is registered;
   pindolol, oxprenolol, timolol and carvedilol each lack one part of it, and whether a label sentence is read for
   pindolol and timolol, or a Kp,uu,brain is sought for timolol and carvedilol, is the user's to direct. The superseded

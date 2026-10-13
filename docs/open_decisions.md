@@ -13,16 +13,17 @@ a recommendation and an objection, but the choice is the owner's.
 | --- | --- | --- |
 | 1.1 | **The held-out set.** Drawn only on the owner's go-ahead ("Don't finalize the lockbox until I've given the go ahead") | every confirmatory run. Nothing downstream can start |
 | 1.2 | **The v4 rebuild.** The table in use still carries the three-target limit; the amendment of 12 October registers no limit with orphenadrine set aside by the stated bridging rule, which needs the table rebuilt and the held-out set redrawn from its leakage groups | 1.1, and the drug counts in every later item |
-| 1.2b | **Where the bridging rule stops.** Applied once it names orphenadrine; applied again to the rebuilt table it names tapentadol, which joins the 18-drug opioid block to the 97-drug monoamine block and takes the largest block from 50.2 to 42.4 percent of drugs; a third pass names agomelatine. The registration states no stopping condition, which is my omission; three ways to close it are set out in `docs/rebuild_leakage_cost.md` and each gives a different drug set | 1.1, since each changes the pool the lockbox is drawn from |
+| ~~1.2b~~ | **Closed 12 October: one pass, orphenadrine only** (amendment item 16). Tapentadol stays in; its noradrenaline reuptake inhibition is part of what the study represents, so removing it would remove a mechanism rather than an artefact. The cost is registered: the opioid and monoamine blocks stay joined, largest block 50.2 percent of drugs, no worse than the 51.4 percent of the table in use | closed |
+| ~~1.2c~~ | **Closed 12 October: the rebuild is approved** (owner: "Rebuild package numbers seem acceptable") | closed |
 | 1.3 | **Off-targets in a model input.** The owner asked for them on 12 October; my objection is recorded and stands: admitting them at any threshold from 0.1 to 0.5, under any concentration scheme, takes the largest leakage group from 71 drugs to between 203 and 209 of 222, which ends the drug split item 2 of the amendment depends on | the split, so 1.1 |
 
 ## 2. What trains
 
 | | decision | state |
 | --- | --- | --- |
-| 2.1 | **The enzyme, carrier and two-drug statements as training labels.** The combined perturbation type they needed is built; 106 combinations and 317 positive pairs are expressible. Training them in the linear-response encoder but not in message passing makes the two confirmatory models differ in what they are trained on, which the owner has been avoiding | `--combined-perturbations` has no default, so no run loads them |
-| 2.2 | **The 21 negative controls of the check table.** They are not written as labels at all. A labelled negative would assert the symptom does not occur, which no source states | recorded in the builder; not proposed |
-| 2.3 | **The Open Targets class at 0.45 with a 0.0 secondary arm.** Registered as item 12 on the owner's "no preference", so this is open only in the sense that it may be overridden | registered |
+| ~~2.1~~ | **Closed 12 October: they train, in both encoders** (owner: "Implement"; amendment item 17). Symmetric, because the asymmetry I warned of rested on `clears` being the only route and that was wrong — `catalyzed_by` carries them too |
+| ~~2.2~~ | **Closed 12 October: they stay out** (owner: "That's fine") |
+| ~~2.3~~ | **Closed 12 October: accepted** (owner: "Weight accepted") |
 
 ## 3. The drug set
 
@@ -30,7 +31,7 @@ a recommendation and an objection, but the choice is the owner's.
 | --- | --- | --- |
 | 3.1 | **The four held drugs of amendment item 14.** Pindolol (penetrant at 0.50, no label sentence of its own), oxprenolol (penetrant at 0.20, no US label in openFDA), timolol (a central-action sentence, no measured Kp,uu,brain), carvedilol (neither). Each needs one part supplied, or to stay out | the rule is registered; these four are its edge |
 | 3.2 | **Whether to read label sentences by hand for the positives the screen shortlists.** The screen's negatives are evidence; its positives include class boilerplate, so a reading decides. Five or six drugs | 3.1 |
-| 3.3 | **Whether to seek a Kp,uu,brain for the 492 candidates that have a brain-expressed target and no measurement.** The feasibility pass says there is no accurate route at scale | measured and reported; no recommendation to pursue |
+| ~~3.3~~ | **Closed 12 October: not pursued** (owner: "Don't bother since it doesn't seem feasible") |
 
 ## 4. The model and the encoder
 
@@ -55,8 +56,8 @@ a recommendation and an objection, but the choice is the owner's.
 | | action | state |
 | --- | --- | --- |
 | 6.1 | **The CTD notice.** CTD's terms require notifying them of use and giving periodic access to publications. `docs/ctd_notice_draft.md` is written for the owner to send, with two of its own pages for the owner to read first | not sent |
-| 6.2 | **The Lombardo permission request** for the clearance table. Written and given to the owner on 12 October, deliberately not in the repository. A refusal costs less than it first looked | not sent |
-| 6.3 | **The GitHub exposure.** An e-mail address was committed to the public repository and removed, and the history was rewritten, but GitHub still serves the orphaned commit and its public events feed exposes the SHA. A support request was drafted in conversation | not sent, and outside the repository by the owner's instruction |
+| 6.2 | **The Lombardo permission request** for the clearance table, written and given to the owner on 12 October and deliberately not in the repository. A refusal costs less than it first looked | **sent, awaiting a reply** (owner: "Requested. Waiting") |
+| ~~6.3~~ | **Closed 12 October: the owner set it aside** ("Don't worry about it"). Recorded and not raised again |
 | 6.4 | **Hodgkin & Katz 1949** could not be read: the PMC copy is a page scan with no text layer and its PDF is behind a proof-of-work gate, which under the ruling of 11 October is not solved or routed around. Only a human reader can check the squid permeability ratio against the original | the address is in `docs/membrane_potential_constants.md` |
 | 6.5 | **Raimondo 2015 Table 1's footnote markers** are in neither the Europe PMC nor the publisher HTML, so which cells the caption calls estimated is unknown from what was read | the typeset PDF would settle it |
 
