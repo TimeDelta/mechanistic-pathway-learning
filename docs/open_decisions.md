@@ -26,7 +26,7 @@ a recommendation and an objection, but the choice is the owner's.
 | ~~2.2~~ | **Closed 12 October: they stay out** (owner: "That's fine") |
 | ~~2.3~~ | **Closed 12 October: accepted** (owner: "Weight accepted") |
 
-| 2.4 | **Whether the Open Targets class takes its weight from the reliability model instead of a hand-set number.** Amendment item 12d. 0.45 is grade B's 0.6 times a measured agreement of 0.761, and three things are wrong with that: the arithmetic rounds to 0.46, the agreement recomputes to 0.6418 on the current table, and the grade weights are ordinal by design so multiplying one by a probability gives a product with no interpretation. The registered default weighting is already `learned_reliability`, whose module says in its first lines that hand-set weights are the flaw it exists to fix, and `open_targets` is simply not in its source list | adding it there would estimate the class's sensitivity from the same overlap, with a prior and an interval. The class now prices 35 training labels and nothing scored, so the number matters little; the construction is what is wrong |
+| ~~2.4~~ | **Closed 13 October: the class enters the reliability fit** (the owner: "add it to the Dawid-Skene fit estimates"). `reliability_reports` emits a report only where another source already reports that item, so it creates no pair, reaches the fit and not the grade, and is estimated exactly where the hand-computed 0.761 was measured. 0.45 stays as the fixed-grades fallback and is labelled a convention | closed |
 
 ## 3. The drug set
 

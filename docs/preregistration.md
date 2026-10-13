@@ -1299,10 +1299,28 @@ was hand-computed on, but properly: with a prior, an interval, and no multiplica
 extrapolation would remain - the sensitivity is estimated on the overlapping triples and applied to the
 disjoint ones that train - but it would be explicit in the model rather than buried in a product.
 
-**What this changes now: little, and that is the reason it is registered rather than acted on.** The class prices
-35 training labels and nothing scored, so 0.45 against 0.35 moves almost nothing. The weight stays at 0.45,
-provisional, until the agreement is recomputed on the rebuilt table; whether the class should instead enter the
-reliability model is decision 2.4 and is the owner's.
+**Decided: the class enters the reliability fit** (the owner, 13 October 2026: "add it to the Dawid-Skene fit
+estimates"). `load_open_targets_statements.reliability_reports` emits a report for a statement **only where
+another source already reports that item**, and `configs/evidence_assembly.yaml` lists `open_targets` among the
+reliability sources. Three things follow from the "only where the item exists" condition, and all three are the
+reason for it:
+
+- **It creates no pair.** The assembler makes one observation per (perturbation, symptom, relation) with at least
+  one explicit report, so a report on a new item would conjure a scored pair out of a review statement, which 12b
+  rules out. Joining an existing item conjures nothing.
+- **It reaches the fit and not the grade**, because the grade reads the pair's primary evidence class only. This
+  is the route the literature class already takes, so no new machinery is involved.
+- **It is estimated exactly where the hand-computed 0.761 was measured.** Those are the statements an existing
+  item can corroborate or contradict. The fit redoes that measurement properly: a sensitivity and a specificity
+  with a Beta prior and an interval, rather than an ordinal grade weight multiplied by a probability.
+
+**The limit is unchanged and is now explicit in the model rather than hidden in the product.** The statements with
+an overlapping item are by construction not the statements that train, so the sensitivity is estimated on one
+subset and applied to a disjoint one. That extrapolation was always in the 0.45; what changes is that the fit
+states it and carries an interval for it.
+
+**0.45 remains as the fallback** for `--weighting grade`, the fixed-grades arm, where it is a convention and is
+labelled one. Under the registered default weighting the class's weight comes from the fit.
 
 **13. `VM_c` is computed, not fitted, and the claim is the subthreshold steady state.** The neuronal membrane potential
 is the linearised parallel-conductance equation over the ion pools: each pool feeds `VM_c` one edge whose weight is that

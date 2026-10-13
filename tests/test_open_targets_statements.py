@@ -18,6 +18,7 @@ from mechanistic_pathway_learning.evidence.load_open_targets_statements import (
     evidence_records,
     human_worded_statements,
     place_statements,
+    reliability_reports,
 )
 
 GRAPH_GENES = {"GRIN1", "HTR2C", "CHRM1"}
@@ -105,3 +106,28 @@ def test_only_human_worded_statements_are_read():
                          "species_ambiguous_readout": [False, False, False, True],
                          "curated_symptom": ["w", "w", "w", "w"], "reference": ["PMID:1"] * 4})
     assert [s.target for s in human_worded_statements(rows)] == ["A"]  # B is rodent-only, C is species-ambiguous
+
+
+EXISTING_ITEMS = {("GRIN1", "psychosis", "induces")}
+PERTURBATION_OF_TARGET = {"GRIN1": "GRIN1", "HTR2C": "HTR2C"}
+
+
+def test_a_reliability_report_is_emitted_only_for_an_item_another_source_already_reports():
+    """The assembler makes one observation per item with an explicit report, so a report on a new item would create
+    a scored pair out of a review statement - which is what the owner ruled out."""
+    reports = reliability_reports([statement("GRIN1", "inhibition", "psychosis"),      # the item exists
+                                   statement("GRIN1", "inhibition", "anxiety"),        # the item does not
+                                   statement("HTR2C", "activation", "anxiety")],       # nor this one
+                                  EXISTING_ITEMS, PERTURBATION_OF_TARGET)
+    assert [(r["perturbation_id"], r["symptom"]) for r in reports] == [("GRIN1", "psychosis")]
+
+
+def test_the_report_carries_the_class_so_it_reaches_the_fit_and_not_the_grade():
+    report = reliability_reports([statement("GRIN1", "inhibition", "psychosis")], EXISTING_ITEMS, PERTURBATION_OF_TARGET)[0]
+    assert report["evidence_class"] == OPEN_TARGETS_EVIDENCE_CLASS  # the grade reads the pair's primary class only
+    assert report["report_value"] == 1 and report["relation"] == "induces"
+    assert report["pubmed_reference_count"] == 2
+
+
+def test_a_target_with_no_perturbation_reports_nothing():
+    assert reliability_reports([statement("CHRM1", "inhibition", "psychosis")], EXISTING_ITEMS, PERTURBATION_OF_TARGET) == []

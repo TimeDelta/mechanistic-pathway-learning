@@ -24,7 +24,11 @@ weighting:                           # not read by assemble_evidence_table.py: i
                                      # is the --weighting reliability arm, with --report-rubric-weights and --reliability-global-scale)
   mode: learned_reliability          # or fixed_grades (fallback and ablation arm)
   reliability_model:                 # evidence_reliability_model.py: Dawid-Skene with Beta priors
-    sources: [hpo_monogenic, sider_label, onsides_label, pubtator3, ctd, semmeddb]
+    sources: [hpo_monogenic, sider_label, onsides_label, pubtator3, ctd, semmeddb, open_targets]
+                                     # open_targets added 13 October 2026 (amendment item 12d): its weight was a
+                                     # hand-set 0.45, grade B's ordinal 0.6 times a measured agreement, a product of
+                                     # incommensurable quantities. It reports only on items another source already
+                                     # reports, so it creates no pair and reaches the fit rather than the grade.
     sensitivity_prior_counts: [8, 2]
     specificity_prior_counts: [8, 2]
     use_rubric_features: true        # Raykar-style per-item sensitivity from the LLM appraisal rubric

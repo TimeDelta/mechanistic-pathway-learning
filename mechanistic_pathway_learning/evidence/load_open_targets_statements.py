@@ -142,6 +142,61 @@ def activation_perturbation_rows(placements: list[StatementPlacement]) -> list[d
     return sorted(rows.values(), key=lambda row: row["perturbation_id"])
 
 
+def reliability_reports(statements: list[CuratedStatement], existing_items: set[tuple[str, str, str]],
+                        perturbation_of_target: dict[str, str]) -> list[dict]:
+    """Report rows for the Dawid-Skene reliability fit (amendment item 12d; the owner, 13 October 2026: "add it to
+    the Dawid-Skene fit estimates").
+
+    The fit estimates a source's sensitivity from how often it agrees with the others on the same item, so the class
+    needs reports on items another source already reports. Those are exactly the statements the 0.761 agreement was
+    hand-computed over, which is the point: the fit redoes that measurement with a prior and an interval instead of
+    multiplying an ordinal grade weight by a probability.
+
+    **A report is only ever emitted for an item that already exists.** The assembler makes one observation per
+    (perturbation, symptom, relation) with at least one explicit report, so emitting a report for a new item would
+    create a scored pair out of a review statement, which is what the owner ruled out. Joining an existing item
+    creates nothing: the pair is already there, and the grade ignores reports of another evidence class, so this
+    class reaches the reliability fit and not the grade - the same route the literature class takes.
+
+    The identifiability this buys is also its limit, and it is the one item 12 already registers: the statements
+    with an overlapping item are by construction not the statements that train, so the sensitivity is estimated on
+    one subset and applied to a disjoint one. The fit makes that extrapolation explicit rather than hiding it in a
+    product.
+    """
+    reports = []
+    for statement in statements:
+        perturbation_identifier = perturbation_of_target.get(statement.target)
+        item = (perturbation_identifier, statement.symptom, "induces")
+        if perturbation_identifier is None or item not in existing_items:
+            continue
+        references = [reference.strip() for reference in statement.references.split(";") if reference.strip()]
+        reports.append({
+            "report_id": f"{SOURCE_NAME}|{statement.target}|{statement.direction}|{statement.symptom}",
+            "perturbation_id": perturbation_identifier,
+            "perturbation_type": "gene",
+            "perturbation_label": statement.target,
+            "symptom": statement.symptom,
+            "relation": "induces",
+            "evidence_class": OPEN_TARGETS_EVIDENCE_CLASS,
+            "source": SOURCE_NAME,
+            "report_value": 1,
+            "source_record_id": statement.target,
+            "source_record_label": f"{statement.target} {statement.direction}",
+            "source_term_id": statement.symptom,
+            "source_term_label": statement.curated_wording,
+            "evidence_code": "target_safety_review",
+            "model_description": f"{statement.direction} of {statement.target}",
+            "frequency": None, "frequency_denominator": None, "placebo_flag": False, "onset": None, "sex": None,
+            "references": statement.references,
+            "pubmed_reference_count": sum(1 for reference in references if reference.upper().startswith("PMID")),
+            "evidence_date": None,
+            "rubric_log_sample_size": 0.0, "rubric_frequency_known": 0.0, "rubric_evidence_code_pcs": 0.0,
+            "rubric_evidence_code_tas": 0.0, "rubric_evidence_code_iea": 0.0, "rubric_placebo_controlled": 0.0,
+            "rubric_curated_synopsis": 0.0,
+        })
+    return reports
+
+
 def evidence_records(placements: list[StatementPlacement]) -> list[EvidenceRecord]:
     """One record per placed statement. A pair placed twice - two single-target drugs carrying one statement - gives
     one record each, because the perturbations differ; the same (perturbation, symptom) is never emitted twice."""
