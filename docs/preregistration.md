@@ -2248,10 +2248,15 @@ the withdrawn item 5b.
   stays untested. What replaces it is narrower and is registered with 5c(ii): the calibration still does not make
   the imputed group's occupancy distribution match the measured one, so `has_measured_occupancy` stays.
 
-**What is not settled here.** The occupancy threshold above which an off-target enters the input is decision 1.3
-and remains the owner's; item 25's split survives off-targets at a cost in novelty rather than in size
-(`docs/off_targets_under_the_target_split.md`), and the threshold is the dial on that cost. **That off-targets are
-kept is settled** (item 5c, step 1). The conflict with item 5 is closed by item 5a, which lifted the prohibition on
+**What this item leaves to others, none of it open.** Off-targets all enter the input at their occupancy, which
+is item 5c step 1: occupancy is the magnitude, so an engagement near zero contributes near zero and no threshold is
+needed or wanted. The held-out split is on **mechanism targets** and off-target sharing is reported rather than
+split on, which is item 25 with its secondary stratum 25c. (Corrected 13 October 2026: this paragraph said "the
+occupancy threshold above which an off-target enters the input is decision 1.3 and remains the owner's". There is
+no such threshold and there never was. `docs/off_targets_under_the_target_split.md` measures what admitting
+off-targets to the **split** would cost, which is a sensitivity reading of an alternative item 25 had already
+declined; promoting its "the threshold is the dial" into an open decision invented one. The owner: "I thought we
+already settled on option three".) The conflict with item 5 is closed by item 5a, which lifted the prohibition on
 the calibrated placeholder: item 5b withdrew 5a and was itself withdrawn as a misreading, and item 5c registers the
 procedure. One finding of the 5b measurement outlives it and is recorded as section 9 of `docs/open_decisions.md`:
 the target role is a proxy for position on the saturation curve that fails in the tail, so the role is not a sound
