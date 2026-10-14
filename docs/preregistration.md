@@ -2125,6 +2125,51 @@ reaction consuming two molecules counts as one (14.5 percent of both-produced-an
 non-unit coefficient, and the totals differ at 2.8 percent of those with equal reaction counts). The registered
 per-edge demand of item 20 stays unbuilt. This item changes the counting of reactions, not of molecules.
 
+**32. Three registered-but-unbuilt items are built: the per-type baseline, the stoichiometric demand and the
+linear encoder's edge weights** (14 October 2026, the owner: "please finish implementing everything").
+
+**a. Decision 4.6, a confirmatory baseline per perturbation type.** `type_popularity` and `type_degree_popularity`
+join the baseline set that `run_baselines.py` fits and `score_confirmatory.py` reports. Each fits the symptom base
+rate on the training perturbations **of the test perturbation's own type**, falling back to every training
+perturbation where a type has none. A model that beats global popularity by learning that drugs carry more symptoms
+than genes does not beat this one. The branch existed before the decision; what was missing was its name in the two
+tuples, and `tests/test_registered_defaults.py` now holds both.
+
+**b. Item 20's per-edge stoichiometric demand.** The graph build writes `stoichiometric_coefficient` on its reaction
+edges, where before it read the coefficient for `is_substrate = coefficient < 0` and discarded the magnitude;
+`LinearResponseEncoder.set_bottleneck_edge_demand_from_edges` maps it onto the bottleneck adjacency, keyed on
+(relation, target, source); and the trainer calls it and records the counts. Three things are registered with it:
+
+- a **derived** relation keeps demand 1, because `depletes_substrate` and `product_opposes` are built by the
+  encoder from `substrate_of` and `product_of` and have no coefficient of their own in the edge table;
+- a **fractional** coefficient is clamped to 1 and counted separately. Human-GEM writes half a molecule of O2, and
+  a demand below 1 would raise availability across a step and take the bottleneck out of [0, 1], which
+  `set_bottleneck_edge_demand` refuses. Clamping is a deviation from the stoichiometry rather than a reading of it,
+  so it is reported;
+- the consumer side works now and the **coefficients arrive with the v4 rebuild**. A graph built without the column
+  keeps every demand at 1 and the trainer says so.
+
+**c. Decision 4.11, the linear-response encoder reads `edge_weight` in its propagation adjacency.** Before this the
+weight scaled a drug's mechanism (entry) edges only, so item 13's six conductance weights were inert in this
+encoder while the message-passing encoder read them: the two registered encoders disagreed about the physics. **The
+weight enters as a share**, the edge and its destination's divisor weighted together, so `sign * w / sum(w at the
+target)` replaces `sign / count at the target`. Two reasons that agree: item 28 requires an unsigned row to sum to
+1, the same contraction with no global shrink; and the Millman equation the electrical layer linearises uses
+conductance **fractions** `g_ion / g_total` rather than absolute conductances, which is what item 13's weights mean.
+With every weight 1 it reduces exactly to the unweighted form, and a test holds the two identical. A derived
+relation inherits its parent edge's weight, each being the same physical edge read in the other direction.
+
+**What is not built, and why, so the gap is not read as an oversight.**
+
+- **Decision 4.12, the bottleneck over routes of the settled sign, was attempted and reverted.** Building it found
+  that it conflicts with the registered linearity of the limiting-step rule: a ceiling that depends on the response
+  is not an odd map. Two further findings and a third option are decision 4.12b of `docs/open_decisions.md`. The
+  most consequential: selecting the route channel on the settled sign alone zeroes every downstream node of a
+  knockout in an all-activating region, because no negative-sign route exists there, which would have cost the gene
+  arm's 4,289 evidence rows.
+- **Item 12's loader (8.5) and item 5c's occupancy input path (8.1) are unbuilt.** Both change a model input and
+  both enter at the v4 rebuild in any case; after 4.12, neither is work to do at the end of a long pass.
+
 **31. Item 14(a) is tightened to a central action, and a second medicines agency is read only where no
 pharmacology section exists** (the owner, 13 October 2026: "I'm okay losing metoprolol and propranolol so 1 is
 fine", and "Shouldn't it include looking at another regulator for the cases with no US label, though?").
