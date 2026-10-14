@@ -2266,6 +2266,21 @@ metoclopramide sentence, which carries drug and site together. `tests/test_centr
 that the vocabulary matches no peripheral anatomy and that those three penetration sentences are not admitted, which
 is the check the three faulty passes lacked.
 
+**a(ii). The screen requires the sentence to name the drug, added 14 October 2026 and it changes the admitted
+set.** The two anatomy terms of a(i) exposed something the screen had never required: amisulpride was admitted on
+"D 2 receptors are located in the chemoreceptor trigger zone (CTZ) and respond to the dopamine released from the
+nerve endings", which states where receptors are and not that the drug acts there, in a sentence that does not
+mention amisulpride at all. **Measured before adopting, over the 17 drugs that passed without it: 11 survive and
+6 are lost, and all six are lost correctly.** granisetron and palonosetron were admitted on "5-HT 3 receptors are
+located ... centrally in the chemoreceptor trigger zone", receptor location rather than drug action; bisoprolol,
+pindolol and timolol on class-level hypotheses about beta-blocking agents, naming no drug and hedged with
+"postulated" or "possible"; and **metformin on "In mice, no glipizide or metabolites were detectable
+autoradiographically in the brain or spinal cord"**, which is a negative finding about a different drug. A
+sentence opening with "It", "the drug" or "this drug" satisfies the requirement, because a label uses those
+constantly. **The net effect on part (a) is 17 passes to 12**: the six above leave and metoclopramide enters on
+"metoclopramide blocks stimulation of the CTZ by agents like l-dopa or apomorphine". This is a correction rather
+than a trade, so no compensating relaxation was made.
+
 Seven drugs qualify, and they qualify for two different reasons that are both absences of a section:
 
 - **No United States label exists** (openFDA answers HTTP 404): oxprenolol, celiprolol, penbutolol, etoricoxib and

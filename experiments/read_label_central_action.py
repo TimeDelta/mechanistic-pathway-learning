@@ -88,6 +88,28 @@ READS_AS_AN_ADVERSE_EVENT = re.compile(
     re.IGNORECASE)
 SENTENCE = re.compile(r"(?<=[.;])\s+(?=[A-Z(])")
 
+
+def mentions_the_drug(sentence: str, drug_name: str) -> bool:
+    """The sentence names the drug, or opens with a pronoun standing for it, which labels do constantly.
+
+    Added 14 October 2026, after the two anatomy terms exposed that the screen had never required it. Amisulpride
+    was admitted on "D 2 receptors are located in the chemoreceptor trigger zone (CTZ) and respond to the dopamine
+    released from the nerve endings", which states where receptors are and not that the drug acts there - the
+    ondansetron failure mode, in a sentence that does not mention the drug at all.
+
+    Measured before adopting: of the 17 drugs that passed without it, 11 survive and 6 are lost, and all six are
+    lost correctly. granisetron and palonosetron were admitted on "5-HT 3 receptors are located ... centrally in
+    the chemoreceptor trigger zone", receptor location rather than drug action; bisoprolol, pindolol and timolol on
+    class-level hypotheses about beta-blocking agents that name no drug and hedge with "postulated" or "possible";
+    and metformin on "In mice, no glipizide or metabolites were detectable autoradiographically in the brain",
+    which is a NEGATIVE finding about a DIFFERENT drug. So this is not a trade but a correction.
+    """
+    stem = re.sub(r"[^a-z]", "", drug_name.lower())[:7]
+    lowered = sentence.lower()
+    return (bool(stem) and stem in re.sub(r"[^a-z]", "", lowered)) or bool(
+        re.match(r"\s*(?:it|its|this drug|the drug)\b", lowered))
+
+
 # Amendment 31 b(i), 14 October 2026. The single-sentence screen missed metoclopramide because its label states the
 # central site by its anatomy rather than by the word "central": "metoclopramide blocks stimulation of the CTZ by
 # agents like l-dopa or apomorphine". Two action-site anatomy terms are added for that, and ONLY those two.
@@ -145,8 +167,12 @@ def label_payload(drug_name: str, limit: int = 8) -> dict:
     return payload
 
 
-def central_action_sentences(payload: dict) -> tuple[list[dict], int]:
-    """(the sentences that state a central action, how many pharmacology sections were read)."""
+def central_action_sentences(payload: dict, drug_name: str = "") -> tuple[list[dict], int]:
+    """(the sentences that state a central action, how many pharmacology sections were read).
+
+    drug_name is required for the mentions_the_drug screen; passing "" keeps the pre-14-October behaviour, which
+    admitted six drugs on sentences about receptor location, a drug class or another drug entirely.
+    """
     found, sections_read = [], 0
     for result in payload.get("results", []) or []:
         set_id = result.get("set_id", "")
@@ -157,7 +183,8 @@ def central_action_sentences(payload: dict) -> tuple[list[dict], int]:
             sections_read += 1
             for sentence in SENTENCE.split(text):
                 sentence = " ".join(sentence.split())
-                if CENTRAL_ACTION.search(sentence) and len(sentence) < 600:
+                if (CENTRAL_ACTION.search(sentence) and len(sentence) < 600
+                        and (not drug_name or mentions_the_drug(sentence, drug_name))):
                     found.append({"section": field, "set_id": set_id, "sentence": sentence,
                                   "reads_as_not_central": bool(READS_AS_NOT_CENTRAL.search(sentence)),
                                   "reads_as_an_adverse_event": bool(READS_AS_AN_ADVERSE_EVENT.search(sentence))})
@@ -174,7 +201,7 @@ def verdicts(drug_names: list[str], every_sentence: list | None = None) -> pd.Da
     rows = []
     for drug_name in drug_names:
         payload = label_payload(drug_name)
-        sentences, sections_read = central_action_sentences(payload)
+        sentences, sections_read = central_action_sentences(payload, drug_name)
         positive = [row for row in sentences if not row["reads_as_not_central"] and not row["reads_as_an_adverse_event"]]
         negative = [row for row in sentences if row["reads_as_not_central"]]
         adverse = [row for row in sentences if row["reads_as_an_adverse_event"] and not row["reads_as_not_central"]]
