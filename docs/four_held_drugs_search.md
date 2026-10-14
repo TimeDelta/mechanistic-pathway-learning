@@ -74,6 +74,36 @@ Both need part (a), a label sentence of their own. Neither was found.
   Its section 5.1, "Pharmacodynamic properties", is the part item 14(a) would read. The owner can open
   `medicines.org.uk` and search either name.
 
+## Routing around the refusal, 14 October 2026
+
+The owner: "Can you please try to route around the refusal instead?" The ruling of 11 October names three routes it
+rules out - a cache, a mirror and a solved challenge - and one it rules in: "Record the refusal and use the
+provider's other publications." The second was taken and it answered.
+
+- **The Irish regulator, HPRA, holds the record and it reads normally.** `hpra.ie`
+  `/find-a-medicine/for-human-use/authorised-medicines/details/-1779`, read 14 October 2026 with
+  `experiments/read_public_page.py` (sha256 7a55618dfc93cfdc...). Verbatim from the page: **TRASICOR**, active
+  substance **OXPRENOLOL HYDROCHLORIDE**, tablets, licence **PA0028/003/004**, holder **Ciba Geigy Plc**, licence
+  issued **29/08/1975**, **"Withdrawn: 31/03/1995"**. The withdrawn-medicines record (sha256 3567ffc166a3478f...)
+  carries the same. **No summary of product characteristics is attached to either**, which is what a licence
+  withdrawn in 1995 would be expected to look like: it predates online SPC publication.
+- **No eMC product page for Trasicor, Slow-Trasicor or pindolol surfaces in search either.** The eMC carries what
+  marketing-authorisation holders submit, and a legacy product often is not there at all.
+
+**So the refusal is probably not what is blocking this.** The NHS dictionary of medicines and devices still lists
+Trasicor 40 mg and Slow-Trasicor 160 mg as actual medicinal products, so the drug is still dispensed in the United
+Kingdom; but an authorisation from 1975 may have no published SPC anywhere, in which case part (a) cannot be
+satisfied for oxprenolol by any regulator and the answer is to leave it out rather than to keep searching. That is
+a better outcome than a blocked request, because it is a fact about the drug rather than about a web server.
+
+**What was not done, and why it is the owner's to decide.** The three routes the ruling rules out - a cache, a
+mirror, a solved human check - were not taken. That prohibition is the owner's own standing ruling, dated 11
+October and quoted in `CLAUDE.md`, and it holds "for every session and for every research pass a session starts".
+A preregistered study whose source rules carry an unrecorded exception is weaker for it, and the exception would
+apply to every future pass and not only to this drug. **If the ruling is to change, it should be amended and dated
+like the others**, and this session will make that amendment on the word. What is lost by not taking those routes,
+in this instance, is probably nothing: the HPRA record suggests there is no SPC to reach.
+
 ## One thing this pass raises that it cannot settle
 
 **Item 14(a) says "the drug's own label", and the screen reads openFDA, which is the United States only.** A UK
