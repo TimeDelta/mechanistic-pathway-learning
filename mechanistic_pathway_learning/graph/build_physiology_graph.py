@@ -234,6 +234,47 @@ def load_curated_edge_sign_overrides(overrides_path: Path | None) -> dict[tuple[
     return overrides
 
 
+DEFAULT_ADMITTED_RECEPTOR_G_ALPHA_COUPLING_PATH = Path("configs/admitted_receptor_g_alpha_coupling.csv")
+G_ALPHA_GENE_SYMBOLS = frozenset({"GNAS", "GNAL", "GNAI1", "GNAI2", "GNAI3", "GNAO1", "GNAZ",
+                                  "GNAQ", "GNA11", "GNA12", "GNA13"})
+
+
+def load_admitted_receptor_g_alpha_coupling(coupling_path: Path | None) -> tuple[set[tuple[str, str]], set[str]]:
+    """(admitted receptor-to-G-alpha pairs, the receptors the source annotates).
+
+    Decision 9.23, the owner on 14 October 2026: "yes on the primary and secondary with dropping the 352 unlisted
+    since it exactly reproduces the true EVIDENCED physiology". The table is GtoPdb's Primary and Secondary
+    Transducer annotation as GPCRdb redistributes it, expanded from a G-protein family to its member genes.
+
+    Two things the second return value is for. A receptor the source does not annotate keeps every edge, because
+    absence from a curated sheet is not evidence against a coupling. And a source that is not a receptor at all -
+    an RGS protein, a kinase, a transcription factor - is never filtered, since this rule is about which G alpha a
+    receptor couples to and says nothing about what else regulates a G alpha (decision 9.27).
+    """
+    if coupling_path is None or not Path(coupling_path).exists():
+        return set(), set()
+    admitted_pairs: set[tuple[str, str]] = set()
+    annotated_receptors: set[str] = set()
+    with open(coupling_path, encoding="utf-8") as coupling_file:
+        for row in csv.DictReader(coupling_file):
+            receptor = row["receptor_gene_symbol"].strip().upper()
+            g_alpha = row["g_alpha_gene_symbol"].strip().upper()
+            admitted_pairs.add((receptor, g_alpha))
+            annotated_receptors.add(receptor)
+    return admitted_pairs, annotated_receptors
+
+
+def receptor_g_alpha_edge_is_dropped(source_symbol: str, target_symbol: str, sign: float,
+                                     admitted_pairs: set[tuple[str, str]], annotated_receptors: set[str]) -> bool:
+    """True only for a signed edge from an annotated receptor into a G alpha that the annotation does not list."""
+    if sign == 0.0 or not admitted_pairs:
+        return False
+    source_upper, target_upper = source_symbol.upper(), target_symbol.upper()
+    if target_upper not in G_ALPHA_GENE_SYMBOLS or source_upper not in annotated_receptors:
+        return False
+    return (source_upper, target_upper) not in admitted_pairs
+
+
 def add_gene_nodes(nodes: pd.DataFrame, symbols: set[str]) -> pd.DataFrame:
     existing = set(nodes.node_id)
     new_rows = [{"node_id": gene_node_id(symbol), "node_type": "gene", "display_name": symbol, "gene_symbol": symbol, "in_metabolic_layer": False, "degree": 0}
@@ -242,16 +283,20 @@ def add_gene_nodes(nodes: pd.DataFrame, symbols: set[str]) -> pd.DataFrame:
 
 
 def build_signaling_layer(nodes: pd.DataFrame, interactions_path: Path,
-                          curated_sign_overrides: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+                          curated_sign_overrides: dict | None = None,
+                          admitted_receptor_g_alpha_coupling: tuple[set, set] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """curated_sign_overrides (decision 9.10(a), built 14 October 2026) corrects a sign the source states the other
     way round; load_curated_edge_sign_overrides documents why the GRK and arrestin edges need it. The third return
     value counts what was applied and what was skipped, so a build log records both.
     """
     overrides = curated_sign_overrides or {}
+    admitted_pairs, annotated_receptors = admitted_receptor_g_alpha_coupling or (set(), set())
     edge_rows: list[dict] = []
     symbols: set[str] = set()
     override_counts = {"overrides_loaded": len(overrides), "edges_corrected": 0,
-                       "overrides_skipped_because_the_source_no_longer_agrees": 0, "overrides_never_matched": 0}
+                       "overrides_skipped_because_the_source_no_longer_agrees": 0, "overrides_never_matched": 0,
+                       "admitted_coupling_pairs_loaded": len(admitted_pairs),
+                       "receptor_g_alpha_edges_dropped_as_unlisted": 0}
     override_keys_that_matched: set[tuple[str, str]] = set()
     with open(interactions_path, encoding="utf-8") as interactions_file:
         for row in csv.DictReader(interactions_file, delimiter="\t"):
@@ -273,6 +318,9 @@ def build_signaling_layer(nodes: pd.DataFrame, interactions_path: Path,
                             override_keys_that_matched.add((source, target))
                         else:
                             override_counts["overrides_skipped_because_the_source_no_longer_agrees"] += 1
+                    if receptor_g_alpha_edge_is_dropped(source, target, sign_for_this_edge, admitted_pairs, annotated_receptors):
+                        override_counts["receptor_g_alpha_edges_dropped_as_unlisted"] += 1
+                        continue
                     edge_rows.append({"source_id": gene_node_id(source), "target_id": gene_node_id(target), "relation_type": relation_for_this_edge, "sign": sign_for_this_edge, "evidence_source": "OmniPath"})
                     if relation_for_this_edge == "binds":
                         edge_rows.append({"source_id": gene_node_id(target), "target_id": gene_node_id(source), "relation_type": relation_for_this_edge, "sign": sign_for_this_edge, "evidence_source": "OmniPath"})
@@ -482,6 +530,7 @@ def build_physiology_graph(
     brain_expression_path: Path | None = None,
     brain_expression_minimum_tpm: float = 1.0,
     curated_edge_sign_overrides_path: Path | None = DEFAULT_CURATED_EDGE_SIGN_OVERRIDES_PATH,
+    admitted_receptor_g_alpha_coupling_path: Path | None = DEFAULT_ADMITTED_RECEPTOR_G_ALPHA_COUPLING_PATH,
 ) -> dict:
     model = load_human_gem(model_path)
     nodes, edges = build_metabolic_layer(model, gene_symbols_from_table(genes_table_path), model_yaml_path)
@@ -489,7 +538,8 @@ def build_physiology_graph(
     if signaling_interactions_path is not None and signaling_interactions_path.exists():
         nodes, signaling_edges, sign_override_counts = build_signaling_layer(
             nodes, signaling_interactions_path,
-            curated_sign_overrides=load_curated_edge_sign_overrides(curated_edge_sign_overrides_path))
+            curated_sign_overrides=load_curated_edge_sign_overrides(curated_edge_sign_overrides_path),
+            admitted_receptor_g_alpha_coupling=load_admitted_receptor_g_alpha_coupling(admitted_receptor_g_alpha_coupling_path))
         print(f"curated edge sign overrides: {sign_override_counts}")
         edge_tables.append(signaling_edges)
     if transcription_regulons_path is not None and transcription_regulons_path.exists():
@@ -546,11 +596,14 @@ def main() -> None:
     parser.add_argument("--brain-expression-minimum-tpm", type=float, default=1.0, help="median TPM in at least one brain tissue that counts as brain expression evidence")
     parser.add_argument("--curated-edge-sign-overrides", type=Path, default=DEFAULT_CURATED_EDGE_SIGN_OVERRIDES_PATH,
                         help="signs the source annotates one way and the physiology requires the other way (decision 9.10a); pass an absent path to build without them")
+    parser.add_argument("--admitted-receptor-g-alpha-coupling", type=Path, default=DEFAULT_ADMITTED_RECEPTOR_G_ALPHA_COUPLING_PATH,
+                        help="GtoPdb primary and secondary transducers per receptor (decision 9.23); a signed edge from an annotated receptor into a G alpha the annotation does not list is dropped. Pass an absent path to keep every coupling edge")
     arguments = parser.parse_args()
     summary = build_physiology_graph(arguments.model_path, arguments.output_dir, arguments.genes_table, arguments.degree_quantile_threshold,
                                      arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table, arguments.model_yaml,
                                      arguments.brain_expression, arguments.brain_expression_minimum_tpm,
-                                     arguments.curated_edge_sign_overrides)
+                                     arguments.curated_edge_sign_overrides,
+                                     arguments.admitted_receptor_g_alpha_coupling)
     print(json.dumps(summary, indent=1))
 
 
