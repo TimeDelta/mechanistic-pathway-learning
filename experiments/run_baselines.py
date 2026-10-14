@@ -89,6 +89,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 from sklearn.metrics import average_precision_score, roc_auc_score
 from mechanistic_pathway_learning.evaluation.result_cache import array_digest, cached_result, source_digest, sparse_digest
 from mechanistic_pathway_learning.models.baselines.knowledge_graph_embedding_baseline import KnowledgeGraphEmbeddingBaseline
+from mechanistic_pathway_learning.evaluation.leakage_only_adversary import LeakageOnlyAdversary, leaked_neighbours, seed_nodes_of_perturbations
 from mechanistic_pathway_learning.models.baselines.popularity_baseline import PopularityBaseline
 from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_baseline import (
     RandomWalkWithRestartBaseline,
@@ -98,6 +99,11 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
 BASELINE_NAMES = ("popularity", "degree_popularity", "type_popularity", "type_degree_popularity",
                   "random_walk_with_restart")  # the type-aware pair is decision 4.6, registered 13 October 2026
 INPUT_SIZE_NAME = "input_size"  # the control for the input-size objection; --with-input-size, so no earlier run changes
+# decision 9.35, 14 October 2026. The leakage-only adversary is a baseline rather than a reading of its own, because in
+# this design the baselines are the controls: the registered reading is the model minus the best baseline, so putting
+# the lookup in that set makes the model have to beat what a lookup can do, and no threshold on leakage is needed
+# anywhere. It can only lower a model's margin, never raise it. --with-leakage-lookup, so no earlier run changes.
+LEAKAGE_LOOKUP_NAME = "leakage_lookup"
 CACHED_BASELINES = ("random_walk_with_restart", "knowledge_graph_embedding_transe")  # the slow fits; popularity takes milliseconds
 BASELINE_SOURCES = [Path(__file__), *sorted((Path(__file__).resolve().parents[1] / "mechanistic_pathway_learning" / "models" / "baselines").glob("*.py"))]
 _DIGEST_MEMO: dict[int, tuple[object, str]] = {}
@@ -131,6 +137,12 @@ def fit_and_predict(data, outcomes: np.ndarray, train: np.ndarray, test: np.ndar
             normalized_adjacency, [data.perturbation_seeds[i] for i in np.where(train)[0]], outcomes[train]
         )
         return model.predict([data.perturbation_seeds[i] for i in np.where(test)[0]])
+    if model_name == LEAKAGE_LOOKUP_NAME:
+        held_out_identifiers = [str(data.perturbation_ids[row]) for row in np.where(test)[0]]
+        training_identifiers = [str(data.perturbation_ids[row]) for row in np.where(train)[0]]
+        shared_seed_nodes = seed_nodes_of_perturbations(data.perturbation_ids, data.perturbation_seeds, data.node_ids)
+        model = LeakageOnlyAdversary().fit(training_identifiers, outcomes[train], None if label_mask is None else label_mask[train])
+        return model.predict(held_out_identifiers, leaked_neighbours(held_out_identifiers, training_identifiers, shared_seed_nodes))
     if model_name == INPUT_SIZE_NAME:
         features = input_size_features(data.perturbation_seeds if data.perturbation_target_seeds is None else data.perturbation_target_seeds, data.perturbation_magnitudes)
         model = InputSizeBaseline().fit(features[train], outcomes[train], None if label_mask is None else label_mask[train])
@@ -423,6 +435,10 @@ def main() -> None:
     parser.add_argument("--no-fold-cache", action="store_true",
                         help="recompute every random-walk and TransE fold instead of reusing those stored in OUTPUT_DIR/fold_cache under a key of all their inputs "
                              "(the store lets a run killed by a reclaimed container resume; a stored fold equals the recomputed one)")
+    parser.add_argument("--with-leakage-lookup", action="store_true",
+                        help="also run the leakage-only adversary as a baseline (decision 9.35): it predicts a held-out perturbation from the training "
+                             "labels of the perturbations sharing a seed node with it and nothing else, so a model must beat what a lookup across the "
+                             "split can do. The baselines are the controls here, which is why this is one and not a reading of its own")
     parser.add_argument("--with-input-size", action="store_true",
                         help="also run the input-size baseline, which sees a perturbation's number of seeds and total input magnitude and nothing else "
                              "(the control for the input-size objection, docs/label_source_review.md 13.1)")
@@ -508,7 +524,8 @@ def main() -> None:
         print(f"{primary_split + '_rewired_graph':26s} {'random_walk_with_restart':26s} macro AUPRC {entry['macro_auprc']:.3f} (per fold {entry['per_fold_macro_auprc_mean']:.3f} ± {entry['per_fold_macro_auprc_sd']:.3f})  macro AUROC {entry['macro_auroc']:.3f}")
     split_plan = [(primary_split, grouped_masks, grouped_labels), ("pathway_wise", pathway_masks, pathway_module_ids), ("subsystem_wise", subsystem_masks, subsystem_labels)]
     model_names = (list(BASELINE_NAMES) + ([INPUT_SIZE_NAME] if arguments.with_input_size else []) + ([KG_EMBEDDING_NAME] if arguments.with_kg_embedding else [])
-                   + (list(TYPE_POPULARITY_NAMES) if arguments.with_type_popularity else []))
+                   + (list(TYPE_POPULARITY_NAMES) if arguments.with_type_popularity else [])
+                   + ([LEAKAGE_LOOKUP_NAME] if arguments.with_leakage_lookup else []))
     for model_name in model_names:
         for split_name, masks, labels in split_plan:
             if not masks:
