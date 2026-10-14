@@ -61,7 +61,8 @@ USER_AGENT = "mechanistic-pathway-learning/0.1 (central action rule)"
 PHARMACOLOGY_FIELDS = ("mechanism_of_action", "clinical_pharmacology", "pharmacodynamics", "description")
 # A sentence that places the drug, its action or its site inside the central nervous system or across the barrier.
 CENTRAL_ACTION = re.compile(r"\bcentral nervous system\b|\bblood[- ]brain barrier\b|\bCNS\b|\bcentrally\b|\bcentral action\b"
-                            r"|\bin the brain\b|\bbrain receptors?\b|\bcerebral\b|\bintracerebral\b", re.IGNORECASE)
+                            r"|\bin the brain\b|\bbrain receptors?\b|\bcerebral\b|\bintracerebral\b"
+                            r"|\bchemoreceptor trigger zone\b|\barea postrema\b", re.IGNORECASE)
 # A sentence can carry a barrier or brain word and say the drug does NOT get there. The first screen written here
 # counted four such sentences as positives - labetalol's "Only negligible amounts of the drug crossed the blood-brain
 # barrier", nadolol's "only minimal amounts ... detected in the brain", sotalol's "crosses the blood brain barrier
@@ -76,6 +77,36 @@ READS_AS_NOT_CENTRAL = re.compile(r"\bnegligible\b|\bminimal(?:ly)?\b|\bpoorly\b
 # it for its adverse events, which is what reading only the pharmacology sections was meant to prevent.
 READS_AS_AN_ADVERSE_EVENT = re.compile(r"\bside effects?\b|\badverse\b|\btoxicit|\bdepression of\b.{0,24}\bfunction\b", re.IGNORECASE)
 SENTENCE = re.compile(r"(?<=[.;])\s+(?=[A-Z(])")
+
+# Amendment 31 b(i), 14 October 2026. The single-sentence screen missed metoclopramide because its label states the
+# central site by its anatomy rather than by the word "central": "metoclopramide blocks stimulation of the CTZ by
+# agents like l-dopa or apomorphine". Two action-site anatomy terms are added for that, and ONLY those two.
+#
+# A two-sentence rule was built first, pairing an action sentence with a nearby central-site sentence, and it is
+# removed as a measured negative: across the seven candidate drugs it found one pairing, and that pairing was this
+# same metoclopramide sentence, which carries the drug and the site together. It earned nothing and would have added
+# a second evidence tier to a registered criterion.
+#
+# A wider vocabulary was also tried and rejected on what it admitted. Adding "cerebrospinal", "medullary" and
+# "hypothalamic" newly admitted five drugs of which four were wrong: gabapentin on a CSF-to-plasma ratio,
+# theophylline on "passes freely ... into the cerebrospinal fluid", verapamil on a CSF partition coefficient of
+# 0.06 and lamotrigine on a hypothalamic-pituitary-ovarian interaction. All four are penetration or distribution
+# statements, which item 31 deliberately stopped accepting, and "medullary" matches the RENAL medulla in celecoxib's
+# label. So the vocabulary stays narrow and names only where a drug is said to act.
+CENTRAL_ACTION_SITE_ANATOMY = r"|\bchemoreceptor trigger zone\b|\barea postrema\b"
+
+# Terms that look central and are not. The guard below is in the code rather than in a comment because three
+# successive classification passes on 14 October 2026 shipped a pattern without checking what it matched: "medulla"
+# caught the adrenal and renal medulla, "neuron" caught sympathetic neurons and "cortex" the adrenal cortex.
+NOT_CENTRAL_DESPITE_THE_WORD = (
+    "renal medullary thick ascending loop", "adrenal medulla", "sympathetic neuron", "adrenal cortex",
+    "renal medulla", "postganglionic neuron",
+)
+
+
+def vocabulary_does_not_match_peripheral_anatomy(pattern: re.Pattern) -> list[str]:
+    """Phrases the pattern wrongly treats as central. Empty is the only acceptable result; a test asserts it."""
+    return [phrase for phrase in NOT_CENTRAL_DESPITE_THE_WORD if pattern.search(phrase)]
 
 
 def label_payload(drug_name: str, limit: int = 8) -> dict:

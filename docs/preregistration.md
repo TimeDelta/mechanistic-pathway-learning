@@ -2244,21 +2244,27 @@ pre-existing explicit label: an implicit label coming from a lack of data though
 rule as first written triggered on the absence of a pharmacology section, which is a cruder proxy for what matters:
 whether the label ever addressed central action at all. An exclusion that rests on a label's **silence** is an
 inference from absence, and filling it from a second agency overrides nothing. An exclusion that rests on a label's
-**statement** is a finding, and a second agency would re-litigate it. **The measurement that makes this operable**:
-of the 24 drugs whose verdict is "no such sentence", **17 never mention the brain or the central nervous system
-anywhere in the pharmacology read** - carvedilol, diclofenac, diltiazem, flurbiprofen, isotretinoin, isradipine,
-ketoprofen, naproxen, nicardipine, nifedipine, nisoldipine, pioglitazone, pitavastatin, prazosin, ribavirin,
-sulfasalazine, warfarin - while **7 do mention it in a form the matcher rejected**: celecoxib 15 mentions, atenolol
-11, acebutolol 6, metoclopramide 4, verapamil 4, betaxolol 3, mecamylamine 2. **So the admission rule becomes
-three-way.** A drug whose pharmacology states that it does not reach the brain keeps that verdict and is never
-sent to a second agency. A drug whose pharmacology mentions the central nervous system is **re-read with the fixed
-matcher first**, because the label addressed the question and the failure was the reader's; only if a competent
-read still finds no statement does it move to the silent group. A drug whose pharmacology is silent on the question
-may be completed from a second medicines agency, and the source read is recorded per drug. Two of the seven are
-flagged for the re-read because the outcome is likely to change in opposite directions: **metoclopramide** and
-**mecamylamine** act centrally and are probably false exclusions, while **atenolol**'s mentions probably include an
-explicit statement that it crosses the blood-brain barrier poorly, which would move it from "no such sentence" to
-"states that it does not reach the brain" and exclude it on a finding rather than on silence.
+**statement** is a finding, and a second agency would re-litigate it. **The measurement that makes this operable, corrected the same
+day after three faulty passes.** The first count said 17 silent and 7 mentioning; it used a classification pattern
+whose own terms were wrong - "medulla" matches the **adrenal and renal** medulla, "neuron" matches a sympathetic
+neuron and "cortex" the adrenal cortex. Re-measured with central-only terms and then checked phrase by phrase, the
+24 drugs verdicted "no such sentence" break down as: **one false exclusion**, metoclopramide, whose label does state
+a central action by its anatomy - "metoclopramide blocks stimulation of the CTZ by agents like l-dopa or
+apomorphine" - which the vocabulary missed for want of the term "chemoreceptor trigger zone"; **three whose label
+addresses central penetration and reports it as low or absent**, acebutolol ("only minimal quantities have been
+detected in the cerebrospinal fluid"), verapamil (a CSF partition coefficient of 0.06) and mecamylamine ("crosses
+the blood-brain and placental barriers", a penetration statement that part (a) stopped accepting), so these are not
+silent and are excluded on what the label says; and **the remaining twenty genuinely silent on the central nervous
+system**, whose exclusion rests on absence and which may therefore be completed from a second medicines agency.
+**The matcher fix is correspondingly narrow**: two anatomy terms, "chemoreceptor trigger zone" and "area postrema",
+and nothing else. A wider vocabulary was tried and rejected on what it admitted - gabapentin on a CSF-to-plasma
+ratio, theophylline on "passes freely ... into the cerebrospinal fluid", verapamil on its partition coefficient and
+lamotrigine on a hypothalamic-pituitary interaction, all four penetration or distribution statements that item 31
+deliberately stopped accepting. A two-sentence rule pairing an action sentence with a nearby site sentence was also
+built and removed as a measured negative: across the seven candidates it found one pairing, and that pairing was the
+metoclopramide sentence, which carries drug and site together. `tests/test_central_action_vocabulary.py` now asserts
+that the vocabulary matches no peripheral anatomy and that those three penetration sentences are not admitted, which
+is the check the three faulty passes lacked.
 
 Seven drugs qualify, and they qualify for two different reasons that are both absences of a section:
 
