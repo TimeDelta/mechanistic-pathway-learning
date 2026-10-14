@@ -51,6 +51,18 @@ NEGATIONS = ("no binding", "independent of")
 # prilocaine's says "lidocaine is approximately 70% bound to plasma proteins, primarily alpha-1-acid glycoprotein",
 # which is lidocaine's carrier and not prilocaine's
 BINDING_SUBJECT = re.compile(r"\b([a-z][a-z-]{3,})\s+(?:is|was|are|were)\s+[^.;]{0,30}?bound\b")
+# The same other-drug attribution error in its other phrasing, found 14 October 2026 (the owner: "if it COULD give
+# a wrong carrier, it needs fixed anyways regardless of whether an existing example is present"). BINDING_SUBJECT
+# sees "naloxone is approximately 45% protein bound, primarily to albumin" and rejects it, but could not see "the
+# unbound fraction of naloxone is determined by albumin concentration", which gave buprenorphine an albumin
+# carrier. The subject of an unbound-fraction phrase now feeds the same check, so both phrasings are guarded.
+# The gap before "of" is bounded at 40 characters because valproate's own sentence has a parenthesis in it:
+# "larger unbound fractions (2 to 2.6 fold increase) of valproate".
+UNBOUND_SUBJECT = re.compile(r"\bunbound\s+(?:fractions?|concentrations?|levels?)?[^.;]{0,40}?\bof\s+([a-z][a-z-]{3,})\b"
+                             r"|\bunbound\s+([a-z][a-z-]{3,})\b")
+# Endogenous ligands a label discusses as competing for a carrier. An unbound figure for one of these is about the
+# ligand and not about the drug, and no study drug is named among them, so the other-drug check cannot catch them.
+ENDOGENOUS_CARRIER_LIGANDS = frozenset({"bilirubin", "tryptophan", "thyroxine", "cortisol", "fatty"})
 # a sentence saying the drug does not change another drug's binding is about the other drug's carrier, not this one's
 ANOTHER_DRUG_S_BINDING = ("affect the binding of", "affected the binding of", "alter the binding of",
                           "altered the binding of", "displace the binding of")
@@ -74,7 +86,11 @@ def binders_named(sentence: str, drug: str = "", other_drugs: frozenset[str] = f
     if NEGATED_BINDING.search(lowered):
         return set()
     subjects = {match.group(1) for match in BINDING_SUBJECT.finditer(lowered)}
+    for match in UNBOUND_SUBJECT.finditer(lowered):
+        subjects.add(match.group(1) or match.group(2))
     if subjects & other_drugs and drug.lower() not in subjects:
+        return set()
+    if subjects & ENDOGENOUS_CARRIER_LIGANDS and drug.lower() not in subjects:
         return set()
     if not STATES_BINDING.search(lowered):
         # a sentence that names a protein without a word for binding states no carrier: a dose-modification rule that

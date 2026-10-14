@@ -99,6 +99,7 @@ from experiments.scope_label_plasma_binder_coverage import (
     NEGATED_BINDING,
     OROSOMUCOID_PATTERN,
     STATES_BINDING,
+    binders_named,
 )
 
 
@@ -152,6 +153,33 @@ def test_an_unbound_fraction_sentence_must_keep_counting_as_a_binding_statement(
     narrowed = re.compile(r"\b(?:bind|binds|bound|binding)\b(?!\s+fraction)|\bunbound\b(?!\s+fractions?)")
     assert not narrowed.search(VALPROATE_ALBUMIN_SENTENCE.lower()), (
         "the narrowed form must be shown to fail, which is the reason it was not adopted")
+
+
+OTHER_DRUGS_FOR_THE_GUARD = frozenset({"naloxone", "warfarin", "acetaminophen"})
+
+
+@pytest.mark.parametrize("sentence, drug", [
+    # the real sentence the subject guard was built for, in buprenorphine's label
+    ("naloxone is approximately 45% protein bound, primarily to albumin", "buprenorphine"),
+    # the same attribution error phrased with an unbound fraction, which the guard could not see until 14 October
+    ("the unbound fraction of naloxone is determined by albumin concentration", "buprenorphine"),
+    ("the unbound fraction of warfarin was unchanged; serum albumin was monitored", "celecoxib"),
+    # an endogenous ligand competing for the carrier is not the drug either
+    ("monitor when unbound bilirubin is elevated and serum albumin is low", "ceftriaxone"),
+])
+def test_an_unbound_figure_for_another_substance_gives_this_drug_no_carrier(sentence, drug):
+    """The owner's standard, 14 October 2026: "if it COULD give a wrong carrier, it needs fixed anyways regardless
+    of whether an existing example is present". None of these four appears in the cached labels; the first does and
+    was already guarded. The fix is in the subject guard rather than in STATES_BINDING, so valproate survives."""
+    assert binders_named(sentence, drug, OTHER_DRUGS_FOR_THE_GUARD) == set(), sentence
+
+
+@pytest.mark.parametrize("sentence, drug, expected_carrier", [
+    (VALPROATE_ALBUMIN_SENTENCE, "valproate", "albumin"),
+    ("the drug is approximately 95% bound to human serum albumin", "phenytoin", "albumin"),
+])
+def test_the_guard_does_not_take_a_carrier_away_from_the_drug_the_sentence_is_about(sentence, drug, expected_carrier):
+    assert binders_named(sentence, drug, OTHER_DRUGS_FOR_THE_GUARD) == {expected_carrier}, sentence
 
 
 def test_a_protein_named_without_any_word_for_binding_states_no_carrier():
