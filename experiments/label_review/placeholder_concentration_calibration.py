@@ -88,9 +88,20 @@ def main() -> None:
              f"{np.abs(np.log10(per_drug.placeholder / centre)).median():.2f} to {np.abs(np.log10(corrected / centre)).median():.2f} log units. "
              "The bias is what a calibration removes; the scatter is what it cannot.", "",
              "**So the offset belongs with a flag, not instead of one.** An imputed occupancy carries roughly a "
-             "ten-fold uncertainty in the concentration behind it, which an occupancy near saturation or near zero "
-             "absorbs and one near Kd does not. That is what the \"has a measured occupancy\" stratum is for, and the "
-             "calibration does not remove the need for it.", "",
+             "ten-fold uncertainty in the concentration behind it, and how much of that reaches the occupancy "
+             "depends on where the occupancy sits: `d(log theta) / d(log C) = 1 - theta`, which falls monotonically "
+             "as the occupancy rises. A one-sd error of 1.14 log units moves an occupancy of 0.01 by x12.2 up and "
+             "x13.7 down, one of 0.5 by x1.9 and x7.4, and one of 0.9 by x1.1 and x2.3. So a saturated occupancy "
+             "absorbs the error and a near-zero one passes it through almost whole. That is what the "
+             "\"has a measured occupancy\" stratum is for, and the calibration does not remove the need for it.", "",
+             "**Corrected 13 October 2026.** This paragraph read \"an occupancy near saturation or near zero absorbs "
+             "and one near Kd does not\". Both of its last two clauses were wrong and in the same direction: the "
+             "sensitivity is monotone in the occupancy, so an occupancy near zero absorbs least of all, and one near "
+             "Kd absorbs half. The error matters because preregistration item 5b rests on this relation being "
+             "monotone, which it is; the sentence stated it as a U shape.", "",
+             "**Where the offset is carried, after item 5b.** To mechanism targets only. An off-target takes a "
+             "measured concentration or does not enter, because its occupancy sits where the sensitivity is near 1 "
+             "(`docs/occupancy_by_target_role.md`).", "",
              "**One limit on the transfer.** The offset is estimated on the drugs that have a measured concentration, "
              "which are the better-studied ones, and applied to those that do not. If the placeholder's bias differs "
              "between the two, the correction does not carry. That is the same extrapolation this project registered "
