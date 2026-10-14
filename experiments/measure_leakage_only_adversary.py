@@ -171,6 +171,12 @@ def main() -> None:
     parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v2_full_v4.parquet"))
     parser.add_argument("--group-by", default="disease_cluster_and_targets")
     parser.add_argument("--num-draws", type=int, default=20)
+    parser.add_argument("--pooling-rules", nargs="+", default=list(POOLING_RULES), choices=list(POOLING_RULES),
+                        help="which pooling rules to measure; the default measures all of them, which is the cross "
+                             "product this script is slowest on")
+    parser.add_argument("--checkpoint-dir", type=Path, default=Path("runs/leakage_only_adversary_draws"),
+                        help="one JSON per (pooling rule, draw). A draw already written here is skipped, so a run "
+                             "stopped by the background time limit resumes where it left off instead of starting over")
     parser.add_argument("--num-bootstrap", type=int, default=1000)
     parser.add_argument("--lockbox", type=Path, default=None,
                         help="a drawn lockbox whose perturbations are excluded, so the calibration reads development rows only")
@@ -189,10 +195,23 @@ def main() -> None:
     results = {"pooling_rules": {}, "excluded_lockbox_perturbations": len(excluded_lockbox_perturbations),
                "evidence_dir": str(arguments.evidence_dir), "graph_dir": str(arguments.graph_dir),
                "label_selection": str(arguments.label_selection), "num_draws": arguments.num_draws}
-    for pooling_rule in POOLING_RULES:
-        draws = [one_draw(data, draw_seed, pooling_rule, arguments.num_bootstrap) for draw_seed in range(arguments.num_draws)]
+    arguments.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    completed_draws = 0
+    for pooling_rule in arguments.pooling_rules:
+        draws = []
+        for draw_seed in range(arguments.num_draws):
+            checkpoint_path = arguments.checkpoint_dir / f"{pooling_rule}_draw_{draw_seed:03d}.json"
+            if checkpoint_path.exists():
+                draws.append(json.loads(checkpoint_path.read_text()))
+                continue
+            draw = one_draw(data, draw_seed, pooling_rule, arguments.num_bootstrap)
+            checkpoint_path.write_text(json.dumps(draw, indent=1) + "\n")
+            draws.append(draw)
+            completed_draws += 1
+            print(f"  {pooling_rule} draw {draw_seed} done and checkpointed", flush=True)
         results["pooling_rules"][pooling_rule] = {"draws": draws, "summary": summarise(draws)}
-        print(pooling_rule, json.dumps(results["pooling_rules"][pooling_rule]["summary"], indent=1))
+        print(pooling_rule, json.dumps(results["pooling_rules"][pooling_rule]["summary"], indent=1), flush=True)
+    print(f"draws computed this invocation: {completed_draws}; re-run to continue if the run was cut short")
 
     arguments.json_output.parent.mkdir(parents=True, exist_ok=True)
     arguments.json_output.write_text(json.dumps(results, indent=1) + "\n")
