@@ -123,6 +123,16 @@ experiments/     phase runners, HPO audit, batch driver, aggregator, module anal
 tests/
 ```
 
+## Development sessions
+
+The design, code and documents in this repository were developed with Claude (Anthropic) in the
+sessions below. The transcripts record the design decisions, the owner's rulings and the reasoning
+behind them.
+
+- https://claude.ai/share/d762a865-1455-4feb-875d-13e94719f70c
+- https://claude.ai/share/3f0e9a27-772b-489e-9eb3-0053cdbd5523
+- https://claude.ai/share/d8d0612d-1c85-4966-8a13-995d8c98ee2d
+
 ## Conventions
 
 Descriptive names over comments; no hard symptom-level constraints anywhere in the model;
