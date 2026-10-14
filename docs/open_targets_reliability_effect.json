@@ -1,0 +1,49 @@
+{
+ "curated_statements_read": 111,
+ "open_targets_reports_emitted": 14,
+ "distinct_items_touched": 14,
+ "distinct_targets": 11,
+ "distinct_symptoms": 6,
+ "report_values": {
+  "1": 14
+ },
+ "pairs_the_inactive_guard_would_not_skip": 4,
+ "examples_of_those_pairs": [
+  "GABRA1|depressed_mood|induces",
+  "HTR2A|cognitive_impairment|induces",
+  "HTR2A|psychosis|induces",
+  "SLC6A4|anxiety|induces"
+ ],
+ "sensitivity_before": {
+  "HPO-OMIM": 0.7643626320628034,
+  "HPO-Orphanet": 0.9028309740877981,
+  "OnSIDES-label": 0.7704284278588693,
+  "SIDER-indication": 0.19013340634152945,
+  "SIDER-label": 0.9339658776199612
+ },
+ "sensitivity_after": {
+  "HPO-OMIM": 0.7643620394118512,
+  "HPO-Orphanet": 0.9028305926272898,
+  "OnSIDES-label": 0.7704279825405269,
+  "Open Targets target safety": 0.03047237686410651,
+  "SIDER-indication": 0.19013823043467373,
+  "SIDER-label": 0.9339656873441635
+ },
+ "sensitivity_change": {
+  "HPO-OMIM": -0.0,
+  "HPO-Orphanet": -0.0,
+  "OnSIDES-label": -0.0,
+  "SIDER-indication": 0.0,
+  "SIDER-label": -0.0
+ },
+ "posterior_shift": {
+  "items": 6683,
+  "mean_absolute": 6.454363969073455e-06,
+  "max_absolute": 0.0019026455125435993,
+  "items_shifted_more_than_0.01": 0,
+  "items_shifted_more_than_0.05": 0
+ },
+ "new_source_name": [
+  "Open Targets target safety"
+ ]
+}
