@@ -86,7 +86,17 @@ BRAIN_NOT_CEREBROSPINAL_FLUID = re.compile(r"""kp,uu,(brain|bbb)|unbound\ brain
 # A cerebrospinal fluid value is not a brain value: the project excludes it, and the quantitative reason is in
 # docs/brain_exposure_data_feasibility.md (lumbar CSF runs more than 3-fold high for P-gp substrates, and buprenorphine's
 # own measured range spans 46-fold). A regional value is not a whole-brain value.
-FLUID_OR_REGIONAL_VALUE = re.compile(r"csf|cerebrospinal|cisterna|lumbar|ventricle|kp,uu,roi|region|,str\b|striatum", re.IGNORECASE)
+# `region` on its own matched any text holding it - "extracellular region", a Reactome compartment, and "brain
+# region" among them - so the two senses are separated (the owner, 14 October 2026: "can't you separate the region
+# cases"). What this screen needs to catch is a value measured in ONE part of the brain rather than across the
+# whole of it, which a column states either as a regional qualifier, as a region of interest, or by naming the
+# region. A compartment called a "region" is not a regional value.
+FLUID_OR_REGIONAL_VALUE = re.compile(
+    r"csf|cerebrospinal|cisterna|lumbar|ventricle"                      # a fluid value, not a tissue value
+    r"|\bregional\b|kp,uu,roi|\broi\b"                                 # stated as regional, or as a region of interest
+    r"|,str\b|striatum|striatal|hippocamp\w*|cerebell\w*|thalam\w*"     # or by naming the region
+    r"|amygdal\w*|nucleus accumbens|frontal cortex|cerebral cortex|prefrontal",
+    re.IGNORECASE)
 REGIONAL_VALUE = FLUID_OR_REGIONAL_VALUE  # the name the brain exposure summary reads it by
 USER_AGENT = "mechanistic-pathway-learning/0.1 (drug exposure table)"
 

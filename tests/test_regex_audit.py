@@ -75,14 +75,23 @@ def test_a_fluid_or_regional_value_is_excluded(column_name):
     assert FLUID_OR_REGIONAL_VALUE.search(column_name), column_name
 
 
-@pytest.mark.parametrize("column_name", ["extracellular region", "brain region", "regional cerebral blood flow"])
-def test_the_regional_screen_is_not_fooled_by_the_word_region_in_another_sense(column_name):
-    """`region` matches any text holding it. These three are not regional Kp,uu values and the screen cannot tell.
+@pytest.mark.parametrize("column_name", [
+    "regional Kp,uu", "Kp,uu,ROI", "Kp,uu,striatum", "Kp,uu,str", "Kp,uu hippocampus", "cerebellum Kp,uu",
+    "thalamic Kp,uu", "frontal cortex Kp,uu",
+])
+def test_a_value_measured_in_one_part_of_the_brain_is_excluded(column_name):
+    """What this screen must catch is a value for one part of the brain rather than across the whole of it,
+    stated as a regional qualifier, as a region of interest, or by naming the region."""
+    assert FLUID_OR_REGIONAL_VALUE.search(column_name), column_name
 
-    This is recorded as a known over-exclusion rather than asserted as correct: over-excluding a column costs a
-    value, where admitting a CSF value as a brain value would corrupt one, so the conservative direction is right.
-    """
-    assert FLUID_OR_REGIONAL_VALUE.search(column_name), "the over-exclusion is expected, not desirable"
+
+@pytest.mark.parametrize("not_a_regional_value", [
+    "extracellular region", "brain region", "Kp,uu,brain", "unbound brain", "Kp,uu,bbb", "Kp,uu,wb",
+])
+def test_the_word_region_in_another_sense_no_longer_excludes_a_column(not_a_regional_value):
+    """The bare term `region` used to match any text holding it, "extracellular region" - a Reactome compartment -
+    and "brain region" among them. The two senses are now separated, so a whole-brain column survives."""
+    assert not FLUID_OR_REGIONAL_VALUE.search(not_a_regional_value), not_a_regional_value
 
 
 from experiments.scope_label_plasma_binder_coverage import (
@@ -123,13 +132,32 @@ def test_the_negation_window_ends_at_a_sentence_boundary_rather_than_running_on(
     assert not NEGATED_BINDING.search("The drug is not metabolised. It is bound to albumin")
 
 
-def test_unbound_is_matched_by_states_binding_which_is_deliberate():
-    """STATES_BINDING carries an optional "un" so that "unbound fraction" counts as a statement about binding.
+VALPROATE_ALBUMIN_SENTENCE = ("Liver disease is also associated with decreased albumin concentrations and larger "
+                              "unbound fractions (2 to 2.6 fold increase) of valproate.")
 
-    That also means "unbound" alone satisfies it, so a fraction-unbound figure reads as a binding statement. The
-    sign is not taken from this pattern, so the looseness is bounded, and it is asserted here to be deliberate.
+
+def test_an_unbound_fraction_sentence_must_keep_counting_as_a_binding_statement():
+    r"""Why STATES_BINDING's optional "un" is load-bearing and must not be narrowed.
+
+    A refinement was proposed on 14 October 2026: exclude "fraction" when the "un" prefix is present, so that a
+    fraction-unbound figure stops reading as a binding statement. It was tested against the data and rejected,
+    because valproate's albumin carrier rests on exactly that construction. The sentence below is the one recorded
+    in docs/label_plasma_binders.md and docs/label_plasma_binders_v4.md as valproate's albumin evidence; the
+    proposed pattern `\bunbound\b(?!\s+fractions?)` does not match it, so the change would have dropped a carrier
+    the screen was written to find.
+
+    The looseness is therefore not a compromise but a requirement, and this test is what pins it.
     """
-    assert STATES_BINDING.search("the unbound fraction was 0.12")
+    assert STATES_BINDING.search(VALPROATE_ALBUMIN_SENTENCE.lower())
+    narrowed = re.compile(r"\b(?:bind|binds|bound|binding)\b(?!\s+fraction)|\bunbound\b(?!\s+fractions?)")
+    assert not narrowed.search(VALPROATE_ALBUMIN_SENTENCE.lower()), (
+        "the narrowed form must be shown to fail, which is the reason it was not adopted")
+
+
+def test_a_protein_named_without_any_word_for_binding_states_no_carrier():
+    """The complement of the test above: the screen exists because "Serum albumin less than 30 g/L", a dose rule,
+    had given a radioligand an albumin carrier on 11 October 2026."""
+    assert not STATES_BINDING.search("serum albumin less than 30 g/l")
 
 
 # --- the central action patterns, which already have their own module ----------------------------------------
