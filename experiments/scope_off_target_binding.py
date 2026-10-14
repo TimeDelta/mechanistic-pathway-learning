@@ -39,7 +39,14 @@ PRIMARY_OCCUPANCY = 0.9
 OCCUPANCY_THRESHOLDS = (0.1, 0.25, 0.5)
 AFFINITY_TYPES = {"Ki", "Kd", "IC50", "EC50", "Kb", "A2", "AC50"}
 NEGATIVE_ACTIONS = re.compile(r"inhibit|antagon|block|inverse|negative|gating", re.IGNORECASE)
-POSITIVE_ACTIONS = re.compile(r"(?<!ant)agonist|activat|opener|positive|potentiat|releasing", re.IGNORECASE)  # "antagonist" holds "agonist"
+# "activat" sits inside "inactivat", so the bare pattern read an inactivating action as positive. Found by the
+# regex audit of 14 October 2026 (tests/test_regex_audit.py). The one live wording in GtoPdb 2026.3 is "Slows
+# inactivation", 23 rows, and for that one positive is the right answer - a channel whose inactivation is slowed
+# stays open longer, so the current rises - which means the old pattern reached the right sign by the wrong route
+# and would have inverted any other inactivation wording. Both are now explicit.
+SLOWS_INACTIVATION = re.compile(r"slow\w*\s+inactivat", re.IGNORECASE)
+INACTIVATING_ACTION = re.compile(r"inactivat", re.IGNORECASE)
+POSITIVE_ACTIONS = re.compile(r"(?<!ant)agonist|(?<!in)activat|opener|positive|potentiat|releasing", re.IGNORECASE)  # "antagonist" holds "agonist"; "inactivat" holds "activat"
 
 
 def occupancy(primary_p_affinity: float, target_p_affinity: float) -> float:
@@ -55,6 +62,10 @@ def action_sign(action: str) -> tuple[int | None, bool]:
     partial = "partial" in action.lower()
     if re.search("inverse", action, re.IGNORECASE):
         return -1, False
+    if SLOWS_INACTIVATION.search(action):
+        return 1, partial  # a channel held open longer carries more current
+    if INACTIVATING_ACTION.search(action):
+        return -1, partial
     if NEGATIVE_ACTIONS.search(action) and not POSITIVE_ACTIONS.search(action):
         return -1, partial
     if POSITIVE_ACTIONS.search(action) and not NEGATIVE_ACTIONS.search(action):

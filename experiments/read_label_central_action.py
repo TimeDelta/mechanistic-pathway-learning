@@ -75,7 +75,17 @@ READS_AS_NOT_CENTRAL = re.compile(r"\bnegligible\b|\bminimal(?:ly)?\b|\bpoorly\b
 # An adverse-event phrase that has leaked into a pharmacology section is not a statement of mechanism: ibuprofen's only
 # match was "milder gastrointestinal ... and CNS side effects". Admitting a drug on such a sentence would be admitting
 # it for its adverse events, which is what reading only the pharmacology sections was meant to prevent.
-READS_AS_AN_ADVERSE_EVENT = re.compile(r"\bside effects?\b|\badverse\b|\btoxicit|\bdepression of\b.{0,24}\bfunction\b", re.IGNORECASE)
+# A frequency table is an adverse-event statement even when it uses none of those words. Health Canada's diltiazem
+# monograph carries "Central Nervous System: Headache (8.2%), asthenia (0.6%), dizziness (3.1%)" as a table
+# heading, which the first three alternatives miss entirely. Found by the regex audit of 14 October 2026 and
+# latent rather than live: no cached US label has such a sentence inside a pharmacology section that would have
+# passed the central-action screen. It is fixed anyway, because the whole point of reading only the pharmacology
+# sections was to keep adverse events out, and a table that migrates into one would have defeated that silently.
+READS_AS_AN_ADVERSE_EVENT = re.compile(
+    r"\bside effects?\b|\badverse\b|\btoxicit|\bdepression of\b.{0,24}\bfunction\b"
+    r"|\(\s*\d+(?:\.\d+)?\s*%\s*\)"                                  # a reported frequency, as a table gives it
+    r"|\b(?:headache|dizziness|asthenia|somnolence|nausea|insomnia)\b.{0,30}\(",  # a symptom followed by a figure
+    re.IGNORECASE)
 SENTENCE = re.compile(r"(?<=[.;])\s+(?=[A-Z(])")
 
 # Amendment 31 b(i), 14 October 2026. The single-sentence screen missed metoclopramide because its label states the
