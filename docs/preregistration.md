@@ -2203,11 +2203,24 @@ vs a disclaimable data skew in the physio graph"). Whether a label asserts a cen
 written and under which guidance, not on whether the drug acts centrally: codeine's label says "Codeine produces
 respiratory depression by direct action on brain stem respiratory centers" while ondansetron's says "It is not
 certain whether ondansetron's antiemetic action is mediated centrally, peripherally, or in both sites", and both
-drugs act centrally to some degree. **The direction of the skew is measured, and it runs against the newer
-labels**: of the 17 drugs that pass (a), 13 pass on a sentence from the older narrative CLINICAL PHARMACOLOGY
-section and only 4 from the PLR-format MECHANISM OF ACTION subsection, which is terse where the older section is
-discursive. It is not label thinness - the 24 drugs that fail with sections read had a median of 18 sections read,
-so the prose simply does not assert a central action. Because the three parts are independent after this item, a
+drugs act centrally to some degree. **Corrected 14 October, the same day, after the owner challenged the
+first account of it** ("how can they be penalized by having BETTER structure to the data?! that sounds opposite to
+reality and also solvable either way if the data isn't thinner just differently structured"). He is right on both
+counts and the first account was wrong. It read: 13 of the 17 passing drugs pass on the older narrative CLINICAL
+PHARMACOLOGY section and only 4 on the PLR-format MECHANISM OF ACTION subsection, which was offered as a skew
+against better-structured labels. That comparison had no denominator. **With the base rates computed**: of the 80
+drugs whose label carries both sections, **25 pass on both, 13 pass on CLINICAL PHARMACOLOGY alone, and zero pass
+on MECHANISM OF ACTION alone.** So within one label the older section never loses and sometimes wins, which is not
+a penalty on structure. **The cause is the reader, not the label.** The matcher requires the drug and a central
+site in a single sentence under 600 characters, and a PLR label distributes that claim across subsections - the
+mechanism in 12.1, the site in 12.2 or 12.3 - so a label stating "selective antagonist at the 5-HT2A receptor" in
+one subsection and the receptor's cortical location in another states a central action that the reader cannot
+assemble. The headroom is visible in the same measurement: PHARMACODYNAMICS is present for 69 drugs and yields a
+passing sentence for 15, 21.7 per cent, where that subsection is exactly where a PLR label puts the site. So this
+is a defect to fix rather than a property to disclose, and part (a)'s admitted set should be re-read once the
+matcher can combine subsections. What survives as a genuine limitation of (a) is narrower: it still depends on a
+label asserting rather than implying, so a drug whose central action no regulator wrote down in any form is
+excluded on documentation. Because the three parts are independent after this item, a
 drug needs a stated central action **and** a brain-expressed mechanism target **and** a measured Kp,uu,brain, and
 the first and third both favour the well studied, which compounds the missingness decision 1.3(b) measured for
 occupancy. **What follows from it, and is registered here**: the rule stands, because admitting a peripherally
