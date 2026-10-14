@@ -97,11 +97,14 @@ def main() -> None:
              "**Corrected 13 October 2026.** This paragraph read \"an occupancy near saturation or near zero absorbs "
              "and one near Kd does not\". Both of its last two clauses were wrong and in the same direction: the "
              "sensitivity is monotone in the occupancy, so an occupancy near zero absorbs least of all, and one near "
-             "Kd absorbs half. The error matters because preregistration item 5b rests on this relation being "
-             "monotone, which it is; the sentence stated it as a U shape.", "",
-             "**Where the offset is carried, after item 5b.** To mechanism targets only. An off-target takes a "
-             "measured concentration or does not enter, because its occupancy sits where the sensitivity is near 1 "
-             "(`docs/occupancy_by_target_role.md`).", "",
+             "Kd absorbs half. The error matters because `has_measured_occupancy` is reported against this "
+             "relation and the withdrawn item 5b rested on it; the sentence stated it as a U shape.", "",
+             "**Where the offset is carried, after item 5c.** To every drug that has no measured concentration, at "
+             "every one of its targets and in both roles; a measured value is never shifted and an off-target is "
+             "never withheld. Two things this document does not settle are measured in "
+             "`docs/occupancy_coverage_and_shift_transfer.md`: whether the offset transfers to the drugs it is "
+             "applied to, which it does not, and what an imputed off-target occupancy is worth, which is why "
+             "`has_measured_occupancy` is reported.", "",
              "**One limit on the transfer.** The offset is estimated on the drugs that have a measured concentration, "
              "which are the better-studied ones, and applied to those that do not. If the placeholder's bias differs "
              "between the two, the correction does not carry. That is the same extrapolation this project registered "

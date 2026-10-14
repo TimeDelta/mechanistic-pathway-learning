@@ -1121,8 +1121,8 @@ number of targets, and the permuted-target negative control. All three were name
 measured unbound concentration at each target's own site (user, 12 October). No registered input reads an
 off-target, so this binds nothing yet and is written here so the anchor is not chosen by default later.
 
-**5a. Amended 13 October 2026, then withdrawn the same day; see item 5b. The calibrated placeholder of item 29 is
-permitted where no measurement exists** (the owner: "Just amend the item 5"). This item read "and not from the placeholder that fixes the best-bound
+**5a. Amended 13 October 2026; withdrawn and reinstated the same day, and superseded in its procedure by item 5c.
+The calibrated placeholder of item 29 is permitted where no measurement exists** (the owner: "Just amend the item 5"). This item read "and not from the placeholder that fixes the best-bound
 target at 90 percent". That prohibition was aimed at the **raw** placeholder, which sets the concentration by
 assertion - it pins the best-bound mechanism target at 0.9 occupancy and reads everything else off that - and the
 objection to it was that the anchor would be chosen rather than measured. Item 29's placeholder is a different
@@ -1146,9 +1146,21 @@ placeholder is therefore reported in the `has_measured_occupancy` stratum and no
 same instrument item 29 already registers and not a new one. Whether off-targets enter at all remains decision
 1.3.
 
-**5b. Withdrawing 5a: the prohibition is restored for off-targets and the calibration is pointed at mechanism
-targets instead** (the owner, 13 October 2026, on the table immediately above: "Ooooh. I think it's better to put
-the measured values back then and calibrate the other way"). Item 5a answered the asymmetry it had just measured
+**5b. Withdrawn on the day it was written, as a misreading. It restored the prohibition for off-targets and
+pointed the calibration at mechanism targets instead** (written against the owner's "Ooooh. I think it's better to
+put the measured values back then and calibrate the other way", 13 October 2026, and corrected by him the same
+evening: "No. That's not what i meant. I mean keep off targets but always use a measured value then impute all
+values to get the calibration shift and apply it to only the imputed values that have not been measured.").
+
+**What the misreading was.** "Put the measured values back" was read as "put item 5's prohibition back", so 5b
+withdrew 5a and barred an off-target from taking a calibrated placeholder. The sentence was about item 29's claim
+that "every drug therefore carries an occupancy on one scale", which reads as putting every drug on the
+placeholder scale and so displacing the measurements of the drugs that have them. The owner was asking for those
+measurements to be used, not for off-targets to be dropped. Item 5c registers what he described and 5a stands.
+The text of 5b is kept below rather than deleted, because it is the second misreading of the same sentence in one
+day and the record should show what was registered in error.
+
+**[Withdrawn.]** Item 5a answered the asymmetry it had just measured
 with a reporting instrument, a stratum. The owner's reading is that the asymmetry is an argument about which input
 the imputation may enter at all, and it is the better reading: a stratum records that a number is unreliable and
 still trains on it, while the asymmetry says the off-target number is not a measurement of anything. At a median
@@ -1165,7 +1177,7 @@ So the rule has two halves, one per target role:
   it is measured on the population the placeholder is carried to rather than assumed from the population it was
   estimated on: over the 154 imputed mechanism rows the median occupancy is 0.806 and a one-sd error moves it x1.2
   up and x3.5 down, against x1.2 and x3.7 on the drugs that have a measurement
-  (`docs/occupancy_by_target_role.md`).
+  (`docs/occupancy_coverage_and_shift_transfer.md`).
 
 **The cost is registered with the rule.** The prohibition withholds the off-targets of **61 drugs**: 578 of 1,741
 off-target rows, 33.2 percent, on drugs carrying 18.0 percent of the kept positive pairs. **No drug and no label
@@ -1189,6 +1201,33 @@ some drugs legitimately don't have it"): the requirement is on an off-target ent
 
 `has_measured_occupancy` is unaffected and stays: the mechanism side still carries imputed numbers, and that is
 what the stratum reads.
+
+**5c. The procedure, as the owner stated it on 13 October 2026**: "keep off targets but always use a measured value
+then impute all values to get the calibration shift and apply it to only the imputed values that have not been
+measured." It supersedes 5b, which is withdrawn, and fixes the step of 5a and item 29 that was left loose. Four
+steps, in order, and the order is part of the registration:
+
+1. **Off-targets are kept.** No occupancy rule bars one. Whether an off-target enters the input at all, and above
+   what occupancy, is decision 1.3 and the threshold there is still the owner's; what is settled here is that the
+   occupancy scheme does not decide it for him by withholding the number.
+2. **A measured value always wins.** Where a drug has a measured unbound concentration, its occupancies are read
+   from that concentration at each target's own site, for every target of that drug and in both roles. No
+   imputation displaces a measurement, which is the step item 29's "one scale" sentence obscured and item 29 is
+   corrected below.
+3. **Every value is imputed, including the measured ones, to estimate the shift.** The placeholder is computed
+   the same way for a drug that has a measurement and one that does not. That uniformity is what makes the
+   comparison on the overlap transferable: a placeholder computed differently for the two groups would measure
+   the difference in the procedure rather than in the drugs. The imputed values of the measured drugs are
+   scaffolding for the estimate and enter no model input; they are discarded after the shift is taken.
+4. **The shift is applied only where no measurement exists.** The 115 drugs with both give the shift, a median
+   +0.331 log10 on the concentration; the drugs without a measurement take their placeholder divided by that
+   factor. A measured value is never shifted, and a shifted value never overwrites one.
+
+**What this leaves unchanged.** The offset sits on the concentration and not on the occupancy, for the reason item
+29 gives. `has_measured_occupancy` stays, and is now the only instrument separating the two populations, since no
+rule withholds a value: every reading is reported within the stratum as well as over all drugs. The two
+limitations item 29 registers stand, the scatter of 1.14 log units and the estimation of the offset on the
+better-studied drugs.
 
 **6. The comparative checks.** `configs/comparative_checks.csv`, 214 statements named in advance, read after scoring,
 testing no hypothesis of the study and changing no decision rule. Only the two-drug kind is a test of a model; the
@@ -2060,21 +2099,24 @@ geometric centre of the measured therapeutic range, and that offset is removed. 
 on it is ill-defined near either end, while `occupancy = C / (C + Kd)` keeps the bound by construction and is where
 the disagreement between the two methods actually sits.
 
-**Amended the same day: the calibrated placeholder reaches mechanism targets only** (item 5b, the owner: "Ooooh. I
-think it's better to put the measured values back then and calibrate the other way"). An off-target takes a
-measured concentration or does not enter, because at a median off-target occupancy of 0.063 the calibration's
-one-sd band runs from 0.005 to 0.48 and an imputed value there states nothing the affinity did not already state.
-The two halves of the rule, what each costs and the two limitations that stay open are in item 5b.
+**Amended the same day: the four steps of the procedure are registered as item 5c** (the owner: "keep off targets
+but always use a measured value then impute all values to get the calibration shift and apply it to only the
+imputed values that have not been measured"). Off-targets are kept, a measurement always wins over an imputation,
+the placeholder is computed for every drug so that the shift is estimated on a like-for-like overlap, and the
+shift is applied only where no measurement exists.
 
-**Every drug therefore carries a mechanism-target occupancy on one scale**, which is what removes the confound a
-mixed input would have introduced: without it the two groups carry total input with medians 1.00 and 3.0, and which
-group a drug falls in is whether it has a published therapeutic range and fraction unbound, a quantity that tracks
-how long and how widely the drug has been studied and so correlates with its label count by the same route. **The
-off-target part of the input is not on one scale after item 5b**, and the confound is therefore not removed there:
-61 drugs carry mechanism targets and no off-targets for want of a measurement, and which 61 is decided by the same
-publication history. This is the price of 5b and is stated rather than removed, because the alternative is the
-imputed off-target value 5b rejects. Decision 1.3 governs whether off-targets enter at all; if they do not, the
-confound does not arise.
+**Every drug therefore carries an occupancy, which removes the confound a missing one would have introduced**:
+without it the two groups carry total input with medians 1.00 and 3.0, and which group a drug falls in is whether
+it has a published therapeutic range and fraction unbound, a quantity that tracks how long and how widely the drug
+has been studied and so correlates with its label count by the same route.
+
+**Corrected 13 October 2026.** This paragraph read "every drug therefore carries an occupancy on **one scale**",
+which claims more than the procedure delivers and claims the wrong thing. The two groups are not on one scale: one
+carries measurements and the other imputations corrected towards the measurements by a median offset, with 1.14 log
+units of scatter left around it. The calibration removes the systematic difference between the groups, not the
+difference itself, and nothing displaces a measurement with an imputation (item 5c, step 2). The wording read as if
+every drug were put on the placeholder scale, which is what prompted the owner's "put the measured values back" and
+the withdrawn item 5b.
 
 **Two limitations are registered with it, and neither is removed by the calibration.**
 
@@ -2088,21 +2130,32 @@ confound does not arise.
   occupancy absorbs the error, one at `Kd` absorbs half, one near zero passes it through almost whole. (Corrected
   13 October 2026: this read "which an occupancy near saturation absorbs and one near `Kd` does not", which has the
   relation as a U shape rather than monotone and so understates how badly a low occupancy behaves. The correction
-  strengthens item 5b rather than weakening it, because 5b rests on the monotone reading.)
-- **The offset is estimated where it is least needed.** It comes from the drugs that have a measured
-  concentration, which are the better-studied ones, and is carried to those that do not. If the placeholder's bias
-  differs between the two populations the correction does not transfer, and nothing available measures whether it
-  does. The owner accepted this as a stated limitation on 13 October ("That's a valid limitation. Just record
-  it"); it is the same shape as the extrapolation registered for the Open Targets agreement in item 12d.
+  strengthens the case for the stratum rather than weakening it. The withdrawn item 5b also rested on
+  the monotone reading, which was the sound part of it.)
+- **The offset is estimated where it is least needed, and it does not transfer.** It comes from the drugs that
+  have a measured concentration, which are the better-studied ones, and is carried to those that do not. The owner
+  accepted this as a stated limitation on 13 October ("That's a valid limitation. Just record it"), and this item
+  then said "nothing available measures whether it does". **That was wrong, and item 5c step 3 is what makes the
+  measurement possible**: imputing every drug, including the measured ones, puts a placeholder beside each
+  measurement and the disagreement can be read against anything observable for both groups. Read against the best
+  mechanism affinity it is not flat. The placeholder is `C = 9 * Kd` of that target, so its log concentration
+  falls with affinity at a slope of -1 by construction, while the measured concentration falls at -0.532: a more
+  potent drug is dosed lower, but only about half as much lower. The remainder stays in the disagreement, no
+  constant reaches it, and the drugs the shift is applied to are the more potent ones, a median 0.59 pK above the
+  drugs it was estimated on. Leave-one-drug-out median absolute error is **0.852 log10 for the constant shift and
+  0.524 for a line in the affinity** (`docs/occupancy_coverage_and_shift_transfer.md`). **Item 5c keeps the
+  constant, because the owner specified the median disagreement and a line is a different estimator**; the
+  recommendation to change it is open decision 9.2 and is his. This is no longer the same shape as the
+  extrapolation registered for the Open Targets agreement in item 12d, which stays untested.
 
-**What is not settled here.** Whether off-targets enter the input at all, and at what occupancy threshold, is
-decision 1.3 and remains the owner's; item 25's split survives them, at a cost in novelty rather than in size
-(`docs/off_targets_under_the_target_split.md`). The conflict with item 5 that this item first flagged is closed,
-and not the way item 5a closed it: item 5a lifted item 5's prohibition and was withdrawn the same day, and item 5b
-restores it for off-targets while pointing the calibration at mechanism targets. Two limitations of 5b stay open -
-that a withheld off-target is set to absent rather than abstained from, and that the target role is a proxy for
-position on the saturation curve that fails in the tail - and both are recorded as section 9 of
-`docs/open_decisions.md`.
+**What is not settled here.** The occupancy threshold above which an off-target enters the input is decision 1.3
+and remains the owner's; item 25's split survives off-targets at a cost in novelty rather than in size
+(`docs/off_targets_under_the_target_split.md`), and the threshold is the dial on that cost. **That off-targets are
+kept is settled** (item 5c, step 1). The conflict with item 5 is closed by item 5a, which lifted the prohibition on
+the calibrated placeholder: item 5b withdrew 5a and was itself withdrawn as a misreading, and item 5c registers the
+procedure. One finding of the 5b measurement outlives it and is recorded as section 9 of `docs/open_decisions.md`:
+the target role is a proxy for position on the saturation curve that fails in the tail, so the role is not a sound
+basis for any rule and `has_measured_occupancy` is the right instrument, which is what this item already uses.
 
 **What this amendment does not change.** The two tested models and the noisy-OR head of each, the decision rule, the
 one-sided 0.025 sequence of H1 then H2, the floors, the degree strata, the node descriptor table, and the training
