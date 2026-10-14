@@ -2197,6 +2197,27 @@ certain** whether ondansetron's antiemetic action is mediated centrally, periphe
 pattern counts as an action sentence and a reader would not. `docs/label_central_action_reading.md` holds the
 proposed reading of each; decision 3.2 is that reading and remains the owner's.
 
+**a(i). The registered limitation of part (a): it filters on documentation, not on physiology.** Recorded on
+14 October 2026 at the owner's instruction, with his ruling on the trade ("label noise is too much of a hinderance
+vs a disclaimable data skew in the physio graph"). Whether a label asserts a central action depends on when it was
+written and under which guidance, not on whether the drug acts centrally: codeine's label says "Codeine produces
+respiratory depression by direct action on brain stem respiratory centers" while ondansetron's says "It is not
+certain whether ondansetron's antiemetic action is mediated centrally, peripherally, or in both sites", and both
+drugs act centrally to some degree. **The direction of the skew is measured, and it runs against the newer
+labels**: of the 17 drugs that pass (a), 13 pass on a sentence from the older narrative CLINICAL PHARMACOLOGY
+section and only 4 from the PLR-format MECHANISM OF ACTION subsection, which is terse where the older section is
+discursive. It is not label thinness - the 24 drugs that fail with sections read had a median of 18 sections read,
+so the prose simply does not assert a central action. Because the three parts are independent after this item, a
+drug needs a stated central action **and** a brain-expressed mechanism target **and** a measured Kp,uu,brain, and
+the first and third both favour the well studied, which compounds the missingness decision 1.3(b) measured for
+occupancy. **What follows from it, and is registered here**: the rule stands, because admitting a peripherally
+acting drug with a symptom label would inject label noise into a confirmatory set; the skew is disclosed rather
+than engineered around; and the excluded-but-plausible drugs are **reported as a named stratum** rather than
+deleted from the record, the same treatment `has_measured_occupancy` receives. Two sources can narrow the gap and
+neither is required by this item: human PET occupancy, already measured as reaching about one drug in eight but
+disproportionately the modern ones (`docs/pet_occupancy_feasibility.md`), and the EMA public assessment reports,
+whose terms are verified in `docs/data_sources.md`.
+
 **b. A second medicines agency is read when, and only when, no pharmacology section could be read at all.** The
 trigger is the absence of a section to read, which is a property of what is published and not of what it says. **A
 label that was read is never re-litigated at a second agency**, because searching for a second opinion only where
