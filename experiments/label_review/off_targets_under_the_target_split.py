@@ -89,6 +89,16 @@ def main() -> None:
                      f"{reading['held_out_share']:.1%} (sd {reading['held_out_share_sd']:.1%}) | {reading['target_fraction']:.2%} | "
                      f"{reading['unseen_share_of_a_held_out_drugs_targets']:.1%} | "
                      f"{reading['held_out_drugs_with_no_target_in_training']:.1%} |")
+    lines += ["",
+              "**Every row of that table is measured on the drugs the occupancy table covers, not on the study.** "
+              "The occupancy table holds only the drugs with a measured concentration, so the mechanism-only row "
+              "stands on 115 drugs and 75 targets where item 25's registered split stands on 222 drugs and 192 "
+              "targets. The last column is the same quantity as item 25c's secondary stratum and the two numbers "
+              "differ for that reason alone: **38.6 percent here against the 21.2 percent item 25c registers**, "
+              "which is the full table. So this table prices the **shape** of the trade - admit weaker engagements "
+              "as targets and a held-out drug shares more of them with training - and not the levels the study will "
+              "see. The levels move at the v4 rebuild, which lifts item 1's three-target limit and so changes every "
+              "drug's target set. A threshold chosen on these numbers should be chosen for the shape."]
 
     records = pd.read_parquet(arguments.evidence_dir / "evidence_records.parquet")
     selection = pd.read_parquet(arguments.label_selection)
