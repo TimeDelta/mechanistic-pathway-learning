@@ -80,7 +80,7 @@ The owner: "Can you please try to route around the refusal instead?" The ruling 
 rules out - a cache, a mirror and a solved challenge - and one it rules in: "Record the refusal and use the
 provider's other publications." The second was taken and it answered.
 
-- **The Irish regulator, HPRA, holds the record and it reads normally.** `hpra.ie`
+- **The Irish medicines agency, the HPRA, holds the record and it reads normally.** `hpra.ie`
   `/find-a-medicine/for-human-use/authorised-medicines/details/-1779`, read 14 October 2026 with
   `experiments/read_public_page.py` (sha256 7a55618dfc93cfdc...). Verbatim from the page: **TRASICOR**, active
   substance **OXPRENOLOL HYDROCHLORIDE**, tablets, licence **PA0028/003/004**, holder **Ciba Geigy Plc**, licence
@@ -93,7 +93,7 @@ provider's other publications." The second was taken and it answered.
 **So the refusal is probably not what is blocking this.** The NHS dictionary of medicines and devices still lists
 Trasicor 40 mg and Slow-Trasicor 160 mg as actual medicinal products, so the drug is still dispensed in the United
 Kingdom; but an authorisation from 1975 may have no published SPC anywhere, in which case part (a) cannot be
-satisfied for oxprenolol by any regulator and the answer is to leave it out rather than to keep searching. That is
+satisfied for oxprenolol by any medicines agency and the answer is to leave it out rather than to keep searching. That is
 a better outcome than a blocked request, because it is a fact about the drug rather than about a web server.
 
 **What was not done, and why it is the owner's to decide.** The three routes the ruling rules out - a cache, a
@@ -107,10 +107,12 @@ in this instance, is probably nothing: the HPRA record suggests there is no SPC 
 ## One thing this pass raises that it cannot settle
 
 **Item 14(a) says "the drug's own label", and the screen reads openFDA, which is the United States only.** A UK
-summary of product characteristics is a different regulator's label for the same drug, with its pharmacology in
+summary of product characteristics is another agency's label for the same drug, with its pharmacology in
 section 5.1 rather than in a "clinical pharmacology" section. By item 14(a)'s wording - "a pharmacology section -
 mechanism of action, clinical pharmacology, pharmacodynamics or description" - an SPC's section 5.1 qualifies, and
 oxprenolol has **no** US label, so without a non-US label it can never satisfy (a) whatever its pharmacology. But
-admitting a second regulator's labels is a change of scope for the rule and not a detail: it widens the evidence
-base for every drug the rule governs, not only this one, and the two regulators do not write the same sentences.
-**Whether item 14(a) reads a non-US label is the owner's and is recorded as decision 3.1(b).**
+admitting a second agency's labels is a change of scope for the rule and not a detail: it widens the evidence
+base for every drug the rule governs, not only this one, and the two agencies do not write the same sentences.
+**Whether item 14(a) reads a label from a second medicines agency is the owner's and is recorded as decision
+3.1(b).** "Agency" throughout, never "regulator": in this project a regulator is a gene or complex that regulates a
+reaction (item 30, decision 4.2), and the two senses collided in the first draft of this file.
