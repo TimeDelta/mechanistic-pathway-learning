@@ -41,6 +41,14 @@ from mechanistic_pathway_learning.graph.redox_pools import add_redox_pools
 
 # the inorganic ions whose movement across the plasma membrane carries current, with the Human-GEM base id of each
 INORGANIC_IONS = {"Na+": "MAM02519", "K+": "MAM02200", "Ca2+": "MAM01413", "Cl-": "MAM01442", "Mg2+": "MAM02482"}
+# Reactome's chloride is a second base id that no Human-GEM table holds, so it had no charge and was not counted as
+# an ion moved (decision 9.4, the owner on 14 October 2026: "Definitely the second fix for chloride so it's separate
+# from hcl"). MAM02144 is chloride: three of its four compartments are display-named "Cl-", and the cytosolic one
+# reads "hydrochloride" only as a naming artefact - `RCT_975340` is "GABR heteropentamers:GABA transport **Cl-** from
+# extracellular region to cytosol" and moves MAM02144e to MAM02144c. It is given chloride's charge and counted as an
+# ion WITHOUT being merged into MAM01442 and without becoming a second chloride pool, which is the owner's choice of
+# the two fixes: the two base ids stay separate entities and only the charge arithmetic is repaired.
+IONS_WITHOUT_A_HUMAN_GEM_CHARGE = {"Cl- (Reactome)": ("MAM02144", -1)}
 TRANSMITTER_BASES = {"MAM01736": "dopamine", "MAM02897": "serotonin", "MAM02617": "noradrenaline", "MAM01290": "adrenaline", "MAM01260": "acetylcholine",
                      "MAM02124": "histamine", "MAM01974": "glutamate", "MAM00970": "GABA", "MAM01986": "glycine"}
 VESICULAR_TRANSPORTER_GENES = {"SLC18A1", "SLC18A2", "SLC18A3", "SLC32A1", "SLC17A6", "SLC17A7", "SLC17A8"}
@@ -153,11 +161,17 @@ def main() -> None:
 
     human_gem_sbml = arguments.human_gem_sbml.read_text()
     ion_charges = {base: charge for base, charge in metabolite_charges_from_sbml(human_gem_sbml).items() if base in set(INORGANIC_IONS.values())}
+    # the Reactome-only ions. They join ion_bases so `ions_moved_inward` counts them and ion_charges so the net charge
+    # sees them; they are absent from NEURONAL_POOL_DRIVING_FORCE, so no pool node is built for them.
+    ion_bases = dict(INORGANIC_IONS)
+    for name, (base, charge) in IONS_WITHOUT_A_HUMAN_GEM_CHARGE.items():
+        ion_bases[name] = base
+        ion_charges[base] = charge
     expression = load_brain_expression(arguments.brain_expression)
     brain_expressed_genes = set(expression.loc[expression.brain_median_tpm_max >= arguments.minimum_brain_tpm, "gene_symbol"])
     sbml_texts = [path.read_text() for path in sorted(arguments.reactome_dir.glob("*.sbml"))]
     new_nodes, new_edges, new_relations, summary = import_reactome_layer(
-        sbml_texts, nodes, edges, relation_types, gene_of_uniprot, map_chebi_to_human_gem, INORGANIC_IONS, ion_charges,
+        sbml_texts, nodes, edges, relation_types, gene_of_uniprot, map_chebi_to_human_gem, ion_bases, ion_charges,
         read_human_gem_participants(human_gem_sbml, set(INORGANIC_IONS.values())), brain_expressed_genes, set(TRANSMITTER_BASES),
         VESICULAR_TRANSPORTER_GENES, CURATED_REACTIONS, REPLACED_HUMAN_GEM_REACTIONS, arguments.membrane_potential)
 
