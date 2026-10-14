@@ -50,7 +50,7 @@ nisoldipine,no such sentence,12,0,0,0,,,,
 prazosin,no such sentence,16,0,0,0,,,,
 mecamylamine,no such sentence,4,0,0,0,,,,
 flumazenil,states that it does not reach the brain,22,8,8,0,clinical_pharmacology,1855bb03-392f-4a0d-8361-24fc2a0e635e,"Flumazenil does not antagonize the central nervous system effects of drugs affecting GABA-ergic neurons by means other than the benzodiazepine receptor (including ethanol, barbiturates, or general anesthetics) and does not reverse the effects of opioids.",
-codeine,no label section read,0,0,0,0,,,,URLError: <urlopen error [Errno 104] Connection reset by peer>
+codeine,states a central action,24,36,0,12,clinical_pharmacology,010905f9-3bcb-4b50-9fe8-a3ad0010f14c,"The analgesic properties of codeine have been speculated to come from its conversion to morphine, although the exact mechanism of analgesic action remains unknown. 12.2 Pharmacodynamics Effects on the Central Nervous System: Codeine produces respiratory depression by direct action on brain stem respiratory centers.",
 hydrocodone,states a central action,26,24,0,24,mechanism_of_action,025eb0f7-d002-4ce0-87b8-71461ab18356,"However, specific CNS opioid receptors for endogenous compounds with opioid-like activity have been identified throughout the brain and spinal cord and are thought to play a role in the analgesic effects of this drug.",
 dextromethorphan,no label section read,0,0,0,0,,,,
 cyclobenzaprine,states a central action,16,16,0,0,clinical_pharmacology,00b20a8c-debd-e930-e063-6394a90a7ed0,It is ineffective in muscle spasm due to central nervous system disease.,

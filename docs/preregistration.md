@@ -2125,6 +2125,64 @@ reaction consuming two molecules counts as one (14.5 percent of both-produced-an
 non-unit coefficient, and the totals differ at 2.8 percent of those with equal reaction counts). The registered
 per-edge demand of item 20 stays unbuilt. This item changes the counting of reactions, not of molecules.
 
+**31. Item 14(a) is tightened to a central action, and a second medicines agency is read only where no
+pharmacology section exists** (the owner, 13 October 2026: "I'm okay losing metoprolol and propranolol so 1 is
+fine", and "Shouldn't it include looking at another regulator for the cases with no US label, though?").
+
+**a. Part (a) requires a statement of central action, not of penetration.** Item 14(a) says "states a central
+action" and the drugs admitted under it rested on sentences saying the drug **crosses the blood-brain barrier**,
+which is a different claim and one part (c) already measures, quantitatively, as Kp,uu,brain. Read that way, (a)
+was a weaker copy of (c) and the rule had two parts doing one job. The three parts are now independent: (a) a
+qualitative statement of central action, (b) a brain-expressed mechanism target in the graph, (c) a measured
+penetration at or above 0.1.
+
+**The cost is paid, not avoided, and it includes two drugs this registration already admitted.** Tightening (a)
+drops **metoprolol and propranolol**, both of which item 14 records as admitted and both of which rest on
+penetration sentences ("Metoprolol is also known to cross the blood brain barrier ... CSF concentrations close to
+that observed in plasma"; "Propranolol crosses the blood-brain barrier and the placenta"). It also drops felodipine,
+indomethacin, nimodipine, omeprazole, granisetron, metformin and pindolol. **The direction matters**: every earlier
+amendment to this rule widened it, and a rule each of whose amendments admits more drugs is being tuned, which is
+what item 14 exists to prevent. This one narrows it.
+
+**What survives is a reading of four drugs instead of twelve, and the reading is still the authority.** Of the
+drugs outside the nervous-system code, four have a sentence naming them that states an action rather than
+penetration: **codeine, cyclobenzaprine, hydrocodone and ondansetron**. That list is a shortlist and not a verdict.
+The pattern that produced it cannot tell an assertion from a hedge: ondansetron's own label says "It is **not
+certain** whether ondansetron's antiemetic action is mediated centrally, peripherally, or in both sites", which the
+pattern counts as an action sentence and a reader would not. `docs/label_central_action_reading.md` holds the
+proposed reading of each; decision 3.2 is that reading and remains the owner's.
+
+**b. A second medicines agency is read when, and only when, no pharmacology section could be read at all.** The
+trigger is the absence of a section to read, which is a property of what is published and not of what it says. **A
+label that was read is never re-litigated at a second agency**, because searching for a second opinion only where
+the first was unfavourable selects the drug set on the outcome, which is the circularity item 14 exists to prevent.
+("Medicines agency" throughout, never "regulator": in this project a regulator is a gene or complex that regulates
+a reaction.)
+
+Seven drugs qualify, and they qualify for two different reasons that are both absences of a section:
+
+- **No United States label exists** (openFDA answers HTTP 404): oxprenolol, celiprolol, penbutolol, etoricoxib and
+  valdecoxib. Etoricoxib was never approved in the United States and valdecoxib was withdrawn from it, so for
+  these the United States is simply the wrong jurisdiction to ask.
+- **The United States label is an over-the-counter Drug Facts label, which has no pharmacology section**:
+  loratadine and dextromethorphan. The screen reads `mechanism_of_action`, `clinical_pharmacology`,
+  `pharmacodynamics` and `description`, all of them prescription-label fields that an over-the-counter label does
+  not carry. A European summary of product characteristics puts the same material in section 5.1, so these are
+  evaluable elsewhere and unevaluable here.
+
+**c. A retrieval failure is not an absence, and one had hardened into a verdict.** `read_label_central_action.py`
+cached every openFDA response including its failures, so a reset connection was returned on each later run as the
+drug's answer. **Codeine had been recorded as "no label section read", 0 sections, on a cached
+`Connection reset by peer`.** With the cache repaired to keep only a real response or openFDA's own 404, codeine
+reads **24 sections and 36 candidate sentences**, among them "Codeine produces respiratory depression by **direct
+action on brain stem respiratory centers**" - which passes the tightened (a) cleanly. So a drug was being excluded
+by a network error. The fix is registered with the rule because it is the rule's input: openFDA's 404 is an answer
+and is cached; anything else is retried.
+
+**What this changes downstream.** The admitted set changes, so the perturbation set changes, so the leakage groups
+and the held-out draw change. **This enters at the v4 rebuild of decision 1.2 or not at all**, which is the same
+constraint item 12a registers for the Open Targets class.
+
 **30. A protein complex carries the cell-class weight of its limiting member, at the complex node** (the owner,
 13 October 2026, decision 4.2: "Taking the complex's limiting member weight per type makes sense i think but only
 if it applies at the complex itself. That's what you mean, right?").

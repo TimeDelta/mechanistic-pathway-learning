@@ -7,8 +7,8 @@ Read from openFDA by `experiments/read_label_central_action.py`, pharmacology se
 | verdict | drugs |
 | --- | --- |
 | no such sentence | 24 |
-| states a central action | 16 |
-| no label section read | 8 |
+| states a central action | 17 |
+| no label section read | 7 |
 | states that it does not reach the brain | 6 |
 | only an adverse-event sentence | 2 |
 
@@ -17,6 +17,7 @@ Read from openFDA by `experiments/read_label_central_action.py`, pharmacology se
 | drug | section | quote | openFDA set |
 | --- | --- | --- | --- |
 | bisoprolol | clinical_pharmacology | Factors which may be involved include: 1) Decreased cardiac output, 2) Inhibition of renin release by the kidneys, 3) Diminution of tonic sympathetic outflow from the vasomotor centers in the brain. | 084308e4-3b8b-40d6-acbf-d775772a8a73 |
+| codeine | clinical_pharmacology | The analgesic properties of codeine have been speculated to come from its conversion to morphine, although the exact mechanism of analgesic action remains unknown. 12.2 Pharmacodynamics Effects on the Central Nervous System: Codeine produces respiratory depression by direct action on brain stem respiratory centers. | 010905f9-3bcb-4b50-9fe8-a3ad0010f14c |
 | cyclobenzaprine | clinical_pharmacology | It is ineffective in muscle spasm due to central nervous system disease. | 00b20a8c-debd-e930-e063-6394a90a7ed0 |
 | felodipine | clinical_pharmacology | Animal studies have demonstrated that felodipine crosses the blood-brain barrier and the placenta. | 05feb0a1-8a0c-4d8a-9b86-5e700ea6fd64 |
 | granisetron | clinical_pharmacology | Serotonin receptors of the 5-HT 3 type are located peripherally on vagal nerve terminals and centrally in the chemoreceptor trigger zone of the area postrema. | 2758eb4d-2fe0-4f74-b3f5-b4903009e97c |
@@ -56,5 +57,5 @@ acebutolol, atenolol, betaxolol, carvedilol, celecoxib, diclofenac, diltiazem, f
 
 ## no label section read
 
-celiprolol, codeine, dextromethorphan, etoricoxib, loratadine, oxprenolol, penbutolol, valdecoxib
+celiprolol, dextromethorphan, etoricoxib, loratadine, oxprenolol, penbutolol, valdecoxib
 

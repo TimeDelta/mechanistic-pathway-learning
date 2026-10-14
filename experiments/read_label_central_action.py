@@ -83,7 +83,13 @@ def label_payload(drug_name: str, limit: int = 8) -> dict:
     CACHE_DIRECTORY.mkdir(parents=True, exist_ok=True)
     cache_path = CACHE_DIRECTORY / f"{re.sub(r'[^a-z0-9]+', '_', drug_name.lower())}.json"
     if cache_path.exists():
-        return json.loads(cache_path.read_text())
+        cached = json.loads(cache_path.read_text())
+        # A failed request is not the drug's answer. openFDA's 404 is an answer - it holds no label of that name -
+        # but a reset connection or a timeout is a retrieval failure, and caching one makes every later run report
+        # it as a fact about the drug. Only the 404 and a real response are kept.
+        error = str(cached.get("error", ""))
+        if not error or error.startswith("HTTP 404"):
+            return cached
     url = f"{LABEL_ENDPOINT}?" + urllib.parse.urlencode({"search": f'openfda.generic_name:"{drug_name}"', "limit": limit})
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), timeout=60) as response:
@@ -92,7 +98,8 @@ def label_payload(drug_name: str, limit: int = 8) -> dict:
         payload = {"results": [], "error": f"HTTP {error.code}"}
     except Exception as error:  # noqa: BLE001 - the reason is recorded rather than raised, so one name cannot stop a sweep
         payload = {"results": [], "error": f"{type(error).__name__}: {error}"}
-    cache_path.write_text(json.dumps(payload, indent=1))
+    if not str(payload.get("error", "")) or str(payload.get("error", "")).startswith("HTTP 404"):
+        cache_path.write_text(json.dumps(payload, indent=1))
     time.sleep(0.4)  # openFDA asks for a modest rate without a key
     return payload
 
