@@ -97,19 +97,33 @@ def one_draw(data, draw_seed: int, pooling_rule: str, num_bootstrap: int) -> dic
               "adversary_micro_auprc": float(micro_auprc(adversary_scores, held_out_outcomes, held_out_mask))}
     result.update(channel_breakdown(neighbours, perturbation_types_of_id))
 
+    # The drug stratum, approved by the owner 14 October 2026 ("1. yes"). The whole-lockbox reading is diluted: a draw
+    # holds out about 170 genes to 22-39 drugs, no gene shares a seed node with anything, and the adversary falls back
+    # to the base rate on every gene row, so its whole-lockbox macro and micro sit almost on top of popularity whatever
+    # the drug side is doing. The channel exists only among drugs, so the bound has force only where it is read.
+    held_out_is_a_drug = np.array([data.perturbation_types[row] == "drug" for row in held_out_rows], dtype=bool)
+    strata = {"all_held_out": np.ones(len(held_out_rows), dtype=bool), "drug_stratum": held_out_is_a_drug,
+              "gene_stratum": ~held_out_is_a_drug}
+
     for baseline_name, scale_by_degree in (("popularity", False), ("degree_popularity", True)):
         baseline = PopularityBaseline(scale_by_degree=scale_by_degree).fit(
             data.outcomes[training_rows], training_degrees, label_mask[training_rows])
         baseline_scores = baseline.predict(len(held_out_rows), held_out_degrees)
-        macro = paired_bootstrap_macro_difference(adversary_scores, baseline_scores, held_out_outcomes,
-                                                  num_bootstrap=num_bootstrap, random_seed=draw_seed, mask=held_out_mask)
-        micro = paired_bootstrap_micro_difference(adversary_scores, baseline_scores, held_out_outcomes,
-                                                 num_bootstrap=num_bootstrap, random_seed=draw_seed, mask=held_out_mask)
-        for reading_name, reading in (("macro", macro), ("micro", micro)):
-            half_width = (reading["upper"] - reading["lower"]) / 2.0
-            result[f"{reading_name}_advantage_over_{baseline_name}"] = reading["difference"]
-            result[f"{reading_name}_interval_over_{baseline_name}"] = [reading["lower"], reading["upper"]]
-            result[f"{reading_name}_standard_error_over_{baseline_name}"] = half_width / STANDARD_ERRORS_IN_A_95_PERCENT_HALF_WIDTH
+        for stratum_name, in_stratum in strata.items():
+            if in_stratum.sum() < 2:
+                continue
+            prefix = "" if stratum_name == "all_held_out" else f"{stratum_name}_"
+            macro = paired_bootstrap_macro_difference(adversary_scores[in_stratum], baseline_scores[in_stratum],
+                                                      held_out_outcomes[in_stratum], num_bootstrap=num_bootstrap,
+                                                      random_seed=draw_seed, mask=held_out_mask[in_stratum])
+            micro = paired_bootstrap_micro_difference(adversary_scores[in_stratum], baseline_scores[in_stratum],
+                                                      held_out_outcomes[in_stratum], num_bootstrap=num_bootstrap,
+                                                      random_seed=draw_seed, mask=held_out_mask[in_stratum])
+            for reading_name, reading in (("macro", macro), ("micro", micro)):
+                half_width = (reading["upper"] - reading["lower"]) / 2.0
+                result[f"{prefix}{reading_name}_advantage_over_{baseline_name}"] = reading["difference"]
+                result[f"{prefix}{reading_name}_interval_over_{baseline_name}"] = [reading["lower"], reading["upper"]]
+                result[f"{prefix}{reading_name}_standard_error_over_{baseline_name}"] = half_width / STANDARD_ERRORS_IN_A_95_PERCENT_HALF_WIDTH
     return result
 
 
