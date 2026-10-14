@@ -16,7 +16,7 @@ Every one of the 183 drugs with an affinity carries an occupancy at every one of
 
 ## 2. Does the shift transfer to the drugs it is applied to
 
-Item 29 registers this as a limitation that nothing measures. Item 5c step 3 makes a partial test possible: a direct one is impossible, since it would need the measurement whose absence is the problem, but the offset can be checked for dependence on covariates that are observable for both groups. If the offset moves with a covariate on which the two groups differ, the extrapolation is in trouble. The gap column is the offset's median in the upper half of the covariate minus its median in the lower half, against a scatter of 1.14 log units and a shift of +0.331.
+Item 29 registers this as a limitation that nothing measures. Item 5c step 3 makes a partial test possible: a direct one is impossible, since it would need the measurement whose absence is the problem, but the offset can be checked for dependence on covariates that are observable for both groups. If the offset moves with a covariate on which the two groups differ, the extrapolation is in trouble. The gap column is the offset's median in the upper half of the covariate minus its median in the lower half, against a scatter of 1.14 log units.
 
 | covariate | measured drugs, median | imputed drugs, median | offset in its lower half | offset in its upper half | gap |
 |---|---|---|---|---|---|
@@ -24,23 +24,37 @@ Item 29 registers this as a limitation that nothing measures. Item 5c step 3 mak
 | mechanism targets | 2.00 | 2.00 | +0.011 (n=71) | +0.445 (n=44) | **+0.434** |
 | off-targets | 4.00 | 4.00 | +0.298 (n=61) | +0.121 (n=54) | **-0.177** |
 
-**The affinity row is not noise, and it is not a coincidence.** The placeholder is `C = 9 * Kd` of the best mechanism target, so `log10 C` falls with the affinity at a slope of exactly **-1 by construction**. The measured concentration falls at **-0.532**: a more potent drug is dosed lower, but only about half as much lower as the placeholder assumes. The remainder stays in the disagreement, where no constant can reach it, and it is worst exactly where it matters, because the drugs the shift is applied to are the more potent ones - median best affinity +0.59 pK units above the drugs it was estimated on.
+**The affinity row is not noise and it is not a coincidence.** The placeholder is `C = 9 * Kd` of the best mechanism target, so its `log10 C` falls with the affinity at a slope of exactly **-1 by construction**. The measured concentration falls more slowly: a more potent drug is dosed lower, but only about half as much lower. The remainder stays in the disagreement, where no constant reaches it, and it is worst exactly where it matters, because the drugs a shift is applied to are the more potent ones - a median +0.59 pK above the drugs it is estimated on.
 
-| | shift | out-of-sample median absolute error (leave one drug out) |
-|---|---|---|
-| a constant, as item 5c registers | +0.242 log10 | **0.852 log10** |
-| a line in the best mechanism affinity | log10 C = +2.948 -0.532 * pK | **0.524 log10** |
+## 2b. The registered calibration: a slope and a bias
 
-The line cuts the out-of-sample error by 39%, and on the drugs the shift is actually applied to the two disagree by a median -0.420 log10, a factor of 2.6: the constant shift puts them **lower** than the line does, because it carries the affinity of a less potent population. **So item 29's limitation is no longer untested, and it does not pass.** Changing the estimator is the owner's and is recorded as open decision 9.2; item 5c as registered keeps the constant.
+The owner, 13 October 2026: "A slope plus bias calibration is better. Do that instead." So `log10 C_calibrated = slope * log10 C_placeholder + bias`, fitted by least squares on the drugs that have both. The constant shift is this model's special case at `slope = 1`.
 
-**One caveat on the slope, in its own favour and against.** An affinity read with error attenuates the fitted slope towards zero, so the true dependence may be steeper than -0.532 and the placeholder's -1 less wrong than it looks. That weakens the mechanistic reading and not the practical one: the out-of-sample error is a prediction, measured on held-out drugs, and it falls whatever is causing the slope.
+| | slope on the placeholder | bias (log10 uM) | out-of-sample median absolute error, leave one drug out |
+|---|---|---|---|
+| the withdrawn constant shift | 1 (fixed) | -0.242 | **0.852 log10** |
+| the registered calibration | **+0.5322** | **-0.753** | **0.524 log10** |
+
+Fitted on 115 drugs. A bootstrap of 4000 draws puts the slope's 95 percent interval at **[0.420, 0.643]**, which excludes 1.0: the constant shift is refuted and not merely improvable. The calibration cuts the out-of-sample error by 39%.
+
+**The second reason, which is the stronger one.** A constant shift leaves the best mechanism target of **every** imputed drug at one and the same occupancy, because the placeholder pins it at 0.9 and a constant moves it to another single number. The quantity is then a constant across those drugs and the model can read it only as an intercept.
+
+| best mechanism target's occupancy | 10th percentile | median | 90th percentile | standard deviation |
+|---|---|---|---|---|
+| imputed drugs, under a constant shift | 0.838 | 0.838 | 0.838 | **0.000** |
+| imputed drugs, under the calibration | 0.451 | 0.931 | 0.982 | 0.256 |
+| measured drugs, for reference | 0.135 | 0.838 | 0.988 | 0.320 |
+
+**Two marks against the calibration, both recorded rather than resolved.** Its median best-target occupancy is 0.931 against the measured drugs' 0.838 and its spread is still narrower, 0.256 against 0.320: the fit minimises error in log concentration and not the distance between the two occupancy distributions, so the imputed group still does not look like the measured one. And an affinity read with error attenuates the fitted slope towards zero, so the mechanistic reading - that dose tracks potency at about half a decade per decade - is weaker than the number suggests. Neither touches the out-of-sample error, which is measured on held-out drugs and falls whatever causes the slope.
+
+**The prediction is clamped to the affinity range it was fitted on**, pK 4.27 to 10.40. 8 of the imputed drugs sit outside it and would otherwise be extrapolated: ziconotide at pK 1.00 and vigabatrin at 3.07 below, six above, led by dexmedetomidine and ramelteon at 10.90. Unclamped the line puts ziconotide at 261 micromolar against 4.74 clamped. The two low cases are also the drugs an equilibrium `Kd` describes worst, vigabatrin being an irreversible inhibitor of GABA transaminase, which is the exception item 29 already records for the covalent binders.
 
 ## 3. The uncertainty the stratum has to carry
 
 | role, imputed drugs only | median occupancy | a one-sd concentration error moves it |
 |---|---|---|
-| mechanism targets | 0.806 | x1.2 up, x3.5 down |
-| off-targets | 0.027 | x10.3 up, x13.5 down |
+| mechanism targets | 0.802 | x1.2 up, x3.5 down |
+| off-targets | 0.073 | x7.1 up, x12.9 down |
 
 The sensitivity is `d(log theta) / d(log C) = 1 - theta`, monotone in the occupancy, so a low occupancy absorbs least of the error. That is a property of the curve and not of the target role; the role only correlates with where on the curve a target sits, and it fails in the tail, which is why `has_measured_occupancy` and not the role is the instrument item 29 uses (`docs/open_decisions.md` section 9.1).
 

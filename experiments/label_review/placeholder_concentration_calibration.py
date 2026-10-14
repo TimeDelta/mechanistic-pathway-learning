@@ -99,12 +99,13 @@ def main() -> None:
              "sensitivity is monotone in the occupancy, so an occupancy near zero absorbs least of all, and one near "
              "Kd absorbs half. The error matters because `has_measured_occupancy` is reported against this "
              "relation and the withdrawn item 5b rested on it; the sentence stated it as a U shape.", "",
-             "**Where the offset is carried, after item 5c.** To every drug that has no measured concentration, at "
-             "every one of its targets and in both roles; a measured value is never shifted and an off-target is "
-             "never withheld. Two things this document does not settle are measured in "
-             "`docs/occupancy_coverage_and_shift_transfer.md`: whether the offset transfers to the drugs it is "
-             "applied to, which it does not, and what an imputed off-target occupancy is worth, which is why "
-             "`has_measured_occupancy` is reported.", "",
+             "**This constant offset is withdrawn as the applied correction; item 5c(ii) is a slope and a bias.** "
+             "What this document still establishes is that the placeholder is biased and that the bias is worth "
+             "removing. What it got wrong is the form: a constant cannot reach the dependence on affinity that the "
+             "placeholder builds in, and it leaves the best mechanism target of every imputed drug at one and the "
+             "same occupancy. Both are measured in `docs/occupancy_coverage_and_shift_transfer.md`, which carries "
+             "the registered calibration. The offset below is kept as the baseline that calibration is scored "
+             "against and as the record of what was registered first.", "",
              "**One limit on the transfer.** The offset is estimated on the drugs that have a measured concentration, "
              "which are the better-studied ones, and applied to those that do not. If the placeholder's bias differs "
              "between the two, the correction does not carry. That is the same extrapolation this project registered "

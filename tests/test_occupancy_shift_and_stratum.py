@@ -5,7 +5,8 @@ Item 5b, which this file was first written for, was withdrawn as a misreading on
 survives it is the relation in the binding isotherm the stratum rests on, which is what this file holds. Nothing
 here reads a data file: the counts items 5c and 29 register are recomputed by
 `experiments/label_review/occupancy_coverage_and_shift_transfer.py` against the table the lockbox is drawn from,
-and a test that pinned them would pin them to the table in use rather than to the derivation.
+and a test that pinned them would pin them to the table in use rather than to the derivation. The calibration
+itself - the slope, the bias and the clamp of item 5c(ii) - is held in `tests/test_occupancy_calibration.py`.
 """
 from __future__ import annotations
 
@@ -53,17 +54,3 @@ def test_the_one_sd_band_at_a_median_off_target_spans_absent_to_half_engaged():
     up_ratio, down_ratio = shift_module.movement_under_scatter(MEDIAN_OFF_TARGET_OCCUPANCY, CALIBRATION_SCATTER_LOG10)
     assert MEDIAN_OFF_TARGET_OCCUPANCY / down_ratio == pytest.approx(0.005, abs=0.001)
     assert MEDIAN_OFF_TARGET_OCCUPANCY * up_ratio == pytest.approx(0.48, abs=0.01)
-
-
-def test_the_calibration_moves_the_placeholder_down_and_only_once():
-    """The placeholder puts the best mechanism target at 0.9; the 2.1x offset moves it to 0.808, not to 0.9/2.1."""
-    best_affinity_only = {"BEST": 9.0}
-    raw = shift_module.placeholder_concentration_of_drug(best_affinity_only, apply_calibration=False)
-    calibrated = shift_module.placeholder_concentration_of_drug(best_affinity_only, apply_calibration=True)
-    assert shift_module.occupancy_of(raw, 9.0) == pytest.approx(0.9)
-    assert shift_module.occupancy_of(calibrated, 9.0) == pytest.approx(0.808, abs=0.002)
-    assert raw / calibrated == pytest.approx(10 ** 0.331)
-
-
-def test_a_drug_with_no_mechanism_affinity_gets_no_placeholder_rather_than_a_default():
-    assert shift_module.placeholder_concentration_of_drug({}, apply_calibration=True) is None

@@ -35,6 +35,13 @@ import numpy as np
 import pandas as pd
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.perturbation.occupancy_calibration import (
+    DEFAULT_CALIBRATION_FILE,
+    calibrated_concentration_micromolar,
+    fit_concentration_calibration,
+    occupancy,
+    placeholder_log10_concentration,
+)
 
 OCCUPANCY_SCRIPT = Path(__file__).resolve().parents[1] / "measure_target_occupancy.py"
 specification = importlib.util.spec_from_file_location("measure_target_occupancy", OCCUPANCY_SCRIPT)
@@ -46,28 +53,8 @@ OCCUPANCY_TABLE = Path("data/processed/exposure/target_occupancy_v4.csv")
 OUTPUT_DOCUMENT = Path("docs/occupancy_coverage_and_shift_transfer.md")
 
 PLACEHOLDER_OCCUPANCY_OF_THE_BEST_TARGET = 0.9
-CALIBRATION_OFFSET_LOG10 = 0.331   # placeholder_concentration_calibration.py, the median over the drugs with both
+BOOTSTRAP_DRAWS, BOOTSTRAP_SEED = 4000, 0
 CALIBRATION_SCATTER_LOG10 = 1.14   # the standard deviation about that median
-
-
-def placeholder_concentration_of_drug(mechanism_affinities: dict[str, float], apply_calibration: bool) -> float | None:
-    """Item 5c step 3: the placeholder, computed the same way for every drug whether or not it has a measurement.
-
-    occupancy = C / (C + Kd) at 0.9 is C = 9 * Kd, with Kd of the best mechanism target at 10 ** -p_affinity molar.
-    Step 4's shift divides that by 10 ** 0.331 and is applied only where no measurement exists."""
-    if not mechanism_affinities:
-        return None
-    best_dissociation_constant_molar = 10.0 ** (-max(mechanism_affinities.values()))
-    ratio = PLACEHOLDER_OCCUPANCY_OF_THE_BEST_TARGET / (1 - PLACEHOLDER_OCCUPANCY_OF_THE_BEST_TARGET)
-    concentration_molar = ratio * best_dissociation_constant_molar
-    if apply_calibration:
-        concentration_molar /= 10.0 ** CALIBRATION_OFFSET_LOG10
-    return concentration_molar * 1e6  # micromolar, the unit the exposure table uses
-
-
-def occupancy_of(concentration_micromolar: float, p_affinity: float) -> float:
-    dissociation_constant_micromolar = 10.0 ** (6.0 - p_affinity)
-    return concentration_micromolar / (concentration_micromolar + dissociation_constant_micromolar)
 
 
 def movement_under_scatter(occupancy: float, scatter_log10: float) -> tuple[float, float]:
@@ -97,6 +84,7 @@ def main() -> None:
     parser.add_argument("--label-selection", type=Path, default=Path("data/processed/label_selection/better_v2_full_v4.parquet"))
     parser.add_argument("--exposure-table", type=Path, default=EXPOSURE_TABLE)
     parser.add_argument("--document", type=Path, default=OUTPUT_DOCUMENT)
+    parser.add_argument("--calibration-file", type=Path, default=DEFAULT_CALIBRATION_FILE)
     arguments = parser.parse_args()
 
     exposure = pd.read_csv(arguments.exposure_table).set_index("perturbation_id")
@@ -107,26 +95,39 @@ def main() -> None:
                                     label_selection=arguments.label_selection)
     affinities = occupancy_module.affinities_by_drug(data, arguments.graph_dir)
 
-    per_drug, rows = [], []
+    per_drug = []
     for perturbation_id, entry in affinities.items():
-        raw_placeholder = placeholder_concentration_of_drug(entry["mechanism"], apply_calibration=False)
-        if raw_placeholder is None:
+        if not entry["mechanism"]:
             continue
+        best_affinity = max(entry["mechanism"].values())
+        raw_placeholder = 10.0 ** placeholder_log10_concentration(best_affinity)
         measured_centre = centre.get(perturbation_id, np.nan)
-        has_measurement = bool(pd.notna(measured_centre))
+        has_measurement = bool(pd.notna(measured_centre)) and measured_centre > 0
         per_drug.append({
             "perturbation_id": perturbation_id, "drug": entry["label"], "has_measurement": has_measurement,
             "raw_placeholder": raw_placeholder, "measured_centre": measured_centre,
             "offset_log10": np.log10(raw_placeholder / measured_centre) if has_measurement else np.nan,
-            "best_mechanism_affinity": max(entry["mechanism"].values()),
+            "best_mechanism_affinity": best_affinity,
             "mechanism_target_count": len(entry["mechanism"]), "off_target_count": len(entry["other"])})
-        concentration = measured_centre if has_measurement else raw_placeholder / 10 ** CALIBRATION_OFFSET_LOG10
+    drugs = pd.DataFrame(per_drug)
+    fitting = drugs[drugs.has_measurement]
+    calibration = fit_concentration_calibration(fitting.best_mechanism_affinity.values,
+                                                np.log10(fitting.measured_centre.values))
+    calibration.write(arguments.calibration_file)
+
+    rows = []
+    for perturbation_id, entry in affinities.items():
+        if not entry["mechanism"]:
+            continue
+        drug = drugs.set_index("perturbation_id").loc[perturbation_id]
+        concentration = drug.measured_centre if drug.has_measurement else \
+            calibrated_concentration_micromolar(drug.best_mechanism_affinity, calibration)
         for role in ("mechanism", "other"):
             for gene, p_affinity in entry[role].items():
                 rows.append({"perturbation_id": perturbation_id, "role": role, "gene": gene,
-                             "has_measured_occupancy": has_measurement,
-                             "occupancy": occupancy_of(concentration, p_affinity)})
-    drugs, targets = pd.DataFrame(per_drug), pd.DataFrame(rows)
+                             "has_measured_occupancy": bool(drug.has_measurement),
+                             "occupancy": occupancy(concentration, p_affinity)})
+    targets = pd.DataFrame(rows)
     targets.to_csv(Path("data/processed/exposure/occupancy_under_item_5c_v4.csv"), index=False)
     write_document(drugs, targets, arguments.document)
 
@@ -152,32 +153,55 @@ def covariate_table(drugs: pd.DataFrame) -> list[str]:
 
 
 def shift_models(drugs: pd.DataFrame) -> dict:
-    """A constant shift against one that varies with the best mechanism affinity, scored out of sample.
+    """The registered slope-and-bias calibration against the withdrawn constant shift, scored out of sample.
 
-    The placeholder is C = 9 * Kd of the best mechanism target, so log10 C_placeholder falls with the affinity at a
-    slope of exactly -1 by construction. If the measured concentration falls more slowly than that - a more potent
-    drug is dosed lower, but not proportionately lower - then the disagreement between the two carries the
-    remainder of the affinity, no constant can remove it, and a constant fitted on one affinity range is wrong on
-    another. That is testable here and is what item 29's untested limitation turns on."""
+    The placeholder is `C = 9 * Kd` of the best mechanism target, so its log concentration falls with affinity at a
+    slope of exactly -1 by construction. If the measured concentration falls more slowly, the disagreement carries
+    the remainder of the affinity, no constant reaches it, and a constant fitted on one affinity range is wrong on
+    another. Both models are fitted here, the slope's 95 percent interval is bootstrapped to see whether 1.0
+    survives, and both are scored by leaving one drug out."""
     both = drugs[drugs.has_measurement].copy()
     both["log_measured"] = np.log10(both.measured_centre)
     both["log_placeholder"] = np.log10(both.raw_placeholder)
-    slope, intercept = np.polyfit(both.best_mechanism_affinity, both.log_measured, 1)
-    constant_errors, slope_errors = [], []
+    calibration = fit_concentration_calibration(both.best_mechanism_affinity.values, both.log_measured.values)
+
+    generator = np.random.default_rng(BOOTSTRAP_SEED)
+    bootstrapped_slopes = []
+    for _ in range(BOOTSTRAP_DRAWS):
+        drawn = generator.integers(0, len(both), len(both))
+        bootstrapped_slopes.append(fit_concentration_calibration(
+            both.best_mechanism_affinity.values[drawn], both.log_measured.values[drawn]).slope_on_the_placeholder)
+    slope_interval = np.percentile(bootstrapped_slopes, [2.5, 97.5])
+
+    constant_errors, calibrated_errors = [], []
     for position in range(len(both)):
-        held_out = both.iloc[position]
-        rest = both.drop(both.index[position])
+        held_out, rest = both.iloc[position], both.drop(both.index[position])
         constant_errors.append(abs((held_out.log_placeholder - rest.offset_log10.median()) - held_out.log_measured))
-        rest_slope, rest_intercept = np.polyfit(rest.best_mechanism_affinity, rest.log_measured, 1)
-        slope_errors.append(abs((rest_intercept + rest_slope * held_out.best_mechanism_affinity) - held_out.log_measured))
+        rest_calibration = fit_concentration_calibration(rest.best_mechanism_affinity.values, rest.log_measured.values)
+        predicted = np.log10(calibrated_concentration_micromolar(held_out.best_mechanism_affinity, rest_calibration))
+        calibrated_errors.append(abs(predicted - held_out.log_measured))
+
     imputed = drugs[~drugs.has_measurement]
-    under_constant = np.log10(imputed.raw_placeholder) - both.offset_log10.median()
-    under_slope = intercept + slope * imputed.best_mechanism_affinity
-    return {"constant_shift": both.offset_log10.median(), "slope": slope, "intercept": intercept,
+    outside = int(((imputed.best_mechanism_affinity < calibration.lowest_fitted_p_affinity) |
+                   (imputed.best_mechanism_affinity > calibration.highest_fitted_p_affinity)).sum())
+    constant_shift = both.offset_log10.median()
+    best_target_under_constant = np.array([
+        occupancy(10 ** (np.log10(row.raw_placeholder) - constant_shift), row.best_mechanism_affinity)
+        for row in imputed.itertuples()])
+    best_target_under_calibration = np.array([
+        occupancy(calibrated_concentration_micromolar(row.best_mechanism_affinity, calibration),
+                  row.best_mechanism_affinity) for row in imputed.itertuples()])
+    best_target_measured = np.array([occupancy(row.measured_centre, row.best_mechanism_affinity)
+                                     for row in both.itertuples()])
+    return {"calibration": calibration, "constant_shift": constant_shift,
+            "slope_interval": slope_interval,
             "constant_out_of_sample": float(np.median(constant_errors)),
-            "slope_out_of_sample": float(np.median(slope_errors)),
+            "calibrated_out_of_sample": float(np.median(calibrated_errors)),
             "affinity_gap": imputed.best_mechanism_affinity.median() - both.best_mechanism_affinity.median(),
-            "disagreement_on_the_imputed": float(under_constant.median() - under_slope.median())}
+            "drugs_outside_the_support": outside,
+            "best_target_under_constant": best_target_under_constant,
+            "best_target_under_calibration": best_target_under_calibration,
+            "best_target_measured": best_target_measured}
 
 
 def write_document(drugs: pd.DataFrame, targets: pd.DataFrame, document: Path) -> None:
@@ -212,36 +236,62 @@ def write_document(drugs: pd.DataFrame, targets: pd.DataFrame, document: Path) -
         "but the offset can be checked for dependence on covariates that are observable for both groups. If the "
         "offset moves with a covariate on which the two groups differ, the extrapolation is in trouble. The gap "
         "column is the offset's median in the upper half of the covariate minus its median in the lower half, "
-        f"against a scatter of {CALIBRATION_SCATTER_LOG10:.2f} log units and a shift of "
-        f"{CALIBRATION_OFFSET_LOG10:+.3f}.", "",
+        f"against a scatter of {CALIBRATION_SCATTER_LOG10:.2f} log units.", "",
     ]
     lines += covariate_table(drugs)
     models = shift_models(drugs)
+    calibration = models["calibration"]
+    low_interval, high_interval = models["slope_interval"]
+    constant_best, calibrated_best = models["best_target_under_constant"], models["best_target_under_calibration"]
+    measured_best = models["best_target_measured"]
     lines += [
         "",
-        "**The affinity row is not noise, and it is not a coincidence.** The placeholder is `C = 9 * Kd` of the "
-        "best mechanism target, so `log10 C` falls with the affinity at a slope of exactly **-1 by construction**. "
-        f"The measured concentration falls at **{models['slope']:+.3f}**: a more potent drug is dosed lower, but "
-        "only about half as much lower as the placeholder assumes. The remainder stays in the disagreement, where "
-        "no constant can reach it, and it is worst exactly where it matters, because the drugs the shift is "
-        f"applied to are the more potent ones - median best affinity {models['affinity_gap']:+.2f} pK units above "
-        "the drugs it was estimated on.", "",
-        "| | shift | out-of-sample median absolute error (leave one drug out) |", "|---|---|---|",
-        f"| a constant, as item 5c registers | {models['constant_shift']:+.3f} log10 | **{models['constant_out_of_sample']:.3f} log10** |",
-        f"| a line in the best mechanism affinity | log10 C = {models['intercept']:+.3f} {models['slope']:+.3f} * pK | **{models['slope_out_of_sample']:.3f} log10** |",
+        "**The affinity row is not noise and it is not a coincidence.** The placeholder is `C = 9 * Kd` of the best "
+        "mechanism target, so its `log10 C` falls with the affinity at a slope of exactly **-1 by construction**. "
+        "The measured concentration falls more slowly: a more potent drug is dosed lower, but only about half as "
+        "much lower. The remainder stays in the disagreement, where no constant reaches it, and it is worst exactly "
+        f"where it matters, because the drugs a shift is applied to are the more potent ones - a median "
+        f"{models['affinity_gap']:+.2f} pK above the drugs it is estimated on.", "",
+        "## 2b. The registered calibration: a slope and a bias", "",
+        "The owner, 13 October 2026: \"A slope plus bias calibration is better. Do that instead.\" So "
+        "`log10 C_calibrated = slope * log10 C_placeholder + bias`, fitted by least squares on the drugs that have "
+        "both. The constant shift is this model's special case at `slope = 1`.", "",
+        "| | slope on the placeholder | bias (log10 uM) | out-of-sample median absolute error, leave one drug out |",
+        "|---|---|---|---|",
+        f"| the withdrawn constant shift | 1 (fixed) | {-models['constant_shift']:+.3f} | **{models['constant_out_of_sample']:.3f} log10** |",
+        f"| the registered calibration | **{calibration.slope_on_the_placeholder:+.4f}** | **{calibration.bias_log10:+.3f}** | **{models['calibrated_out_of_sample']:.3f} log10** |",
         "",
-        f"The line cuts the out-of-sample error by {1 - models['slope_out_of_sample'] / models['constant_out_of_sample']:.0%}, "
-        "and on the drugs the shift is actually applied to the two disagree by a median "
-        f"{models['disagreement_on_the_imputed']:+.3f} log10, a factor of "
-        f"{10 ** abs(models['disagreement_on_the_imputed']):.1f}: the constant shift puts them **lower** than the "
-        "line does, because it carries the affinity of a less potent population. **So item 29's limitation is no "
-        "longer untested, and it does not pass.** Changing the estimator is the owner's and is recorded as open "
-        "decision 9.2; item 5c as registered keeps the constant.", "",
-        "**One caveat on the slope, in its own favour and against.** An affinity read with error attenuates the "
-        "fitted slope towards zero, so the true dependence may be steeper than "
-        f"{models['slope']:+.3f} and the placeholder's -1 less wrong than it looks. That weakens the mechanistic "
-        "reading and not the practical one: the out-of-sample error is a prediction, measured on held-out drugs, "
-        "and it falls whatever is causing the slope.", "",
+        f"Fitted on {calibration.fitting_drug_count} drugs. A bootstrap of {BOOTSTRAP_DRAWS} draws puts the slope's "
+        f"95 percent interval at **[{low_interval:.3f}, {high_interval:.3f}]**, which "
+        f"{'excludes' if high_interval < 1.0 else 'does not exclude'} 1.0: the constant shift is refuted and not "
+        f"merely improvable. The calibration cuts the out-of-sample error by "
+        f"{1 - models['calibrated_out_of_sample'] / models['constant_out_of_sample']:.0%}.", "",
+        "**The second reason, which is the stronger one.** A constant shift leaves the best mechanism target of "
+        "**every** imputed drug at one and the same occupancy, because the placeholder pins it at 0.9 and a "
+        "constant moves it to another single number. The quantity is then a constant across those drugs and the "
+        "model can read it only as an intercept.", "",
+        "| best mechanism target's occupancy | 10th percentile | median | 90th percentile | standard deviation |",
+        "|---|---|---|---|---|",
+        f"| imputed drugs, under a constant shift | {np.quantile(constant_best, .1):.3f} | {np.median(constant_best):.3f} | {np.quantile(constant_best, .9):.3f} | **{constant_best.std():.3f}** |",
+        f"| imputed drugs, under the calibration | {np.quantile(calibrated_best, .1):.3f} | {np.median(calibrated_best):.3f} | {np.quantile(calibrated_best, .9):.3f} | {calibrated_best.std():.3f} |",
+        f"| measured drugs, for reference | {np.quantile(measured_best, .1):.3f} | {np.median(measured_best):.3f} | {np.quantile(measured_best, .9):.3f} | {measured_best.std():.3f} |",
+        "",
+        "**Two marks against the calibration, both recorded rather than resolved.** Its median best-target "
+        f"occupancy is {np.median(calibrated_best):.3f} against the measured drugs' {np.median(measured_best):.3f} "
+        f"and its spread is still narrower, {calibrated_best.std():.3f} against {measured_best.std():.3f}: the fit "
+        "minimises error in log concentration and not the distance between the two occupancy distributions, so the "
+        "imputed group still does not look like the measured one. And an affinity read with error attenuates the "
+        "fitted slope towards zero, so the mechanistic reading - that dose tracks potency at about half a decade "
+        "per decade - is weaker than the number suggests. Neither touches the out-of-sample error, which is "
+        "measured on held-out drugs and falls whatever causes the slope.", "",
+        "**The prediction is clamped to the affinity range it was fitted on**, "
+        f"pK {calibration.lowest_fitted_p_affinity:.2f} to {calibration.highest_fitted_p_affinity:.2f}. "
+        f"{models['drugs_outside_the_support']} of the imputed drugs sit outside it and would otherwise be "
+        "extrapolated: ziconotide at pK 1.00 and vigabatrin at 3.07 below, six above, led by dexmedetomidine and "
+        "ramelteon at 10.90. Unclamped the line puts ziconotide at 261 micromolar against 4.74 clamped. The two "
+        "low cases are also the drugs an equilibrium `Kd` describes worst, vigabatrin being an irreversible "
+        "inhibitor of GABA transaminase, which is the exception item 29 already records for the covalent binders.",
+        "",
         "## 3. The uncertainty the stratum has to carry", "",
         "| role, imputed drugs only | median occupancy | a one-sd concentration error moves it |", "|---|---|---|",
     ]

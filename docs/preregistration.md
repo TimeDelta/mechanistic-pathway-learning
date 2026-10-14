@@ -1219,9 +1219,54 @@ steps, in order, and the order is part of the registration:
    comparison on the overlap transferable: a placeholder computed differently for the two groups would measure
    the difference in the procedure rather than in the drugs. The imputed values of the measured drugs are
    scaffolding for the estimate and enter no model input; they are discarded after the shift is taken.
-4. **The shift is applied only where no measurement exists.** The 115 drugs with both give the shift, a median
-   +0.331 log10 on the concentration; the drugs without a measurement take their placeholder divided by that
-   factor. A measured value is never shifted, and a shifted value never overwrites one.
+4. **The calibration is applied only where no measurement exists.** A measured value is never calibrated, and a
+   calibrated value never overwrites one.
+
+**5c(ii). The calibration is a slope and a bias, not a constant shift** (the owner, 13 October 2026: "A slope plus
+bias calibration is better. Do that instead"). The form is
+
+    log10 C_calibrated = slope * log10 C_placeholder + bias
+
+fitted by least squares on the drugs that carry both, one row per drug. The withdrawn constant shift is this
+model's special case at `slope = 1`. Written against the placeholder because the placeholder is the quantity being
+corrected; a line in it is the same model as a line in the best mechanism affinity, since the placeholder's log
+concentration is `log10 9 + 6 - pK`. The fitted values are kept in `configs/occupancy_calibration.json` and the
+implementation is `mechanistic_pathway_learning/perturbation/occupancy_calibration.py`.
+
+**Two measurements decided the form, and the second is the stronger**
+(`docs/occupancy_coverage_and_shift_transfer.md`).
+
+- **`slope = 1` is refuted and not merely improvable.** A bootstrap of 4,000 draws over the 115 fitting drugs puts
+  the slope at **[0.420, 0.643]**, which excludes 1.0. Leaving one drug out, the median absolute error falls from
+  **0.852 to 0.524 log10**, a cut of 39 percent.
+- **A constant shift makes the quantity a constant.** The placeholder pins the best mechanism target at 0.9
+  occupancy, so a constant moves every imputed drug's best target to one and the same number, 0.838, with a
+  standard deviation of **zero** over all 68 of them. For those drugs the occupancy of their best-bound target
+  would carry no information and the model could read it only as an intercept. Under the calibration it spreads
+  0.451 to 0.982, against the measured drugs' 0.135 to 0.988.
+
+**The prediction is clamped to the affinity range it was fitted on**, pK 4.27 to 10.40 on the table in use. Eight
+of the 68 imputed drugs sit outside it: ziconotide at pK 1.00 and vigabatrin at 3.07 below, six above led by
+dexmedetomidine and ramelteon at 10.90. Unclamped the line puts ziconotide at 261 micromolar against 4.74 clamped.
+A calibration line read outside its support is extrapolation and the clamp is registered with the form, not added
+after seeing a result.
+
+**Two limitations of the calibration, registered and not resolved.**
+
+- **It does not make the imputed group look like the measured one.** Its median best-target occupancy is 0.931
+  against the measured drugs' 0.838 and its spread is narrower, 0.256 against 0.320. The fit minimises error in
+  log concentration, not the distance between the two occupancy distributions. `has_measured_occupancy` therefore
+  stays and is not made redundant by a better imputation.
+- **An affinity read with error attenuates the slope towards zero.** So the mechanistic reading, that exposure
+  tracks potency at about half a decade per decade, is weaker than 0.532 suggests, and the true dependence may be
+  steeper. This does not touch the out-of-sample error, which is measured on held-out drugs and falls whatever
+  causes the slope.
+
+**The parameters are refitted on the table the lockbox is drawn from, not carried over from here.** The rebuild of
+decision 1.2 lifts item 1's three-target limit, which changes which gene is a drug's best-bound mechanism target
+and so changes every placeholder. What is registered is the form, the fitting rule, the clamp and the file the
+fitted values live in; the numbers quoted above are from the table in use and are expected to move. This is the
+same treatment item 12a registers for the Open Targets weight.
 
 **What this leaves unchanged.** The offset sits on the concentration and not on the occupancy, for the reason item
 29 gives. `has_measured_occupancy` stays, and is now the only instrument separating the two populations, since no
@@ -2092,12 +2137,13 @@ drugs have one target against 29.8 percent of the covered, the same population.
 
 **The placeholder is calibrated, not discarded** (the owner: "i don't want it to throw out the existing
 occupancies just because they can't be calculated by that method. It should look at disagreements between the
-sources and take the mean or median disagreement as an offset"). Measured over the 115 drugs that have both
-(`experiments/label_review/placeholder_concentration_calibration.py`), the placeholder sits **2.1 times above** the
-geometric centre of the measured therapeutic range, and that offset is removed. It is applied to the
+sources and take the mean or median disagreement as an offset"). The calibration is applied to the
 **concentration** and not to the occupancy: occupancy is bounded in [0, 1] and saturating, so an additive offset
 on it is ill-defined near either end, while `occupancy = C / (C + Kd)` keeps the bound by construction and is where
-the disagreement between the two methods actually sits.
+the disagreement between the two methods actually sits. **The form is a slope and a bias, registered as item
+5c(ii)**; the median disagreement this sentence first named, a constant 2.1 times, was measured and withdrawn,
+because it both leaves a dependence on affinity that it cannot reach and makes the best mechanism target's
+occupancy a constant across every imputed drug.
 
 **Amended the same day: the four steps of the procedure are registered as item 5c** (the owner: "keep off targets
 but always use a measured value then impute all values to get the calibration shift and apply it to only the
@@ -2142,11 +2188,13 @@ the withdrawn item 5b.
   falls with affinity at a slope of -1 by construction, while the measured concentration falls at -0.532: a more
   potent drug is dosed lower, but only about half as much lower. The remainder stays in the disagreement, no
   constant reaches it, and the drugs the shift is applied to are the more potent ones, a median 0.59 pK above the
-  drugs it was estimated on. Leave-one-drug-out median absolute error is **0.852 log10 for the constant shift and
-  0.524 for a line in the affinity** (`docs/occupancy_coverage_and_shift_transfer.md`). **Item 5c keeps the
-  constant, because the owner specified the median disagreement and a line is a different estimator**; the
-  recommendation to change it is open decision 9.2 and is his. This is no longer the same shape as the
-  extrapolation registered for the Open Targets agreement in item 12d, which stays untested.
+  drugs it was estimated on. **So the constant shift is withdrawn and the calibration is a slope and a bias**, item
+  5c(ii), on the owner's ruling of 13 October ("A slope plus bias calibration is better. Do that instead"). The
+  slope's bootstrap interval excludes 1.0 and the out-of-sample error falls from 0.852 to 0.524 log10
+  (`docs/occupancy_coverage_and_shift_transfer.md`). This limitation is therefore answered rather than stated, and
+  is no longer the same shape as the extrapolation registered for the Open Targets agreement in item 12d, which
+  stays untested. What replaces it is narrower and is registered with 5c(ii): the calibration still does not make
+  the imputed group's occupancy distribution match the measured one, so `has_measured_occupancy` stays.
 
 **What is not settled here.** The occupancy threshold above which an off-target enters the input is decision 1.3
 and remains the owner's; item 25's split survives off-targets at a cost in novelty rather than in size
