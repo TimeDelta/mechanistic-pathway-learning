@@ -102,3 +102,52 @@ def test_omitting_the_member_edges_leaves_every_complex_flat():
     assert (with_members.loc["complex:BOTH", ["neuron", "astrocyte"]] < 1.0).all()
     for gene in ("gene:ABUNDANT", "gene:SCARCE", "gene:UNKNOWN"):
         assert without.loc[gene].equals(with_members.loc[gene]), "gene weights must not move"
+
+
+# --- Decision 4.2b: the rewiring control recomputes the complex gate from the rewired membership ---
+
+def test_the_rewired_gate_follows_the_rewired_membership():
+    """The point of 4.2b: a complex's gate must come from whichever genes the rewired graph says belong to it."""
+    from mechanistic_pathway_learning.graph.rewired_expression_features import rewired_complex_cell_class_weights
+    nodes, edges, class_expression = complex_fixture()
+    node_index = {node_id: position for position, node_id in enumerate(nodes.node_id)}
+    # the real membership: ABUNDANT and SCARCE both in complex:BOTH
+    real = np.array([[node_index["gene:ABUNDANT"], node_index["gene:SCARCE"]],
+                     [node_index["complex:BOTH"], node_index["complex:BOTH"]]])
+    # a rewiring that moves SCARCE out, leaving the complex with the abundant subunit only
+    rewired = np.array([[node_index["gene:ABUNDANT"], node_index["gene:SCARCE"]],
+                        [node_index["complex:BOTH"], node_index["complex:UNKNOWN_ONLY"]]])
+    membership = np.array([True, True])
+    before, _ = rewired_complex_cell_class_weights(nodes, real, membership, class_expression,
+                                                   include_all_cells_class=False)
+    after, counts = rewired_complex_cell_class_weights(nodes, rewired, membership, class_expression,
+                                                       include_all_cells_class=False)
+    assert before.loc["complex:BOTH", "neuron"] == pytest.approx(10.0 / 11.0), "min of the two subunits"
+    assert after.loc["complex:BOTH", "neuron"] == pytest.approx(1000.0 / 1001.0), "the abundant subunit alone"
+    assert counts["member_of_edges_rewired"] == 2
+
+
+def test_every_complex_gets_a_row_so_a_real_gate_cannot_survive_the_rewiring():
+    """A complex whose rewired members carry no expression must fall back to 1, not keep its real gate."""
+    from mechanistic_pathway_learning.graph.rewired_expression_features import rewired_complex_cell_class_weights
+    nodes, edges, class_expression = complex_fixture()
+    node_index = {node_id: position for position, node_id in enumerate(nodes.node_id)}
+    # the rewiring gives complex:BOTH only the gene with no expression
+    rewired = np.array([[node_index["gene:UNKNOWN"]], [node_index["complex:BOTH"]]])
+    weights, counts = rewired_complex_cell_class_weights(nodes, rewired, np.array([True]), class_expression,
+                                                         include_all_cells_class=False)
+    assert set(weights.index) == {"complex:BOTH", "complex:UNKNOWN_ONLY"}, "every complex needs a row"
+    assert (weights.loc["complex:BOTH"] == 1.0).all()
+    assert counts["complexes_with_a_rewired_gate"] == 0
+    assert counts["complexes_left_flat_by_the_rewiring"] == 2
+
+
+def test_the_rewired_gate_carries_the_all_cells_column_when_the_stored_table_does():
+    from mechanistic_pathway_learning.graph.rewired_expression_features import rewired_complex_cell_class_weights
+    nodes, edges, class_expression = complex_fixture()
+    node_index = {node_id: position for position, node_id in enumerate(nodes.node_id)}
+    rewired = np.array([[node_index["gene:ABUNDANT"]], [node_index["complex:BOTH"]]])
+    weights, _ = rewired_complex_cell_class_weights(nodes, rewired, np.array([True]), class_expression,
+                                                     include_all_cells_class=True)
+    assert ALL_CELLS_CLASS in weights.columns
+    assert (weights[ALL_CELLS_CLASS] == 1.0).all()

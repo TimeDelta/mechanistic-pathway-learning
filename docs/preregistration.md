@@ -2157,12 +2157,22 @@ uses for metabolites, the membrane potential and reactions whose rule names no k
 weights do not move. `build_cell_class_weights.py --no-complex-limiting-member` restores the previous behaviour, so
 the change is measurable against it.
 
-**One limitation, registered because it bears on a confirmatory control.** H2's rewired-expression arm permutes the
-Human-GEM gene rules and recomputes the reactions' cell-class weights. A complex takes its gate from `member_of`
-edges and not from a rule, so that permutation leaves all 1,523 complex gates intact and the rewired condition
-still carries real expression structure through them. **Whether to extend the control by permuting gene-to-complex
-membership is decision 4.2b and is the owner's**, because it changes a registered control; until it is settled, an
-H2 result is reported with the statement that its rewired arm does not rewire the complex gate.
+**H2's rewired-expression arm recomputes the complex gate too** (the owner, 13 October 2026: "Rewire the complex
+gates for that control"). The arm permutes the Human-GEM gene rules and recomputes the reactions' cell-class
+weights; a complex takes its gate from `member_of` edges and not from a rule, so without this the permutation left
+all 1,523 complex gates intact and the rewired condition still carried real expression structure through them. The
+rewiring already permutes `member_of` like every other relation, so what was missing was only the recomputation:
+under `--recompute-reaction-expression-on-rewired-graph` a complex now takes the limiting member of whichever genes
+the rewired graph says belong to it. **Every complex is rewritten, not only those the rewired membership gives a
+gate**, because a complex whose real members carry expression and whose rewired members do not would otherwise keep
+its real gate, which is the thing the control removes; such a complex takes 1 in every class. The counts go into the
+run record (`member_of_edges_rewired`, `complexes_with_a_rewired_gate`,
+`complexes_left_flat_by_the_rewiring`).
+
+The flag keeps its name, `--recompute-reaction-expression-on-rewired-graph`, although it now reaches complexes as
+well, because `experiments/evaluate_on_rewired_graph.py` rebuilds a finished run from its recorded arguments and a
+rename would break that rebuild. A rebuild of a rewired run made before 13 October therefore changes its complex
+gates, which is the correction 4.2b asks for; no confirmatory run exists to be affected.
 
 **When it takes effect.** The weights file is rebuilt with the v4 rebuild of decision 1.2 and not before, because
 the scorer checks the cell-class file's hash against the run being scored.

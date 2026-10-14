@@ -8,6 +8,16 @@ part of what the wiring carries. Here a reaction's rule is rewritten onto its re
 recomputed from the rewritten rules with the functions that built them, so a reaction's expression is that of the genes
 the rewired graph says catalyse it.
 
+A protein complex's cell-class gate is recomputed the same way (decision 4.2b, the owner, 13 October 2026:
+"Rewire the complex gates for that control"). Preregistration item 30 gives a complex the cell-class weight of its
+limiting member, taken over its member_of edges, so that weight is a third input carrying expression through the
+wiring. The rewiring already permutes member_of like every other relation, but the stored weights file keeps the real
+gates, so before this a rewired run still carried the real complexes' expression structure through 1,523 nodes and
+its rewired arm was not fully rewired. Here the gate is recomputed from the rewired membership: a complex takes the
+limiting member of whichever genes the rewired graph says belong to it. Nothing else about a complex changes, and a
+complex whose rewired members carry no expression falls back to weight 1, as item 30 already leaves the 158 complexes
+whose real members carry none.
+
 Rewriting. A degree-preserving rewiring of catalyzed_by (gene or protein entity -> reaction) keeps every reaction's
 number of catalysts. Per reaction the catalysts it keeps map to themselves and the others are paired in node order,
 old with new (any pairing is one more random choice on top of the rewiring). Each gene token of the rule is replaced by
@@ -25,7 +35,15 @@ import numpy as np
 import pandas as pd
 
 from mechanistic_pathway_learning.graph.brain_expression_descriptors import RULE_TOKEN, brain_expression_blocks
-from mechanistic_pathway_learning.graph.brain_expression_weights import node_cell_class_weights
+from mechanistic_pathway_learning.graph.brain_expression_weights import (
+    ALL_CELLS_CLASS,
+    COMPLEX_NODE_TYPE,
+    DETECTION_THRESHOLD_NCPM,
+    MEMBER_RELATION,
+    complex_limiting_member_expression,
+    node_cell_class_weights,
+    relative_expression_weights,
+)
 
 RULE_OPERATORS = {"(", ")", "and", "or"}
 NO_EXPRESSION_TOKEN = "NO_EXPRESSION:{node}"
@@ -88,3 +106,40 @@ def rewired_reaction_cell_class_weights(nodes: pd.DataFrame, rules: pd.Series, c
     rewired_nodes = nodes.assign(gene_reaction_rule=rules.reindex(nodes.node_id).to_numpy())
     weights = node_cell_class_weights(rewired_nodes, class_expression, symbol_to_ensembl=None, include_all_cells_class=include_all_cells_class)
     return weights[(nodes.node_type == "reaction").to_numpy()]
+
+
+def rewired_member_edges(nodes: pd.DataFrame, edges_after: np.ndarray, membership: np.ndarray) -> pd.DataFrame:
+    """The member_of edges the rewiring produced, as a (source_id, target_id, relation_type) table.
+
+    nodes in node-index order; edges_after [2, E] node indices; membership boolean per edge, the member_of edges."""
+    node_ids = nodes.node_id.to_numpy()
+    sources, targets = edges_after[:, membership]
+    return pd.DataFrame({"source_id": node_ids[sources], "target_id": node_ids[targets],
+                         "relation_type": MEMBER_RELATION})
+
+
+def rewired_complex_cell_class_weights(nodes: pd.DataFrame, edges_after: np.ndarray, membership: np.ndarray,
+                                       class_expression: pd.DataFrame,
+                                       half_saturation: float = DETECTION_THRESHOLD_NCPM,
+                                       include_all_cells_class: bool = True) -> tuple[pd.DataFrame, dict]:
+    """Item 30's complex gates recomputed from the rewired member_of edges (decision 4.2b).
+
+    Returns a row for **every** complex node, not only the ones the rewired membership gives a gate. That matters:
+    a complex whose real members carry expression but whose rewired members do not would otherwise keep its real
+    gate, and the real gate is exactly what this control exists to remove. Such a complex gets 1 in every class,
+    which is what item 30 gives a complex with nothing known about its members."""
+    classes = list(class_expression.columns)
+    complex_nodes = nodes.node_id[nodes.node_type == COMPLEX_NODE_TYPE]
+    member_edges = rewired_member_edges(nodes, edges_after, membership)
+    limiting = complex_limiting_member_expression(nodes, member_edges, class_expression)
+    gated = relative_expression_weights(limiting, half_saturation) if len(limiting) else \
+        pd.DataFrame(columns=classes, index=pd.Index([], name="node_id"))
+    weights = pd.DataFrame(1.0, index=pd.Index(complex_nodes, name="node_id"), columns=classes)
+    shared = weights.index.intersection(gated.index)
+    weights.loc[shared, classes] = gated.loc[shared, classes].to_numpy()
+    if include_all_cells_class:
+        weights[ALL_CELLS_CLASS] = 1.0
+    counts = {"member_of_edges_rewired": int(membership.sum()),
+              "complexes_with_a_rewired_gate": int(len(shared)),
+              "complexes_left_flat_by_the_rewiring": int(len(weights) - len(shared))}
+    return weights, counts

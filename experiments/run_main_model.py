@@ -79,7 +79,7 @@ from mechanistic_pathway_learning.evidence.combined_perturbations import (
     DRUG_ROW_KINDS,
     PERTURBATION_TYPES_NEVER_SCORED,
 )
-from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT
+from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELLS_CLASS, EXTRACELLULAR_COMPARTMENT, MEMBER_RELATION
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.graph.compartment_ph import compartment_ph_inputs
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
@@ -329,11 +329,19 @@ def cell_class_inputs(data, arguments) -> tuple[torch.Tensor | None, torch.Tenso
 
 
 def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: np.ndarray, arguments) -> dict:
-    """--recompute-reaction-expression-on-rewired-graph: rewrite each reaction's gene rule onto its rewired catalysts and
-    recompute the reaction_brain descriptor block and the reactions' cell-class weights from the rewritten rules
-    (graph/rewired_expression_features.py), so a rewired run's node inputs follow its wiring (the user's decision of
-    8 October 2026). Gene, metabolite and protein-entity rows and the intrinsic blocks stay as they are."""
+    """--recompute-reaction-expression-on-rewired-graph: rewrite each reaction's gene rule onto its rewired catalysts,
+    recompute the reaction_brain descriptor block and the reactions' cell-class weights from the rewritten rules, and
+    recompute each protein complex's cell-class gate from its rewired members (graph/rewired_expression_features.py),
+    so a rewired run's node inputs follow its wiring (the user's decision of 8 October 2026, extended to the complex
+    gates by decision 4.2b on 13 October: "Rewire the complex gates for that control"). Gene and metabolite rows and
+    the intrinsic blocks stay as they are.
+
+    The flag keeps its name although it now reaches the complexes too, because experiments/
+    evaluate_on_rewired_graph.py rebuilds a finished run from its recorded arguments and a rename would break that.
+    What a rebuild of a run made before 13 October does change is its complex gates, which is the point of 4.2b and
+    is recorded in the returned counts."""
     from mechanistic_pathway_learning.graph.rewired_expression_features import (
+        rewired_complex_cell_class_weights,
         rewired_gene_reaction_rules,
         rewired_reaction_brain_block,
         rewired_reaction_cell_class_weights,
@@ -354,8 +362,16 @@ def recompute_reaction_expression(data, edges_before: np.ndarray, edges_after: n
         data.node_descriptor_table = descriptors
     if getattr(arguments, "cell_class_weights", None):
         weights = pd.read_parquet(arguments.cell_class_weights).copy()
-        recomputed = rewired_reaction_cell_class_weights(nodes, rules, pd.read_parquet(arguments.class_expression_table), include_all_cells_class=ALL_CELLS_CLASS in weights.columns)
+        class_expression = pd.read_parquet(arguments.class_expression_table)
+        carries_all_cells = ALL_CELLS_CLASS in weights.columns
+        recomputed = rewired_reaction_cell_class_weights(nodes, rules, class_expression, include_all_cells_class=carries_all_cells)
         weights.loc[recomputed.index, weights.columns] = recomputed[weights.columns].to_numpy()
+        membership = np.asarray(data.edge_relation) == data.relation_types.index(MEMBER_RELATION) \
+            if MEMBER_RELATION in data.relation_types else np.zeros(len(data.edge_relation), dtype=bool)
+        complex_weights, complex_counts = rewired_complex_cell_class_weights(
+            nodes, edges_after, membership, class_expression, include_all_cells_class=carries_all_cells)
+        weights.loc[complex_weights.index, weights.columns] = complex_weights[weights.columns].to_numpy()
+        record.update(complex_counts)
         data.cell_class_weight_table = weights
         record["class_expression_table_sha256"] = file_sha256(arguments.class_expression_table)
     return record
