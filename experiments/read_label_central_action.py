@@ -116,7 +116,13 @@ def central_action_sentences(payload: dict) -> tuple[list[dict], int]:
     return found, sections_read
 
 
-def verdicts(drug_names: list[str]) -> pd.DataFrame:
+def verdicts(drug_names: list[str], every_sentence: list | None = None) -> pd.DataFrame:
+    """One row per drug. With every_sentence, also appends one record per matching sentence.
+
+    The per-drug row keeps only the **first** sentence of its winning class, which is enough for a
+    verdict and not enough for the reading item 14 requires: a drug with 32 matches (ondansetron) or
+    11 (pindolol) has its quote chosen by document order and not by how well it speaks to that drug.
+    every_sentence is what makes decision 3.2 answerable."""
     rows = []
     for drug_name in drug_names:
         payload = label_payload(drug_name)
@@ -139,6 +145,13 @@ def verdicts(drug_names: list[str]) -> pd.DataFrame:
                      "adverse_event_sentences": len(adverse),
                      "section": best.get("section", ""), "set_id": best.get("set_id", ""), "quote": best.get("sentence", ""),
                      "error": payload.get("error", "")})
+        if every_sentence is not None:
+            for position, sentence in enumerate(sentences):
+                every_sentence.append({"drug": drug_name, "position": position, "section": sentence["section"],
+                                       "set_id": sentence["set_id"],
+                                       "reads_as": "not central" if sentence["reads_as_not_central"] else
+                                                   "an adverse event" if sentence["reads_as_an_adverse_event"] else "central",
+                                       "sentence": sentence["sentence"]})
     return pd.DataFrame(rows)
 
 
@@ -149,6 +162,9 @@ def main() -> None:
     parser.add_argument("--verdict", nargs="*", default=None, help="only the rows of that table with these verdicts")
     parser.add_argument("--output-table", type=Path, default=OUTPUT_TABLE)
     parser.add_argument("--output-document", type=Path, default=OUTPUT_DOCUMENT)
+    parser.add_argument("--every-sentence", type=Path, default=None,
+                        help="also write one row per matching sentence, which is what the reading of "
+                             "decision 3.2 needs: the per-drug table keeps only the first")
     arguments = parser.parse_args()
 
     drug_names = list(arguments.drugs)
@@ -160,9 +176,14 @@ def main() -> None:
     if not drug_names:
         parser.error("name some drugs with --drugs or --from-rule-table")
 
-    table = verdicts(drug_names)
+    every_sentence = [] if arguments.every_sentence else None
+    table = verdicts(drug_names, every_sentence)
     arguments.output_table.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(arguments.output_table, index=False)
+    if arguments.every_sentence:
+        arguments.every_sentence.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(every_sentence).to_csv(arguments.every_sentence, index=False)
+        print(f"wrote {arguments.every_sentence}: {len(every_sentence)} sentences")
     print(table.verdict.value_counts().to_string())
     write_document(arguments.output_document, table)
 
@@ -193,7 +214,7 @@ def write_document(path: Path, table: pd.DataFrame) -> None:
             lines.append(f"| {row.drug} | {row.section} | {quote} | {row.set_id} |")
     lines.append("")
     path.write_text("\n".join(lines))
-    print(f"wrote {path} and {OUTPUT_TABLE}")
+    print(f"wrote {path}")
 
 
 if __name__ == "__main__":
