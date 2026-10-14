@@ -68,6 +68,8 @@ class ExperimentData:
     node_brain_expression: np.ndarray | None = None  # log1p of the largest GTEx brain median TPM per node (genes, and reactions through their genes); 0 when unknown
     node_brain_expressed: np.ndarray | None = None  # median TPM at least the build threshold in one brain tissue; False when unknown
     edge_sign: np.ndarray | None = None  # +1 activating, -1 inhibiting or repressing, 0 unsigned (binds); +1 where the graph has no sign column
+    edge_stoichiometric_coefficient: np.ndarray | None = None  # item 20: copies of the source one turnover uses;
+    # 1.0 where the graph states none, and None entirely on a graph built before the column existed
     node_base_metabolite_id: np.ndarray | None = None  # metabolite id without compartment ("" for other node types)
     node_display_name: np.ndarray | None = None
     evidenced_negative: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a negative rests on a controlled comparison, not on silence (a label selection's counts_as_negative rows)
@@ -613,6 +615,8 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         edge_target=edges.target_id.map(node_index).to_numpy(),
         edge_relation=edges.relation_type.map(relation_index).to_numpy(),
         edge_sign=(edges["sign"].fillna(1.0) if "sign" in edges.columns else pd.Series(1.0, index=edges.index)).to_numpy(dtype=float),
+        edge_stoichiometric_coefficient=(edges["stoichiometric_coefficient"].fillna(1.0).to_numpy(dtype=float)
+                                         if "stoichiometric_coefficient" in edges.columns else None),
         relation_types=relation_types,
         symptoms=symptoms,
         perturbation_ids=perturbation_ids,

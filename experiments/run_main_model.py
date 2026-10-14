@@ -585,6 +585,22 @@ def build_models(data, arguments, device):
                                         **descriptor_treatment_inputs(data, arguments),
                                         **({"entry_relation_names": ENTRY_RELATIONS, "edge_weight": torch.as_tensor(data.edge_weight), **entry_node_inputs(data)}
                                            if entry_node_inputs(data) else {})).to(device)
+        # Item 20, built 14 October 2026: the stoichiometric demand of the limiting-step pass. Before this
+        # bottleneck_edge_demand was None and every demand was 1, so a reaction consuming two molecules counted as one.
+        # A graph built before the column existed carries no coefficient and keeps the old behaviour.
+        stoichiometric_demand_counts = None
+        if data.edge_stoichiometric_coefficient is not None and arguments.stoichiometric_demand:
+            stoichiometric_demand_counts = encoder.set_bottleneck_edge_demand_from_edges(
+                torch.as_tensor(data.edge_source), torch.as_tensor(data.edge_target),
+                torch.as_tensor(data.edge_relation), torch.as_tensor(data.edge_stoichiometric_coefficient))
+            print(f"stoichiometric demand: {stoichiometric_demand_counts['entries_with_a_stated_coefficient']} of "
+                  f"{stoichiometric_demand_counts['bottleneck_entries']} bottleneck entries carry a stated coefficient, "
+                  f"{stoichiometric_demand_counts['entries_above_one']} above 1 (largest "
+                  f"{stoichiometric_demand_counts['largest_demand']:.0f}), "
+                  f"{stoichiometric_demand_counts['entries_clamped_up_from_a_fraction']} clamped up from a fraction")
+        elif data.edge_stoichiometric_coefficient is None:
+            print("stoichiometric demand: the graph states no coefficients, so every demand stays 1 (item 20 unbuilt "
+                  "for this graph; it needs the v4 rebuild)")
         print(f"linear-response encoder: {arguments.normalisation} normalisation, {arguments.cross_relation_aggregator} across relations"
               + (f" weighted by {arguments.mixture_weighting}" if arguments.cross_relation_aggregator == "softmax_mixture" else "")
               + f", {len(distinct_node_types)} node types ({', '.join(distinct_node_types)})"
@@ -1297,6 +1313,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
                              "heuristic, names drops the heuristic, neuronal keeps only the transmitter-synthesis and oxidative carriers")
     parser.add_argument("--response-scale", choices=["linear", "signed_log"], default="linear",
                         help="linear-response encoder: read the response as it is, or through sign(h) log(1 + |h| / s) with a learned scale, so changes many edges away stay readable")
+    parser.add_argument("--no-stoichiometric-demand", dest="stoichiometric_demand", action="store_false",
+                        help="leave every bottleneck demand at 1, the behaviour before item 20 was built")
     parser.add_argument("--normalisation", choices=NORMALISATIONS, default="total_in_degree",
                         help="linear-response encoder: how the signed adjacency is scaled so the iteration contracts. total_in_degree (registered, amendment item 28) "
                              "divides by the destination's in-degree summed over every relation, so the unsigned row sums are one and the stoichiometric counts "

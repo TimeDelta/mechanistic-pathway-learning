@@ -77,3 +77,17 @@ def test_a_run_made_before_the_v4_defaults_is_rebuilt_as_it_was_trained():
         assert rebuilt[key] == value, key
     defaults = vars(build_argument_parser().parse_args([]))
     assert set(VALUES_BEFORE_THE_V4_DEFAULTS) <= set(defaults)  # no stale name in the map
+
+
+def test_the_type_aware_baselines_are_in_the_confirmatory_set():
+    """Decision 4.6, registered 13 October 2026: a baseline per perturbation type.
+
+    `fit_and_predict` has carried the type-aware branch since before the decision; what was missing was its name in
+    the two tuples that decide which baselines a confirmatory score reports. A model that beats global popularity by
+    learning that drugs carry more symptoms than genes does not beat this one."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments"))
+    from run_baselines import BASELINE_NAMES, TYPE_POPULARITY_NAMES
+    from score_confirmatory import BASELINES
+    for name in TYPE_POPULARITY_NAMES:
+        assert name in BASELINE_NAMES, f"{name} must be fitted by run_baselines.py"
+        assert name in BASELINES, f"{name} must be reported by score_confirmatory.py"

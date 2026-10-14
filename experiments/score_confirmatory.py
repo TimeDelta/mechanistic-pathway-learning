@@ -73,7 +73,8 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
 from run_main_model import RESUME_CONTROL_ARGUMENTS, array_sha256, build_argument_parser
 from run_main_model_batch import CONFIGURATIONS
 
-BASELINES = ("popularity", "degree_popularity", "random_walk_with_restart", "knowledge_graph_embedding_transe")
+BASELINES = ("popularity", "degree_popularity", "type_popularity", "type_degree_popularity",
+             "random_walk_with_restart", "knowledge_graph_embedding_transe")
 VARIANT_SUFFIXES = {"real": "", "permuted": "_permuted", "rewired": "_rewired"}
 MINIMUM_POSITIVES_TO_SCORE = 5
 H1_READINGS = ("macro", "micro", "macro_within_degree_strata", "micro_within_degree_strata")

@@ -592,6 +592,8 @@ class LinearResponseEncoder(nn.Module):
         # play no part in it
         self.register_buffer("bottleneck_edge_source", coalesced.indices()[1], persistent=False)
         self.register_buffer("bottleneck_edge_target", coalesced.indices()[0] % num_graph_nodes, persistent=False)
+        self.register_buffer("bottleneck_edge_relation", torch.div(coalesced.indices()[0], num_graph_nodes, rounding_mode="floor"),
+                             persistent=False)  # which relation each entry came from, so a stated coefficient can be found
         # how many copies of the source a step consumes, which is that participant's stoichiometry. The graph does not
         # carry it on its edges yet, so this stays None and every demand is 1; see class_bottleneck.
         self.register_buffer("bottleneck_edge_demand", None, persistent=False)
@@ -925,6 +927,46 @@ class LinearResponseEncoder(nn.Module):
 
     def clear_class_bottleneck_cache(self) -> None:
         self.class_bottleneck_cache.clear()
+
+    def set_bottleneck_edge_demand_from_edges(self, edge_source: Tensor, edge_target: Tensor, edge_relation: Tensor,
+                                              stoichiometric_coefficient: Tensor) -> dict:
+        """Item 20, built 14 October 2026: put the graph's stoichiometric coefficients on the bottleneck adjacency.
+
+        The four arguments are the graph's own edge arrays, in the order the encoder was built from, plus one
+        coefficient per edge. The bottleneck adjacency is the coalesced stacked adjacency, so an entry is identified
+        by its stacked row (relation * N + target) and its column (source); this keys the input edges the same way
+        and reads the coefficient back in the coalesced order.
+
+        A **derived** relation keeps demand 1, because it has no coefficient of its own in the edge table:
+        `depletes_substrate` and `product_opposes` are built by the encoder from `substrate_of` and `product_of`
+        (items 22 and 27), and giving them their participant's coefficient is a further change that is not
+        registered. What is registered is the demand of the relations the graph states.
+
+        Returns counts for the run record."""
+        number_of_nodes = self.num_graph_nodes
+        coefficients = torch.as_tensor(stoichiometric_coefficient, dtype=torch.float32).reshape(-1)
+        source = torch.as_tensor(edge_source, dtype=torch.long).reshape(-1)
+        target = torch.as_tensor(edge_target, dtype=torch.long).reshape(-1)
+        relation = torch.as_tensor(edge_relation, dtype=torch.long).reshape(-1)
+        if not (source.shape == target.shape == relation.shape == coefficients.shape):
+            raise ValueError("edge_source, edge_target, edge_relation and stoichiometric_coefficient must be one per edge")
+        stated_key = (relation * number_of_nodes + target) * number_of_nodes + source
+        order = torch.argsort(stated_key)
+        sorted_key, sorted_coefficient = stated_key[order], coefficients[order]
+        wanted_row = self.bottleneck_edge_relation * number_of_nodes + self.bottleneck_edge_target
+        wanted_key = wanted_row * number_of_nodes + self.bottleneck_edge_source
+        position = torch.searchsorted(sorted_key, wanted_key).clamp(max=len(sorted_key) - 1)
+        matched = sorted_key[position] == wanted_key
+        stated = torch.where(matched, sorted_coefficient[position], torch.ones_like(wanted_key, dtype=torch.float32))
+        # Human-GEM writes fractional coefficients (half a molecule of O2 is the common one). set_bottleneck_edge_demand
+        # refuses a demand below 1, and rightly: a demand below 1 would raise availability across a step and take the
+        # bottleneck out of [0, 1]. A fraction is therefore clamped to 1 and the count is reported, because clamping is
+        # a deviation from the stoichiometry and not a reading of it.
+        demand = stated.clamp(min=1.0)
+        self.set_bottleneck_edge_demand(demand)
+        return {"bottleneck_entries": int(len(demand)), "entries_with_a_stated_coefficient": int(matched.sum()),
+                "entries_above_one": int((demand > 1.0).sum()), "largest_demand": float(demand.max()),
+                "entries_clamped_up_from_a_fraction": int((stated < 1.0).sum())}
 
     def set_bottleneck_edge_demand(self, demand: Tensor | None) -> None:
         """Per adjacency entry (bottleneck_edge_source, bottleneck_edge_target), how many copies of the source the step

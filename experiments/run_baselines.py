@@ -95,7 +95,8 @@ from mechanistic_pathway_learning.models.baselines.random_walk_with_restart_base
     build_normalized_adjacency,
 )
 
-BASELINE_NAMES = ("popularity", "degree_popularity", "random_walk_with_restart")
+BASELINE_NAMES = ("popularity", "degree_popularity", "type_popularity", "type_degree_popularity",
+                  "random_walk_with_restart")  # the type-aware pair is decision 4.6, registered 13 October 2026
 INPUT_SIZE_NAME = "input_size"  # the control for the input-size objection; --with-input-size, so no earlier run changes
 CACHED_BASELINES = ("random_walk_with_restart", "knowledge_graph_embedding_transe")  # the slow fits; popularity takes milliseconds
 BASELINE_SOURCES = [Path(__file__), *sorted((Path(__file__).resolve().parents[1] / "mechanistic_pathway_learning" / "models" / "baselines").glob("*.py"))]

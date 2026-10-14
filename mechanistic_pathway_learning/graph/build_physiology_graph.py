@@ -176,11 +176,18 @@ def build_metabolic_layer(model, symbol_by_ensembl: dict[str, str], model_yaml_p
             # instead by the `reversible` flag on the reaction node, from which the linear-response encoder derives
             # product -> reaction at sign -1 (product_opposes, preregistration item 27): linearised mass action, under
             # which a perturbation that accumulates the product drives the reaction backwards.
-            edge_rows.append({"source_id": metabolite.id if is_substrate else reaction.id, "target_id": reaction.id if is_substrate else metabolite.id, "relation_type": "substrate_of" if is_substrate else "product_of", "sign": 1.0, "evidence_source": "Human-GEM"})
+            # The magnitude is kept as well as the sign (preregistration item 20, built 14 October 2026). It is how
+            # many copies of the participant one turnover consumes or makes, and the linear-response encoder's
+            # limiting-step pass divides a node's supply by it, so acetylcholine needing two molecules to open the
+            # receptor halves what arrives. Before this the coefficient was read for `is_substrate` and discarded, so
+            # every demand was 1 and a reaction consuming two molecules counted as one.
+            edge_rows.append({"source_id": metabolite.id if is_substrate else reaction.id, "target_id": reaction.id if is_substrate else metabolite.id, "relation_type": "substrate_of" if is_substrate else "product_of", "sign": 1.0, "evidence_source": "Human-GEM", "stoichiometric_coefficient": abs(float(coefficient))})
         for gene in reaction.genes:
-            edge_rows.append({"source_id": metabolic_gene_node(gene.id), "target_id": reaction.id, "relation_type": "catalyzed_by", "sign": 1.0, "evidence_source": "Human-GEM GPR"})
+            edge_rows.append({"source_id": metabolic_gene_node(gene.id), "target_id": reaction.id, "relation_type": "catalyzed_by", "sign": 1.0, "evidence_source": "Human-GEM GPR", "stoichiometric_coefficient": 1.0})
     nodes = pd.DataFrame(node_rows)
     edges = pd.DataFrame(edge_rows).drop_duplicates()
+    if "stoichiometric_coefficient" in edges.columns:  # 1.0 wherever a relation carries no stoichiometry
+        edges["stoichiometric_coefficient"] = edges.stoichiometric_coefficient.fillna(1.0)
     return nodes, edges
 
 
