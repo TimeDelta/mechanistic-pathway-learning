@@ -435,3 +435,30 @@ Separated from the measurements above; these are inferences and none is a decisi
 5. Do not pare the metabolism. 0 of 148 subsystems is unreachable, 3.1% of metabolites and 3.2% of reactions are, and 1
    field-identical pair exists across 2,483 multi-copy species. The measurement does not support a cut there, and
    `docs/graph_content_null_results.md` already shows that removing the wiring wholesale costs score.
+
+## 11. Correction of 14 October: the diluting layer is the proteins, not the orphan genes
+
+Sections 1, 5 and 10 attribute the dilution at reactions to the orphan **gene** nodes: "their 6,894 `catalyzed_by`
+edges sit in the `total_in_degree` divisor of 3,587 reactions". **Gene nodes almost never emit `catalyzed_by` in this
+graph.** Measured here on the v4 drug graph: of 3,157 distinct `catalyzed_by` sources, 2,839 are `protein` nodes, 316
+are `protein_entity` complexes and **2 are gene nodes** (GENE:LRTOMT and GENE:USP41). The gene and protein layers
+were split, and catalysis attaches to the protein.
+
+The chain is one hop longer than the review said, and naming it correctly changes what fixes it:
+
+    orphan gene (no incoming edge, never seeded, zero at every step)
+      -> encodes -> protein (zero at every step, because encodes is its only input)
+      -> catalyzed_by -> the reaction's total_in_degree divisor
+
+Measured: **no protein node lacks an incoming edge at all**, because `encodes` from its gene is always there, but
+**3,447 proteins have `encodes` as their only incoming relation**, and those emit **11,314 `catalyzed_by` edges into
+4,886 reactions**. That is the set whose share of the divisor is unreachable, and it is larger than the 6,894 and
+3,587 the review reported, because the review counted from the wrong layer.
+
+**This is why the owner was right to hold the paring** (14 October: "Let's just wait on dropping the orphans though
+because you could find more labels from BRENDA"). The mechanism is not labels - BRENDA carries enzyme and ligand
+data, not symptom associations - and it is not the genes either. It is that a metabolite-to-protein edge gives an
+`encodes`-only protein a second incoming relation and makes it live, and metabolite-to-protein is exactly what
+BRENDA supplies and exactly the gap `docs/missing_physiology_review.md` section 2 measures at 600 of 266,966 edges.
+Paring the layer first would delete the nodes the download is meant to connect.
+
