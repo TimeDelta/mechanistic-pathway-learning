@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.evaluation.perturbation_wise_and_pathway_wise_splits import assign_grouped_folds
 from mechanistic_pathway_learning.evaluation.leakage_only_adversary import (
     LeakageOnlyAdversary, POOLING_RULES, channel_breakdown, leaked_neighbours, seed_nodes_of_perturbations,
     seen_target_share)
@@ -40,11 +41,31 @@ from mechanistic_pathway_learning.models.baselines.popularity_baseline import Po
 STANDARD_ERRORS_IN_A_95_PERCENT_HALF_WIDTH = 1.959964
 
 
-def one_draw(data, draw_seed: int, pooling_rule: str, num_bootstrap: int) -> dict:
-    """One pseudo-draw: the adversary's advantage over popularity and degree-scaled popularity, and the channel counts."""
+def registered_two_sided_draw(data, draw_seed: int) -> tuple[set[str], set[str]]:
+    """The held-out set as the registration actually draws it: **each side at its own registered fraction** (item 25,
+    "the genes by the registered disease-cluster grouping and the drugs by the rule below, one seventh of each rather
+    than one seventh of the whole").
+
+    Corrected 14 October 2026 after the owner asked "i thought gene perturbations were also being included in the
+    lockbox draw ...". They are, and an earlier version of this script drew the drug side only: `held_out_perturbations`
+    pulls a gene in only when its own node is a held-out drug **target**, and no gene node is a drug target on a
+    gene/protein-split graph, so every pseudo-draw held out 39, 22 or 30 drugs and **zero** genes. Since 1,414 of the
+    1,636 perturbations are genes, the adversary was being scored on 2 percent of the row mix it will meet.
+    """
     held_out_ids, held_out_targets = held_out_perturbations(
         data.perturbation_ids, data.perturbation_types, data.perturbation_seeds, data.node_ids, draw_seed,
         REGISTERED_HELD_OUT_FRACTION)
+    num_grouped_folds = int(round(1 / REGISTERED_HELD_OUT_FRACTION))
+    fold_of_perturbation = assign_grouped_folds(data.perturbation_ids, data.group_ids, num_grouped_folds, draw_seed)
+    for perturbation_id, kind in zip(data.perturbation_ids, data.perturbation_types):
+        if kind != "drug" and fold_of_perturbation[perturbation_id] == 0:
+            held_out_ids.add(str(perturbation_id))
+    return held_out_ids, held_out_targets
+
+
+def one_draw(data, draw_seed: int, pooling_rule: str, num_bootstrap: int) -> dict:
+    """One pseudo-draw: the adversary's advantage over popularity and degree-scaled popularity, and the channel counts."""
+    held_out_ids, held_out_targets = registered_two_sided_draw(data, draw_seed)
     held_out_rows = np.array([index for index, perturbation_id in enumerate(data.perturbation_ids) if str(perturbation_id) in held_out_ids], dtype=int)
     training_rows = np.array([index for index, perturbation_id in enumerate(data.perturbation_ids) if str(perturbation_id) not in held_out_ids], dtype=int)
     if held_out_rows.size == 0 or training_rows.size == 0:
@@ -69,6 +90,7 @@ def one_draw(data, draw_seed: int, pooling_rule: str, num_bootstrap: int) -> dic
     result = {"draw_seed": draw_seed, "usable": True, "pooling_rule": pooling_rule,
               "held_out_perturbations": int(held_out_rows.size), "held_out_targets": int(len(held_out_targets)),
               "held_out_drugs": int(sum(1 for row in held_out_rows if data.perturbation_types[row] == "drug")),
+              "held_out_genes": int(sum(1 for row in held_out_rows if data.perturbation_types[row] != "drug")),
               "seen_target_share": seen_target_share(
                   targets_of_drugs(data.perturbation_ids, data.perturbation_types, data.perturbation_seeds, data.node_ids), held_out_identifiers),
               "adversary_macro_auprc": float(macro_average(adversary_scores, held_out_outcomes, held_out_mask)),
