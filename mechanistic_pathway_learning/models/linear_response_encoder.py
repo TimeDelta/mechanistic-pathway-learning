@@ -488,7 +488,12 @@ class LinearResponseEncoder(nn.Module):
         entry_node_mask: Tensor | None = None,
         entry_relation_names: tuple[str, ...] = (),
         edge_weight: Tensor | None = None,
+        propagate_edge_weight: bool = True,
     ) -> None:
+        """propagate_edge_weight (decision 4.11, the owner on 13 October 2026: "4.11 yes: make the encoders agree like
+        that") sends edge_weight into the propagation adjacency as well as the entry edges. Before this it scaled a
+        drug's mechanism edges only, so item 13's six conductance weights were inert in this encoder while the
+        message-passing one read them - the two registered encoders disagreed about the physics. False restores that."""
         super().__init__()
         self.register_buffer("seed_mask_partner_index", None if seed_mask_partner_index is None else seed_mask_partner_index.long(), persistent=False)
         entry_edges = None
@@ -513,6 +518,8 @@ class LinearResponseEncoder(nn.Module):
             edge_source, edge_target, edge_relation, edge_sign = edge_source[~is_entry_edge], edge_target[~is_entry_edge], edge_relation[~is_entry_edge], edge_sign[~is_entry_edge]
             if cofactor_edges is not None:
                 cofactor_edges = cofactor_edges[~is_entry_edge]
+            if edge_weight is not None:  # the weight follows its edges out, so the adjacency still gets one per edge
+                edge_weight = edge_weight[~is_entry_edge]
         self.register_buffer("entry_node_mask", None if entry_node_mask is None else entry_node_mask.bool(), persistent=False)
         self.register_buffer("entry_edge_source", None if entry_edges is None else entry_edges[0], persistent=False)
         self.register_buffer("entry_edge_target", None if entry_edges is None else entry_edges[1], persistent=False)
@@ -575,7 +582,8 @@ class LinearResponseEncoder(nn.Module):
         stacked_adjacency, relation_names = self.signed_stacked_adjacency(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
                                                                           non_propagating_nodes, cofactor_edges, normalisation,
                                                                           divide_by_relations_feeding=not uses_mixture, edge_signs=edge_signs,
-                                                                          reversible_reactions=reversible_reactions)
+                                                                          reversible_reactions=reversible_reactions,
+                                                                          edge_weight=edge_weight if propagate_edge_weight else None)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         # the stacked rows that hold an edge, as their own matrix [K, N] with the relation and target of each row: with the
@@ -701,10 +709,21 @@ class LinearResponseEncoder(nn.Module):
                                  edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
                                  cofactor_edges: Tensor | None = None, normalisation: str = "total_in_degree",
                                  divide_by_relations_feeding: bool = True, edge_signs: str = "graph",
-                                 reversible_reactions: Tensor | None = None) -> tuple[Tensor, list[str]]:
+                                 reversible_reactions: Tensor | None = None,
+                                 edge_weight: Tensor | None = None) -> tuple[Tensor, list[str]]:
         """All relations' signed, normalised adjacencies stacked into one sparse [R * N, N] matrix, with the derived
         depletes_substrate relation appended, carrier edges moved to relations of their own when cofactor_edges is
-        given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order."""
+        given, and edges leaving a non-propagating node dropped; returns the matrix and the relation names in stack order.
+
+        edge_weight (decision 4.11, built 14 October 2026) is a per-edge magnitude, item 13's conductances among them.
+        It enters as a **share**, weighting the edge and its destination's divisor together, so that an unsigned row
+        still sums to 1: `sign * w / sum(w at the target)` rather than `sign * w / count at the target`. That is both
+        what item 28 requires - the same contraction and no global shrink - and what the physics asks for, since the
+        Millman equation the electrical layer linearises uses conductance *fractions* `g_ion / g_total` and not
+        absolute conductances. With every weight 1 it reduces exactly to the unweighted form, so a graph with no
+        weight column builds the adjacency it always built. A derived relation inherits its parent edge's weight:
+        `depletes_substrate` takes the substrate edge's and `product_opposes` the product edge's, because each is the
+        same physical edge read in the other direction."""
         edge_relation = edge_relation.long().clone()
         relation_names = list(relation_types)
         if cofactor_edges is not None and SUBSTRATE_RELATION in relation_types and PRODUCT_RELATION in relation_types:
@@ -712,7 +731,12 @@ class LinearResponseEncoder(nn.Module):
             for main_relation, carrier_relation in ((SUBSTRATE_RELATION, COSUBSTRATE_RELATION), (PRODUCT_RELATION, COPRODUCT_RELATION)):
                 relation_names.append(carrier_relation)
                 edge_relation[cofactor_edges & (edge_relation == relation_types.index(main_relation))] = len(relation_names) - 1
+        weights_of_edges = (torch.ones_like(edge_sign, dtype=torch.float32) if edge_weight is None
+                            else torch.as_tensor(edge_weight, dtype=torch.float32).reshape(-1).clamp_min(0.0))
+        if weights_of_edges.shape != edge_sign.shape:
+            raise ValueError("edge_weight needs one value per edge")
         sources, targets, relations, signs = [edge_source.long()], [edge_target.long()], [edge_relation], [edge_sign.float()]
+        weights = [weights_of_edges]
         for forward_relation, depletion_relation in ((SUBSTRATE_RELATION, DEPLETES_SUBSTRATE_RELATION),):  # carriers get none (module docstring)
             if forward_relation not in relation_names:
                 continue
@@ -722,6 +746,7 @@ class LinearResponseEncoder(nn.Module):
             targets.append(edge_source[forward_edges].long())
             relations.append(torch.full((int(forward_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
             signs.append(-torch.ones(int(forward_edges.sum())))
+            weights.append(weights_of_edges[forward_edges])
         if reversible_reactions is not None and PRODUCT_RELATION in relation_names and SUBSTRATE_RELATION in relation_names:
             reversible = reversible_reactions.bool()
             product_edges = (edge_relation == relation_names.index(PRODUCT_RELATION)) & reversible[edge_source.long()]
@@ -740,10 +765,12 @@ class LinearResponseEncoder(nn.Module):
             targets.append(edge_source[product_edges].long())
             relations.append(torch.full((int(product_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
             signs.append(-torch.ones(int(product_edges.sum())))
+            weights.append(weights_of_edges[product_edges])
         source, target, relation, sign = torch.cat(sources), torch.cat(targets), torch.cat(relations), torch.cat(signs)
+        weight = torch.cat(weights)
         if non_propagating_nodes is not None:
             keep = ~non_propagating_nodes.bool()[source]
-            source, target, relation, sign = source[keep], target[keep], relation[keep], sign[keep]
+            source, target, relation, sign, weight = source[keep], target[keep], relation[keep], sign[keep], weight[keep]
         for index, name in enumerate(relation_names):
             if name in UNSIGNED_RELATIONS:
                 sign = torch.where(relation == index, torch.ones_like(sign), sign)  # the learned gain carries the sign
@@ -756,17 +783,19 @@ class LinearResponseEncoder(nn.Module):
         if normalisation not in NORMALISATIONS:
             raise ValueError(f"normalisation must be one of {NORMALISATIONS}, not {normalisation!r}")
         row = relation * num_graph_nodes + target
+        # Decision 4.11: every divisor is the sum of the weights feeding the destination rather than a count of the
+        # edges, so an unsigned row still sums to 1 and the weight acts as a share. Weights of 1 give back the counts.
         if normalisation == "spectral":  # one global scale and no per-node divisor; see NORMALISATIONS
             radius = LinearResponseEncoder.spectral_radius_of_unsigned_aggregate(num_graph_nodes, source, target)
-            values = sign / max(radius, 1.0)
+            values = sign * weight / max(radius, 1.0)
         elif normalisation == "total_in_degree":  # one per-node divisor over all relations together; see NORMALISATIONS
-            total_in_degree = torch.zeros(num_graph_nodes).index_add(0, target, torch.ones(len(target)))
-            values = sign / total_in_degree[target]
+            total_in_degree = torch.zeros(num_graph_nodes).index_add(0, target, weight).clamp_min(torch.finfo(torch.float32).tiny)
+            values = sign * weight / total_in_degree[target]
         else:
-            in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, torch.ones(len(row)))
+            in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, weight)
             relations_feeding_node = (in_degree.view(len(relation_names), num_graph_nodes) > 0).sum(dim=0).clamp_min(1)
             cross_relation_divisor = relations_feeding_node[target] if divide_by_relations_feeding else 1.0
-            values = sign / (in_degree[row] * cross_relation_divisor)
+            values = sign * weight / (in_degree[row].clamp_min(torch.finfo(torch.float32).tiny) * cross_relation_divisor)
         stacked = torch.sparse_coo_tensor(torch.stack([row, source]), values, (len(relation_names) * num_graph_nodes, num_graph_nodes)).coalesce()
         return stacked, relation_names
 
