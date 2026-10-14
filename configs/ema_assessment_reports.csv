@@ -1,0 +1,56 @@
+drug,why_wanted,ema_medicine_name,ema_product_number,medicine_status,marketing_authorisation_date,atc_code,medicine_url
+dextromethorphan,item 31(a): no label section read,Nuedexta,EMEA/H/C/002560,Withdrawn,24/06/2013,N07XX59,https://www.ema.europa.eu/en/medicines/human/EPAR/nuedexta
+valdecoxib,item 31(a): no label section read,Bextra,EMEA/H/C/000431,Withdrawn,27/03/2003,M01AH03,https://www.ema.europa.eu/en/medicines/human/EPAR/bextra
+valdecoxib,item 31(a): no label section read,Valdyn (previously Kudeq),EMEA/H/C/000437,Withdrawn,27/03/2003,M01AH03,https://www.ema.europa.eu/en/medicines/human/EPAR/valdyn-0
+valdecoxib,item 31(a): no label section read,Valdyn,EMEA/H/C/000432,Withdrawn,27/03/2003,M01AH03,https://www.ema.europa.eu/en/medicines/human/EPAR/valdyn
+celecoxib,item 31(a): no such sentence,Onsenal,EMEA/H/C/000466,Withdrawn,17/10/2003,L01XX33,https://www.ema.europa.eu/en/medicines/human/EPAR/onsenal
+ketoprofen,item 31(a): no such sentence,Diractin,EMEA/H/C/000865,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/diractin
+pioglitazone,item 31(a): no such sentence,Competact,EMEA/H/C/000655,Authorised,28/07/2006,A10BD05,https://www.ema.europa.eu/en/medicines/human/EPAR/competact
+pioglitazone,item 31(a): no such sentence,Pioglitazone Accord,EMEA/H/C/002277,Authorised,21/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-accord
+pioglitazone,item 31(a): no such sentence,Tandemact,EMEA/H/C/000680,Authorised,08/01/2007,A10BD06,https://www.ema.europa.eu/en/medicines/human/EPAR/tandemact
+pioglitazone,item 31(a): no such sentence,Actos,EMEA/H/C/000285,Authorised,13/10/2000,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/actos
+pioglitazone,item 31(a): no such sentence,Pioglitazone Actavis,EMEA/H/C/002324,Authorised,15/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-actavis
+pioglitazone,item 31(a): no such sentence,Pioglitazone Teva,EMEA/H/C/002297,Withdrawn,26/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-teva
+pioglitazone,item 31(a): no such sentence,Glubrava,EMEA/H/C/000893,Withdrawn,11/12/2007,A10BD05,https://www.ema.europa.eu/en/medicines/human/EPAR/glubrava
+pioglitazone,item 31(a): no such sentence,Glidipion (previously Pioglitazone Actavis Group),EMEA/H/C/002558,Withdrawn,15/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/glidipion
+pioglitazone,item 31(a): no such sentence,Glustin,EMEA/H/C/000286,Withdrawn,11/10/2000,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/glustin
+pioglitazone,item 31(a): no such sentence,Incresync,EMEA/H/C/002178,Authorised,19/09/2013,A10BD09,https://www.ema.europa.eu/en/medicines/human/EPAR/incresync
+pioglitazone,item 31(a): no such sentence,Pioglitazone Teva Pharma,EMEA/H/C/002410,Withdrawn,26/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-teva-pharma
+pioglitazone,item 31(a): no such sentence,Paglitaz,EMEA/H/C/002309,Lapsed,21/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/paglitaz
+pioglitazone,item 31(a): no such sentence,Pioglitazone Krka,EMEA/H/C/002453,Withdrawn,21/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-krka
+pioglitazone,item 31(a): no such sentence,Sepioglin,EMEA/H/C/002021,Withdrawn,09/03/2012,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/sepioglin
+pioglitazone,item 31(a): no such sentence,Pioglitazone Teva Generics,EMEA/H/C/002448,Application withdrawn,nan,A10BG03,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-teva-generics
+pioglitazone,item 31(a): no such sentence,Pioglitazone ratiopharm GmbH,EMEA/H/C/002369,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-ratiopharm-gmbh
+pioglitazone,item 31(a): no such sentence,Pioglitazone ratiopharm,EMEA/H/C/002260,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-ratiopharm
+pioglitazone,item 31(a): no such sentence,Pioglitazone ratio,EMEA/H/C/002370,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/pioglitazone-ratio
+ribavirin,item 31(a): no such sentence,Rebetol,EMEA/H/C/000246,Withdrawn,06/05/1999,J05AP01,https://www.ema.europa.eu/en/medicines/human/EPAR/rebetol
+ribavirin,item 31(a): no such sentence,Ribavirin Teva Pharma B.V.,EMEA/H/C/001064,Withdrawn,01/07/2009,J05AP01,https://www.ema.europa.eu/en/medicines/human/EPAR/ribavirin-teva-pharma-bv
+ribavirin,item 31(a): no such sentence,Ribavirin Teva,EMEA/H/C/001018,Withdrawn,31/03/2009,J05AB04,https://www.ema.europa.eu/en/medicines/human/EPAR/ribavirin-teva
+ribavirin,item 31(a): no such sentence,Ribavirin Mylan (previously Ribavirin Three Rivers),EMEA/H/C/001185,Withdrawn,10/06/2010,J05AB04,https://www.ema.europa.eu/en/medicines/human/EPAR/ribavirin-mylan
+ribavirin,item 31(a): no such sentence,Ribavirin BioPartners,EMEA/H/C/001184,Lapsed,06/04/2010,J05AB04,https://www.ema.europa.eu/en/medicines/human/EPAR/ribavirin-biopartners
+ribavirin,item 31(a): no such sentence,Cotronak,EMEA/H/C/000247,Withdrawn,07/05/1999,J05AB04,https://www.ema.europa.eu/en/medicines/human/EPAR/cotronak
+ibuprofen,item 31(a): only an adverse-event sentence,Ibuprofen Gen.Orph,EMEA/H/C/006129,Authorised,16/02/2024,C01EB16,https://www.ema.europa.eu/en/medicines/human/EPAR/ibuprofen-genorph
+ibuprofen,item 31(a): only an adverse-event sentence,Pedea,EMEA/H/C/000549,Authorised,28/07/2004,C01EB16,https://www.ema.europa.eu/en/medicines/human/EPAR/pedea
+ibuprofen,item 31(a): only an adverse-event sentence,Ibuprofen/Diphenhydramine Hydrochloride Wyeth,EMEA/H/C/001108,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/ibuprofen-diphenhydramine-hydrochloride-wyeth
+agomelatine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Valdoxan,EMEA/H/C/000915,Authorised,19/02/2009,N06AX22,https://www.ema.europa.eu/en/medicines/human/EPAR/valdoxan
+agomelatine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Thymanax,EMEA/H/C/000916,Withdrawn,19/02/2009,N06AX22,https://www.ema.europa.eu/en/medicines/human/EPAR/thymanax
+agomelatine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Thymanax,EMEA/H/C/000657,Refused,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/thymanax-0
+agomelatine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Valdoxan,EMEA/H/C/000656,Refused,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/valdoxan-0
+brexpiprazole,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Rxulti,EMEA/H/C/003841,Authorised,26/07/2018,N05AX16,https://www.ema.europa.eu/en/medicines/human/EPAR/rxulti
+brivaracetam,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Briviact (in Italy: Nubriveo),EMEA/H/C/003898,Authorised,13/01/2016,N03AX23,https://www.ema.europa.eu/en/medicines/human/EPAR/briviact-italy-nubriveo
+bupropion,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Mysimba,EMEA/H/C/003687,Authorised,26/03/2015,A08AA,https://www.ema.europa.eu/en/medicines/human/EPAR/mysimba
+cariprazine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Reagila,EMEA/H/C/002770,Authorised,13/07/2017,N05AX15,https://www.ema.europa.eu/en/medicines/human/EPAR/reagila
+desvenlafaxine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Pristiqs,EMEA/H/C/000794,Application withdrawn,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/pristiqs
+guanfacine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Intuniv,EMEA/H/C/003759,Authorised,17/09/2015,C02AC02,https://www.ema.europa.eu/en/medicines/human/EPAR/intuniv
+guanfacine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Paxneury,EMEA/H/C/006312,Authorised,26/02/2025,C02AC02,https://www.ema.europa.eu/en/medicines/human/EPAR/paxneury
+istradefylline,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Nouryant,EMEA/H/C/005308,Refused,nan,N04,https://www.ema.europa.eu/en/medicines/human/EPAR/nouryant
+lurasidone,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Latuda,EMEA/H/C/002713,Authorised,21/03/2014,N05AE05,https://www.ema.europa.eu/en/medicines/human/EPAR/latuda
+milnacipran,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Impulsor,EMEA/H/C/001122,Refused,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/impulsor
+milnacipran,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Milnacipran Pierre Fabre Medicament,EMEA/H/C/001034,Refused,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/milnacipran-pierre-fabre-medicament
+pitolisant,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Ozawade,EMEA/H/C/005117,Authorised,01/09/2021,N07XX11,https://www.ema.europa.eu/en/medicines/human/EPAR/ozawade
+pitolisant,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Wakix,EMEA/H/C/002616,Authorised,31/03/2016,N07XX11,https://www.ema.europa.eu/en/medicines/human/EPAR/wakix
+sodium oxybate,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Xyrem,EMEA/H/C/000593,Authorised,13/10/2005,N07XX04,https://www.ema.europa.eu/en/medicines/human/EPAR/xyrem
+solriamfetol,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Sunosi,EMEA/H/C/004893,Authorised,16/01/2020,N06BA14,https://www.ema.europa.eu/en/medicines/human/EPAR/sunosi
+topiramate,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Qsiva,EMEA/H/C/002350,Refused,nan,nan,https://www.ema.europa.eu/en/medicines/human/EPAR/qsiva
+vortioxetine,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Brintellix,EMEA/H/C/002717,Authorised,18/12/2013,N06AX26,https://www.ema.europa.eu/en/medicines/human/EPAR/brintellix
+zuranolone,"newer drug lacking a Kp,uu,brain or a central-exposure chain",Zurzuvae,EMEA/H/C/006488,Authorised,nan,N06A,https://www.ema.europa.eu/en/medicines/human/EPAR/zurzuvae
