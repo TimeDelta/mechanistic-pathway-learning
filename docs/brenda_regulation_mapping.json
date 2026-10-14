@@ -1,0 +1,28 @@
+{
+ "regulation_records_read": 150238,
+ "distinct_ligand_names": 116654,
+ "ligand_names_resolved_to_a_metabolite": 696,
+ "ligand_resolution": {
+  "no ChEBI term for the name": 112689,
+  "a ChEBI term but no Human-GEM metabolite (unmapped)": 3266,
+  "matched a Human-GEM display name": 462,
+  "a ChEBI term but no Human-GEM metabolite (class_term)": 3,
+  "ChEBI route, equivalent": 189,
+  "ChEBI route, specific_form": 41,
+  "ChEBI route, manual": 4
+ },
+ "enzyme_resolution": {
+  "EC class names none or several human accessions": 3570,
+  "accession stated by BRENDA": 3624,
+  "EC class names exactly one human accession": 2405,
+  "accession is not a graph protein node": 310
+ },
+ "pairs_written": 4143,
+ "pairs_by_relation": {
+  "cofactor_of": 2109,
+  "inhibits": 1552,
+  "activates": 482
+ },
+ "distinct_metabolites": 501,
+ "distinct_enzymes": 1364
+}
