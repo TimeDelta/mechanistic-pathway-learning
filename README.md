@@ -1,4 +1,4 @@
-# mechanistic-pathway-learning
+# perturbation-symptom-modules
 
 Constrained graph learning of symptom-to-mechanism pathways over a compartmentalized
 physiology graph. The model maps a localized molecular perturbation (a monogenic enzyme
