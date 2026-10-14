@@ -2176,7 +2176,20 @@ drug's answer. **Codeine had been recorded as "no label section read", 0 section
 `Connection reset by peer`.** With the cache repaired to keep only a real response or openFDA's own 404, codeine
 reads **24 sections and 36 candidate sentences**, among them "Codeine produces respiratory depression by **direct
 action on brain stem respiratory centers**" - which passes the tightened (a) cleanly. So a drug was being excluded
-by a network error. The fix is registered with the rule because it is the rule's input: openFDA's 404 is an answer
+by a network error.
+
+**d. Part (a) reads a stated central action; a stated target belongs to part (b), and the division was tested.** The
+screen keeps only sentences naming central anatomy, so a label that states a receptor mechanism without naming the
+brain is not a candidate for (a). Codeine's own label says "Codeine is an opioid agonist relatively selective for
+the mu-opioid receptor", which the screen never sees. That looked like a blind spot and was measured: of the 24
+drugs recorded as "no such sentence", **20 carry a sentence naming the drug and a target with no central-anatomy
+word** - and reading them settles it the other way, because they state what the target is rather than that the drug
+acts centrally ("Verapamil hydrochloride is a calcium antagonist or slow-channel inhibitor"; "Celecoxib is a potent
+inhibitor of prostaglandin synthesis in vitro"). A calcium channel or a cyclo-oxygenase is not a central claim, and
+**whether a target is in the brain is what part (b) already tests**, from the graph's GTEx annotation rather than
+from sentence matching. So the filter stands: (a) carries a stated central effect, (b) carries the target, and the
+two are not redundant. Codeine loses nothing by it - `OPRM1`, `OPRD1` and `OPRK1` are all recorded as mechanism
+targets and all three are brain-expressed. The fix is registered with the rule because it is the rule's input: openFDA's 404 is an answer
 and is cached; anything else is retried.
 
 **What this changes downstream.** The admitted set changes, so the perturbation set changes, so the leakage groups

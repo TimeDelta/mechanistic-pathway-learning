@@ -82,3 +82,38 @@ If the proposals hold, part (a) removes **pindolol, granisetron, metformin, omep
 drugs the rule would otherwise admit, and leaves **hydrocodone, cyclobenzaprine, nimodipine, metoprolol,
 propranolol, felodipine and indomethacin**. Five of twelve, which is why this reading is not a formality. None of
 it is decided here.
+
+
+## Codeine, and a test of whether the screen's filter misses receptor mechanisms
+
+The owner, 13 October 2026: "Codeine also hits opioid receptors in the brain ... is that recorded?"
+
+**Part (b) records it fully.** Codeine's mechanism targets are `OPRM1`, `OPRD1` and `OPRK1`, and the graph's GTEx
+annotation marks **all three brain-expressed**. Its Kp,uu,brain is 1.00, so part (c) holds as well.
+
+**The label states the mechanism too, and the screen cannot see that sentence.** From the Mechanism of Action
+section of codeine's own label: *"Codeine is an opioid agonist relatively selective for the mu-opioid receptor, but
+with a much weaker affinity than morphine."* The screen keeps only sentences matching `CENTRAL_ACTION`, which
+requires a word naming central anatomy, and that sentence names none. So codeine passes part (a) on a different
+sentence: *"Codeine produces respiratory depression by direct action on brain stem respiratory centers"* (12.2
+Pharmacodynamics).
+
+**That looked like a systematic blind spot and it was measured rather than assumed.** Of the 24 drugs the screen
+records as "no such sentence", **20 have at least one sentence naming the drug and a target with no central-anatomy
+word**. But reading them settles it the other way: they are statements of *what the target is*, not of acting
+centrally - "Verapamil hydrochloride is a calcium antagonist or slow-channel inhibitor", "Betaxolol is a
+beta-1-selective (cardioselective) adrenergic receptor blocking agent", "Celecoxib is a potent inhibitor of
+prostaglandin synthesis in vitro". A calcium channel or a cyclo-oxygenase is not a central claim. **Whether that
+target is in the brain is exactly what part (b) tests**, from the graph's structured annotation rather than from
+sentence matching, and it tests it better.
+
+So the filter is right for part (a)'s job: requiring central anatomy is what separates a statement of central
+action from a statement of target identity, and the second belongs to (b). For codeine nothing is lost - the
+receptor mechanism is in (b) with all three receptors brain-expressed, and (a) contributes the thing (b) cannot, a
+stated central **effect**.
+
+**One check on that sentence, since respiratory depression is an unwanted effect.** Item 14 refuses to read the
+adverse-reaction, warning and indication sections, because admitting a drug for the psychiatric events on its label
+is the circularity the rule exists to avoid. This sentence is in a pharmacology section, it states a mechanism
+rather than reporting an incidence, and respiratory depression is not among the study's 24 symptoms, so no
+circularity arises through it.
