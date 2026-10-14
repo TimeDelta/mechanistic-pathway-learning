@@ -2238,6 +2238,28 @@ the first was unfavourable selects the drug set on the outcome, which is the cir
 ("Medicines agency" throughout, never "regulator": in this project a regulator is a gene or complex that regulates
 a reaction.)
 
+**b(i). The trigger is narrowed from "no section" to "no statement on the question", on the owner's distinction of
+14 October 2026.** His words: "it's fine to search for secondary sources as long as we don't override a
+pre-existing explicit label: an implicit label coming from a lack of data though is what i was thinking of". The
+rule as first written triggered on the absence of a pharmacology section, which is a cruder proxy for what matters:
+whether the label ever addressed central action at all. An exclusion that rests on a label's **silence** is an
+inference from absence, and filling it from a second agency overrides nothing. An exclusion that rests on a label's
+**statement** is a finding, and a second agency would re-litigate it. **The measurement that makes this operable**:
+of the 24 drugs whose verdict is "no such sentence", **17 never mention the brain or the central nervous system
+anywhere in the pharmacology read** - carvedilol, diclofenac, diltiazem, flurbiprofen, isotretinoin, isradipine,
+ketoprofen, naproxen, nicardipine, nifedipine, nisoldipine, pioglitazone, pitavastatin, prazosin, ribavirin,
+sulfasalazine, warfarin - while **7 do mention it in a form the matcher rejected**: celecoxib 15 mentions, atenolol
+11, acebutolol 6, metoclopramide 4, verapamil 4, betaxolol 3, mecamylamine 2. **So the admission rule becomes
+three-way.** A drug whose pharmacology states that it does not reach the brain keeps that verdict and is never
+sent to a second agency. A drug whose pharmacology mentions the central nervous system is **re-read with the fixed
+matcher first**, because the label addressed the question and the failure was the reader's; only if a competent
+read still finds no statement does it move to the silent group. A drug whose pharmacology is silent on the question
+may be completed from a second medicines agency, and the source read is recorded per drug. Two of the seven are
+flagged for the re-read because the outcome is likely to change in opposite directions: **metoclopramide** and
+**mecamylamine** act centrally and are probably false exclusions, while **atenolol**'s mentions probably include an
+explicit statement that it crosses the blood-brain barrier poorly, which would move it from "no such sentence" to
+"states that it does not reach the brain" and exclude it on a finding rather than on silence.
+
 Seven drugs qualify, and they qualify for two different reasons that are both absences of a section:
 
 - **No United States label exists** (openFDA answers HTTP 404): oxprenolol, celiprolol, penbutolol, etoricoxib and
