@@ -28,6 +28,24 @@ from the expression tables and reactions whose rule names no known gene (transpo
 reactions). An all_cells class of weight 1 everywhere can be added, which gives the original propagation as one of the
 channels, so a model with cell classes contains the model without them.
 
+A protein complex takes the expression of its **limiting member**, per class (the owner, 13 October 2026, decision
+4.2: "Taking the complex's limiting member weight per type makes sense i think but only if it applies at the
+complex itself"). A complex is a `protein_entity` node that its members reach by `member_of` and that reaches
+reactions by `catalyzed_by`, `activates`, `inhibits` and `substrate_of`, so a response travels gene -> complex ->
+reaction and crosses the complex node. Placing the weight there gates every path through it exactly once, which is
+what a complex is: an obligate subunit a class does not express shuts it in that class however abundant the others
+are. Leaving the members to carry it alone, which is what happened before, gates each path by whichever member it
+arrived through, so an abundant subunit lets the response past while another is missing - a maximum over the
+members where a complex is a minimum.
+
+**The minimum is taken on the raw nCPM and the relative weight formed afterwards**, which is the same order the
+reactions use: a complex is the "and" of its subunits and `evaluate_gene_rule` already takes "and" as a minimum
+over raw expression. Taking it the other way round, as a minimum over the members' relative weights, composes a
+specificity measure across subunits rather than an availability: two subunits with different top classes then pull
+each other down in every class, and only 45 percent of complexes keep any class at 0.9 or above, against 69
+percent under the registered order (docs/complex_limiting_member_weight.md). A complex available nowhere is a
+complex nothing propagates through anywhere.
+
 Extracellular metabolites (Human-GEM compartment "e") can be marked as one pool shared by every class
 (extracellular_pool_nodes): a transmitter released by one class then reaches the receptors of every other class.
 """
@@ -49,10 +67,47 @@ def relative_expression_weights(class_expression: pd.DataFrame, half_saturation:
     return values.div(values.max(axis=1) + half_saturation, axis=0)
 
 
+COMPLEX_NODE_TYPE = "protein_entity"
+MEMBER_RELATION = "member_of"
+
+
+def complex_limiting_member_expression(nodes: pd.DataFrame, member_edges: pd.DataFrame, class_expression: pd.DataFrame,
+                                       symbol_to_ensembl: dict[str, str] | None = None) -> pd.DataFrame:
+    """Per complex node and class, the minimum raw nCPM over the members that have one. Decision 4.2.
+
+    Indexed by complex node_id, one column per class, and a complex no member of which carries expression is absent
+    from the result rather than present at zero, so the caller leaves it at weight 1 - the same convention the
+    encoder already uses for a reaction whose rule names no known gene.
+
+    The minimum is on the raw expression, not on the members' relative weights: a complex is the "and" of its
+    subunits and evaluate_gene_rule already reads "and" that way, so this keeps the two aggregations in the same
+    order. See the module docstring for what the other order costs."""
+    classes = list(class_expression.columns)
+    is_gene = (nodes.node_type == "gene").to_numpy()
+    gene_ensembl = gene_node_ensembl_ids(nodes, symbol_to_ensembl)
+    expression_of_gene_node = class_expression.reindex(gene_ensembl[is_gene].to_numpy())
+    expression_of_gene_node.index = pd.Index(nodes.node_id[is_gene], name="node_id")
+
+    complex_nodes = set(nodes.node_id[nodes.node_type == COMPLEX_NODE_TYPE])
+    edges_into_complexes = member_edges[(member_edges.relation_type == MEMBER_RELATION)
+                                        & member_edges.target_id.isin(complex_nodes)]
+    members = edges_into_complexes.join(expression_of_gene_node, on="source_id", how="inner")
+    if members.empty:
+        return pd.DataFrame(columns=classes, index=pd.Index([], name="node_id"))
+    limiting = members.groupby("target_id")[classes].min()
+    limiting.index.name = "node_id"
+    return limiting.dropna(how="all")
+
+
 def node_cell_class_weights(nodes: pd.DataFrame, class_expression: pd.DataFrame, symbol_to_ensembl: dict[str, str] | None = None,
-                            half_saturation: float = DETECTION_THRESHOLD_NCPM, include_all_cells_class: bool = True) -> pd.DataFrame:
+                            half_saturation: float = DETECTION_THRESHOLD_NCPM, include_all_cells_class: bool = True,
+                            member_edges: pd.DataFrame | None = None) -> pd.DataFrame:
     """node_id-indexed weights in [0, 1], one column per class of class_expression (an Ensembl-indexed nCPM table), plus
-    ALL_CELLS_CLASS when include_all_cells_class; see the module docstring for which nodes get what."""
+    ALL_CELLS_CLASS when include_all_cells_class; see the module docstring for which nodes get what.
+
+    member_edges: the graph's edge table, used only for its `member_of` rows, which give each protein complex the
+    expression of its limiting member (decision 4.2). Omitted, every complex keeps weight 1 in every class, which
+    is the behaviour before that decision."""
     classes = list(class_expression.columns)
     weights = pd.DataFrame(1.0, index=pd.Index(nodes.node_id, name="node_id"), columns=classes)
 
@@ -60,6 +115,12 @@ def node_cell_class_weights(nodes: pd.DataFrame, class_expression: pd.DataFrame,
     gene_ensembl = gene_node_ensembl_ids(nodes, symbol_to_ensembl)[is_gene]
     gene_weights = relative_expression_weights(class_expression, half_saturation).reindex(gene_ensembl.to_numpy())
     weights.loc[is_gene, classes] = gene_weights.fillna(1.0).to_numpy()
+
+    if member_edges is not None:
+        limiting = complex_limiting_member_expression(nodes, member_edges, class_expression, symbol_to_ensembl)
+        if len(limiting):
+            complex_weights = relative_expression_weights(limiting, half_saturation)
+            weights.loc[complex_weights.index, classes] = complex_weights[classes].to_numpy()
 
     is_reaction = (nodes.node_type == "reaction").to_numpy()
     rules = nodes.gene_reaction_rule[is_reaction].fillna("").to_numpy()

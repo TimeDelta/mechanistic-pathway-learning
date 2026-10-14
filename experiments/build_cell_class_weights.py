@@ -35,6 +35,8 @@ def main() -> None:
     parser.add_argument("--dopaminergic-expression", type=Path, default=Path("data/processed/brain_expression/dopaminergic_siletti_cluster395.parquet"))
     parser.add_argument("--half-saturation", type=float, default=DETECTION_THRESHOLD_NCPM)
     parser.add_argument("--no-all-cells-class", action="store_true")
+    parser.add_argument("--no-complex-limiting-member", action="store_true",
+                        help="leave every protein complex flat at weight 1, the behaviour before decision 4.2")
     parser.add_argument("--output", type=Path, default=Path("data/processed/cell_class_weights/slice_cell_class_weights.parquet"))
     arguments = parser.parse_args()
 
@@ -44,8 +46,11 @@ def main() -> None:
     class_expression = add_dopaminergic_class(hpa_cell_class_table(read_zipped_table(arguments.hpa_cluster_type)),
                                               pd.read_parquet(arguments.dopaminergic_expression)["ncpm_aligned"])
     class_expression.columns = [column.removeprefix("class_") for column in class_expression.columns]
+    member_edges = None if arguments.no_complex_limiting_member else \
+        pd.read_parquet(arguments.graph_dir / "edges.parquet", columns=["source_id", "target_id", "relation_type"])
     weights = node_cell_class_weights(nodes, class_expression, symbol_to_ensembl, arguments.half_saturation,
-                                      include_all_cells_class=not arguments.no_all_cells_class)
+                                      include_all_cells_class=not arguments.no_all_cells_class,
+                                      member_edges=member_edges)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     weights.to_parquet(arguments.output)
 

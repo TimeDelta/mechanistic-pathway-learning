@@ -2,7 +2,10 @@
 import numpy as np
 import pandas as pd
 
-from mechanistic_pathway_learning.graph.brain_expression_weights import (ALL_CELLS_CLASS, extracellular_pool_nodes, node_cell_class_weights,
+import pytest
+
+from mechanistic_pathway_learning.graph.brain_expression_weights import (ALL_CELLS_CLASS, complex_limiting_member_expression,
+                                                                         extracellular_pool_nodes, node_cell_class_weights,
                                                                          relative_expression_weights)
 
 
@@ -31,3 +34,71 @@ def test_nodes_without_expression_get_one_and_reactions_follow_their_rule():
     assert (weights.loc[["r2", "m1", "m2"]] == 1.0).all().all()  # no rule, metabolites
     assert (weights[ALL_CELLS_CLASS] == 1.0).all()
     assert extracellular_pool_nodes(nodes).tolist() == [False, False, False, False, False, True]
+
+
+# --- Decision 4.2: a protein complex takes its limiting member's expression, per class ---
+
+def complex_fixture() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Two subunits with opposite class specificities, a complex of them, and a complex with no expressed member."""
+    nodes = pd.DataFrame({
+        "node_id": ["gene:ABUNDANT", "gene:SCARCE", "gene:UNKNOWN", "complex:BOTH", "complex:UNKNOWN_ONLY",
+                    "reaction:DOWNSTREAM"],
+        "node_type": ["gene", "gene", "gene", "protein_entity", "protein_entity", "reaction"],
+        "ensembl_gene_id": ["ABUNDANT", "SCARCE", None, None, None, None],
+        "gene_symbol": ["ABUNDANT", "SCARCE", "UNKNOWN", None, None, None],
+        "gene_reaction_rule": [None, None, None, None, None, ""],
+    })
+    edges = pd.DataFrame({
+        "source_id": ["gene:ABUNDANT", "gene:SCARCE", "gene:UNKNOWN", "complex:BOTH"],
+        "target_id": ["complex:BOTH", "complex:BOTH", "complex:UNKNOWN_ONLY", "reaction:DOWNSTREAM"],
+        "relation_type": ["member_of", "member_of", "member_of", "catalyzed_by"],
+    })
+    class_expression = pd.DataFrame({"neuron": [1000.0, 10.0], "astrocyte": [10.0, 1000.0]},
+                                    index=pd.Index(["ABUNDANT", "SCARCE"], name="ensembl_gene_id"))
+    return nodes, edges, class_expression
+
+
+def test_a_complex_takes_the_minimum_raw_expression_of_its_members_per_class():
+    nodes, edges, class_expression = complex_fixture()
+    limiting = complex_limiting_member_expression(nodes, edges, class_expression)
+    assert list(limiting.index) == ["complex:BOTH"], "a complex with no expressed member must be absent, not zero"
+    assert limiting.loc["complex:BOTH", "neuron"] == pytest.approx(10.0)
+    assert limiting.loc["complex:BOTH", "astrocyte"] == pytest.approx(10.0)
+
+
+def test_the_limiting_member_is_chosen_within_each_class_and_can_differ_between_them():
+    """"per type": the scarce subunit in the neuron column is not the scarce one in the astrocyte column."""
+    nodes, edges, class_expression = complex_fixture()
+    limiting = complex_limiting_member_expression(nodes, edges, class_expression)
+    assert limiting.loc["complex:BOTH", "neuron"] == class_expression.loc["SCARCE", "neuron"]
+    assert limiting.loc["complex:BOTH", "astrocyte"] == class_expression.loc["ABUNDANT", "astrocyte"]
+
+
+def test_the_minimum_is_on_raw_expression_and_not_on_the_members_relative_weights():
+    """The registered order. Taking it the other way round drives a complex of differently specific subunits
+    towards zero in every class, which is what docs/complex_limiting_member_weight.md measures."""
+    nodes, edges, class_expression = complex_fixture()
+    registered = relative_expression_weights(
+        complex_limiting_member_expression(nodes, edges, class_expression))
+    member_weights = relative_expression_weights(class_expression)
+    the_other_order = member_weights.min(axis=0)
+    assert registered.loc["complex:BOTH"].max() == pytest.approx(10.0 / 11.0)
+    assert the_other_order.max() < 0.02
+    assert registered.loc["complex:BOTH"].max() > 20 * the_other_order.max()
+
+
+def test_a_complex_with_no_expressed_member_keeps_weight_one_in_every_class():
+    nodes, edges, class_expression = complex_fixture()
+    weights = node_cell_class_weights(nodes, class_expression, member_edges=edges)
+    assert (weights.loc["complex:UNKNOWN_ONLY", ["neuron", "astrocyte"]] == 1.0).all()
+
+
+def test_omitting_the_member_edges_leaves_every_complex_flat():
+    """The behaviour before decision 4.2, kept available so the change can be measured against it."""
+    nodes, edges, class_expression = complex_fixture()
+    without = node_cell_class_weights(nodes, class_expression)
+    with_members = node_cell_class_weights(nodes, class_expression, member_edges=edges)
+    assert (without.loc["complex:BOTH", ["neuron", "astrocyte"]] == 1.0).all()
+    assert (with_members.loc["complex:BOTH", ["neuron", "astrocyte"]] < 1.0).all()
+    for gene in ("gene:ABUNDANT", "gene:SCARCE", "gene:UNKNOWN"):
+        assert without.loc[gene].equals(with_members.loc[gene]), "gene weights must not move"

@@ -2125,6 +2125,48 @@ reaction consuming two molecules counts as one (14.5 percent of both-produced-an
 non-unit coefficient, and the totals differ at 2.8 percent of those with equal reaction counts). The registered
 per-edge demand of item 20 stays unbuilt. This item changes the counting of reactions, not of molecules.
 
+**30. A protein complex carries the cell-class weight of its limiting member, at the complex node** (the owner,
+13 October 2026, decision 4.2: "Taking the complex's limiting member weight per type makes sense i think but only
+if it applies at the complex itself. That's what you mean, right?").
+
+**Where it applies, and why there is only one place it can.** A complex is a `protein_entity` node that its members
+reach by `member_of` and that reaches reactions by `catalyzed_by`, `activates`, `inhibits` and `substrate_of`, so a
+response travels gene -> complex -> reaction and crosses the complex node. The encoder scales a response by the
+destination's class weight at each step, so a weight on the complex gates every path through it exactly once, which
+is what a complex is: an obligate subunit a class does not express shuts it there however abundant the others are.
+Leaving the members to carry it alone, which is what happened until now, gates each path by whichever subunit it
+arrived through, so an abundant subunit passes the response while another is missing - a maximum over the members
+where a complex is a minimum. Putting it on the reaction instead would place the weight where the complex is not,
+double-gate any path that also crosses the complex, and collide with the Human-GEM gene rule that already sets a
+reaction's weight.
+
+**The minimum is taken on the raw nCPM, per class, with the relative weight formed afterwards.** This is the order
+`evaluate_gene_rule` already uses for "and", and a complex is the "and" of its subunits. The alternative, a minimum
+over the members' relative weights, is a different quantity: the relative weight measures a gene's specificity
+across classes, so two subunits with different top classes pull each other down everywhere. Measured, it leaves 55
+percent of complexes above 0.9 in no class at all against 31 percent under the registered order
+(`docs/complex_limiting_member_weight.md`), and a complex available in no class is one nothing propagates through
+anywhere. **Per class** is part of the rule and not an implementation detail: the limiting subunit differs between
+classes for 555 of the 1,523 complexes that carry a gate, so a single globally chosen subunit would be a different
+rule.
+
+**What it changes.** 1,523 of the 1,681 complexes take a gate, median 0.150, with 44 percent of complex-by-class
+pairs below 0.1. The 387 reactions whose regulators are all complexes stop being flat in every class; 382 of them
+take a gate. The 158 complexes no member of which carries expression stay at 1, the same convention the encoder
+uses for metabolites, the membrane potential and reactions whose rule names no known gene. Gene and reaction
+weights do not move. `build_cell_class_weights.py --no-complex-limiting-member` restores the previous behaviour, so
+the change is measurable against it.
+
+**One limitation, registered because it bears on a confirmatory control.** H2's rewired-expression arm permutes the
+Human-GEM gene rules and recomputes the reactions' cell-class weights. A complex takes its gate from `member_of`
+edges and not from a rule, so that permutation leaves all 1,523 complex gates intact and the rewired condition
+still carries real expression structure through them. **Whether to extend the control by permuting gene-to-complex
+membership is decision 4.2b and is the owner's**, because it changes a registered control; until it is settled, an
+H2 result is reported with the statement that its rewired arm does not rewire the complex gate.
+
+**When it takes effect.** The weights file is rebuilt with the v4 rebuild of decision 1.2 and not before, because
+the scorer checks the cell-class file's hash against the run being scored.
+
 **29. Target occupancy is a model input; it is computed where its inputs exist, calibrated where they do not, and
 flagged either way** (the owner, 13 October 2026: "I want into occupancy... it's needed for the physiology", and
 "Don't REQUIRE occupancy though ... some drugs legitimately don't have it").
