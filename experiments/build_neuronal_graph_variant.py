@@ -31,6 +31,7 @@ from mechanistic_pathway_learning.graph.neurotransmission_regulation import add_
 from mechanistic_pathway_learning.graph.node_descriptors import metabolite_charges_from_sbml
 from mechanistic_pathway_learning.graph.oxidative_regulation import add_oxidative_regulation
 from mechanistic_pathway_learning.graph.reactome_import import (
+    read_chebi_charges,
     DEFAULT_MEMBRANE_POTENTIAL_BUILD,
     MEMBRANE_POTENTIAL_BUILDS,
     CuratedReaction,
@@ -55,6 +56,24 @@ INORGANIC_IONS = {"Na+": "MAM02519", "K+": "MAM02200", "Ca2+": "MAM01413", "Cl-"
 # use the entity as chloride and not a value read from a charge table. MAM01442, BiGG `cl`, is the entity that
 # carries chloride's charge in Human-GEM, and the owner chose to keep the two separate rather than merge them.
 IONS_WITHOUT_A_HUMAN_GEM_CHARGE = {"Cl- (Reactome)": ("MAM02144", -1)}
+# The charge guard the owner approved on 14 October 2026 ("good call on prophylactically changing the mapper to
+# ChEBl term Reactome names"). It turned out to be the substantive fix rather than a precaution, because NEITHER
+# Human-GEM entity is chloride by its own annotation: MAM02144 is `InChI=1S/ClH/h1H`, hydrogen chloride, CHEBI:17883
+# at charge 0, and MAM01442 is CHEBI:29311, "chlorine(.)", a radical, also at charge 0. Reactome names CHEBI:17996,
+# chloride, at charge -1, and that is the charge the current needs. Every identifier and charge below was read from
+# the pinned `data/raw/chebi/chebi_core.obo.gz` rather than recalled.
+# Reading the charge from the term Reactome names, rather than from whichever Human-GEM entity the conjugate-acid
+# step in `equivalent_forms` landed on, fixes the whole class: a mapping that crosses a conjugate acid or base
+# changes the charge by one proton, and only chloride happens to be affected today because the other tracked ions
+# are monatomic cations with no protonated form (decision 9.17).
+ION_CHEBI_TERM_OF_BASE = {
+    "MAM02519": "CHEBI:29101",  # sodium(1+)
+    "MAM02200": "CHEBI:29103",  # potassium(1+)
+    "MAM01413": "CHEBI:29108",  # calcium(2+)
+    "MAM01442": "CHEBI:17996",  # chloride, where Human-GEM's own annotation is the chlorine radical
+    "MAM02482": "CHEBI:18420",  # magnesium(2+)
+    "MAM02144": "CHEBI:17996",  # Reactome's chloride, which Human-GEM holds only as hydrogen chloride
+}
 TRANSMITTER_BASES = {"MAM01736": "dopamine", "MAM02897": "serotonin", "MAM02617": "noradrenaline", "MAM01290": "adrenaline", "MAM01260": "acetylcholine",
                      "MAM02124": "histamine", "MAM01974": "glutamate", "MAM00970": "GABA", "MAM01986": "glycine"}
 VESICULAR_TRANSPORTER_GENES = {"SLC18A1", "SLC18A2", "SLC18A3", "SLC32A1", "SLC17A6", "SLC17A7", "SLC17A8"}
@@ -173,6 +192,14 @@ def main() -> None:
     for name, (base, charge) in IONS_WITHOUT_A_HUMAN_GEM_CHARGE.items():
         ion_bases[name] = base
         ion_charges[base] = charge
+    # the charge guard: the term Reactome names wins over whatever entity the conjugate-acid step landed on
+    chebi_charges = read_chebi_charges(arguments.chebi_obo)
+    charges_taken_from_chebi = {}
+    for base, chebi_term in ION_CHEBI_TERM_OF_BASE.items():
+        if chebi_term in chebi_charges:
+            charges_taken_from_chebi[base] = chebi_charges[chebi_term]
+            ion_charges[base] = chebi_charges[chebi_term]
+    print(f"ion charges read from the ChEBI term Reactome names: {charges_taken_from_chebi}")
     expression = load_brain_expression(arguments.brain_expression)
     brain_expressed_genes = set(expression.loc[expression.brain_median_tpm_max >= arguments.minimum_brain_tpm, "gene_symbol"])
     sbml_texts = [path.read_text() for path in sorted(arguments.reactome_dir.glob("*.sbml"))]
