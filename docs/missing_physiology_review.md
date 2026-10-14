@@ -200,3 +200,22 @@ on.
    variable; there are no circuits, so a one-target perturbation with two opposite symptoms cannot have their
    relative strength predicted even in principle; the labels are not steady-state observations; no endocrine loop
    is representable.
+
+
+## 7. Correction: BRENDA is CC BY 4.0, so the allosteric gap is a download rather than a curation
+
+This session told the owner that BRENDA "restricts bulk download". **That was asserted from memory and it is wrong.**
+`brenda-enzymes.org/download.php`, read 14 October 2026 with `experiments/read_public_page.py`: "All copyrightable
+parts of BRENDA are licensed under **Creative Commons Attribution License 4.0 (CC BY 4.0)**", and the whole database
+is published as a 71.59 MB text tarball and a 79.35 MB JSON tarball. The only gate is "Before downloading any files
+from BRENDA, you have to actively accept the license", a checkbox the owner clicks.
+
+So there is no prohibition to work around, and the enzyme-regulation gap - 173 regulatory edges against 60,838 into
+reactions - is addressable by downloading a released file and mapping its inhibitor and activator records onto
+Human-GEM, not by hand curation. CC BY 4.0 also permits redistribution with attribution, so a derived table may
+ship in this repository, which the licence of a curated-by-hand table would not have settled.
+
+**This is what the licence-verification ruling of 11 October 2026 exists to catch** ("No. You have to verify the
+license"), and it caught a claim that would otherwise have sent the owner into unnecessary curation. SABIO-RK, which
+this review proposed as the free alternative, is moot; its terms page served no robots file and was recorded as a
+refusal rather than read.
