@@ -2385,15 +2385,28 @@ sigmoid head was dropped from the confirmatory family on 8 October because only 
 as pathways.
 
 **What is still open, and is deliberately not registered here.**
-- **Off-targets in a model input.** The user asked for them on 12 October ("Occupancy input should be included as
-  well as off targets") and the measurement argues against: admitting off-targets at any threshold from 0.1 to 0.5,
-  under any concentration scheme, takes the largest leakage group from 241 perturbations and 71 drugs to between 203
-  and 209 of the 222 drugs, which ends the drug split that item 2 depends on (docs/label_source_review.md 14.3). The
-  objection is recorded and the decision is the user's.
-- **Which held drugs of item 14 are admitted once their missing part is supplied.** The rule itself is registered;
-  pindolol, oxprenolol, timolol and carvedilol each lack one part of it, and whether a label sentence is read for
-  pindolol and timolol, or a Kp,uu,brain is sought for timolol and carvedilol, is the user's to direct. The superseded
-  `configs/admitted_atc_prefixes_draft.csv` records what was considered under the old group rule.
+- ~~**Off-targets in a model input.**~~ **Closed 13 October and registered as item 5c; this bullet is kept because
+  the question was re-opened in error after it was settled.** The objection recorded here - that admitting off-targets
+  at any threshold from 0.1 to 0.5 takes the largest leakage group to between 203 and 209 of the 222 drugs
+  (docs/label_source_review.md 14.3) - was measured against the **group** split that item 25 has since replaced, and
+  it largely falls under the target partition: held-out drugs reach 14.1 percent on mechanism targets alone and 14.7
+  with off-targets at occupancy 0.25 or 0.10, against the registered 14.3, because item 25 solves for the fraction
+  that gives the registered share. What off-targets cost under item 25 is novelty rather than size, and that cost is
+  reported rather than split on (item 25c). **Settled: every off-target enters the input at its occupancy (item 5c
+  step 1), the split is on mechanism targets (item 25).** See decision 1.3(g).
+- **Which held drugs of item 14 are admitted once their missing part is supplied**, narrowed twice since this bullet
+  was written. The rule is registered and item 31 tightened part (a) to a stated central action, which drops nine
+  drugs that penetration alone had admitted. Of the four held drugs, the search of 13-14 October
+  (`docs/four_held_drugs_search.md`) resolves two: **carvedilol** against admission on positive evidence, since it is
+  a P-glycoprotein substrate at the blood-brain barrier with brain uptake rising up to three-fold under cyclosporin A
+  (Bart et al. 2005, doi 10.1038/sj.bjp.0706283), which puts Kp,uu,brain below 1; and **timolol** as unmeasured,
+  its Kp,uu,brain being absent from all 34 Kp,uu tables and from PubMed. **Oxprenolol and pindolol are blocked by a
+  human check at the UK eMC**, recorded as a refusal under the 11 October ruling and not routed around, so reading
+  `medicines.org.uk` for Trasicor and pindolol is the user's. Separately, the reading of (a) shortlists **codeine,
+  cyclobenzaprine, hydrocodone and ondansetron** - four, not the twelve this bullet's era carried - and a shortlist
+  is not a verdict: ondansetron's own label says "It is not certain whether ondansetron's antiemetic action is
+  mediated centrally, peripherally, or in both sites". The superseded `configs/admitted_atc_prefixes_draft.csv`
+  records what was considered under the old group rule. See decisions 3.1, 3.1b and 3.2.
 - **The reach of the electrical layer, which is an aggregation question and not a wiring one.** Item 13 below
   registers the computed potential. What it does not fix is the magnitude of what arrives at `VM_c`, and the
   measurement of 12 October withdrew the diagnosis this item used to carry: the binding divisor is the in-degree of the
