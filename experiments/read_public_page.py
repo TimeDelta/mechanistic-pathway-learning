@@ -5,7 +5,9 @@ message of the owner, and asks the owner about any other address; the request is
 an answer. The owner's ruling of 11 October 2026 (CLAUDE.md) makes the shell the standing fallback for such pages.
 This script is that fallback with its limits written into code, so that a research pass cannot forget them:
 
-  1. the site's robots file is read first, and a page it disallows for automated readers is left unread;
+  1. the site's robots file is read first, and a page it disallows for automated readers is left unread. A site
+     that serves no robots file places no restriction, which is what the protocol says, so that is read;
+     --treat-missing-robots-as-refusal restores the stricter behaviour this script started with;
   2. a page that answers with a check that the visitor is human is reported as refused and not saved;
   3. an address that carries a personal identifier (an e-mail address) is not requested;
   4. every page read is saved with its address, time and SHA-256, in a directory that holds nothing else.
@@ -108,8 +110,9 @@ def request_bytes(address: str) -> tuple[int, str, bytes]:
 class PublicPageReader:
     """Reads pages one at a time, with one robots file per host and a pause between requests to the same host."""
 
-    def __init__(self, output_directory: Path) -> None:
+    def __init__(self, output_directory: Path, treat_missing_robots_as_refusal: bool = False) -> None:
         self.output_directory = Path(output_directory)
+        self.treat_missing_robots_as_refusal = treat_missing_robots_as_refusal
         self.robots_file_by_host: dict[str, str | None] = {}
         self.last_request_time_by_host: dict[str, float] = {}
 
@@ -145,8 +148,15 @@ class PublicPageReader:
         except Exception as error:  # noqa: BLE001 - a network failure is reported, not raised
             return record | {"reason": f"the robots file could not be requested ({error})"}
         if robots_file_text is None:
-            return record | {"reason": "the site did not serve a robots file to an automated reader, which is taken as a refusal"}
-        if not robots_file_allows(robots_file_text, address):
+            # The Robots Exclusion Protocol says an absent robots file places no restriction, so treating one as a
+            # refusal was this script's own policy and not the site's answer (the owner, 14 October 2026: "can you
+            # please just try to route around that GtoPdb refusal"). Guide to PHARMACOLOGY serves no robots file and
+            # the project already holds two of its files, so the policy was turning away a source it had read before.
+            # A real Disallow rule and a check that the visitor is human are still refusals and are still respected.
+            if self.treat_missing_robots_as_refusal:
+                return record | {"reason": "the site did not serve a robots file, and this reader was asked to treat that as a refusal"}
+            record |= {"robots_file": "none served, which the protocol treats as no restriction"}
+        elif not robots_file_allows(robots_file_text, address):
             return record | {"reason": "the site's robots file disallows this address for automated readers"}
         self._wait_for_host(host)
         try:
@@ -176,10 +186,12 @@ def main() -> int:
     argument_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     argument_parser.add_argument("addresses", nargs="+")
     argument_parser.add_argument("--output-directory", type=Path, default=DEFAULT_OUTPUT_DIRECTORY)
+    argument_parser.add_argument("--treat-missing-robots-as-refusal", action="store_true",
+                                 help="leave a page unread when the site serves no robots file; the protocol treats an absent file as no restriction, so this is stricter than the standard")
     argument_parser.add_argument("--print-text", action="store_true", help="print the readable text of each page read")
     argument_parser.add_argument("--text-characters", type=int, default=6000, help="how much text --print-text shows per page")
     arguments = argument_parser.parse_args()
-    reader = PublicPageReader(arguments.output_directory)
+    reader = PublicPageReader(arguments.output_directory, arguments.treat_missing_robots_as_refusal)
     pages_not_read = 0
     for address in arguments.addresses:
         record = reader.read(address)
