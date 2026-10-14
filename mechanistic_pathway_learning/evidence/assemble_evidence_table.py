@@ -57,6 +57,10 @@ from mechanistic_pathway_learning.evidence.assign_evidence_grades import (
     assign_evidence_grade,
     loss_weight_for_record,
 )
+from mechanistic_pathway_learning.evidence.load_open_targets_statements import (
+    human_worded_statements,
+    reliability_reports,
+)
 from mechanistic_pathway_learning.evidence.evidence_reliability_model import (
     ReportReliabilityFit,
     fit_weighted_dawid_skene,
@@ -560,6 +564,7 @@ def assemble(
     drugs_acting_as_graph_compounds_path: Path | None = DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
     seed_gain_of_function_genes_positive: bool = False,
     admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES,
+    open_targets_scoped_rows_path: Path | None = None,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
 
@@ -631,6 +636,35 @@ def assemble(
     reports["rubric_weight"] = rubric_weights_for_table(reports, rubric_weight_defaults)
     for extra_path in extra_report_paths or []:
         reports = append_external_reports(reports, extra_path, rubric_weight_defaults)
+    # Amendment item 12d and decision 8.5 (the owner, 13 October 2026: "add it to the Dawid-Skene fit estimates";
+    # option (a) chosen 14 October after the effect was measured). The class reaches the reliability fit and not
+    # the grade, so its whole effect is on the fitted sensitivities and on each item's posterior.
+    #
+    # ONE GUARD IS INACTIVE HERE AND THAT IS THE CHOICE THE OWNER MADE. `reliability_reports` also skips a pair the
+    # label selection has relabelled an evidenced negative, but that set is computed downstream in
+    # evaluation/experiment_data.py and does not exist inside this function. Measured before choosing: the class
+    # emits 14 reports, no existing source's sensitivity moves by as much as 1e-5, no item's posterior moves by
+    # more than 0.0019, and exactly 4 of the touched items are pairs the selection flags `masks_a_negative`
+    # (GABRA1 depressed_mood, HTR2A cognitive_impairment, HTR2A psychosis, SLC6A4 anxiety). Threading the set
+    # across the module boundary would have guarded those 4 items and changed nothing measurable, so option (a)
+    # was taken and the inactive guard is recorded here rather than left to be discovered.
+    open_targets_report_count = 0
+    if open_targets_scoped_rows_path is not None and Path(open_targets_scoped_rows_path).exists():
+        items_with_a_positive_report = {
+            (row.perturbation_id, row.symptom, row.relation)
+            for row in reports[reports.report_value == 1].itertuples()}
+        gene_perturbation_ids = set(reports[reports.perturbation_type == "gene"].perturbation_id)
+        perturbation_of_target = {gene_symbol: gene_symbol for gene_symbol in gene_perturbation_ids}
+        statements = human_worded_statements(pd.read_parquet(open_targets_scoped_rows_path))
+        open_targets_rows = reliability_reports(statements, items_with_a_positive_report, perturbation_of_target)
+        if open_targets_rows:
+            open_targets_frame = pd.DataFrame(open_targets_rows)
+            open_targets_frame["rubric_weight"] = rubric_weights_for_table(open_targets_frame, rubric_weight_defaults)
+            reports = pd.concat([reports, open_targets_frame], ignore_index=True)
+            open_targets_report_count = len(open_targets_frame)
+        print(f"Open Targets target safety: {open_targets_report_count} reliability reports appended "
+              f"from {len(statements)} curated statements (evidenced-negative guard inactive; decision 8.5 option a)")
+
     cluster_by_gene = disease_cluster_ids_from_reports(reports, disease_cluster_max_genes)
     observations = aggregate_reports_to_observations(reports, grade_a_policy, cluster_by_gene, metabolic_node_ids, drug_targets_by_perturbation)
     reliability_fit = fit_report_reliability(reports, observations, rubric_weight_defaults)
@@ -729,6 +763,8 @@ def main() -> None:
                         help="seed a gene with sign +1 when every causal association behind its reports is Orphanet's gain-of-function type; without it every gene has sign -1")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
                         help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to build_onsides_reports.py")
+    parser.add_argument("--open-targets-scoped-rows", type=Path, default=None,
+                        help="data/processed/off_target_scoping/open_targets_symptom_rows.parquet (amendment item 12d, decision 8.5): the curated target-safety statements enter the Dawid-Skene reliability fit and reach no grade and no label. Omit the flag to assemble without the class")
     arguments = parser.parse_args()
     rubric_weight_defaults = load_rubric_weight_defaults(arguments.report_rubric_weights)
     assembled = assemble(arguments.crosswalk, arguments.hpo_obo, arguments.hpo_annotations, arguments.graph_dir, arguments.sider_dir, arguments.chembl_dir,
@@ -737,7 +773,8 @@ def main() -> None:
                          extra_report_paths=list(arguments.extra_reports), onsides_bridge_path=arguments.onsides_bridge,
                          non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds,
                          seed_gain_of_function_genes_positive=arguments.seed_gain_of_function_genes_positive,
-                         admitted_atc_prefixes=read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES)
+                         admitted_atc_prefixes=read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES,
+                         open_targets_scoped_rows_path=arguments.open_targets_scoped_rows)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
