@@ -105,10 +105,31 @@ def one_draw(data, draw_seed: int, pooling_rule: str, num_bootstrap: int) -> dic
     strata = {"all_held_out": np.ones(len(held_out_rows), dtype=bool), "drug_stratum": held_out_is_a_drug,
               "gene_stratum": ~held_out_is_a_drug}
 
-    for baseline_name, scale_by_degree in (("popularity", False), ("degree_popularity", True)):
-        baseline = PopularityBaseline(scale_by_degree=scale_by_degree).fit(
-            data.outcomes[training_rows], training_degrees, label_mask[training_rows])
-        baseline_scores = baseline.predict(len(held_out_rows), held_out_degrees)
+    # type_popularity is the comparator the pooled reading needs, and reading against popularity alone was a defect.
+    # Popularity gives every row the same score for a symptom, so it cannot order a drug above a gene; the adversary's
+    # score differs from the base rate on drug rows only, so it orders drugs first, and with the drug base rate well
+    # above the gene one that earns a large AUPRC gain for KNOWING WHICH PERTURBATIONS ARE DRUGS rather than for any
+    # lookup. Against popularity the pooled macro advantage came out at +0.139, above the drug stratum's own +0.041,
+    # which is the signature of that contamination. Within the drug stratum every row is a drug, so there
+    # type_popularity and popularity coincide and the stratum numbers were never affected.
+    training_kinds = np.asarray([data.perturbation_types[row] for row in training_rows])
+    held_out_kinds = np.asarray([data.perturbation_types[row] for row in held_out_rows])
+
+    for baseline_name, scale_by_degree in (("popularity", False), ("degree_popularity", True), ("type_popularity", False)):
+        if baseline_name == "type_popularity":
+            baseline_scores = np.zeros((len(held_out_rows), data.outcomes.shape[1]))
+            for kind in np.unique(held_out_kinds):
+                of_this_kind_in_training = training_kinds == kind
+                if not of_this_kind_in_training.any():
+                    of_this_kind_in_training = np.ones(len(training_rows), dtype=bool)
+                fitted_on_kind = PopularityBaseline().fit(
+                    data.outcomes[training_rows][of_this_kind_in_training], None,
+                    label_mask[training_rows][of_this_kind_in_training])
+                baseline_scores[held_out_kinds == kind] = fitted_on_kind.predict(int((held_out_kinds == kind).sum()))
+        else:
+            baseline = PopularityBaseline(scale_by_degree=scale_by_degree).fit(
+                data.outcomes[training_rows], training_degrees, label_mask[training_rows])
+            baseline_scores = baseline.predict(len(held_out_rows), held_out_degrees)
         for stratum_name, in_stratum in strata.items():
             if in_stratum.sum() < 2:
                 continue
