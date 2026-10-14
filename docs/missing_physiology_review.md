@@ -219,3 +219,164 @@ ship in this repository, which the licence of a curated-by-hand table would not 
 license"), and it caught a claim that would otherwise have sent the owner into unnecessary curation. SABIO-RK, which
 this review proposed as the free alternative, is moot; its terms page served no robots file and was recorded as a
 refusal rather than read.
+
+## 8. Targets sourced for the eighteen absent psychiatric drugs
+
+14 October 2026, at the owner's request ("source the missing psychiatric drugs"). The draft table is
+`configs/psychiatric_drug_additions_v4_draft.csv`, 130 rows over 18 drugs, one row per drug and target gene. It is a
+draft and enters at the v4 rebuild, which the owner has not ordered. **No table in use was changed**; the only other
+file touched is `docs/data_sources.md`, where the ChEMBL licence now carries its quoted sentence.
+
+### Three of the eighteen are already in the 222-drug set
+
+Section 5 named eighteen drugs as absent. Checked by PubChem CID and by the OnSIDES ingredient bridge rather than by
+display name, **three of them are in the set already** and the names hid it:
+
+| drug | perturbation id in the set | label on the drug node | targets it carries today |
+| --- | --- | --- | --- |
+| vortioxetine | `CID109966051` | `Lu` (from "Lu AA21004") | HTR1A, SLC6A4, HTR3A |
+| sodium oxybate | `CID100010413` | `hydroxybutyrate` | GABBR1, GABBR2 |
+| escitalopram | `CID100002771` | `citalopram` | SLC6A4 |
+
+`data/processed/label_review/drug_names.csv` carries the RxNorm names that settle each: `CID109966051` is
+"Vortioxetine", `CID100010413` is "4-Hydroxybutyric Acid" with the RxNorm name "oxybate", and `CID100002771` lists
+"citalopram;escitalopram". **Escitalopram is the hardest of the three**: the project's identifier scheme gives the
+enantiomer and the racemate one perturbation id, so escitalopram cannot enter as a perturbation of its own without
+splitting that id, and its one target (SLC6A4) is the target citalopram already carries. The genuinely absent count
+is fifteen, not eighteen. `configs/centrally_acting_drugs.csv` also already holds `CID100003519` guanfacine and
+`CID100003008` dextromethorphan as candidates, both outside the 222.
+
+### Sources, and the rule each row follows
+
+Everything came from files the repository had already downloaded, plus the session's ChEMBL web service for what
+those files do not hold:
+
+- `data/raw/chembl` (ChEMBL_37, 7,561 mechanism rows) for the mechanism target and its action;
+- `data/raw/gtopdb_2026` (Guide to PHARMACOLOGY 2026.3) for per-subunit rows and affinities;
+- `data/raw/drugcentral_dti_2021_09_01` for affinities and the mechanism-of-action flag;
+- the ChEMBL MCP service for five drugs the local dump leaves without a mechanism row, for the gene symbols of
+  `CHEMBL2096662` (a SELECTIVITY GROUP the local `targets.json` does not cache: HTR2A and HTR2C), and for the
+  pentamer EC50 values of zuranolone and brexanolone.
+
+The rules are the ones already registered, not new ones:
+
+- a ChEMBL mechanism row naming one gene is kept;
+- a ChEMBL mechanism complex row is narrowed by GtoPdb where GtoPdb names at least two of its subunits, and stays
+  whole otherwise (`gtopdb_drug_targets.replace_complex_rows`, the owner's decision of 13 October 2026);
+- `p_affinity` is the maximum over every DrugCentral and GtoPdb measurement of that drug and gene, as -log10 of a
+  molar constant, under the owner's rule of 9 October 2026;
+- `magnitude` is 1 / number of graph nodes under the target entry (`perturbation_nodes`);
+- `role` is `mechanism` where ChEMBL files a mechanism row, DrugCentral sets `MOA = 1` or GtoPdb marks `Primary
+  Target`, and `other` otherwise. The draft keeps both so the owner can filter; only the `mechanism` rows are
+  candidates for a seed.
+
+One choice is not a measurement and is marked as such in the table: **a GABA-A pentamer's EC50 is carried by every
+subunit of that pentamer**. For zuranolone and brexanolone no source holds a per-subunit affinity, and the
+concentration calibration (`occupancy_calibration.py`) needs a best-bound target per drug, so the pentamer value is
+the only number there is. A second choice: where GtoPdb files several rows for one gene with different actions, the
+row GtoPdb marks `Primary Target` sets the sign. Guanfacine is why - GtoPdb gives ADRA2A both "Agonist" and "Partial
+agonist", and a dictionary built row by row would have been decided by file order.
+
+### Targets per drug
+
+`m` is mechanism rows, `o` rows with role `other`. "best pK" is the highest `p_affinity` over the mechanism rows,
+which is the number the concentration calibration would read.
+
+| drug | perturbation id | m | o | mechanism targets | best pK |
+| --- | --- | --- | --- | --- | --- |
+| lithium | `CID100011125` | 3 | 0 | GSK3A, GSK3B, IMPA1 | none |
+| escitalopram | `CID100002771` | 1 | 0 | SLC6A4 | 9.00 |
+| vortioxetine | `CID109966051` | 6 | 2 | HTR1A, HTR1B, HTR1D, HTR3A, HTR7, SLC6A4 | 8.80 |
+| topiramate | `CID100005514` | 37 | 3 | CA2, CA4, 16 GABA-A subunits, GRIA1-4, GRIK1-5, 10 SCN genes | 8.30 |
+| guanfacine | `CID100003519` | 3 | 0 | ADRA2A, ADRA2B, ADRA2C | 8.70 |
+| viloxazine | `CID100005666` | 1 | 0 | SLC6A2 | 6.81 |
+| levomilnacipran | `CID106917779` | 2 | 1 | SLC6A2, SLC6A4 | 7.95 |
+| zuranolone | `CID186294073` | 16 | 0 | the 16 GABA-A subunits of `CHEMBL2093872` | 6.87 |
+| brexanolone | `CID100092786` | 6 | 0 | GABRA1 to GABRA6 | 7.22 |
+| tianeptine | `CID100068870` | 0 | 1 | none; OPRM1 measured only | none |
+| flupentixol | `CID105281881` | 2 | 2 | DRD1, DRD2 | 8.82 |
+| zuclopenthixol | `CID100012453` | 2 | 0 | DRD1, DRD2 | 7.35 |
+| sertindole | `CID100060149` | 8 | 6 | ADRA1A, ADRA1B, ADRA1D, DRD2, DRD3, DRD4, HTR2A, HTR2C | 9.70 |
+| solriamfetol | `RXCUI:2121751` | 0 | 3 | none; SLC6A2, SLC6A3, SLC6A4 measured only | none |
+| trimipramine | `CID100005584` | 10 | 0 | ADRA1A, ADRA1B, ADRA1D, DRD2, HRH1, HTR2A, HTR2C, SLC6A2, SLC6A3, SLC6A4 | 8.85 |
+| mianserin | `CID100004184` | 3 | 6 | HTR2A, HTR2B, HTR2C | 8.75 |
+| dextromethorphan | `CID100003008` | 2 | 1 | GRIN2A, SIGMAR1 | 6.28 |
+| sodium oxybate | `CID100010413` | 2 | 1 | GABBR1, GABBR2 | none |
+
+Five drugs have **no ChEMBL mechanism row at all**, which `docs/drug_targets_any_type.md` had already recorded for
+two of them (mianserin and zuclopenthixol are among its 17 with no human mechanism target). Checked again through
+the ChEMBL service on 14 October 2026: mianserin `CHEMBL6437`, zuclopenthixol `CHEMBL53904`, tianeptine
+`CHEMBL1289110` and flupentixol `CHEMBL54661` return `{"count":0}`; solriamfetol `CHEMBL4297620` returns one row
+whose `target_chembl_id` is null and whose `mechanism_of_action` reads "Unknown". Their targets therefore come from
+DrugCentral's mechanism-of-action flag and GtoPdb's primary-target flag, and the draft says so per row.
+
+### Which targets are graph nodes
+
+**Only two gene symbols in the whole draft are not nodes of
+`data/processed/graph_full_neuronal_split_binders_drugs_v4`: GABRG1 and GABRP.** Both are subunits of ChEMBL's
+16-subunit GABA-A complex `CHEMBL2093872`, and both are absent as a `protein` node and as a `gene` node. They affect
+topiramate and zuranolone, which carry that complex whole. Neither drug is blocked by it: topiramate keeps 35 of its
+37 mechanism genes and zuranolone 14 of its 16, so each still has graph nodes and a `magnitude` of 1/14 over the
+complex rather than 1/16. **No drug in the draft needs a new node to be added.** Every other target - including
+lithium's GSK3A, GSK3B and IMPA1, tianeptine's OPRM1, sodium oxybate's HCAR1, dextromethorphan's TAS2R1 and
+mianserin's LPAR1 - is a `protein` node.
+
+IMPA2 and INPP1, which section 5 named among lithium's targets and which are indeed nodes, carry **no row in
+ChEMBL, DrugCentral or the Guide to PHARMACOLOGY**, so they are not in the draft. Adding them would be hand
+curation from the literature, not a read of these three sources.
+
+### The four hard cases
+
+- **Lithium** is not a receptor occupancy and a target row for it does not mean what the other rows mean. What the
+  row would represent: ChEMBL's two curated mechanisms, inositol monophosphatase 1 inhibition (`CHEMBL1786`) and
+  glycogen synthase kinase-3 inhibition (`CHEMBL2095188`, which expands to GSK3A and GSK3B), both at sign -1. What
+  it would not represent: any affinity, because **no source holds one** - lithium acts at millimolar plasma
+  concentrations by competing with magnesium at the enzymes' metal sites, which is an uncompetitive,
+  magnesium-dependent inhibition and not a one-site equilibrium Kd, so `occupancy_calibration.py` can neither fit
+  nor read it and lithium would be an imputed-concentration drug with no `p_affinity` to impute from; the
+  phosphoinositide depletion and the downstream effects that the mechanism is actually about, since the graph has
+  one node per enzyme and no inositol cycle to deplete; and IMPA2 and INPP1, which the sources do not file.
+- **Sodium oxybate** is already in the set on GABBR1 and GABBR2 at sign +1 from ChEMBL's GABA-B complex row, with no
+  affinity; **the GHB receptor has no node and no row** - no gene symbol for it appears in any of the three sources,
+  GtoPdb's only affinity for the drug is HCAR1 at pEC50 1.82 (a 15-millimolar full agonism, which is the lactate
+  receptor and not the psychiatric mechanism), and GtoPdb's one GABA-B row names the KCTD auxiliary subunits
+  (`GABBR1|GABBR2|KCTD8|KCTD12|KCTD16`) and is dropped as a multi-gene row. So the drug's representation is GABA-B
+  agonism alone, and the high-affinity GHB site is simply absent.
+- **Brexanolone and zuranolone** are positive allosteric modulators of GABA-A, which the graph represents poorly. In
+  the draft both carry sign +0.5 (`POSITIVE ALLOSTERIC MODULATOR` and GtoPdb `Potentiation`), which asserts that the
+  receptor's activity rises - but a modulator with no agonist present does nothing, and the graph has no edge from
+  GABA to its receptor to modulate: section 2 of this review records only 4 `inhibits` edges metabolite-to-protein
+  in the whole graph. The two also diverge in the draft for a reason that is an artefact, not pharmacology:
+  **zuranolone keeps all 16 subunits because GtoPdb holds no zuranolone row at all, while brexanolone narrows to
+  GABRA1 to GABRA6 because GtoPdb names exactly those six**. That narrowing drops every beta, gamma and delta
+  subunit, and the neurosteroid site sits at the alpha/beta interface, so it removes half a binding site - the error
+  `OBLIGATE_SUBUNITS_OF_A_SITE` exists to prevent, except that `configs/binding_sites.csv` names no neurosteroid
+  site and so no partner is added back. Two drugs with the same mechanism therefore enter with 6 and 16 targets.
+  Either both should be narrowed with a neurosteroid-site entry in `configs/binding_sites.csv` giving GABRB1,
+  GABRB2 and GABRB3 as obligate partners, or neither should be narrowed. **This is a decision for the owner and the
+  draft records both as they fall out of the registered rule.**
+- **Dextromethorphan** carries GRIN2A at -1 and SIGMAR1 at +1 from ChEMBL, with SIGMAR1's pKi 6.28 the only
+  affinity; GtoPdb adds GRIN2C at pIC50 6.33 with no Action, so it takes no sign, and TAS2R1 as an agonism, which is
+  a bitter taste receptor and is marked `other` rather than mechanism. It is already on the item 31 shortlist for an
+  unrelated reason - **its US label is an over-the-counter Drug Facts with no pharmacology section**, so the
+  central-action rule of item 14(a) has nothing to read and item 31(b) sends it to a second medicines agency. Its
+  targets are therefore sourced here, but whether it is admitted at all is still open under item 31, and the two
+  questions are independent.
+
+### What this does not settle
+
+- The targets per drug are far from uniform: trimipramine 10 genes, sertindole 8, zuranolone 16, topiramate 37
+  against viloxazine 1. The preregistered cap counts **ChEMBL mechanism targets**, not genes, and a family or a
+  complex counts as one, so the figures that decide admission are these: **4 of the 15 genuinely absent drugs pass
+  the cap of one** (guanfacine 1 target, viloxazine 1, zuranolone 1, brexanolone 1), 6 fail it with 2 to 6 targets
+  (levomilnacipran 2, dextromethorphan 2, lithium 2, sertindole 3, topiramate 6, trimipramine 6), and **5 fail for a
+  different reason - they have no ChEMBL mechanism target at all** (tianeptine, flupentixol, zuclopenthixol,
+  solriamfetol, mianserin), so no cap admits them and their rows rest on DrugCentral and GtoPdb instead. Admitting
+  these drugs is therefore not separable from the target-cap decision that `docs/drug_targets_any_type.md` already
+  puts to the owner, and for those 5 it is a question about which table a mechanism may be read from.
+- Four drugs have **no mechanism affinity at all** (lithium, sodium oxybate, solriamfetol and tianeptine), so each
+  would be an imputed-concentration drug with nothing to impute from.
+- Viloxazine's modern label describes serotonin modulation (5-HT2C and 5-HT2B) that none of the three sources files
+  as a mechanism row, and topiramate's GABA-A row has a DrugCentral WOMBAT-PK entry naming three subunits
+  (`GABRA1|GABRG2|GABRB2`) that the registered rule ignores because narrowing reads GtoPdb only. Both are places
+  where the draft is narrower than the pharmacology, and both are visible in the table's `source` column.

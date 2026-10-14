@@ -206,6 +206,34 @@ def interaction_sign(row: dict) -> tuple[str, float]:
     return "binds", 0.0
 
 
+DEFAULT_CURATED_EDGE_SIGN_OVERRIDES_PATH = Path("configs/curated_edge_sign_overrides.csv")
+
+
+def load_curated_edge_sign_overrides(overrides_path: Path | None) -> dict[tuple[str, str], tuple[str, float]]:
+    """Signs that the source annotates one way and the physiology requires the other way.
+
+    Decision 9.10(a), the owner on 14 October 2026: "Go ahead with fixing the data for v4". The case the table was
+    written for is the G-protein-coupled receptor kinases and the arrestins: OmniPath records is_stimulation=True
+    for GRK and arrestin interactions with a receptor, which reads the interaction as positive regulation of the
+    receptor, where phosphorylating a receptor's intracellular face uncouples it from its G protein. The propagation
+    reads the sign as the effect on the destination's activity, so a desensitising enzyme has to arrive at -1.
+
+    The table is keyed on the gene symbol pair and carries the sourced value as well as the corrected one, so a
+    refresh of the source that changes what it annotates does not silently keep an override that no longer applies:
+    an override whose sourced value no longer matches is reported by the caller and not applied.
+    """
+    if overrides_path is None or not Path(overrides_path).exists():
+        return {}
+    overrides: dict[tuple[str, str], tuple[str, float]] = {}
+    with open(overrides_path, encoding="utf-8") as overrides_file:
+        for row in csv.DictReader(overrides_file):
+            overrides[(row["source_symbol"], row["target_symbol"])] = (row["relation_type_corrected"],
+                                                                       float(row["sign_corrected"]),
+                                                                       row["relation_type_as_sourced"],
+                                                                       float(row["sign_as_sourced"]))
+    return overrides
+
+
 def add_gene_nodes(nodes: pd.DataFrame, symbols: set[str]) -> pd.DataFrame:
     existing = set(nodes.node_id)
     new_rows = [{"node_id": gene_node_id(symbol), "node_type": "gene", "display_name": symbol, "gene_symbol": symbol, "in_metabolic_layer": False, "degree": 0}
@@ -213,9 +241,18 @@ def add_gene_nodes(nodes: pd.DataFrame, symbols: set[str]) -> pd.DataFrame:
     return pd.concat([nodes, pd.DataFrame(new_rows)], ignore_index=True) if new_rows else nodes
 
 
-def build_signaling_layer(nodes: pd.DataFrame, interactions_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+def build_signaling_layer(nodes: pd.DataFrame, interactions_path: Path,
+                          curated_sign_overrides: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """curated_sign_overrides (decision 9.10(a), built 14 October 2026) corrects a sign the source states the other
+    way round; load_curated_edge_sign_overrides documents why the GRK and arrestin edges need it. The third return
+    value counts what was applied and what was skipped, so a build log records both.
+    """
+    overrides = curated_sign_overrides or {}
     edge_rows: list[dict] = []
     symbols: set[str] = set()
+    override_counts = {"overrides_loaded": len(overrides), "edges_corrected": 0,
+                       "overrides_skipped_because_the_source_no_longer_agrees": 0, "overrides_never_matched": 0}
+    override_keys_that_matched: set[tuple[str, str]] = set()
     with open(interactions_path, encoding="utf-8") as interactions_file:
         for row in csv.DictReader(interactions_file, delimiter="\t"):
             relation, sign = interaction_sign(row)
@@ -226,10 +263,21 @@ def build_signaling_layer(nodes: pd.DataFrame, interactions_path: Path) -> tuple
                 for target in targets:
                     if source == target:
                         continue
-                    edge_rows.append({"source_id": gene_node_id(source), "target_id": gene_node_id(target), "relation_type": relation, "sign": sign, "evidence_source": "OmniPath"})
-                    if relation == "binds":
-                        edge_rows.append({"source_id": gene_node_id(target), "target_id": gene_node_id(source), "relation_type": relation, "sign": sign, "evidence_source": "OmniPath"})
-    return add_gene_nodes(nodes, symbols), pd.DataFrame(edge_rows).drop_duplicates()
+                    relation_for_this_edge, sign_for_this_edge = relation, sign
+                    override = overrides.get((source, target))
+                    if override is not None:
+                        corrected_relation, corrected_sign, sourced_relation, sourced_sign = override
+                        if (relation, sign) == (sourced_relation, sourced_sign):
+                            relation_for_this_edge, sign_for_this_edge = corrected_relation, corrected_sign
+                            override_counts["edges_corrected"] += 1
+                            override_keys_that_matched.add((source, target))
+                        else:
+                            override_counts["overrides_skipped_because_the_source_no_longer_agrees"] += 1
+                    edge_rows.append({"source_id": gene_node_id(source), "target_id": gene_node_id(target), "relation_type": relation_for_this_edge, "sign": sign_for_this_edge, "evidence_source": "OmniPath"})
+                    if relation_for_this_edge == "binds":
+                        edge_rows.append({"source_id": gene_node_id(target), "target_id": gene_node_id(source), "relation_type": relation_for_this_edge, "sign": sign_for_this_edge, "evidence_source": "OmniPath"})
+    override_counts["overrides_never_matched"] = len(set(overrides) - override_keys_that_matched)
+    return add_gene_nodes(nodes, symbols), pd.DataFrame(edge_rows).drop_duplicates(), override_counts
 
 
 def build_transcription_layer(nodes: pd.DataFrame, regulons_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -433,12 +481,16 @@ def build_physiology_graph(
     model_yaml_path: Path | None = None,
     brain_expression_path: Path | None = None,
     brain_expression_minimum_tpm: float = 1.0,
+    curated_edge_sign_overrides_path: Path | None = DEFAULT_CURATED_EDGE_SIGN_OVERRIDES_PATH,
 ) -> dict:
     model = load_human_gem(model_path)
     nodes, edges = build_metabolic_layer(model, gene_symbols_from_table(genes_table_path), model_yaml_path)
     edge_tables = [edges]
     if signaling_interactions_path is not None and signaling_interactions_path.exists():
-        nodes, signaling_edges = build_signaling_layer(nodes, signaling_interactions_path)
+        nodes, signaling_edges, sign_override_counts = build_signaling_layer(
+            nodes, signaling_interactions_path,
+            curated_sign_overrides=load_curated_edge_sign_overrides(curated_edge_sign_overrides_path))
+        print(f"curated edge sign overrides: {sign_override_counts}")
         edge_tables.append(signaling_edges)
     if transcription_regulons_path is not None and transcription_regulons_path.exists():
         nodes, transcription_edges = build_transcription_layer(nodes, transcription_regulons_path)
@@ -492,10 +544,13 @@ def main() -> None:
     parser.add_argument("--model-yaml", type=Path, default=Path("data/raw/Human-GEM/model/Human-GEM.yml"), help="source of reaction subsystems when the SBML has no groups")
     parser.add_argument("--brain-expression", type=Path, default=Path("data/raw/gtex/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz"), help="GTEx median-TPM GCT file; gene nodes get brain expression attributes and transcription factors known not to be brain expressed lose their regulon edges")
     parser.add_argument("--brain-expression-minimum-tpm", type=float, default=1.0, help="median TPM in at least one brain tissue that counts as brain expression evidence")
+    parser.add_argument("--curated-edge-sign-overrides", type=Path, default=DEFAULT_CURATED_EDGE_SIGN_OVERRIDES_PATH,
+                        help="signs the source annotates one way and the physiology requires the other way (decision 9.10a); pass an absent path to build without them")
     arguments = parser.parse_args()
     summary = build_physiology_graph(arguments.model_path, arguments.output_dir, arguments.genes_table, arguments.degree_quantile_threshold,
                                      arguments.signaling, arguments.transcription, arguments.small_molecule, arguments.metabolites_table, arguments.model_yaml,
-                                     arguments.brain_expression, arguments.brain_expression_minimum_tpm)
+                                     arguments.brain_expression, arguments.brain_expression_minimum_tpm,
+                                     arguments.curated_edge_sign_overrides)
     print(json.dumps(summary, indent=1))
 
 
