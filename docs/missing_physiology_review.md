@@ -86,7 +86,77 @@ canonical molecular route to parkinsonism.
 
 ---
 
-## 4. Findings relayed and not re-measured
+## 4. The eleven relayed findings, now verified (14 October 2026)
+
+A second delegated pass checked all eleven against the repository; the most consequential corrections were
+re-measured again in this session. **Three were refuted or materially corrected, and one of the refutations would
+have made a disclosure sentence false.**
+
+**A structural fact that conditions three claims.** `graph_full_neuronal`, the confirmatory graph, has **no drug
+nodes and no `targets`, `clears` or `sequesters` relation**; the drug layer lives in
+`graph_full_neuronal_split_binders_drugs_v4_enzymes`. So the subunit-composition and pharmacokinetic claims, and
+the drug-target half of the G-protein claim, are statements about the v4 drug graph only and must be re-measured if
+the drug layer is rebuilt. The non-drug subgraphs are identical between the two, which was checked rather than
+assumed.
+
+### Corrected, and the correction matters
+
+- **No closed adaptation loop — the defect is about 20 times larger than reported, and the loop is closable.** The
+  claim said 7 of 22 GRK/arrestin-to-receptor edges carry the wrong sign. Re-measured here: **94 of 116**
+  GRK/arrestin edges into GPCR-family genes read `activates` at **+1** (13 `inhibits`, 9 `binds`); the delegated
+  pass counts 147 of 196 on a wider receptor set. Either way a desensitising kinase is recorded as **activating**
+  its receptor across most of the population, which is the single largest data defect any of the eleven points at.
+  And five receptor-to-arrestin `activates` edges do exist (CCR7, PTH1R, CHRNA7, GPR182, LHCGR), so the loop is
+  closable in the graph - just not for any psychiatric receptor. The honest disclosure is "no closed adaptation
+  loop **for any psychiatric receptor**", which is a different statement and a different fix.
+- **Conductance: the premises hold and the conclusion is false, so the drafted disclosure would have been wrong.**
+  `LEAK_CONDUCTANCE_*` really is a module constant and there really are only 4 `driving_force` edges. But "the only
+  route from a channel to V_m is the slow concentration route" is false: **405 `changes_membrane_potential` edges
+  run reaction to `VM_c` directly**, 353 at +1 and 52 at -1 (verified here). The real problem is already recorded
+  in `membrane_potential.py`: the in-degree divisor means each of the 405 arrives divided by 405, with a measured
+  median field of 2.9e-15. That is a normalisation defect, not a scope limit, and disclosing it as a scope limit
+  would have concealed something fixable.
+- **GABA_A subunit composition: about four times smaller than reported.** `RCTE_975268` has **13 members, not 4**,
+  and there are at least six GABA_A-related entities rather than one, so **2 of the 13 drug-target subunits reach
+  no channel (GABRD, GABRE), not 9**. The parts worth keeping are exact: 164 of 222 drugs in 36 identical-input
+  groups, and cocaine's only graph input being ten sodium-channel subtypes with no monoamine transporter at all.
+- **Astrocytic K+ buffering does have a route.** KCNJ10 catalyses no reaction directly, but it is `member_of`
+  `RCTE_1299206` (Kir 4.1/5.1), which catalyses `RCT_1296045`, which moves `NEURON_MAM02200c` to
+  `NEURON_MAM02200e` and carries `changes_membrane_potential` **-1.0**. The true limitation is that pool nodes
+  carry cell-class weight 1.0 in every class, so the route is not astrocyte-specific.
+- **Second messengers**: every number exact, but cAMP reaches the PKA holoenzyme in 2 hops through a Reactome
+  binding reaction, and the neuronal calcium pool has 14 signed edges into the transmitter-release reactions. So
+  "bypassed" should read "bypassed on the direct metabolite-to-protein relation".
+- **G-protein coupling**: every graph number right (the Gq count is 24 and 13, not 23 and 12). But the claim that a
+  per-receptor polarity is impossible in the encoder is **wrong**: sign and weight are both per-edge and decision
+  4.11 now propagates the weight, so the obstacle is that the graph writes +1 on all 224 receptor-to-G-alpha edges.
+  **The defect is in the data, not the model**, which makes it cheaper to fix than the review first said.
+
+### Verified clean, no correction worth making
+
+No temporal field (28 columns, and `chronic`, `weeks`, `onset`, `latency`, `tolerance`, `desensit`, `downregulat`
+all zero in the preregistration); pharmacokinetics (1,182 drug edges = 1,058 `targets` + 101 `sequesters` + 23
+`clears`, four enzymes only, both prodrugs edge-free, ABCB1/ABCG2/CYP3A4 all present with zero drug edges); the
+endocrine genes (24 of 24 present, no organ column, DRD2 inhibits PRL at -1); Complex I (its only propagating
+output is the ubiquinone pool, because an edge leaving a currency node is dropped at encoder lines 771-774); and no
+regions in the propagation, which the repository already says in its own words at `node_descriptors.py` lines 55-57.
+
+## 5. Not physiology but found while checking: psychiatric drugs absent from the set
+
+The 222-drug set has good modern coverage - cariprazine, brexpiprazole, lumateperone, pimavanserin, iloperidone,
+asenapine, lurasidone, esketamine, the three orexin antagonists - and these are absent:
+
+**lithium**, escitalopram, vortioxetine, topiramate, guanfacine, viloxazine, levomilnacipran, zuranolone,
+brexanolone, tianeptine, flupentixol, zuclopenthixol, sertindole, solriamfetol, trimipramine, mianserin,
+dextromethorphan, sodium oxybate.
+
+**Every one of the five checked has its canonical targets already in the graph**: lithium's GSK3B, IMPA1, IMPA2 and
+INPP1; topiramate's GRIK1, SCN1A, CA2 and GABRA1; vortioxetine's SLC6A4, HTR1A, HTR3A and HTR7; escitalopram's
+SLC6A4; guanfacine's ADRA2A. So they are absent by **selection**, not because the graph cannot hold them.
+**Lithium is the conspicuous one**: it is the archetypal mood stabiliser, its symptom profile is as well documented
+as any drug in the set, and a study predicting psychiatric symptoms that contains no lithium will be asked about it.
+
+## 6. Superseded: the original relayed list
 
 Stated as the delegated pass's claims. Each is specific enough to check, and should be checked before it is acted
 on.
