@@ -48,6 +48,12 @@ INORGANIC_IONS = {"Na+": "MAM02519", "K+": "MAM02200", "Ca2+": "MAM01413", "Cl-"
 # extracellular region to cytosol" and moves MAM02144e to MAM02144c. It is given chloride's charge and counted as an
 # ion WITHOUT being merged into MAM01442 and without becoming a second chloride pool, which is the owner's choice of
 # the two fixes: the two base ids stay separate entities and only the charge arithmetic is repaired.
+# The charge is -1 per chloride and never -2 (the owner asked on 14 October 2026 whether it should be -1 rather than
+# -2). Where -2 appears it is NKCC1's arithmetic, Na+ (+1) + K+ (+1) + 2 Cl- (2 x -1), which sums to 0 and so drops
+# the current; the per-species charge below is -1. One limit now stated: Human-GEM annotates MAM02144 as
+# `InChI=1S/ClH/h1H`, hydrogen chloride, which is formally neutral, so -1 is a judgement that the Reactome reactions
+# use the entity as chloride and not a value read from a charge table. MAM01442, BiGG `cl`, is the entity that
+# carries chloride's charge in Human-GEM, and the owner chose to keep the two separate rather than merge them.
 IONS_WITHOUT_A_HUMAN_GEM_CHARGE = {"Cl- (Reactome)": ("MAM02144", -1)}
 TRANSMITTER_BASES = {"MAM01736": "dopamine", "MAM02897": "serotonin", "MAM02617": "noradrenaline", "MAM01290": "adrenaline", "MAM01260": "acetylcholine",
                      "MAM02124": "histamine", "MAM01974": "glutamate", "MAM00970": "GABA", "MAM01986": "glycine"}
