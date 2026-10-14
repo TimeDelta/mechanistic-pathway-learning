@@ -1,0 +1,2784 @@
+{
+ "pooling_rules": {
+  "base_rate_shrunk_mean": {
+   "draws": [
+    {
+     "draw_seed": 0,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 209,
+     "held_out_targets": 2,
+     "held_out_drugs": 39,
+     "held_out_genes": 170,
+     "seen_target_share": 0.3953488372093023,
+     "adversary_macro_auprc": 0.2657760653664206,
+     "adversary_micro_auprc": 0.3837961546434412,
+     "held_out_with_a_leaked_neighbour": 33,
+     "pairs_through_a_training_drug": 189,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.12603816272925453,
+     "macro_interval_over_popularity": [
+      0.0840791318174501,
+      0.21678604367141296
+     ],
+     "macro_standard_error_over_popularity": 0.033854425860363475,
+     "micro_advantage_over_popularity": 0.07847458146495001,
+     "micro_interval_over_popularity": [
+      0.018333472715064414,
+      0.14981526917778637
+     ],
+     "micro_standard_error_over_popularity": 0.0335418906833804,
+     "drug_stratum_macro_advantage_over_popularity": 0.013134644296969533,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.019338416869876137,
+      0.11408720556626098
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.03403777376424698,
+     "drug_stratum_micro_advantage_over_popularity": -0.00186024061209078,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.07457192484829052,
+      0.09181840196935842
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04244729158740898,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.13642121512022554,
+     "macro_interval_over_degree_popularity": [
+      -0.24057015386862335,
+      -0.048118622020362926
+     ],
+     "macro_standard_error_over_degree_popularity": 0.049095680290112576,
+     "micro_advantage_over_degree_popularity": -0.01897475536365356,
+     "micro_interval_over_degree_popularity": [
+      -0.07678733353570504,
+      0.04527340888367812
+     ],
+     "micro_standard_error_over_degree_popularity": 0.031138516426674968,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.10172960590950109,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.2196899209209338,
+      0.019894018929878025
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.061119474605352914,
+     "drug_stratum_micro_advantage_over_degree_popularity": -0.0124103469047665,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.08686428100974229,
+      0.07662055051775349
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.041706080195221894,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.09998217511147445,
+      -0.02876327657241663
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.018168420067679256,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.008384641579542218,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.04094027371579722,
+      0.04775568656918007
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02262693607764665,
+     "macro_advantage_over_type_popularity": -0.0719527281288384,
+     "macro_interval_over_type_popularity": [
+      -0.12354207140150762,
+      0.0046178385460864425
+     ],
+     "macro_standard_error_over_type_popularity": 0.032694455088867466,
+     "micro_advantage_over_type_popularity": -0.12915220421720652,
+     "micro_interval_over_type_popularity": [
+      -0.19059339104982434,
+      -0.05415412176213426
+     ],
+     "micro_standard_error_over_type_popularity": 0.03480657534722323,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.013134644296969533,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.019338416869876137,
+      0.11408720556626098
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.03403777376424698,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.1497350645900295,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.23054928111932155,
+      -0.05138292278535231
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04570654316456048,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.004984691314765866,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007912176683799371,
+      0.019543228674798917
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.0070040585843919295
+    },
+    {
+     "draw_seed": 1,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 192,
+     "held_out_targets": 2,
+     "held_out_drugs": 22,
+     "held_out_genes": 170,
+     "seen_target_share": 0.6103896103896104,
+     "adversary_macro_auprc": 0.33809411515905946,
+     "adversary_micro_auprc": 0.4408623664443947,
+     "held_out_with_a_leaked_neighbour": 16,
+     "pairs_through_a_training_drug": 420,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.1842867149733258,
+     "macro_interval_over_popularity": [
+      0.1205683479383338,
+      0.31030765203768845
+     ],
+     "macro_standard_error_over_popularity": 0.04840377274770216,
+     "micro_advantage_over_popularity": 0.1430716580055943,
+     "micro_interval_over_popularity": [
+      0.06746119799490484,
+      0.21077964011658817
+     ],
+     "micro_standard_error_over_popularity": 0.03656149860958755,
+     "drug_stratum_macro_advantage_over_popularity": 0.06998529847059254,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.01797731936341776,
+      0.2263004939587816
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.053144643114711246,
+     "drug_stratum_micro_advantage_over_popularity": 0.20914571299919377,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.10323831905904364,
+      0.3265963658272911
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.056980140137330965,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.04056966803196582,
+     "macro_interval_over_degree_popularity": [
+      -0.09128114792655435,
+      0.027104187398431043
+     ],
+     "macro_standard_error_over_degree_popularity": 0.030200895354451765,
+     "micro_advantage_over_degree_popularity": 0.08798178720456085,
+     "micro_interval_over_degree_popularity": [
+      0.029419052827883523,
+      0.1366608506605718
+     ],
+     "micro_standard_error_over_degree_popularity": 0.027358103983718136,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.03872894480247435,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.12265386660905915,
+      0.0443823593877497
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.04261206481262126,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.20023405325319799,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.09843006497951622,
+      0.3050586963656272
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05271235374377054,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.103080104208544,
+      -0.026965474823845034
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019417353937291437,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.012424872412190147,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03739724341738307,
+      0.05331472094508261
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.023141232278364725,
+     "macro_advantage_over_type_popularity": 0.009729740477223747,
+     "macro_interval_over_type_popularity": [
+      -0.017391480798860038,
+      0.10379485131342747
+     ],
+     "macro_standard_error_over_type_popularity": 0.03091544847565759,
+     "micro_advantage_over_type_popularity": 0.012077809702893294,
+     "micro_interval_over_type_popularity": [
+      -0.04040741246217301,
+      0.06196433670629894
+     ],
+     "micro_standard_error_over_type_popularity": 0.026115721811337336,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.06998529847059254,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.01797731936341776,
+      0.2263004939587816
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.053144643114711246,
+     "drug_stratum_micro_advantage_over_type_popularity": 0.05552656725913396,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.05881379795743486,
+      0.19404358891191847
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.06450562022296158,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.004626045777340881,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.00790540283452234,
+      0.018854372617562565
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006826598716120526
+    },
+    {
+     "draw_seed": 2,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 200,
+     "held_out_targets": 2,
+     "held_out_drugs": 30,
+     "held_out_genes": 170,
+     "seen_target_share": 0.34986945169712796,
+     "adversary_macro_auprc": 0.24568999753363174,
+     "adversary_micro_auprc": 0.35976389769501904,
+     "held_out_with_a_leaked_neighbour": 27,
+     "pairs_through_a_training_drug": 132,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.10588722264315581,
+     "macro_interval_over_popularity": [
+      0.08225725216994248,
+      0.17229254235464891
+     ],
+     "macro_standard_error_over_popularity": 0.022968608144003266,
+     "micro_advantage_over_popularity": 0.05367269437827432,
+     "micro_interval_over_popularity": [
+      -0.01562875498828717,
+      0.12681089316910227
+     ],
+     "micro_standard_error_over_popularity": 0.03633731235813245,
+     "drug_stratum_macro_advantage_over_popularity": 0.03832869585535564,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.006310542338363482,
+      0.12036462152369198
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.029095962779247093,
+     "drug_stratum_micro_advantage_over_popularity": 0.14273383516985516,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.06950971325566759,
+      0.23413649998108127
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.041997400647515386,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.065800215643194,
+     "macro_interval_over_degree_popularity": [
+      -0.1504593423815084,
+      -0.016863460504270254
+     ],
+     "macro_standard_error_over_degree_popularity": 0.03408120809291348,
+     "micro_advantage_over_degree_popularity": 0.014122348793156492,
+     "micro_interval_over_degree_popularity": [
+      -0.02011494879166566,
+      0.045411245351263466
+     ],
+     "micro_standard_error_over_degree_popularity": 0.0167161728845349,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.04933373281154507,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.2155279831534977,
+      0.02891527494690416
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.06235911937678494,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.10080344768226734,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.03532690964779396,
+      0.18414102489177084
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.037963481789455536,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10258187609477537,
+      -0.026338523769994654
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019450192025154727,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.017262998676050523,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03751138690277138,
+      0.05407157721438261
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.023363430174522082,
+     "macro_advantage_over_type_popularity": -0.0009049038023457578,
+     "macro_interval_over_type_popularity": [
+      -0.020021778349506927,
+      0.026507973070757584
+     ],
+     "macro_standard_error_over_type_popularity": 0.011870052567359532,
+     "micro_advantage_over_type_popularity": -0.019972950689069124,
+     "micro_interval_over_type_popularity": [
+      -0.04823392964212184,
+      0.009475086089507574
+     ],
+     "micro_standard_error_over_type_popularity": 0.014721958089952011,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.03832869585535564,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.006310542338363482,
+      0.12036462152369198
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.029095962779247093,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.017545407903259647,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.07737059138650138,
+      0.05321221938067359
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.033312553385463954,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.008915407592039348,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.0038050974107182453,
+      0.021330455786866365
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006412248693747591
+    },
+    {
+     "draw_seed": 3,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 202,
+     "held_out_targets": 18,
+     "held_out_drugs": 32,
+     "held_out_genes": 170,
+     "seen_target_share": 0.13496932515337423,
+     "adversary_macro_auprc": 0.2223646801092533,
+     "adversary_micro_auprc": 0.3134417877455179,
+     "held_out_with_a_leaked_neighbour": 13,
+     "pairs_through_a_training_drug": 189,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.0629973829641921,
+     "macro_interval_over_popularity": [
+      0.0030061459138310065,
+      0.16367543331950493
+     ],
+     "macro_standard_error_over_popularity": 0.040987815951128166,
+     "micro_advantage_over_popularity": 0.008202561597067781,
+     "micro_interval_over_popularity": [
+      -0.04235730395304572,
+      0.08101386767973465
+     ],
+     "micro_standard_error_over_popularity": 0.03147281573354928,
+     "drug_stratum_macro_advantage_over_popularity": 0.03922116284856181,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.03757208077965335,
+      0.19143441575975842
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.05842109766797037,
+     "drug_stratum_micro_advantage_over_popularity": -0.06793628027434012,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.17438275833654537,
+      0.08528178738953165
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.06624217223532601,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.10376081689634409,
+     "macro_interval_over_degree_popularity": [
+      -0.24105609252193236,
+      -0.047442660305116874
+     ],
+     "macro_standard_error_over_degree_popularity": 0.0493920888895958,
+     "micro_advantage_over_degree_popularity": -0.026423956914041646,
+     "micro_interval_over_degree_popularity": [
+      -0.07806786141987938,
+      0.026482206855905008
+     ],
+     "micro_standard_error_over_degree_popularity": 0.02667142566796747,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.10219623795724997,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.2311860736166117,
+      0.04085035998382281
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.06939832405096076,
+     "drug_stratum_micro_advantage_over_degree_popularity": -0.06978933028061474,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.16630769549567115,
+      0.062289636034763174
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05831671692195222,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.09885854329390815,
+      -0.027576455021291378
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01818454019375274,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.016753279376637564,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03621817292985421,
+      0.05351369075502258
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02289120200291352,
+     "macro_advantage_over_type_popularity": -0.054110313066751625,
+     "macro_interval_over_type_popularity": [
+      -0.11720893728000764,
+      0.015695097574536646
+     ],
+     "macro_standard_error_over_type_popularity": 0.03390471326374981,
+     "micro_advantage_over_type_popularity": -0.08481354618581077,
+     "micro_interval_over_type_popularity": [
+      -0.1465990790158596,
+      -0.02080244763602794
+     ],
+     "micro_standard_error_over_type_popularity": 0.03209156682975597,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.03922116284856181,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.03757208077965335,
+      0.19143441575975842
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.05842109766797037,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.21171310204487892,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.36874515511532013,
+      -0.037784775601833666
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.08443021900236088,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.006352348516469264,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.006461095934786486,
+      0.019156530156253553
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006535228731507324
+    },
+    {
+     "draw_seed": 4,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 202,
+     "held_out_targets": 5,
+     "held_out_drugs": 32,
+     "held_out_genes": 170,
+     "seen_target_share": 0.3230769230769231,
+     "adversary_macro_auprc": 0.3060974850047571,
+     "adversary_micro_auprc": 0.4569993006069045,
+     "held_out_with_a_leaked_neighbour": 23,
+     "pairs_through_a_training_drug": 467,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.16919752497482862,
+     "macro_interval_over_popularity": [
+      0.10996213628294153,
+      0.27657686572057766
+     ],
+     "macro_standard_error_over_popularity": 0.04250453820520073,
+     "micro_advantage_over_popularity": 0.1339426793685784,
+     "micro_interval_over_popularity": [
+      0.06233609555755045,
+      0.19969544271364514
+     ],
+     "micro_standard_error_over_popularity": 0.0350412934003111,
+     "drug_stratum_macro_advantage_over_popularity": 0.009189243721659524,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.02325298867474681,
+      0.11178313880781356
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.03444862443457134,
+     "drug_stratum_micro_advantage_over_popularity": 0.04259393113510035,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.049346604545106164,
+      0.14527412639032913
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04964905756826026,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.08982131794597703,
+     "macro_interval_over_degree_popularity": [
+      -0.19234267814643252,
+      -0.013681297895220636
+     ],
+     "macro_standard_error_over_degree_popularity": 0.04557771985893922,
+     "micro_advantage_over_degree_popularity": 0.019446050379315905,
+     "micro_interval_over_degree_popularity": [
+      -0.05485693907121236,
+      0.08470310348877996
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03560270560071316,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.05203049690863104,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.15317670091912144,
+      0.07210057861788954
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.05746974932626594,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.055450325754184515,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.04249097927500421,
+      0.16480171710470534
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05288176119043756,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10495093617645233,
+      -0.028087758000653943
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019608313768976978,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.011036051970998495,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.039560557667105783,
+      0.04602186933936044
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.021832652795272318,
+     "macro_advantage_over_type_popularity": -0.046746480837892235,
+     "macro_interval_over_type_popularity": [
+      -0.128006860779735,
+      0.030794708307271414
+     ],
+     "macro_standard_error_over_type_popularity": 0.04051134844492205,
+     "micro_advantage_over_type_popularity": -0.10070008759655436,
+     "micro_interval_over_type_popularity": [
+      -0.1746108315185492,
+      -0.027714070502526028
+     ],
+     "micro_standard_error_over_type_popularity": 0.037474351828917056,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.009189243721659524,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.02325298867474681,
+      0.11178313880781356
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.03444862443457134,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.08767148099750688,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.1720678115670433,
+      0.004596904556230958
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04506835740944075,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.00498469131476581,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007400321243273668,
+      0.018907478765572482
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006711296740360066
+    },
+    {
+     "draw_seed": 5,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 207,
+     "held_out_targets": 1,
+     "held_out_drugs": 37,
+     "held_out_genes": 170,
+     "seen_target_share": 0.46875,
+     "adversary_macro_auprc": 0.2562564637155377,
+     "adversary_micro_auprc": 0.37046467607241174,
+     "held_out_with_a_leaked_neighbour": 31,
+     "pairs_through_a_training_drug": 179,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.12262999027813587,
+     "macro_interval_over_popularity": [
+      0.07988991577395164,
+      0.22529180818257813
+     ],
+     "macro_standard_error_over_popularity": 0.037093000792011104,
+     "micro_advantage_over_popularity": 0.0698505378050931,
+     "micro_interval_over_popularity": [
+      0.009744084847931002,
+      0.14593988231233462
+     ],
+     "micro_standard_error_over_popularity": 0.0347444640474018,
+     "drug_stratum_macro_advantage_over_popularity": 0.017413084319301664,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.021198935354605382,
+      0.1236211178286859
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.036944569691915584,
+     "drug_stratum_micro_advantage_over_popularity": -1.225842193286475e-05,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.07637789082336072,
+      0.10608809446794631
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04654830019615335,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.09300935890461048,
+     "macro_interval_over_degree_popularity": [
+      -0.18088222574978752,
+      -0.017989938343125202
+     ],
+     "macro_standard_error_over_degree_popularity": 0.04155491820427883,
+     "micro_advantage_over_degree_popularity": -0.011570470695858592,
+     "micro_interval_over_degree_popularity": [
+      -0.07565762912334337,
+      0.053679471858211425
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03299476443994757,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.04159770022580778,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.16615663753793858,
+      0.05973981207065998
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.057627703776344505,
+     "drug_stratum_micro_advantage_over_degree_popularity": -0.0021473273917644864,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.0795782606544527,
+      0.10218182350022105
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.04636822006798945,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.09876317873631002,
+      -0.030378810873820904
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01744531222575749,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.009051616982373056,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.04139901253686225,
+      0.04582442259847504
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022251285007106582,
+     "macro_advantage_over_type_popularity": -0.06127582955243688,
+     "macro_interval_over_type_popularity": [
+      -0.12338034424490243,
+      0.010778135550280506
+     ],
+     "macro_standard_error_over_type_popularity": 0.034224730606068,
+     "micro_advantage_over_type_popularity": -0.12375432340873149,
+     "micro_interval_over_type_popularity": [
+      -0.1942141178775398,
+      -0.05199114573896448
+     ],
+     "micro_standard_error_over_type_popularity": 0.036282036848272546,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.017413084319301664,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.021198935354605382,
+      0.1236211178286859
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.036944569691915584,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.1525078541217184,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.24395366296081974,
+      -0.04657249365420501
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.050353263964699024,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.004984691314765866,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.008971923749358934,
+      0.01892331304455069
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.007116262542044043
+    },
+    {
+     "draw_seed": 6,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 205,
+     "held_out_targets": 2,
+     "held_out_drugs": 35,
+     "held_out_genes": 170,
+     "seen_target_share": 0.13554987212276215,
+     "adversary_macro_auprc": 0.18462715429490287,
+     "adversary_micro_auprc": 0.3458498139286265,
+     "held_out_with_a_leaked_neighbour": 27,
+     "pairs_through_a_training_drug": 78,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.037346677911627074,
+     "macro_interval_over_popularity": [
+      0.021037401483233204,
+      0.08707223537866188
+     ],
+     "macro_standard_error_over_popularity": 0.01684593030673744,
+     "micro_advantage_over_popularity": 0.03308973190552872,
+     "micro_interval_over_popularity": [
+      0.004819692333225405,
+      0.071733409192123
+     ],
+     "micro_standard_error_over_popularity": 0.017070139262480737,
+     "drug_stratum_macro_advantage_over_popularity": 0.03547415648141605,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.0007387936967643948,
+      0.1573910610152803
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.03996304710660908,
+     "drug_stratum_micro_advantage_over_popularity": 0.08177069087200378,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.0032176622458772947,
+      0.17270949400169844
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.043238506359254844,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.13415192084800362,
+     "macro_interval_over_degree_popularity": [
+      -0.22405189142085805,
+      -0.07640045253628143
+     ],
+     "macro_standard_error_over_degree_popularity": 0.03766687522948804,
+     "micro_advantage_over_degree_popularity": -0.020339548595914525,
+     "micro_interval_over_degree_popularity": [
+      -0.09905528382182167,
+      0.05337369942759584
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03888565893287262,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.028353909260605548,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.12587771341464904,
+      0.13550463681341124
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.06668039571850816,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.07047686185750623,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.028040213334413384,
+      0.17779375720205526
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05250963041578025,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10452019758112052,
+      -0.026255161628615235
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019965937117341258,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.01716859764220724,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.030592727983795493,
+      0.057938412846475315
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022584889526101194,
+     "macro_advantage_over_type_popularity": -0.086071686490475,
+     "macro_interval_over_type_popularity": [
+      -0.15064499754612742,
+      -0.026828154337548583
+     ],
+     "macro_standard_error_over_type_popularity": 0.03158650955032308,
+     "micro_advantage_over_type_popularity": -0.06728216436937706,
+     "micro_interval_over_type_popularity": [
+      -0.154766720936629,
+      0.021437507004536876
+     ],
+     "micro_standard_error_over_type_popularity": 0.044950883776734125,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.03547415648141605,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.0007387936967643948,
+      0.1573910610152803
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.03996304710660908,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.05017703540968399,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.11358981339964577,
+      0.016366759415379618
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.033152795871512285,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.009204410770892846,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.0033925850956745005,
+      0.02267964454153286
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006651201154002665
+    },
+    {
+     "draw_seed": 7,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 208,
+     "held_out_targets": 5,
+     "held_out_drugs": 38,
+     "held_out_genes": 170,
+     "seen_target_share": 0.29559748427672955,
+     "adversary_macro_auprc": 0.22773186694004247,
+     "adversary_micro_auprc": 0.3645910011745268,
+     "held_out_with_a_leaked_neighbour": 30,
+     "pairs_through_a_training_drug": 138,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.08456606218164386,
+     "macro_interval_over_popularity": [
+      0.05855977585297226,
+      0.1557248542756295
+     ],
+     "macro_standard_error_over_popularity": 0.02478746508166916,
+     "micro_advantage_over_popularity": 0.041180684869610296,
+     "micro_interval_over_popularity": [
+      -0.017263589693992984,
+      0.11308231229525849
+     ],
+     "micro_standard_error_over_popularity": 0.03325211636266061,
+     "drug_stratum_macro_advantage_over_popularity": -0.009468504046547699,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.03242030000548266,
+      0.05034868128985425
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.021114923869861107,
+     "drug_stratum_micro_advantage_over_popularity": -0.030566460649924854,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.11910865248830788,
+      0.07511710175413716
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.049548296357087435,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.07722637873325958,
+     "macro_interval_over_degree_popularity": [
+      -0.15642948326586023,
+      -0.04012333170881424
+     ],
+     "macro_standard_error_over_degree_popularity": 0.029670481589724605,
+     "micro_advantage_over_degree_popularity": -0.028415128943634183,
+     "micro_interval_over_degree_popularity": [
+      -0.07508405356362502,
+      0.02020493636787956
+     ],
+     "micro_standard_error_over_degree_popularity": 0.024308862288160545,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.00973182528522909,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.11000578701327832,
+      0.05062362059915776
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.04097764234762375,
+     "drug_stratum_micro_advantage_over_degree_popularity": -0.010972357483290618,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.08605374519046785,
+      0.07258303617006215
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.0404693099874615,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.09991587883898767,
+      -0.027811438774279124
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.018394327667423622,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.016582118022678838,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03316938233732826,
+      0.05303381693272528
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.021991015975307084,
+     "macro_advantage_over_type_popularity": -0.05311699963601643,
+     "macro_interval_over_type_popularity": [
+      -0.09981687988973617,
+      -0.0018769610370018787
+     ],
+     "macro_standard_error_over_type_popularity": 0.02498513208730729,
+     "micro_advantage_over_type_popularity": -0.09486505831418934,
+     "micro_interval_over_type_popularity": [
+      -0.15265623063385184,
+      -0.03155215901029776
+     ],
+     "micro_standard_error_over_type_popularity": 0.03089446327166062,
+     "drug_stratum_macro_advantage_over_type_popularity": -0.009468504046547699,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.03242030000548266,
+      0.05034868128985425
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.021114923869861107,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.1399148826960802,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.2248325763138145,
+      -0.03915709225704694
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04736706491975556,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.00929942938863626,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.003389203152838733,
+      0.02134457158818653
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006309752306936572
+    },
+    {
+     "draw_seed": 8,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 202,
+     "held_out_targets": 2,
+     "held_out_drugs": 32,
+     "held_out_genes": 170,
+     "seen_target_share": 0.16209476309226933,
+     "adversary_macro_auprc": 0.2519267892985882,
+     "adversary_micro_auprc": 0.3887085199407791,
+     "held_out_with_a_leaked_neighbour": 30,
+     "pairs_through_a_training_drug": 215,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.10745619144338289,
+     "macro_interval_over_popularity": [
+      0.03902747905560321,
+      0.17847284922648268
+     ],
+     "macro_standard_error_over_popularity": 0.03557345190291236,
+     "micro_advantage_over_popularity": 0.07373670544203431,
+     "micro_interval_over_popularity": [
+      0.023406070933238262,
+      0.12747596829484484
+     ],
+     "micro_standard_error_over_popularity": 0.026548930837915024,
+     "drug_stratum_macro_advantage_over_popularity": 0.13926062935905054,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.03747729136152583,
+      0.25376406905490684
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.0551762118317941,
+     "drug_stratum_micro_advantage_over_popularity": 0.1328013106792889,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.04888122579087003,
+      0.2398347457846403
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.048713527389730185,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.06504024932671376,
+     "macro_interval_over_degree_popularity": [
+      -0.186793010947258,
+      0.015806566898940413
+     ],
+     "macro_standard_error_over_degree_popularity": 0.05168451508451135,
+     "micro_advantage_over_degree_popularity": 0.010136952898265716,
+     "micro_interval_over_degree_popularity": [
+      -0.07585803937917704,
+      0.09672739607246879
+     ],
+     "micro_standard_error_over_degree_popularity": 0.04402770547103055,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.1365253479494245,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.04571680114294609,
+      0.2846229597405295
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.08427189501528486,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.1469205266136014,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.05550039851112719,
+      0.25937460510849936
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05200968145266244,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10303541981075004,
+      -0.02661558125980976
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019495214848573823,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.016683274186428454,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03534639834238664,
+      0.05591102561196721
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02328038268926211,
+     "macro_advantage_over_type_popularity": -0.04131891889967093,
+     "macro_interval_over_type_popularity": [
+      -0.13638425634104553,
+      0.033169230705680654
+     ],
+     "macro_standard_error_over_type_popularity": 0.04325423503868596,
+     "micro_advantage_over_type_popularity": -0.06585081023833228,
+     "micro_interval_over_type_popularity": [
+      -0.15610078064600671,
+      0.01956195013959096
+     ],
+     "micro_standard_error_over_type_popularity": 0.044812744209995106,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.13926062935905054,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.03747729136152583,
+      0.25376406905490684
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.0551762118317941,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.016980399038150407,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.08458160369519438,
+      0.06706407046036396
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.03868583151413964,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.009204410770892846,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.00364498315899733,
+      0.022543641102941846
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006680894205694384
+    },
+    {
+     "draw_seed": 9,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 203,
+     "held_out_targets": 4,
+     "held_out_drugs": 33,
+     "held_out_genes": 170,
+     "seen_target_share": 0.19571865443425077,
+     "adversary_macro_auprc": 0.25207623223844505,
+     "adversary_micro_auprc": 0.3998442189038548,
+     "held_out_with_a_leaked_neighbour": 32,
+     "pairs_through_a_training_drug": 168,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.11514910511896842,
+     "macro_interval_over_popularity": [
+      0.0877140681816093,
+      0.19497489334490062
+     ],
+     "macro_standard_error_over_popularity": 0.027362957983741363,
+     "micro_advantage_over_popularity": 0.09222730344480384,
+     "micro_interval_over_popularity": [
+      0.041259387950631374,
+      0.14591305036557642
+     ],
+     "micro_standard_error_over_popularity": 0.026697853229688158,
+     "drug_stratum_macro_advantage_over_popularity": 0.08574696218956857,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.028834298863905632,
+      0.17685774803871512
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.0377617775568351,
+     "drug_stratum_micro_advantage_over_popularity": 0.1178203544634629,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.03497124262561869,
+      0.22275938416886318
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04790601805524094,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.0690533719070226,
+     "macro_interval_over_degree_popularity": [
+      -0.1792201691360336,
+      0.012044510934258599
+     ],
+     "macro_standard_error_over_degree_popularity": 0.04879290641825365,
+     "micro_advantage_over_degree_popularity": 0.038904197754411396,
+     "micro_interval_over_degree_popularity": [
+      -0.02445299492272785,
+      0.1031559841149954
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03255390890795016,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.026010737921244864,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.14055440776913566,
+      0.13353033235294023
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.06992086082246304,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.1169659341495376,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.018814712172940024,
+      0.2279176528384816
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05334356668427113,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10117083631513771,
+      -0.02461403212868718
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019530155703484993,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.016028372921372214,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03240523567643283,
+      0.05600283667294236
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022553493928810734,
+     "macro_advantage_over_type_popularity": -0.022403186185395774,
+     "macro_interval_over_type_popularity": [
+      -0.0737474536410072,
+      0.043375437175683255
+     ],
+     "macro_standard_error_over_type_popularity": 0.02987883726861576,
+     "micro_advantage_over_type_popularity": -0.035086426547371374,
+     "micro_interval_over_type_popularity": [
+      -0.10551571224465336,
+      0.04226801531050041
+     ],
+     "micro_standard_error_over_type_popularity": 0.03770062295918542,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.08574696218956857,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.028834298863905632,
+      0.17685774803871512
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.0377617775568351,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.02920343100047096,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.09646954372920981,
+      0.059827129739020136
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.03987233272351685,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.007299313560656384,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007128178824943039,
+      0.021188356998058724
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.007223738758212335
+    },
+    {
+     "draw_seed": 10,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 206,
+     "held_out_targets": 7,
+     "held_out_drugs": 36,
+     "held_out_genes": 170,
+     "seen_target_share": 0.37362637362637363,
+     "adversary_macro_auprc": 0.33937384279256333,
+     "adversary_micro_auprc": 0.49795178954258085,
+     "held_out_with_a_leaked_neighbour": 22,
+     "pairs_through_a_training_drug": 179,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.198080830185356,
+     "macro_interval_over_popularity": [
+      0.09858370667224295,
+      0.3052452387682842
+     ],
+     "macro_standard_error_over_popularity": 0.05272074693617874,
+     "micro_advantage_over_popularity": 0.16593514273198856,
+     "micro_interval_over_popularity": [
+      0.07872381832623596,
+      0.25179423851750626
+     ],
+     "micro_standard_error_over_popularity": 0.04415142834033439,
+     "drug_stratum_macro_advantage_over_popularity": 0.1602364004444492,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.08469144433000549,
+      0.26531009177499615
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.046077031885532256,
+     "drug_stratum_micro_advantage_over_popularity": 0.10534836957737792,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.003997965181481278,
+      0.21386652671148731
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.053538881716706545,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": 0.031984539943219537,
+     "macro_interval_over_degree_popularity": [
+      -0.058470194991800624,
+      0.10109830182076121
+     ],
+     "macro_standard_error_over_degree_popularity": 0.0407069968664123,
+     "micro_advantage_over_degree_popularity": 0.08909099297668505,
+     "micro_interval_over_degree_popularity": [
+      0.018188076635944378,
+      0.15967018614339734
+     ],
+     "micro_standard_error_over_degree_popularity": 0.036093037807697737,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.14945598688909112,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      0.04414262970434124,
+      0.2539318194690434
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.05351863344548731,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.1423057771787286,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.04744551441437302,
+      0.24170230129389408
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.04955621299154501,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.0996704037065049,
+      -0.02584151281506796
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01883424667275443,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.01658008606450012,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.029267217837128247,
+      0.054208574485937674
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02129523611736387,
+     "macro_advantage_over_type_popularity": -0.028506890539751695,
+     "macro_interval_over_type_popularity": [
+      -0.13730467667334675,
+      0.06782026243132423
+     ],
+     "macro_standard_error_over_type_popularity": 0.05232875172826414,
+     "micro_advantage_over_type_popularity": -0.06870849667829365,
+     "micro_interval_over_type_popularity": [
+      -0.15324697355637681,
+      0.022146659776465006
+     ],
+     "micro_standard_error_over_type_popularity": 0.0447440956397265,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.1602364004444492,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.08469144433000549,
+      0.26531009177499615
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.046077031885532256,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.03441853502624448,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.1430626510363323,
+      0.0799539487700176
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.05689303472062495,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.009631770123913252,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.0032648771559326928,
+      0.022736759118062548
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.0066331923122045205
+    },
+    {
+     "draw_seed": 11,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 206,
+     "held_out_targets": 6,
+     "held_out_drugs": 36,
+     "held_out_genes": 170,
+     "seen_target_share": 0.33970276008492567,
+     "adversary_macro_auprc": 0.23583040644580233,
+     "adversary_micro_auprc": 0.3665216672540105,
+     "held_out_with_a_leaked_neighbour": 34,
+     "pairs_through_a_training_drug": 202,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.10267901750274577,
+     "macro_interval_over_popularity": [
+      0.07355327634913729,
+      0.17281250258914785
+     ],
+     "macro_standard_error_over_popularity": 0.025321696276056745,
+     "micro_advantage_over_popularity": 0.05287406842410114,
+     "micro_interval_over_popularity": [
+      -0.006465324619023504,
+      0.12691286017052938
+     ],
+     "micro_standard_error_over_popularity": 0.03402567210151637,
+     "drug_stratum_macro_advantage_over_popularity": 0.022269339362838703,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.02169192345659696,
+      0.0896664426030591
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.02840826822830829,
+     "drug_stratum_micro_advantage_over_popularity": 0.01869774128533136,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.06729589384484423,
+      0.11913391465428325
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04755949815892728,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.07820229576301735,
+     "macro_interval_over_degree_popularity": [
+      -0.13733383888501977,
+      -0.03110188991856209
+     ],
+     "macro_standard_error_over_degree_popularity": 0.027100484745244725,
+     "micro_advantage_over_degree_popularity": -0.00596170990669409,
+     "micro_interval_over_degree_popularity": [
+      -0.04259890863608192,
+      0.03217785569356148
+     ],
+     "micro_standard_error_over_degree_popularity": 0.01907605556266426,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.03082245589038568,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.1383088647621699,
+      0.048638043916785695
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.04769141389304997,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.03342910549309597,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.031278951053473315,
+      0.10960102982708
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.03593943074478748,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10374876606514888,
+      -0.025370002556869158
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01999494978180204,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.01604366051099465,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03601925351993764,
+      0.05778835872830799
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02393095287674815,
+     "macro_advantage_over_type_popularity": -0.031750986685158356,
+     "macro_interval_over_type_popularity": [
+      -0.07384893789078584,
+      0.016521244619774115
+     ],
+     "macro_standard_error_over_type_popularity": 0.023054041428965007,
+     "micro_advantage_over_type_popularity": -0.07722394193710752,
+     "micro_interval_over_type_popularity": [
+      -0.12693116316451594,
+      -0.02404770480668354
+     ],
+     "micro_standard_error_over_type_popularity": 0.026246262267529505,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.022269339362838703,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.02169192345659696,
+      0.0896664426030591
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.02840826822830829,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.12137957392108267,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.19747245442564848,
+      -0.02936042079349658
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04288651057676363,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.009127060941334308,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.004415557463403419,
+      0.02202950155159787
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006746312436096094
+    },
+    {
+     "draw_seed": 12,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 204,
+     "held_out_targets": 6,
+     "held_out_drugs": 34,
+     "held_out_genes": 170,
+     "seen_target_share": 0.1807909604519774,
+     "adversary_macro_auprc": 0.2516212581521131,
+     "adversary_micro_auprc": 0.3990455100771852,
+     "held_out_with_a_leaked_neighbour": 32,
+     "pairs_through_a_training_drug": 168,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.11523294905924414,
+     "macro_interval_over_popularity": [
+      0.08698701247150077,
+      0.1944044222821213
+     ],
+     "macro_standard_error_over_popularity": 0.027402903780533856,
+     "micro_advantage_over_popularity": 0.09231225947291549,
+     "micro_interval_over_popularity": [
+      0.04298994849620709,
+      0.14758123786162827
+     ],
+     "micro_standard_error_over_popularity": 0.02668194144520542,
+     "drug_stratum_macro_advantage_over_popularity": 0.09491987087728454,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.03490651160296412,
+      0.19852531005035248
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.04174025605760829,
+     "drug_stratum_micro_advantage_over_popularity": 0.12102981246172645,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.02874712608364589,
+      0.2339755152193518
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.05235514252703262,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.06223721884355249,
+     "macro_interval_over_degree_popularity": [
+      -0.17365777267561947,
+      0.007392769112197865
+     ],
+     "macro_standard_error_over_degree_popularity": 0.04618721103750307,
+     "micro_advantage_over_degree_popularity": 0.043554794430902655,
+     "micro_interval_over_degree_popularity": [
+      -0.018913977692256483,
+      0.1044946083844941
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03148236040987248,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.038582532906587974,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.12644092243078794,
+      0.14580151382469045
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.06945087671392902,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.12250271636748739,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.01912462932802468,
+      0.24631556216588135
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.057957935155405066,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10113838884584399,
+      -0.027443640179502755
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.018800026088831537,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.015954169945178676,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03186387490967861,
+      0.05421377304533675
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.021958986990326185,
+     "macro_advantage_over_type_popularity": -0.016675035516473646,
+     "macro_interval_over_type_popularity": [
+      -0.06967944645340786,
+      0.04693600540470092
+     ],
+     "macro_standard_error_over_type_popularity": 0.029749386177018756,
+     "micro_advantage_over_type_popularity": -0.026231930255574742,
+     "micro_interval_over_type_popularity": [
+      -0.10037167468547674,
+      0.0428665782774167
+     ],
+     "micro_standard_error_over_type_popularity": 0.03654104181579188,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.09491987087728454,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.03490651160296412,
+      0.19852531005035248
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.04174025605760829,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.01798024851161628,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.09803725298282942,
+      0.07332392326169014
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.0437153887123742,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.007299313560656384,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.004821639283825493,
+      0.021579130579238666
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006735013975528162
+    },
+    {
+     "draw_seed": 13,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 201,
+     "held_out_targets": 6,
+     "held_out_drugs": 31,
+     "held_out_genes": 170,
+     "seen_target_share": 0.16556291390728478,
+     "adversary_macro_auprc": 0.22922178004394228,
+     "adversary_micro_auprc": 0.3542076836430063,
+     "held_out_with_a_leaked_neighbour": 24,
+     "pairs_through_a_training_drug": 80,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.07818314098682566,
+     "macro_interval_over_popularity": [
+      0.0467284082292073,
+      0.1144977402605409
+     ],
+     "macro_standard_error_over_popularity": 0.017288412448221904,
+     "micro_advantage_over_popularity": 0.04974083760288206,
+     "micro_interval_over_popularity": [
+      0.017678083481078168,
+      0.08635607185539444
+     ],
+     "micro_standard_error_over_popularity": 0.017520216793348312,
+     "drug_stratum_macro_advantage_over_popularity": 0.02740062967335688,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.008820126680091597,
+      0.11011837566200948
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.025841864692901985,
+     "drug_stratum_micro_advantage_over_popularity": 0.08703610002045659,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.012037799737298072,
+      0.1848084253000938
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04407494871405693,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.0578723833461009,
+     "macro_interval_over_degree_popularity": [
+      -0.14249538479420956,
+      -0.014446655272197772
+     ],
+     "macro_standard_error_over_degree_popularity": 0.032666092214451846,
+     "micro_advantage_over_degree_popularity": 0.02192705065080075,
+     "micro_interval_over_degree_popularity": [
+      -0.040679884994707594,
+      0.07790086550081053
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03025074707890505,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.008938921451896287,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.05075411336310612,
+      0.11406401752381144
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.04204621383018197,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.09376984014105211,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.01731182709429855,
+      0.1919655478113576
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.04455533895445504,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10090222836693366,
+      -0.027318304421458512
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01877175395708165,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.01537073383923343,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03091685371749396,
+      0.05266781872095699
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.021323012167175248,
+     "macro_advantage_over_type_popularity": -0.04123067668096103,
+     "macro_interval_over_type_popularity": [
+      -0.11869931552392947,
+      0.010705988856940114
+     ],
+     "macro_standard_error_over_type_popularity": 0.03301216358587953,
+     "micro_advantage_over_type_popularity": -0.02902273975984876,
+     "micro_interval_over_type_popularity": [
+      -0.11444544541788736,
+      0.04330304919585259
+     ],
+     "micro_standard_error_over_type_popularity": 0.0402427020633389,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.02740062967335688,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.008820126680091597,
+      0.11011837566200948
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.025841864692901985,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.041759706941975394,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.09622199458180615,
+      0.03546675044167391
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.03359468465325895,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.005288429775544723,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.008777943311411972,
+      0.018719521743914024
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.007014788295939618
+    },
+    {
+     "draw_seed": 14,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 202,
+     "held_out_targets": 19,
+     "held_out_drugs": 32,
+     "held_out_genes": 170,
+     "seen_target_share": 0.271356783919598,
+     "adversary_macro_auprc": 0.29010833484964305,
+     "adversary_micro_auprc": 0.41243187899025685,
+     "held_out_with_a_leaked_neighbour": 14,
+     "pairs_through_a_training_drug": 319,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.14245318291901368,
+     "macro_interval_over_popularity": [
+      0.08420657017231539,
+      0.2563876211555584
+     ],
+     "macro_standard_error_over_popularity": 0.04392454427306905,
+     "micro_advantage_over_popularity": 0.10179951786527291,
+     "micro_interval_over_popularity": [
+      0.0327883041529162,
+      0.17429445679927574
+     ],
+     "micro_standard_error_over_popularity": 0.036099171374157774,
+     "drug_stratum_macro_advantage_over_popularity": 0.11594305131315025,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.051464433801806,
+      0.2637860374355987
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.05416466925764777,
+     "drug_stratum_micro_advantage_over_popularity": 0.09624660565355592,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.01900581989695006,
+      0.24100257550667115
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.06632989060095522,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.0741651222123706,
+     "macro_interval_over_degree_popularity": [
+      -0.16563934482899006,
+      0.02398773785688904
+     ],
+     "macro_standard_error_over_degree_popularity": 0.048375144310272816,
+     "micro_advantage_over_degree_popularity": 0.03485334552085101,
+     "micro_interval_over_degree_popularity": [
+      -0.03401830634392542,
+      0.10749270917498444
+     ],
+     "micro_standard_error_over_degree_popularity": 0.036100411925655225,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.003528077831030152,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.13862442713325152,
+      0.13647415582509587
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.07017949894955912,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.1053428521755122,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.018067726301090083,
+      0.24907827516337508
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.06815074191782736,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10167775671133343,
+      -0.02669755107983481
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01912795480720529,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.014113106545841636,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.034443140151526636,
+      0.055270132392201084
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02288645927775401,
+     "macro_advantage_over_type_popularity": -0.01681148243649333,
+     "macro_interval_over_type_popularity": [
+      -0.08729819438201906,
+      0.0811532716308244
+     ],
+     "macro_standard_error_over_type_popularity": 0.04297310206025301,
+     "micro_advantage_over_type_popularity": -0.03445043555551458,
+     "micro_interval_over_type_popularity": [
+      -0.1171275869999091,
+      0.04917525600131147
+     ],
+     "micro_standard_error_over_type_popularity": 0.04242497387738259,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.11594305131315025,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.051464433801806,
+      0.2637860374355987
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.05416466925764777,
+     "drug_stratum_micro_advantage_over_type_popularity": 0.010531052491432713,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.1089077518452587,
+      0.16086103173487548
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.06881983127754748,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.005444619039414178,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007599992535400541,
+      0.01884833798145918
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.0067471470182257735
+    },
+    {
+     "draw_seed": 15,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 194,
+     "held_out_targets": 3,
+     "held_out_drugs": 24,
+     "held_out_genes": 170,
+     "seen_target_share": 0.24561403508771928,
+     "adversary_macro_auprc": 0.20690419079014208,
+     "adversary_micro_auprc": 0.3677935008215064,
+     "held_out_with_a_leaked_neighbour": 4,
+     "pairs_through_a_training_drug": 89,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.0459294975688172,
+     "macro_interval_over_popularity": [
+      0.003244595084655365,
+      0.09815600674852377
+     ],
+     "macro_standard_error_over_popularity": 0.024212539532325186,
+     "micro_advantage_over_popularity": 0.04154992855811729,
+     "micro_interval_over_popularity": [
+      0.005574740179742138,
+      0.08342850278807729
+     ],
+     "micro_standard_error_over_popularity": 0.01986101852083384,
+     "drug_stratum_macro_advantage_over_popularity": 0.03233448617301171,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.001076896194083745,
+      0.11754565376617815
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.029711963477924697,
+     "drug_stratum_micro_advantage_over_popularity": 0.03657448081499215,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.0029125502399868016,
+      0.1065642948441302
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.027928279571491365,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.122188447909482,
+     "macro_interval_over_degree_popularity": [
+      -0.2222532813232731,
+      -0.07097290865258615
+     ],
+     "macro_standard_error_over_degree_popularity": 0.03859264064816674,
+     "micro_advantage_over_degree_popularity": -0.028362193825136994,
+     "micro_interval_over_degree_popularity": [
+      -0.09697037578675546,
+      0.03124599907670299
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03270885966871291,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.03009370727035765,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.10172542916684235,
+      0.1080753154662681
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.053521581170141504,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.06039291953318726,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.0020992677384536473,
+      0.13066001957984844
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.033867787193617355,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10042025883736246,
+      -0.02818197729252151
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.01842847152928343,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.01526984270969911,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03581799051379405,
+      0.05317992929549589
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022703967983414477,
+     "macro_advantage_over_type_popularity": -0.1447409856631389,
+     "macro_interval_over_type_popularity": [
+      -0.2370649724866459,
+      -0.0696693999289653
+     ],
+     "macro_standard_error_over_type_popularity": 0.04270373653742635,
+     "micro_advantage_over_type_popularity": -0.13946686497265282,
+     "micro_interval_over_type_popularity": [
+      -0.2258774075783994,
+      -0.05850870181467418
+     ],
+     "micro_standard_error_over_type_popularity": 0.042696882637570176,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.03233448617301171,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.001076896194083745,
+      0.11754565376617815
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.029711963477924697,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.10180350378570346,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.14428654323522622,
+      -0.0517862417774073
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.02359744910054953,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.006166071426346287,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007111225346338785,
+      0.019283060551526798
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006733359872391938
+    },
+    {
+     "draw_seed": 16,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 203,
+     "held_out_targets": 4,
+     "held_out_drugs": 33,
+     "held_out_genes": 170,
+     "seen_target_share": 0.4885057471264368,
+     "adversary_macro_auprc": 0.3402319364306024,
+     "adversary_micro_auprc": 0.45998828166156774,
+     "held_out_with_a_leaked_neighbour": 27,
+     "pairs_through_a_training_drug": 454,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.20482109547431146,
+     "macro_interval_over_popularity": [
+      0.1453871776106747,
+      0.30655534747745133
+     ],
+     "macro_standard_error_over_popularity": 0.04111508422266343,
+     "micro_advantage_over_popularity": 0.15430801117147303,
+     "micro_interval_over_popularity": [
+      0.08638797447408036,
+      0.2183439093353956
+     ],
+     "micro_standard_error_over_popularity": 0.03366284657812981,
+     "drug_stratum_macro_advantage_over_popularity": 0.05590022175132081,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.028945470650806715,
+      0.19074410746730916
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.05604428910891115,
+     "drug_stratum_micro_advantage_over_popularity": 0.12727912562192667,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.04163963582552136,
+      0.23353892793072298
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.048954800217045215,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.0322204388358312,
+     "macro_interval_over_degree_popularity": [
+      -0.13756183096843025,
+      0.04883530142741432
+     ],
+     "macro_standard_error_over_degree_popularity": 0.04755116226518563,
+     "micro_advantage_over_degree_popularity": 0.0663770781168907,
+     "micro_interval_over_degree_popularity": [
+      -0.003556268296191612,
+      0.12203725180170458
+     ],
+     "micro_standard_error_over_degree_popularity": 0.03203975177551633,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.02532571304834985,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.19118304302502823,
+      0.10141101388313123
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.07464271203658827,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.12079209168709071,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.014388671649548816,
+      0.23229316018052168
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.05558890074791498,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10152516671980086,
+      -0.0281535995304542
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.018717580320186153,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.011677734981522803,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03948185342720583,
+      0.04764059066142973
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022225521511781737,
+     "macro_advantage_over_type_popularity": 0.011840147844746518,
+     "macro_interval_over_type_popularity": [
+      -0.05585022288456292,
+      0.08822166470363547
+     ],
+     "macro_standard_error_over_type_popularity": 0.03675370761610886,
+     "micro_advantage_over_type_popularity": -0.029303440735447495,
+     "micro_interval_over_type_popularity": [
+      -0.09247147925157609,
+      0.035291549502241754
+     ],
+     "micro_standard_error_over_type_popularity": 0.032593208026733614,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.05590022175132081,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.028945470650806715,
+      0.19074410746730916
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.05604428910891115,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.014694314845934975,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.1072749835393315,
+      0.09436952431391715
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.05144087030507924,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.0054446190394142335,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.0068894523911975656,
+      0.02006877345201836
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006877224745764699
+    },
+    {
+     "draw_seed": 17,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 203,
+     "held_out_targets": 6,
+     "held_out_drugs": 33,
+     "held_out_genes": 170,
+     "seen_target_share": 0.3471882640586797,
+     "adversary_macro_auprc": 0.24763887753306152,
+     "adversary_micro_auprc": 0.3586175411054016,
+     "held_out_with_a_leaked_neighbour": 31,
+     "pairs_through_a_training_drug": 139,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.1060739481590553,
+     "macro_interval_over_popularity": [
+      0.07762999703974528,
+      0.17033144869925723
+     ],
+     "macro_standard_error_over_popularity": 0.023648763870028212,
+     "micro_advantage_over_popularity": 0.04640669368846878,
+     "micro_interval_over_popularity": [
+      -0.018603093606238557,
+      0.11691752224594754
+     ],
+     "micro_standard_error_over_popularity": 0.03457222067654969,
+     "drug_stratum_macro_advantage_over_popularity": 0.02221461988208595,
+     "drug_stratum_macro_interval_over_popularity": [
+      -0.0053479070168906155,
+      0.09408140234670251
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.025365085624938295,
+     "drug_stratum_micro_advantage_over_popularity": 0.09057338867495435,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.0073470211692455425,
+      0.18179450521085647
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.04450272659130752,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.06564738019300415,
+     "macro_interval_over_degree_popularity": [
+      -0.15325105930891753,
+      -0.01478029062566139
+     ],
+     "macro_standard_error_over_degree_popularity": 0.0353248245078114,
+     "micro_advantage_over_degree_popularity": 0.006990074758199072,
+     "micro_interval_over_degree_popularity": [
+      -0.02933368541048805,
+      0.03963726251047523
+     ],
+     "micro_standard_error_over_degree_popularity": 0.017594952744275732,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.048018576936251,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.1894256481099905,
+      0.03555212220337832
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.05739334250868097,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.07088082955534941,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.00646205570450562,
+      0.15617053521153265
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.041488667882685154,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10126151436696032,
+      -0.026764233003068693
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019004757578172767,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.017670108094005987,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.028361157624560245,
+      0.057345206487211406
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.021864269984492483,
+     "macro_advantage_over_type_popularity": -0.0026099095603500655,
+     "macro_interval_over_type_popularity": [
+      -0.022472059491321583,
+      0.028326897622243646
+     ],
+     "macro_standard_error_over_type_popularity": 0.012959155656319513,
+     "micro_advantage_over_type_popularity": -0.030432098711510647,
+     "micro_interval_over_type_popularity": [
+      -0.0603185631735234,
+      0.0007943484504793918
+     ],
+     "micro_standard_error_over_type_popularity": 0.015590314828232251,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.02221461988208595,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      -0.0053479070168906155,
+      0.09408140234670251
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.025365085624938295,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.05422450509917465,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.12662851721021662,
+      0.03254590762574599
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04060646645447636,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.008915407592039348,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.0036699029047463773,
+      0.02244635177674784
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006662432238932505
+    },
+    {
+     "draw_seed": 18,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 204,
+     "held_out_targets": 8,
+     "held_out_drugs": 34,
+     "held_out_genes": 170,
+     "seen_target_share": 0.1908831908831909,
+     "adversary_macro_auprc": 0.21294793158581604,
+     "adversary_micro_auprc": 0.3557592042918277,
+     "held_out_with_a_leaked_neighbour": 28,
+     "pairs_through_a_training_drug": 105,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.07995567088861497,
+     "macro_interval_over_popularity": [
+      0.057542329635139416,
+      0.1456002689427483
+     ],
+     "macro_standard_error_over_popularity": 0.02246417263470372,
+     "micro_advantage_over_popularity": 0.056020967902651264,
+     "micro_interval_over_popularity": [
+      0.019365540964016343,
+      0.10022112689990384
+     ],
+     "micro_standard_error_over_popularity": 0.020626803843307197,
+     "drug_stratum_macro_advantage_over_popularity": 0.07471935287860576,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.022817480143915582,
+      0.18012749617500046
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.040130843227499303,
+     "drug_stratum_micro_advantage_over_popularity": 0.08687388516377098,
+     "drug_stratum_micro_interval_over_popularity": [
+      0.014199345132987705,
+      0.18167725620090447
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.042724741645233474,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.07276308962107442,
+     "macro_interval_over_degree_popularity": [
+      -0.16558515745255425,
+      -0.016532736815209396
+     ],
+     "macro_standard_error_over_degree_popularity": 0.03802427509825304,
+     "micro_advantage_over_degree_popularity": 0.01974205875650692,
+     "micro_interval_over_degree_popularity": [
+      -0.036646750240723135,
+      0.06957224889012528
+     ],
+     "micro_standard_error_over_degree_popularity": 0.027097181155074385,
+     "drug_stratum_macro_advantage_over_degree_popularity": 0.0264757306967352,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.1067194764349628,
+      0.08315719648135941
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.04843881645691508,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.08363387490690322,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      0.011223084353293201,
+      0.16897195800079984
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.04024279875740234,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10300016355133323,
+      -0.027291545238454996
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.019313777781856768,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.014093778779599275,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03612298067692183,
+      0.05369466994570607
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.02291308682777538,
+     "macro_advantage_over_type_popularity": -0.03477615558248495,
+     "macro_interval_over_type_popularity": [
+      -0.09573498246472154,
+      0.033541052324536635
+     ],
+     "macro_standard_error_over_type_popularity": 0.032979186043534,
+     "micro_advantage_over_type_popularity": -0.02764776022907095,
+     "micro_interval_over_type_popularity": [
+      -0.1021794916765777,
+      0.047039324599217044
+     ],
+     "micro_standard_error_over_type_popularity": 0.03806672374487357,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.07471935287860576,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.022817480143915582,
+      0.18012749617500046
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.040130843227499303,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.02022218485102012,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.0903209639224467,
+      0.07226396510333777
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.04147650901388609,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.0052722505921122265,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.007524531890104939,
+      0.019345026236515277
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.0068546050148421645
+    },
+    {
+     "draw_seed": 19,
+     "usable": true,
+     "pooling_rule": "base_rate_shrunk_mean",
+     "held_out_perturbations": 202,
+     "held_out_targets": 2,
+     "held_out_drugs": 32,
+     "held_out_genes": 170,
+     "seen_target_share": 0.31627906976744186,
+     "adversary_macro_auprc": 0.24582099258311357,
+     "adversary_micro_auprc": 0.3726762577013221,
+     "held_out_with_a_leaked_neighbour": 29,
+     "pairs_through_a_training_drug": 136,
+     "pairs_through_a_training_gene": 0,
+     "pairs_through_another_type": 0,
+     "macro_advantage_over_popularity": 0.10333768797848969,
+     "macro_interval_over_popularity": [
+      0.0766107636093022,
+      0.16421757931708594
+     ],
+     "macro_standard_error_over_popularity": 0.02234908796992795,
+     "micro_advantage_over_popularity": 0.060213022426636564,
+     "micro_interval_over_popularity": [
+      0.0023140784241548543,
+      0.13609673568568686
+     ],
+     "micro_standard_error_over_popularity": 0.034128855749782146,
+     "drug_stratum_macro_advantage_over_popularity": 0.02718734215762153,
+     "drug_stratum_macro_interval_over_popularity": [
+      0.002734682412202028,
+      0.08519108247611182
+     ],
+     "drug_stratum_macro_standard_error_over_popularity": 0.021035182295162002,
+     "drug_stratum_micro_advantage_over_popularity": 0.04834358215424489,
+     "drug_stratum_micro_interval_over_popularity": [
+      -0.018567072685171403,
+      0.1369362569862385
+     ],
+     "drug_stratum_micro_standard_error_over_popularity": 0.03966994538456062,
+     "gene_stratum_macro_advantage_over_popularity": 0.0,
+     "gene_stratum_macro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_popularity": 0.0,
+     "gene_stratum_micro_interval_over_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_micro_standard_error_over_popularity": 0.0,
+     "macro_advantage_over_degree_popularity": -0.0813666565881187,
+     "macro_interval_over_degree_popularity": [
+      -0.14847846502779907,
+      -0.028845342757753613
+     ],
+     "macro_standard_error_over_degree_popularity": 0.030519214197313183,
+     "micro_advantage_over_degree_popularity": -0.000413609114392699,
+     "micro_interval_over_degree_popularity": [
+      -0.03332873196521038,
+      0.03206254260914269
+     ],
+     "micro_standard_error_over_degree_popularity": 0.016681753995061405,
+     "drug_stratum_macro_advantage_over_degree_popularity": -0.03043261921477164,
+     "drug_stratum_macro_interval_over_degree_popularity": [
+      -0.14888270383547503,
+      0.08046631183315381
+     ],
+     "drug_stratum_macro_standard_error_over_degree_popularity": 0.05850847660177147,
+     "drug_stratum_micro_advantage_over_degree_popularity": 0.0478113851834181,
+     "drug_stratum_micro_interval_over_degree_popularity": [
+      -0.009024567006654003,
+      0.12782532075411013
+     ],
+     "drug_stratum_micro_standard_error_over_degree_popularity": 0.03491132688170908,
+     "gene_stratum_macro_advantage_over_degree_popularity": -0.041607339229220996,
+     "gene_stratum_macro_interval_over_degree_popularity": [
+      -0.10067366268938871,
+      -0.02859205706985929
+     ],
+     "gene_stratum_macro_standard_error_over_degree_popularity": 0.018388502446863672,
+     "gene_stratum_micro_advantage_over_degree_popularity": 0.016448740822459174,
+     "gene_stratum_micro_interval_over_degree_popularity": [
+      -0.03501925169190956,
+      0.053246085783641595
+     ],
+     "gene_stratum_micro_standard_error_over_degree_popularity": 0.022517081302399215,
+     "macro_advantage_over_type_popularity": -0.03179031212032174,
+     "macro_interval_over_type_popularity": [
+      -0.0699718989148035,
+      0.006154634902478803
+     ],
+     "macro_standard_error_over_type_popularity": 0.019420390838118022,
+     "micro_advantage_over_type_popularity": -0.05966142644613903,
+     "micro_interval_over_type_popularity": [
+      -0.09282821768057942,
+      -0.02259748710794744
+     ],
+     "micro_standard_error_over_type_popularity": 0.01791633177258153,
+     "drug_stratum_macro_advantage_over_type_popularity": 0.02718734215762153,
+     "drug_stratum_macro_interval_over_type_popularity": [
+      0.002734682412202028,
+      0.08519108247611182
+     ],
+     "drug_stratum_macro_standard_error_over_type_popularity": 0.021035182295162002,
+     "drug_stratum_micro_advantage_over_type_popularity": -0.0901441821909853,
+     "drug_stratum_micro_interval_over_type_popularity": [
+      -0.14345831469679274,
+      -0.029577463560317364
+     ],
+     "drug_stratum_micro_standard_error_over_type_popularity": 0.02905177113877484,
+     "gene_stratum_macro_advantage_over_type_popularity": 0.0,
+     "gene_stratum_macro_interval_over_type_popularity": [
+      0.0,
+      0.0
+     ],
+     "gene_stratum_macro_standard_error_over_type_popularity": 0.0,
+     "gene_stratum_micro_advantage_over_type_popularity": 0.009101684682162325,
+     "gene_stratum_micro_interval_over_type_popularity": [
+      -0.004053508718149372,
+      0.02291951258029461
+     ],
+     "gene_stratum_micro_standard_error_over_type_popularity": 0.006880999165914268
+    }
+   ],
+   "summary": {
+    "usable_draws": 20,
+    "adversary_macro_auprc": {
+     "mean": 0.25751702004337196,
+     "minimum": 0.18462715429490287,
+     "maximum": 0.3402319364306024,
+     "draws": 20
+    },
+    "adversary_micro_auprc": {
+     "mean": 0.3884657526122071,
+     "minimum": 0.3134417877455179,
+     "maximum": 0.49795178954258085,
+     "draws": 20
+    },
+    "draw_seed": {
+     "mean": 9.5,
+     "minimum": 0.0,
+     "maximum": 19.0,
+     "draws": 20
+    },
+    "drug_stratum_macro_advantage_over_degree_popularity": {
+     "mean": -0.007287346549824733,
+     "minimum": -0.10219623795724997,
+     "maximum": 0.14945598688909112,
+     "draws": 20
+    },
+    "drug_stratum_macro_advantage_over_popularity": {
+     "mean": 0.05357053440048267,
+     "minimum": -0.009468504046547699,
+     "maximum": 0.1602364004444492,
+     "draws": 20
+    },
+    "drug_stratum_macro_advantage_over_type_popularity": {
+     "mean": 0.05357053440048267,
+     "minimum": -0.009468504046547699,
+     "maximum": 0.1602364004444492,
+     "draws": 20
+    },
+    "drug_stratum_macro_standard_error_over_degree_popularity": {
+     "mean": 0.059391439772925735,
+     "minimum": 0.04097764234762375,
+     "maximum": 0.08427189501528486,
+     "draws": 20
+    },
+    "drug_stratum_macro_standard_error_over_popularity": {
+     "mean": 0.0384314042837098,
+     "minimum": 0.021035182295162002,
+     "maximum": 0.05842109766797037,
+     "draws": 20
+    },
+    "drug_stratum_macro_standard_error_over_type_popularity": {
+     "mean": 0.0384314042837098,
+     "minimum": 0.021035182295162002,
+     "maximum": 0.05842109766797037,
+     "draws": 20
+    },
+    "drug_stratum_micro_advantage_over_degree_popularity": {
+     "mean": 0.07381965897358418,
+     "minimum": -0.06978933028061474,
+     "maximum": 0.20023405325319799,
+     "draws": 20
+    },
+    "drug_stratum_micro_advantage_over_popularity": {
+     "mean": 0.07222468433944769,
+     "minimum": -0.06793628027434012,
+     "maximum": 0.20914571299919377,
+     "draws": 20
+    },
+    "drug_stratum_micro_advantage_over_type_popularity": {
+     "mean": -0.0643008896612475,
+     "minimum": -0.21171310204487892,
+     "maximum": 0.05552656725913396,
+     "draws": 20
+    },
+    "drug_stratum_micro_standard_error_over_degree_popularity": {
+     "mean": 0.04752699718381757,
+     "minimum": 0.033867787193617355,
+     "maximum": 0.06815074191782736,
+     "draws": 20
+    },
+    "drug_stratum_micro_standard_error_over_popularity": {
+     "mean": 0.048045478283031254,
+     "minimum": 0.027928279571491365,
+     "maximum": 0.06632989060095522,
+     "draws": 20
+    },
+    "drug_stratum_micro_standard_error_over_type_popularity": {
+     "mean": 0.045726854906587316,
+     "minimum": 0.02359744910054953,
+     "maximum": 0.08443021900236088,
+     "draws": 20
+    },
+    "gene_stratum_macro_advantage_over_degree_popularity": {
+     "mean": -0.041607339229220996,
+     "minimum": -0.041607339229220996,
+     "maximum": -0.041607339229220996,
+     "draws": 20
+    },
+    "gene_stratum_macro_advantage_over_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_macro_advantage_over_type_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_macro_standard_error_over_degree_popularity": {
+     "mean": 0.018952089425973703,
+     "minimum": 0.01744531222575749,
+     "maximum": 0.01999494978180204,
+     "draws": 20
+    },
+    "gene_stratum_macro_standard_error_over_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_macro_standard_error_over_type_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_micro_advantage_over_degree_popularity": {
+     "mean": 0.01472988930317568,
+     "minimum": 0.008384641579542218,
+     "maximum": 0.017670108094005987,
+     "draws": 20
+    },
+    "gene_stratum_micro_advantage_over_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_micro_advantage_over_type_popularity": {
+     "mean": 0.007077333354708132,
+     "minimum": 0.004626045777340881,
+     "maximum": 0.009631770123913252,
+     "draws": 20
+    },
+    "gene_stratum_micro_standard_error_over_degree_popularity": {
+     "mean": 0.02250675477472689,
+     "minimum": 0.02129523611736387,
+     "maximum": 0.02393095287674815,
+     "draws": 20
+    },
+    "gene_stratum_micro_standard_error_over_popularity": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "gene_stratum_micro_standard_error_over_type_popularity": {
+     "mean": 0.00676781777544286,
+     "minimum": 0.006309752306936572,
+     "maximum": 0.007223738758212335,
+     "draws": 20
+    },
+    "held_out_drugs": {
+     "mean": 32.75,
+     "minimum": 22.0,
+     "maximum": 39.0,
+     "draws": 20
+    },
+    "held_out_genes": {
+     "mean": 170.0,
+     "minimum": 170.0,
+     "maximum": 170.0,
+     "draws": 20
+    },
+    "held_out_perturbations": {
+     "mean": 202.75,
+     "minimum": 192.0,
+     "maximum": 209.0,
+     "draws": 20
+    },
+    "held_out_targets": {
+     "mean": 5.5,
+     "minimum": 1.0,
+     "maximum": 19.0,
+     "draws": 20
+    },
+    "held_out_with_a_leaked_neighbour": {
+     "mean": 25.35,
+     "minimum": 4.0,
+     "maximum": 34.0,
+     "draws": 20
+    },
+    "macro_advantage_over_degree_popularity": {
+     "mean": -0.07447665033633244,
+     "minimum": -0.13642121512022554,
+     "maximum": 0.031984539943219537,
+     "draws": 20
+    },
+    "macro_advantage_over_popularity": {
+     "mean": 0.11461510279704941,
+     "minimum": 0.037346677911627074,
+     "maximum": 0.20482109547431146,
+     "draws": 20
+    },
+    "macro_advantage_over_type_popularity": {
+     "mean": -0.038261179653149326,
+     "minimum": -0.1447409856631389,
+     "maximum": 0.011840147844746518,
+     "draws": 20
+    },
+    "macro_standard_error_over_degree_popularity": {
+     "mean": 0.0401382667451442,
+     "minimum": 0.027100484745244725,
+     "maximum": 0.05168451508451135,
+     "draws": 20
+    },
+    "macro_standard_error_over_popularity": {
+     "mean": 0.0315414959459589,
+     "minimum": 0.01684593030673744,
+     "maximum": 0.05272074693617874,
+     "draws": 20
+    },
+    "macro_standard_error_over_type_popularity": {
+     "mean": 0.031987954203172186,
+     "minimum": 0.011870052567359532,
+     "maximum": 0.05232875172826414,
+     "draws": 20
+    },
+    "micro_advantage_over_degree_popularity": {
+     "mean": 0.01563326794406101,
+     "minimum": -0.028415128943634183,
+     "maximum": 0.08909099297668505,
+     "draws": 20
+    },
+    "micro_advantage_over_popularity": {
+     "mean": 0.07743047940630213,
+     "minimum": 0.008202561597067781,
+     "maximum": 0.16593514273198856,
+     "draws": 20
+    },
+    "micro_advantage_over_type_popularity": {
+     "mean": -0.061577444857245464,
+     "minimum": -0.13946686497265282,
+     "maximum": 0.012077809702893294,
+     "draws": 20
+    },
+    "micro_standard_error_over_degree_popularity": {
+     "mean": 0.029469146836350286,
+     "minimum": 0.016681753995061405,
+     "maximum": 0.04402770547103055,
+     "draws": 20
+    },
+    "micro_standard_error_over_popularity": {
+     "mean": 0.030629924497413606,
+     "minimum": 0.017070139262480737,
+     "maximum": 0.04415142834033439,
+     "draws": 20
+    },
+    "micro_standard_error_over_type_popularity": {
+     "mean": 0.0338456730823397,
+     "minimum": 0.014721958089952011,
+     "maximum": 0.044950883776734125,
+     "draws": 20
+    },
+    "pairs_through_a_training_drug": {
+     "mean": 202.3,
+     "minimum": 78.0,
+     "maximum": 467.0,
+     "draws": 20
+    },
+    "pairs_through_a_training_gene": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "pairs_through_another_type": {
+     "mean": 0.0,
+     "minimum": 0.0,
+     "maximum": 0.0,
+     "draws": 20
+    },
+    "seen_target_share": {
+     "mean": 0.2995437510182989,
+     "minimum": 0.13496932515337423,
+     "maximum": 0.6103896103896104,
+     "draws": 20
+    }
+   }
+  }
+ },
+ "excluded_lockbox_perturbations": 0,
+ "evidence_dir": "data/processed/evidence_full_v4",
+ "graph_dir": "data/processed/graph_full_neuronal_split_binders_drugs_v4_enzymes",
+ "label_selection": "data/processed/label_selection/better_v2_full_v4.parquet",
+ "num_draws": 20
+}
