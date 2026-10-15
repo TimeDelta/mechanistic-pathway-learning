@@ -1,0 +1,53 @@
+{
+ "_what_this_is": "The machine-checked statement of every load-bearing registered rule, one entry each, and the single place each value is written. docs/preregistration.md prose must reference these rather than restate them: the defect this file exists to stop is a rule stated in several places across several amendments, where a session reads the earliest and takes it for current. On 15 October 2026 the floor rule alone appeared on 44 lines of the registration, 16 of them normative, across four revisions.",
+ "_how_it_is_enforced": "tests/test_registration_matches_the_code.py asserts every entry against the implementation named in code_location. A rule changed in code without changing this file fails the suite; a rule changed here without changing the code fails too. That is the half of the problem an amendment list cannot catch, because a code change that nobody wrote an amendment for leaves no trace in the document at all.",
+ "_amending": "Change the value here in the same commit as the code, and mark the commit with an Amends: <rule_id> trailer so docs/amendment_history.md can be generated from the log rather than hand-maintained. The generated history is committed, because a rebase that squashes or drops a commit would otherwise lose a registration record silently.",
+ "rules": {
+  "floor_rule": {
+   "value": "none",
+   "means": "No magnitude floor. The decision rests on the paired interval on model minus best baseline; effect sizes are reported in standard errors of the available precision. Registered 15 October 2026 (the owner: \"no floor. paired interval\").",
+   "code_location": "experiments/score_confirmatory.py --floor-rule default",
+   "superseded": ["0.05 fixed", "0.041 macro and 0.028 micro fixed", "realised half-width plus 0.005"]
+  },
+  "alpha_one_sided": {
+   "value": 0.025,
+   "means": "Each tested model is a candidate at one-sided 0.025: H1 first, then its second-stage family by Holm at the same level. Holm over eight hypotheses was withdrawn on 8 October 2026.",
+   "code_location": "experiments/score_confirmatory.py --alpha default"
+  },
+  "tested_models": {
+   "value": ["confirmatory_v2_message_passing_noisy_or", "confirmatory_v2_linear_response_noisy_or"],
+   "means": "Two models, not four: the noisy-OR configurations of the two encoders. The sigmoid head was dropped because only noisy-OR has modules that can be read as pathways. With two tested models the chance that one passes by luck is at most 0.05.",
+   "code_location": "configs/head_choice.json chosen values"
+  },
+  "held_out_fraction": {
+   "value": 0.14285714285714285,
+   "means": "One seventh of each side: the genes by the registered disease-cluster grouping and the drugs by the item 25 target rule. A convention fixed before the split rule existed, not derived.",
+   "code_location": "mechanistic_pathway_learning/evaluation/target_held_out_split.REGISTERED_HELD_OUT_FRACTION"
+  },
+  "bootstrap_unit": {
+   "value": "group",
+   "means": "A cluster bootstrap over leakage groups rather than perturbations, so the dependence among perturbations sharing disease annotations or targets stays inside a resample.",
+   "code_location": "experiments/score_confirmatory.py --bootstrap-unit default"
+  },
+  "num_bootstrap": {
+   "value": 4000,
+   "means": "Resamples in the deciding paired bootstrap, the same rows for every model, seed and baseline.",
+   "code_location": "experiments/score_confirmatory.py --num-bootstrap default"
+  },
+  "minimum_positives_to_score": {
+   "value": 5,
+   "means": "A symptom enters the macro average with at least five positives and one negative among the labelled rows.",
+   "code_location": "experiments/score_confirmatory.MINIMUM_POSITIVES_TO_SCORE"
+  },
+  "normalisation": {
+   "value": "total_in_degree",
+   "means": "Each edge is divided by the destination's in-degree summed over every relation, so unsigned row sums are one. Amendment item 28.",
+   "code_location": "experiments/run_main_model.py --normalisation default"
+  },
+  "validation_fold_rule": {
+   "value": "seed % num_validation_folds",
+   "means": "The early-stopping validation fold rotates with the seed over round(1 / 0.15) = 7 grouped folds, so seeds 0 to 4 use folds 0 to 4 and folds 5 and 6 never serve as validation. The registration said \"fold 0\" until 15 October 2026, which described seed 0 alone.",
+   "code_location": "experiments/run_main_model.py, the validation_fold assignment"
+  }
+ }
+}

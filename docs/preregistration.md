@@ -11,6 +11,12 @@ convergence indices; sufficiency test by module ablation).
 Primary endpoint: macro-averaged AUPRC under the pathway-wise split, proposed model versus the
 best of network proximity, knowledge-graph embedding and relational GNN with sigmoid head;
 minimum difference 0.05; 95 percent bootstrap interval excluding zero; five seeds by five folds.
+**Where the current rules are.** `configs/registered_rules.json` holds the load-bearing registered rules, one entry
+each, and is the canonical statement of their current values; `tests/test_registration_matches_the_code.py` asserts
+every entry against the implementation it names, so a rule changed in code without changing the registration fails the
+suite. Prose in this document refers to that file rather than restating values. Where prose below still carries a
+value, the file wins and the prose is a record of what was registered earlier.
+
 **Superseded on the decision rule** (marked 15 October 2026, before any lockbox run): **there is no magnitude floor.**
 The floor was revised three times on 8 October (0.05 to a fixed 0.041 macro and 0.028 micro, then to each model's
 realised half-width plus 0.005) and removed on 15 October, the owner: "no floor. paired interval". The decision rests
