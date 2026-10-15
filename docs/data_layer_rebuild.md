@@ -191,3 +191,46 @@ directory, no validation, no score.
 No lockbox was passed, so the step count is for 1,089 training perturbations of the 1,568; with the held-out
 perturbations left out an epoch is shorter. A deeper message-passing variant needs gradients through its last rounds
 only, or a smaller batch, to run here at all.
+
+## The rebuild of 15 October 2026
+
+A second new container (2 cores, 7.8 GB, Python 3.13, pandas 2.3.3 and pyarrow 25.0.1 pinned), the same scripts, with
+the BRENDA layer (decision 9.5), lithium (9.7a) and the chloride charge guard (090f001) now in the code. The graphs
+stage took about 1 hour 45 minutes, the OnSIDES identifier bridge most of it. What it found:
+
+- **Every raw file with a recorded hash matched it**, and the OmniPath, GTEx, HGNC and OnSIDES files matched their
+  recorded sizes or row counts. **OmniPath had moved once more**: the service now rejects the field `n_references`
+  ("Unknown values for argument `fields`") and serves the rejection as a 282-byte body with a success status, which
+  `fetch_raw_sources.sh` recorded as fetched. The field is left out of both queries (no reader uses the column) and the
+  downloads then hold the recorded 126,124 and 64,515 rows. A fetched file smaller than a few hundred bytes is worth a
+  look before anything is built on it; the script does not check for that.
+- **The neuronal variant failed on first run**: `build_neuronal_graph_variant.py` handed `add_brenda_enzyme_regulation`
+  the pre-split table, whose gene nodes carry no `uniprot_entry` column (the split writes it, on protein nodes), and
+  the lookup raised. The 4,134-edge count of decision 9.5 had been measured on the split graph through
+  `experiments/map_brenda_regulation_to_graph.py`. Fixed by resolving an accession through UniProt's accession ->
+  primary gene name map before the split (commit c78f4df); the pre-split run then gives the same counts, 4,134 edges of
+  4,143 rows (1,552 `inhibits`, 482 `activates`, 2,100 `cofactor_of`), 9 already present, none unmatched, 501
+  metabolites and 1,361 enzymes, with `accession_resolution` recorded in `neuronal_variant_summary.json`.
+- **The v3 tables reproduce the 10 October rebuild byte for byte**: evidence records v3 `ae73de729b4c6403`, v3 with
+  parkinsonism `ce7391cc4b76c654`, label selections `a90d427696abfc13` and `cc15a045d75ddb3d`, the same four hashes
+  the table above records for 10 October. So the assembly is deterministic across containers with the two libraries
+  pinned, and the earlier session's hashes (`d4e81f7c`, `2aebe4f7`, `17955be9`, `8d61694e`) remain the only ones not
+  reproduced. v3 holds 5,604 rows (4,090 gene, 1,514 drug) over 154 drugs and 22 symptoms, as recorded.
+- **The v4 table and its label selections are new since 10 October**: 6,683 rows (4,289 gene, 2,394 drug) over 222
+  drugs and 24 symptoms; `better_v2_full_v4` `1d0cde3b1292217c` and `better_v2_full_v4_placebo_negative`
+  `3f4decacd783ab08`, 6,536 rows each.
+- **Graph counts moved by the layers added since 10 October, not by anything unexplained**: `graph_full_neuronal`
+  36,865 nodes as recorded and 271,103 edges, which is the 4,134 BRENDA edges plus three from the commits of 12 to 14
+  October (84cc176, e66ebc6, b387b33) over the recorded 266,966; the split 49,574 nodes and 283,894 edges; the drug
+  entry variants 49,728 nodes (v3) and 49,796 (v4). The base graph is the release copy, 33,964 nodes and 255,367 edges,
+  the manifest's counts.
+- **The chloride charge-sum fix showed in the rebuilt graph**: GABA_A and the glycine receptor each carry
+  `changes_membrane_potential` at -1 and NKCC1 and KCC2 carry none, so the two tests of
+  `tests/test_chloride_charge_sum.py` that pinned the defect are inverted as they asked. The chloride pool is still
+  not fed by any MAM02144 reaction.
+- `ijson`, which `experiments/extract_brenda_enzyme_regulation.py` imports and the regex audit test imports from it,
+  was in no extra, so test collection stopped until it was added to `dev`. With it, 810 tests pass and 8 skip (the
+  monogenic slice directories and the GtoPdb release, neither of which this rebuild makes).
+
+The descriptors stage was started after the graphs stage, as the registered job `rebuild_descriptors`
+(`runs/jobs/`, `scripts/resume_jobs.sh --status`).
