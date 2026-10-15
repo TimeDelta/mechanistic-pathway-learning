@@ -11,9 +11,12 @@ convergence indices; sufficiency test by module ablation).
 Primary endpoint: macro-averaged AUPRC under the pathway-wise split, proposed model versus the
 best of network proximity, knowledge-graph embedding and relational GNN with sigmoid head;
 minimum difference 0.05; 95 percent bootstrap interval excluding zero; five seeds by five folds.
-**Superseded on the decision rule** (marked 15 October 2026, before any lockbox run): the floors are 0.041 macro and
-0.028 micro by the amendment of 8 October, and the tested models are the two noisy-OR configurations by the head
-decision, not four. The 0.05 here is the first version of the floor and is kept as the record of it.
+**Superseded on the decision rule** (marked 15 October 2026, before any lockbox run): **there is no magnitude floor.**
+The floor was revised three times on 8 October (0.05 to a fixed 0.041 macro and 0.028 micro, then to each model's
+realised half-width plus 0.005) and removed on 15 October, the owner: "no floor. paired interval". The decision rests
+on the paired interval, and effect sizes are reported in standard errors of the available precision. The tested models
+are the two noisy-OR configurations by the head decision, not four. The 0.05 here is the first version of the floor and
+is kept as the record of it.
 Proposed in design version 0.4 and to be confirmed here: the pathway-wise split is the Human-GEM
 subsystem hold-out (pathway subsystems only; transport, exchange and isolated bins are not
 pathways), scored on pooled held-out predictions and paired with the permuted-label run of the
@@ -185,7 +188,8 @@ confirmation.
   rewired graph).
 - Hypotheses and decision. **Superseded in three respects by the amendments of 8 October 2026 below** (marked 15
   October 2026, before any lockbox run): Holm's procedure over the eight hypotheses is withdrawn and each model is
-  tested on its own at one-sided 0.025; the floors are 0.041 macro and 0.028 micro, not 0.05; and the two permutation
+  tested on its own at one-sided 0.025; there is no magnitude floor at all as of 15 October 2026, the 0.05 here having
+  been revised twice on 8 October and then removed; and the two permutation
   readings became secondary rather than part of H1. The paragraph is kept as the record of the original rule.
   H1 (prediction) for a model: macro, micro, both within-strata and both permutation readings
   above zero, and the macro and micro differences at least 0.05. H2 (graph content): H1 and both rewiring readings above
@@ -244,8 +248,9 @@ Amendment, 8 October 2026, before any lockbox run (the user's decision): the two
 secondary readings, reported with their intervals and p-values outside both hypotheses. H1 is now the macro, micro and
 both within-strata readings above zero with the macro and micro differences at least 0.05; H2 is H1 and both rewiring
 readings above zero; Holm still runs over the eight hypotheses. **Both of those clauses are superseded by the later
-amendment of the same day** (marked 15 October 2026): Holm over the eight hypotheses is withdrawn and the floors become
-0.041 and 0.028. Reason: the difference in differences subtracts a second
+amendments of the same day** (marked 15 October 2026): Holm over the eight hypotheses is withdrawn, and the floors
+became 0.041 and 0.028 and then each model's realised half-width plus 0.005, before being removed entirely on
+15 October. Reason: the difference in differences subtracts a second
 noisy difference, so if the two are nearly uncorrelated its standard error is about 1.4 times that of the plain
 difference and it would decide H1 (a projection, not a measurement). The within-strata readings and the degree_popularity
 baseline remain the degree control. experiments/score_confirmatory.py implements it. The lockbox runs start only on the
@@ -765,6 +770,26 @@ decisions, after the precision estimate they asked for).
   before the scoring, so the blinding is unchanged. The projected floors below (0.032 and 0.043) remain the floors of
   the head choice, where no lockbox interval exists, and the scorer reports them beside the realised floors. Power is
   as stated below when the realised width equals the projected median.
+- **Floors, removed 15 October 2026, before any lockbox run** (the owner: "no floor. paired interval"). There is no
+  magnitude bar. A model is confirmed for H1 when it is complete, its four direction conditions hold (macro, micro and
+  both within-strata readings above zero, which is a sign condition and not a floor) and its H1 p-value is at or below
+  one-sided 0.025; H2 and P1 follow as already registered. `score_confirmatory.py --floor-rule none` is the default and
+  `model_floors` returns minus infinity, so a NaN difference still fails because NaN is not at or above minus infinity.
+  `half_width_plus_margin` and `fixed` stay in the code so an earlier reading can be reproduced, and neither is the
+  registered rule. **Reason, in the owner's words across 15 October**: "why bother arguing an arbitrary setpoint for H1
+  at all?" and "i'm saying just report the effect size in multiples of the available precision". The floor had become
+  nearly inert in any case - its own bullet above says a difference at its floor "lies 0.005 above what the lockbox
+  resolves for that comparison", so it was the significance condition shifted by a chosen 0.005, and the 0.005 was the
+  only content it added beyond the paired interval. **What carries the question of size instead**: the paired interval
+  on `model - best baseline`, which already contains the baseline's instability because it is a paired difference, plus
+  effect sizes reported in **standard errors** of the available precision, in two versions - a shared divisor, the
+  largest median standard error over the closed registered baseline set and the tested models, which makes the two
+  models comparable with each other and states that the effect exceeds any precision in the study; and a per-model
+  divisor, each model against its own, which is what shows how well that particular effect is resolved. Neither version
+  enters the decision. The deciding bootstrap resamples the five composite seeds and the leakage groups together, so the
+  interval includes the seed variance that the precision statement above records as missing; the seeds remain joint
+  (the owner: "i don't really care enough to separate them as individual confounds"), so the interval is honest about
+  total variability and cannot attribute init against split.
 - Projected floors. H1 needed a macro difference of at least 0.032 and a micro difference of at least 0.043 (the user's values):
   the median 95 percent half-width of a difference under the group bootstrap, which now decides, plus 0.005. The
   medians are measured under the scorer's statistics (macro symptoms fixed per hold-out, micro over the scored

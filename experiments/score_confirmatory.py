@@ -158,9 +158,20 @@ def confirmatory_decisions(complete: bool, p_h1: float, p_h2: float, meets_minim
 
 
 def model_floors(readings: dict, floor_rule: str, floor_margin: float, projected_floors: dict[str, float]) -> dict[str, float]:
-    """The macro and micro floors of one model. half_width_plus_margin: the half-width of the difference's 95 percent
-    bootstrap interval plus floor_margin (NaN when the interval is undefined, so the floor is not met); fixed: the
-    projected floors."""
+    """The macro and micro floors of one model.
+
+    none, the registered rule from 15 October 2026 (the owner: "no floor. paired interval"): minus infinity, so no
+    magnitude bar applies and the decision rests on the paired interval alone. A NaN difference still fails, because
+    NaN >= -inf is False, which is what should happen to an undefined reading. The direction conditions of H1 are
+    untouched: the macro, micro and both within-strata readings must still be above zero, which is a sign condition
+    rather than a floor.
+
+    half_width_plus_margin: the half-width of the difference's 95 percent bootstrap interval plus floor_margin (NaN
+    when the interval is undefined, so the floor is not met); fixed: the projected floors. Both are kept so an earlier
+    reading can be reproduced, and neither is the registered rule.
+    """
+    if floor_rule == "none":
+        return {reading: float("-inf") for reading in ("macro", "micro")}
     if floor_rule == "fixed":
         return {reading: projected_floors[reading] for reading in ("macro", "micro")}
     if floor_rule == "half_width_plus_margin":
@@ -299,9 +310,11 @@ def main() -> None:
                              "{\"models\": {\"<configuration>\": {\"p_one_sided\": float, \"G1_stability_passed\": bool, "
                              "\"G2_faithfulness_passed\": bool}}}. A model absent from the file, or no file at all, leaves that "
                              "model's second stage as H2 alone at the full level, which the output states")
-    parser.add_argument("--floor-rule", choices=["half_width_plus_margin", "fixed"], default="half_width_plus_margin",
-                        help="half_width_plus_margin (the user's decision of 8 October 2026): each model's macro and micro floor is the half-width of that "
-                             "difference's 95 percent interval under the deciding bootstrap plus --floor-margin; fixed: the two values below")
+    parser.add_argument("--floor-rule", choices=["none", "half_width_plus_margin", "fixed"], default="none",
+                        help="none (the registered rule, the user's decision of 15 October 2026, \"no floor. paired interval\"): no magnitude bar, the "
+                             "decision resting on the paired interval alone, with the effect sizes reported in standard errors of the available precision; "
+                             "half_width_plus_margin (superseded, his decision of 8 October 2026): each model's macro and micro floor is the half-width of "
+                             "that difference's 95 percent interval under the deciding bootstrap plus --floor-margin; fixed (superseded): the two values below")
     parser.add_argument("--floor-margin", type=float, default=0.005)
     parser.add_argument("--minimum-macro-difference", type=float, default=0.032,
                         help="projected macro floor (median group-bootstrap half-width on lockbox-like development hold-outs plus 0.005): the floor under "
@@ -505,7 +518,10 @@ def main() -> None:
              f"{arguments.num_bootstrap} paired bootstrap resamples over lockbox {'leakage groups (' + str(len(members_of_group)) + ')' if arguments.bootstrap_unit == 'group' else 'perturbations'}; "
              f"each model tested on its own, H1 at one-sided {arguments.alpha} and then its second-stage family by Holm at the same level "
              f"({'H2 and P1' if any(model in pathway_test_results for model in entries) else 'H2 alone, no pathway test scored, so H2 faced the full level'}); "
-             + (f"floors: each model's 95 percent half-width plus {arguments.floor_margin} (projected {arguments.minimum_macro_difference} macro, {arguments.minimum_micro_difference} micro). "
+             + ("no magnitude floor (registered 15 October 2026): the decision rests on the paired interval alone and the effect sizes below carry the "
+                "question of size, reported in standard errors of the available precision. "
+                if arguments.floor_rule == "none" else
+                f"floors: each model's 95 percent half-width plus {arguments.floor_margin} (projected {arguments.minimum_macro_difference} macro, {arguments.minimum_micro_difference} micro). "
                 if arguments.floor_rule == "half_width_plus_margin" else f"minimum macro difference {arguments.minimum_macro_difference}, minimum micro difference {arguments.minimum_micro_difference}. ")
              + f"With {len(entries)} models "
              f"and no correction across them, the chance that at least one is confirmed by luck is at most {len(entries) * arguments.alpha:.3f} whatever their dependence "
