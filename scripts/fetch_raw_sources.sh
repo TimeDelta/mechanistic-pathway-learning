@@ -80,8 +80,12 @@ done
 
 # OmniPath web service: signalling, CollecTRI regulons and small-molecule interactions. A live service with no
 # release tag, so the row counts of docs/data_sources.md (126,124, 64,515 and 6,553) are the only check.
-fetch "$raw_directory/omnipath/omnipath_interactions.tsv" "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort,n_references&organisms=9606&format=tsv"
-fetch "$raw_directory/omnipath/collectri_interactions.tsv" "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references,n_references&organisms=9606&format=tsv"
+# On 15 October 2026 the service rejected the field `n_references` ("Unknown values for argument `fields`") with a
+# 282-byte error body served as a normal response, so the field is left out; https://omnipathdb.org/queries/interactions
+# lists the fields it still accepts. No reader of these files uses the column, and the two downloads without it hold
+# the recorded 126,124 and 64,515 rows.
+fetch "$raw_directory/omnipath/omnipath_interactions.tsv" "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort&organisms=9606&format=tsv"
+fetch "$raw_directory/omnipath/collectri_interactions.tsv" "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references&organisms=9606&format=tsv"
 fetch "$raw_directory/omnipath/small_molecule_protein.tsv" "https://omnipathdb.org/interactions?types=small_molecule_protein&genesymbols=1&fields=sources,references,type&organisms=9606&format=tsv"
 
 # GTEx v10 median gene TPM (8,846,936 bytes recorded in docs/alternative_sources.md).

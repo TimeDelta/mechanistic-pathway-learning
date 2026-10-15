@@ -63,8 +63,8 @@ mkdir -p data/raw/hpo data/raw/Human-GEM/model data/raw/sider_4.1 data/raw/omnip
 for f in hp.obo genes_to_phenotype.txt phenotype.hpoa genes_to_disease.txt; do curl -L -o data/raw/hpo/$f https://github.com/obophenotype/human-phenotype-ontology/releases/download/v2026-09-01/$f; done
 for f in Human-GEM.xml Human-GEM.yml genes.tsv metabolites.tsv reactions.tsv; do curl -L -o data/raw/Human-GEM/model/$f https://raw.githubusercontent.com/SysBioChalmers/Human-GEM/v2.0.1/model/$f; done
 for f in meddra_all_se.tsv.gz meddra_freq.tsv.gz meddra_all_indications.tsv.gz drug_names.tsv drug_atc.tsv; do curl -L -o data/raw/sider_4.1/$f https://sideeffects.embl.de/media/download/$f; done
-curl -L -o data/raw/omnipath/omnipath_interactions.tsv "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort,n_references&organisms=9606&format=tsv"
-curl -L -o data/raw/omnipath/collectri_interactions.tsv "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references,n_references&organisms=9606&format=tsv"
+curl -L -o data/raw/omnipath/omnipath_interactions.tsv "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort&organisms=9606&format=tsv"   # the service dropped the field n_references by 15 October 2026 (scripts/fetch_raw_sources.sh)
+curl -L -o data/raw/omnipath/collectri_interactions.tsv "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references&organisms=9606&format=tsv"
 curl -L -o data/raw/omnipath/small_molecule_protein.tsv "https://omnipathdb.org/interactions?types=small_molecule_protein&genesymbols=1&fields=sources,references,type&organisms=9606&format=tsv"
 python experiments/fetch_chembl_drug_targets.py          # UniChem and ChEMBL, cached, resumable
 OMP_NUM_THREADS=1 python experiments/fetch_pubtator_relations.py --fetch-publication-dates && OMP_NUM_THREADS=1 python experiments/fetch_ctd_chemical_disease.py --fetch-publication-dates   # literature class E3, cached, rate-limited; docs/literature_survey_spec.md
