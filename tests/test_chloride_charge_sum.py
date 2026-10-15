@@ -7,9 +7,15 @@ chloride on `MAM01442` alone, `ion_charges` is built by filtering SBML charges t
 `reactome_import.py` computes `inward_charge = sum(ion_charges.get(base, 0) * amount ...)`. So a Reactome reaction
 whose chloride is `MAM02144` contributes nothing to the charge sum and is not even counted as moving an ion.
 
-These tests assert the defect as it stands rather than the behaviour that is wanted, because the fix requires the
-graph to be rebuilt and the rebuild is decision 1.2, the owner's. Each one names what it should say after the fix,
-so whoever rebuilds the graph can invert them and watch them pass.
+These tests asserted the defect as it stood rather than the behaviour that is wanted, because the fix requires the
+graph to be rebuilt and the rebuild is decision 1.2, the owner's. Each one named what it should say after the fix,
+so whoever rebuilds the graph could invert them and watch them pass.
+
+The rebuild of 15 October 2026 (a new container, scripts/rebuild_data_layer.sh, with the charge guard of commit
+090f001 in the code) gave the post-fix graph: GABA_A and the glycine receptor each carry `changes_membrane_potential`
+at -1, and NKCC1 and KCC2 carry no membrane-potential edge. The two tests below that pinned those defects are
+inverted to that, as their docstrings asked. The two chloride identifiers still exist and no MAM02144 reaction
+reaches the neuronal chloride pool, so the first and last tests still hold the defect they pin.
 """
 from __future__ import annotations
 
@@ -42,30 +48,27 @@ def test_two_chloride_identifiers_exist_and_only_one_is_in_the_charge_table(grap
     assert len(named_chloride) >= 3, "three of MAM02144's compartments are display-named Cl-"
 
 
-def test_the_ligand_gated_chloride_channels_have_no_electrical_edge(graph):
-    """GABA_A and the glycine receptor move only chloride, so their whole charge is dropped.
-
-    AFTER THE FIX both should carry `changes_membrane_potential` at -1 (an inward anion current hyperpolarises)."""
+def test_the_ligand_gated_chloride_channels_carry_an_inward_anion_current(graph):
+    """GABA_A and the glycine receptor move only chloride. While chloride's charge was dropped they had no electrical
+    edge at all; with it read from the ChEBI term Reactome names, each carries `changes_membrane_potential` at -1
+    (an inward anion current hyperpolarises). Inverted after the rebuild of 15 October 2026."""
     _, edges = graph
     for reaction, what in (("RCT_975340", "GABA_A heteropentamer"), ("RCT_975389", "glycine receptor")):
         electrical = edges[(edges.source_id == reaction) & edges.relation_type.isin(ELECTRICAL)]
-        assert electrical.empty, f"{what} ({reaction}) now has an electrical edge; invert this test"
+        assert list(electrical.relation_type) == ["changes_membrane_potential"], f"{what} ({reaction}) should carry one membrane-potential edge"
+        assert float(electrical.sign.iloc[0]) == pytest.approx(-1.0), f"{what} ({reaction}): an inward chloride current hyperpolarises"
 
 
-def test_two_electroneutral_cotransporters_are_read_as_opposing_currents(graph):
+def test_two_electroneutral_cotransporters_carry_no_current(graph):
     """NKCC1 moves Na+ + K+ + 2Cl- inward and KCC2 moves K+ + Cl- outward. Both are electroneutral.
 
-    With chloride dropped, NKCC1's Na+ and K+ leave +1 and KCC2's K+ leaves -1, which is what the graph carries.
-    AFTER THE FIX neither should carry a `changes_membrane_potential` edge at all."""
+    While chloride's charge was dropped, NKCC1's Na+ and K+ left +1 and KCC2's K+ left -1, and the graph carried the
+    two as opposing currents. With chloride counted, neither carries a `changes_membrane_potential` edge at all.
+    Inverted after the rebuild of 15 October 2026."""
     _, edges = graph
-    signs = {}
-    for reaction in ("RCT_426086", "RCT_426155"):
+    for reaction, what in (("RCT_426086", "NKCC1"), ("RCT_426155", "KCC2")):
         row = edges[(edges.source_id == reaction) & (edges.relation_type == "changes_membrane_potential")]
-        assert len(row) == 1, f"{reaction} should carry exactly one membrane-potential edge while the defect stands"
-        signs[reaction] = float(row.sign.iloc[0])
-    assert signs["RCT_426086"] == pytest.approx(1.0), "NKCC1 reads as depolarising, from Na+ and K+ alone"
-    assert signs["RCT_426155"] == pytest.approx(-1.0), "KCC2 reads as hyperpolarising, from K+ alone"
-    assert signs["RCT_426086"] == -signs["RCT_426155"], "the two electroneutral transporters oppose each other"
+        assert row.empty, f"{what} ({reaction}) is electroneutral and should carry no membrane-potential edge"
 
 
 def test_no_reaction_moving_reactome_chloride_feeds_the_neuronal_chloride_pool(graph):
