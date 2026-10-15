@@ -29,6 +29,11 @@ from mechanistic_pathway_learning.evidence.laboratory_abnormality_labels import 
 from mechanistic_pathway_learning.graph.build_physiology_graph import load_brain_expression
 from mechanistic_pathway_learning.graph.neurotransmission_regulation import add_release_regulation
 from mechanistic_pathway_learning.graph.node_descriptors import metabolite_charges_from_sbml
+from mechanistic_pathway_learning.graph.brenda_enzyme_regulation import (
+    DEFAULT_BRENDA_REGULATION_PATH,
+    add_brenda_enzyme_regulation,
+    load_brenda_regulation,
+)
 from mechanistic_pathway_learning.graph.oxidative_regulation import add_oxidative_regulation
 from mechanistic_pathway_learning.graph.reactome_import import (
     read_chebi_charges,
@@ -161,6 +166,9 @@ def main() -> None:
     parser.add_argument("--receptor-table", type=Path, default=Path("docs/curated_presynaptic_receptors.csv"))
     parser.add_argument("--oxidant-target-table", type=Path, default=Path("docs/curated_oxidant_targets.csv"))
     parser.add_argument("--oxidant-source-table", type=Path, default=Path("docs/curated_oxidant_sources.csv"))
+    parser.add_argument("--brenda-regulation-table", type=Path, default=DEFAULT_BRENDA_REGULATION_PATH,
+                        help="BRENDA's human enzyme regulation as metabolite-to-enzyme pairs (decision 9.5): inhibits, activates and cofactor_of, "
+                             "unweighted, CC BY 4.0. The graph held four metabolite-to-protein inhibits edges before this")
     parser.add_argument("--without-curated-layers", action="store_true",
                         help="leave out the curated receptor and oxidant edges, for the ablation that separates them from the Reactome layer")
     parser.add_argument("--membrane-potential", choices=MEMBRANE_POTENTIAL_BUILDS, default=DEFAULT_MEMBRANE_POTENTIAL_BUILD,
@@ -212,12 +220,14 @@ def main() -> None:
     for reaction, released in summary["release_reactions"].items():
         for base in released:
             release_reactions_of_transmitter.setdefault(base, []).append(reaction)
-    receptor_summary = oxidative_summary = "left out (--without-curated-layers)"
+    receptor_summary = oxidative_summary = brenda_summary = "left out (--without-curated-layers)"
     if not arguments.without_curated_layers:
         new_nodes, new_edges, new_relations, receptor_summary = add_release_regulation(
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.receptor_table), release_reactions_of_transmitter)
         new_nodes, new_edges, new_relations, oxidative_summary = add_oxidative_regulation(
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.oxidant_target_table), pd.read_csv(arguments.oxidant_source_table))
+        new_nodes, new_edges, new_relations, brenda_summary = add_brenda_enzyme_regulation(
+            new_nodes, new_edges, new_relations, load_brenda_regulation(arguments.brenda_regulation_table))
     new_nodes, new_edges, new_relations, redox_summary = add_redox_pools(new_nodes, new_edges, new_relations)
     for base, compartments in SIGNALLING_METABOLITES.items():
         rows = new_nodes.base_metabolite_id.eq(base) & (new_nodes.compartment.isin(compartments) if compartments else True)
@@ -228,7 +238,8 @@ def main() -> None:
     new_edges.to_parquet(arguments.output_dir / "edges.parquet")
     (arguments.output_dir / "relation_types.json").write_text(json.dumps(new_relations, indent=1) + "\n")
     summary.update(base_graph=str(arguments.base_graph_dir), reactome_pathways=json.loads((arguments.reactome_dir / "pathways.json").read_text()),
-                   release_regulation=receptor_summary, oxidative_regulation=oxidative_summary, redox_pools=redox_summary, minimum_brain_tpm=arguments.minimum_brain_tpm,
+                   release_regulation=receptor_summary, oxidative_regulation=oxidative_summary, brenda_enzyme_regulation=brenda_summary,
+                   redox_pools=redox_summary, minimum_brain_tpm=arguments.minimum_brain_tpm,
                    nodes_added_in_total=len(new_nodes) - len(nodes), edges_added_in_total=len(new_edges) - len(edges),
                    nodes_by_type=new_nodes.node_type.value_counts().to_dict(), edges_by_relation=new_edges.relation_type.value_counts().to_dict())
     (arguments.output_dir / "neuronal_variant_summary.json").write_text(json.dumps(summary, indent=1) + "\n")
