@@ -1,0 +1,14 @@
+{
+ "lockbox": "configs/lockbox_v2.json",
+ "chosen": {
+  "message_passing": "confirmatory_v2_message_passing_noisy_or",
+  "linear_response": "confirmatory_v2_linear_response_noisy_or"
+ },
+ "source": "The owner's decision, not a development reading: 'I guess we should drop the sigmoid head then'. Registered reason: only the noisy-OR head has modules that can be read as pathways, which is the study's purpose. experiments/choose_heads.py was not run and stays as a record.",
+ "note_on_the_lockbox_field": "score_confirmatory.chosen_models compares this path with the lockbox being scored, to stop a head chosen on another lockbox's development set from being reused. No head was chosen empirically here, so the check has nothing to guard and the field only satisfies the contract. The check compares paths rather than the lockbox's SHA-256, so it would not notice configs/lockbox_v2.json being redrawn for v4 (decision 1.2).",
+ "floors": {
+  "macro": 0.041,
+  "micro": 0.028
+ },
+ "written": "2026-10-15"
+}

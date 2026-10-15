@@ -11,6 +11,9 @@ convergence indices; sufficiency test by module ablation).
 Primary endpoint: macro-averaged AUPRC under the pathway-wise split, proposed model versus the
 best of network proximity, knowledge-graph embedding and relational GNN with sigmoid head;
 minimum difference 0.05; 95 percent bootstrap interval excluding zero; five seeds by five folds.
+**Superseded on the decision rule** (marked 15 October 2026, before any lockbox run): the floors are 0.041 macro and
+0.028 micro by the amendment of 8 October, and the tested models are the two noisy-OR configurations by the head
+decision, not four. The 0.05 here is the first version of the floor and is kept as the record of it.
 Proposed in design version 0.4 and to be confirmed here: the pathway-wise split is the Human-GEM
 subsystem hold-out (pathway subsystems only; transport, exchange and isolated bins are not
 pathways), scored on pooled held-out predictions and paired with the permuted-label run of the
@@ -159,7 +162,9 @@ confirmation.
   0.5, with link, leak and gate learning rates 0.02, 0.0002 and 0.05; the sigmoid head uses the trainer defaults. Asymmetry:
   the message-passing encoder sees cell-class expression only as node descriptors, not as channels.
 - Training. Each confirmatory run trains on the 1,222 development perturbations, of which one grouped seventh is the
-  validation set for early stopping (fold 0 of round(1 / 0.15) = 7 grouped folds; validation loss, patience 8, at most 60
+  validation set for early stopping (fold `seed % 7` of round(1 / 0.15) = 7 grouped folds, so seeds 0 to 4 rotate over
+  folds 0 to 4 and folds 5 and 6 never serve as validation — corrected 15 October 2026 from "fold 0", which describes
+  seed 0 alone, against run_main_model.py lines 1016 and 1048; validation loss, patience 8, at most 60
   epochs; as amended on 8 October, drawn from the groups no larger than half of it, 142 perturbations, and followed by a
   refit on all 1,222 for the chosen number of epochs, which is the model scored), and scores the lockbox once
   (--lockbox configs/lockbox_v1.json --score-lockbox). Seeds 0 to 4. Per seed and model, two control runs: labels permuted
@@ -178,7 +183,11 @@ confirmation.
   degree strata; the permutation difference in differences (the advantage on the real labels minus the advantage when model
   and baseline are trained and scored on permuted labels); the rewiring difference (the model minus the same model on its
   rewired graph).
-- Hypotheses and decision. H1 (prediction) for a model: macro, micro, both within-strata and both permutation readings
+- Hypotheses and decision. **Superseded in three respects by the amendments of 8 October 2026 below** (marked 15
+  October 2026, before any lockbox run): Holm's procedure over the eight hypotheses is withdrawn and each model is
+  tested on its own at one-sided 0.025; the floors are 0.041 macro and 0.028 micro, not 0.05; and the two permutation
+  readings became secondary rather than part of H1. The paragraph is kept as the record of the original rule.
+  H1 (prediction) for a model: macro, micro, both within-strata and both permutation readings
   above zero, and the macro and micro differences at least 0.05. H2 (graph content): H1 and both rewiring readings above
   zero. Each reading's one-sided p-value comes from a paired bootstrap over lockbox perturbations (4,000 resamples, the same
   rows for every model, seed and baseline); a hypothesis's p-value is the largest of its readings' (an intersection-union
@@ -234,7 +243,9 @@ deciding how the descriptors enter, so the rule is reported when its runs finish
 Amendment, 8 October 2026, before any lockbox run (the user's decision): the two permutation readings leave H1 and become
 secondary readings, reported with their intervals and p-values outside both hypotheses. H1 is now the macro, micro and
 both within-strata readings above zero with the macro and micro differences at least 0.05; H2 is H1 and both rewiring
-readings above zero; Holm still runs over the eight hypotheses. Reason: the difference in differences subtracts a second
+readings above zero; Holm still runs over the eight hypotheses. **Both of those clauses are superseded by the later
+amendment of the same day** (marked 15 October 2026): Holm over the eight hypotheses is withdrawn and the floors become
+0.041 and 0.028. Reason: the difference in differences subtracts a second
 noisy difference, so if the two are nearly uncorrelated its standard error is about 1.4 times that of the plain
 difference and it would decide H1 (a projection, not a measurement). The within-strata readings and the degree_popularity
 baseline remain the degree control. experiments/score_confirmatory.py implements it. The lockbox runs start only on the
@@ -357,7 +368,10 @@ the plain treatment.
 
 Amendment, 8 October 2026, before any lockbox run (the user's decisions): the test, the micro floor, a no-descriptor
 branch and graph paring.
-- Test. Each of the four models is a candidate and is tested on its own at one-sided 0.025: H1 first, and H2 only if
+- Test. **Two models, not four** (corrected 15 October 2026: the head decision below drops the sigmoid configurations,
+  so this bullet's four-model arithmetic and its 0.096 bound describe a model set that no longer exists; with two
+  tested models the chance that one passes by luck is at most 0.05, as the head amendment states). Each tested model
+  is a candidate and is tested on its own at one-sided 0.025: H1 first, and H2 only if
   that model's H1 is confirmed, at the same level. Holm's procedure over the eight hypotheses is withdrawn; nothing is
   divided across models. Consequence, stated beside the results by experiments/score_confirmatory.py: with four models
   and no correction across them, the chance that at least one is confirmed by luck is above 0.025, at most
