@@ -115,6 +115,28 @@ def test_the_split_side_decides_whether_regulation_arrives_at_a_protein_or_a_gen
     assert enzyme_node_of_accession(pre_split)["P29218"] == "GENE:IMPA1"
 
 
+def test_before_the_split_an_accession_reaches_its_gene_node_through_the_uniprot_gene_name_map():
+    """The base graph writes gene nodes with a gene_symbol and no uniprot_entry column at all (the split adds that
+    column, on protein nodes), which is the table the neuronal build hands this module. The accession resolves through
+    UniProt's accession -> primary gene name map, and an accession whose gene the graph lacks resolves to nothing."""
+    pre_split = pd.DataFrame(
+        [["GENE:IMPA1", "gene", "IMPA1", None, None, 0, "IMPA1"],
+         ["GENE:PFKL", "gene", "PFKL", None, None, 0, "PFKL"],
+         ["MAM00001c", "metabolite", "citrate", "c", "MAM00001", 0, None]],
+        columns=["node_id", "node_type", "display_name", "compartment", "base_metabolite_id", "degree", "gene_symbol"])
+    gene_of_accession = {"P29218": "IMPA1", "P17858": "PFKL", "Q9Y2T3": "GDA"}
+    assert enzyme_node_of_accession(pre_split) == {}
+    assert enzyme_node_of_accession(pre_split, gene_of_accession) == {"P29218": "GENE:IMPA1", "P17858": "GENE:PFKL"}
+    edges = pd.DataFrame([], columns=EDGE_COLUMNS).astype({"sign": "float64"})
+    rows = [{"base_metabolite_id": "MAM00001", "uniprot_accession": "P17858", "relation_type": "inhibits", "brenda_reference_count": "2", "enzyme_routes": "ec"},
+            {"base_metabolite_id": "MAM00001", "uniprot_accession": "Q9Y2T3", "relation_type": "activates", "brenda_reference_count": "1", "enzyme_routes": "ec"}]
+    _, new_edges, _, summary = add_brenda_enzyme_regulation(pre_split, edges, ["catalyzed_by"], rows, gene_of_accession)
+    assert list(zip(new_edges.source_id, new_edges.target_id, new_edges.relation_type)) == [("MAM00001c", "GENE:PFKL", "inhibits")]
+    assert summary["skipped"]["enzyme_absent"] == 1
+    assert summary["enzyme_nodes"] == ["gene"]
+    assert summary["accession_resolution"].startswith("UniProt accession -> primary gene name -> gene node")
+
+
 @pytest.mark.parametrize("relation", sorted(SIGN_OF_RELATION))
 def test_every_admitted_relation_carries_a_unit_sign(relation):
     assert abs(SIGN_OF_RELATION[relation]) == 1.0

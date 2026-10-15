@@ -226,8 +226,10 @@ def main() -> None:
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.receptor_table), release_reactions_of_transmitter)
         new_nodes, new_edges, new_relations, oxidative_summary = add_oxidative_regulation(
             new_nodes, new_edges, new_relations, pd.read_csv(arguments.oxidant_target_table), pd.read_csv(arguments.oxidant_source_table))
+        # before the gene/protein split the graph has gene nodes and no uniprot_entry column, so BRENDA's accessions
+        # reach their gene nodes through the same UniProt accession -> gene name map the Reactome layer uses above
         new_nodes, new_edges, new_relations, brenda_summary = add_brenda_enzyme_regulation(
-            new_nodes, new_edges, new_relations, load_brenda_regulation(arguments.brenda_regulation_table))
+            new_nodes, new_edges, new_relations, load_brenda_regulation(arguments.brenda_regulation_table), gene_of_uniprot)
     new_nodes, new_edges, new_relations, redox_summary = add_redox_pools(new_nodes, new_edges, new_relations)
     for base, compartments in SIGNALLING_METABOLITES.items():
         rows = new_nodes.base_metabolite_id.eq(base) & (new_nodes.compartment.isin(compartments) if compartments else True)

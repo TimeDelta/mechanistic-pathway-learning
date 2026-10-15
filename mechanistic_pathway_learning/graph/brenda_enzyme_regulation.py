@@ -61,28 +61,42 @@ def representative_metabolite_node(nodes: pd.DataFrame) -> dict[str, str]:
     return representative
 
 
-def enzyme_node_of_accession(nodes: pd.DataFrame) -> dict[str, str]:
+def enzyme_node_of_accession(nodes: pd.DataFrame, gene_of_accession: dict[str, str] | None = None) -> dict[str, str]:
     """UniProt accession -> the node its regulation arrives at.
 
     Protein nodes where the gene/protein split has already run, gene nodes where it has not, so this module can sit on
-    either side of it: the split moves every relation that touches a gene node onto its protein.
+    either side of it: the split moves every relation that touches a gene node onto its protein. Protein nodes carry
+    their accession in `uniprot_entry`, a column the split writes; before the split the graph has gene nodes only, and
+    those carry a gene symbol and no accession (`build_physiology_graph.py` writes no `uniprot_entry`), so an accession
+    reaches its gene node through `gene_of_accession`, UniProt's accession -> primary gene name, the map the neuronal
+    build already reads for its Reactome layer. A gene node that does carry `uniprot_entry` resolves by it as well.
     """
-    proteins = nodes[(nodes.node_type == "protein") & nodes.uniprot_entry.notna()]
+    entries = nodes["uniprot_entry"] if "uniprot_entry" in nodes.columns else pd.Series([None] * len(nodes), index=nodes.index, dtype=object)
+    proteins = nodes[(nodes.node_type == "protein") & entries.notna()]
     if len(proteins):
         return {str(accession): str(node_id) for node_id, accession in zip(proteins.node_id, proteins.uniprot_entry)}
-    genes = nodes[(nodes.node_type == "gene") & nodes.uniprot_entry.notna()]
-    return {str(accession): str(node_id) for node_id, accession in zip(genes.node_id, genes.uniprot_entry)}
+    genes = nodes[nodes.node_type == "gene"]
+    node_of_symbol = {str(symbol): str(node_id) for node_id, symbol in zip(genes.node_id, genes.gene_symbol)
+                      if isinstance(symbol, str)} if "gene_symbol" in genes.columns else {}
+    resolved = {str(accession): node_of_symbol[str(symbol)] for accession, symbol in (gene_of_accession or {}).items()
+                if str(symbol) in node_of_symbol}
+    gene_entries = entries.reindex(genes.index)
+    resolved.update({str(accession): str(node_id) for node_id, accession in zip(genes.node_id, gene_entries) if accession is not None and pd.notna(accession)})
+    return resolved
 
 
 def add_brenda_enzyme_regulation(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[str],
-                                 regulation_rows: list[dict]) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
+                                 regulation_rows: list[dict],
+                                 gene_of_accession: dict[str, str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, list[str], dict]:
     """The graph with BRENDA's regulation edges added, and a summary that counts what landed and what did not.
 
     Nothing is invented: a row whose metabolite or whose accession the graph does not hold is skipped and counted, and
     a pair the graph already carries under the same relation is skipped as a duplicate rather than doubled.
+    `gene_of_accession` (UniProt accession -> primary gene name) is what resolves an accession before the gene/protein
+    split, when the graph holds gene nodes and no `uniprot_entry` column (enzyme_node_of_accession).
     """
     representative = representative_metabolite_node(nodes)
-    enzyme_of_accession = enzyme_node_of_accession(nodes)
+    enzyme_of_accession = enzyme_node_of_accession(nodes, gene_of_accession)
     existing_pairs = {(str(source), str(target), str(relation))
                       for source, target, relation in zip(edges.source_id, edges.target_id, edges.relation_type)}
 
@@ -124,10 +138,15 @@ def add_brenda_enzyme_regulation(nodes: pd.DataFrame, edges: pd.DataFrame, relat
     new_nodes["degree"] = counts.reindex(new_nodes.node_id).fillna(0).astype("int64").to_numpy()
     new_relations = list(relation_types) + [relation for relation in SIGN_OF_RELATION
                                             if relation not in relation_types and emitted[relation]]
+    landed_on = {node_type for node_type in nodes.set_index("node_id").node_type.reindex({row["target_id"] for row in edge_rows}).dropna()}
     summary = {"rows_read": len(regulation_rows), "edges_emitted_by_relation": emitted,
                "edges_emitted": sum(emitted.values()), "skipped": skipped,
                "distinct_metabolites": len({row["source_id"] for row in edge_rows}),
                "distinct_enzymes": len({row["target_id"] for row in edge_rows}),
+               "enzyme_nodes": sorted(landed_on) or ["none"],
+               "accession_resolution": ("uniprot_entry of the protein nodes (after the gene/protein split)" if "protein" in landed_on
+                                        else "UniProt accession -> primary gene name -> gene node (before the split)"),
+               "accessions_resolvable": len(enzyme_of_accession),
                "compartment_policy": f"one edge per pair from the {PREFERRED_COMPARTMENT} copy where present, else the first in sorted order",
                "weighting": "none: every pair enters at sign alone, with the reference count and resolution route recorded in evidence_source",
                "licence": "Creative Commons Attribution License CC BY 4.0, stated on the BRENDA download page and at copy.php"}
