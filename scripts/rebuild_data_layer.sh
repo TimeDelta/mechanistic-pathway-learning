@@ -134,6 +134,10 @@ if [ "$stage" = "graphs" ]; then
     python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v4" \
       --carrier-table configs/drug_plasma_carriers_v4.csv --clearing-enzymes configs/drug_clearing_enzymes.csv \
       --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v4_enzymes"
+  # per-edge evidence beside each graph a model reads (decision 9.57): a side table, so no graph file or hash moves
+  for graph in graph_full_neuronal graph_full_neuronal_split_binders_drugs graph_full_neuronal_split_binders_drugs_v4 graph_full_neuronal_split_binders_drugs_v4_enzymes; do
+    step "$processed/$graph/edge_evidence.parquet" "per-edge evidence of $graph" python experiments/build_edge_evidence.py --graph-dir "$processed/$graph"
+  done
 fi
 
 # --- evidence sources that record absences (15 October 2026) --------------------------------------------------------
