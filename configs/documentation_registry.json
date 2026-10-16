@@ -258,6 +258,10 @@
    "append_only": true,
    "what": "a reading of one source"
   },
+  "docs/faers_disproportionality_evidence.md": {
+   "class": "generated",
+   "generator": "experiments/fetch_faers_disproportionality.py"
+  },
   "docs/family_in_graph.md": {
    "class": "generated",
    "generator": "experiments/measure_family_in_graph.py"
@@ -314,6 +318,10 @@
   "docs/hpo_term_audit.md": {
    "class": "generated",
    "generator": "experiments/audit_hpo_term_expansion.py"
+  },
+  "docs/impc_knockout_evidence.md": {
+   "class": "generated",
+   "generator": "experiments/build_impc_reports.py"
   },
   "docs/job_harness.md": {
    "class": "living",
