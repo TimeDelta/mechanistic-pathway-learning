@@ -42,7 +42,7 @@ from scipy.stats import mannwhitneyu
 
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
 from mechanistic_pathway_learning.graph.drug_entry_nodes import DRUG_MECHANISM_RELATION, ENTRY_RELATIONS, SEQUESTERS_RELATION
-from mechanistic_pathway_learning.models.linear_response_encoder import DEPLETES_SUBSTRATE_RELATION, SUBSTRATE_RELATION, LinearResponseEncoder
+from mechanistic_pathway_learning.models.linear_response_encoder import SUBSTRATE_RELATION, LinearResponseEncoder
 from mechanistic_pathway_learning.models.relational_message_passing_encoder import RelationalMessagePassingEncoder
 
 OUTPUT_DOCUMENT = Path("docs/drug_entry_nodes_measured.md")

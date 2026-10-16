@@ -1,6 +1,8 @@
 """Every printed line of every cell (pdfplumber) must occur, character for character, in the text of the same page
 as read by pdftotext -layout (poppler). Whitespace is ignored on both sides."""
-import json, re, sys
+import json
+import re
+import sys
 cells_path, text_path = sys.argv[1], sys.argv[2]
 bands = json.load(open(cells_path, encoding="utf-8"))
 pages = [re.sub(r"\s+", "", p) for p in open(text_path, encoding="utf-8").read().split("\f")]

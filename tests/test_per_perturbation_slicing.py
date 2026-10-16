@@ -11,7 +11,6 @@ from __future__ import annotations
 import dataclasses
 
 import numpy as np
-import pytest
 
 from mechanistic_pathway_learning.evaluation.experiment_data import (
     PER_PERTURBATION_ARRAYS,

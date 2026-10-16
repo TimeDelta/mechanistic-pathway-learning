@@ -5,8 +5,6 @@ from (decision 9.2), so a test pinning 0.5322 would pin the fit to the table in 
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 import numpy as np
 import pytest

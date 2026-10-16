@@ -146,7 +146,7 @@ def reproducibility(repository_root: Path = REPOSITORY_ROOT) -> dict:
             "pins_the_rebuild_notes_name": {"pandas": "2.3.3", "pyarrow": "25.0.1"}}
 
 
-IMPORT_NAME_TO_DISTRIBUTION = {"sklearn": "scikit_learn", "yaml": "pyyaml", "esm": "fair_esm", "PIL": "pillow"}
+IMPORT_NAME_TO_DISTRIBUTION = {"sklearn": "scikit_learn", "yaml": "pyyaml", "esm": "fair_esm", "PIL": "pillow", "bs4": "beautifulsoup4"}
 
 
 def declared_dependencies(pyproject_text: str) -> set[str]:

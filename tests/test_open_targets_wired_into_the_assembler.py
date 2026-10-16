@@ -7,8 +7,6 @@ through the reliability fit and creates no label - and the one guard that option
 """
 import inspect
 
-import pandas as pd
-import pytest
 
 from mechanistic_pathway_learning.evidence import assemble_evidence_table
 from mechanistic_pathway_learning.evidence.load_open_targets_statements import (

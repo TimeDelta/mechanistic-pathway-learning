@@ -1,5 +1,7 @@
 """Print CSV rows next to the pdftotext -layout lines of the same substance (an independent text extraction)."""
-import csv, re, sys
+import csv
+import re
+import sys
 csv_path, text_path = sys.argv[1], sys.argv[2]
 names = sys.argv[3:]
 rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))

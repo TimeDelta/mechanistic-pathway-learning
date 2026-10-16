@@ -9,7 +9,6 @@ authorised product with its active substance, its marketing authorisation date a
 Matching is on the active substance and the INN, lowercased, because the study keys drugs by generic name.
 """
 import argparse
-import csv
 import json
 import re
 from pathlib import Path

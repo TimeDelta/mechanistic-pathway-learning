@@ -1,6 +1,5 @@
 """Drawing the held-out set by mechanism target (preregistration amendment item 25; the owner, 13 October 2026: "NOT
 splitting on drug itself but splitting on each target individually")."""
-import pytest
 
 from mechanistic_pathway_learning.evaluation.target_held_out_split import (
     REGISTERED_HELD_OUT_FRACTION,

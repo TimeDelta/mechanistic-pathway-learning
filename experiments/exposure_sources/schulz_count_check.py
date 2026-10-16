@@ -1,6 +1,8 @@
 """Compare the name lines found by pdfplumber (cells JSON) with the lines that pdftotext -layout starts in the
 first column of the table pages: two independent readings of the same PDF."""
-import json, re, sys
+import json
+import re
+import sys
 cells_path, text_path = sys.argv[1], sys.argv[2]
 bands = json.load(open(cells_path, encoding="utf-8"))
 pages = open(text_path, encoding="utf-8").read().split("\f")

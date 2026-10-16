@@ -12,7 +12,6 @@ split? And of the sharing it would catch, how much does the registered disease-c
 Usage:
   python -I experiments/measure_gene_hop_grouping.py
 """
-import sys
 from pathlib import Path
 import numpy as np
 import torch

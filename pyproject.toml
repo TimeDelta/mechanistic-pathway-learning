@@ -20,6 +20,10 @@ dependencies = [
 descriptors = ["rdkit>=2024.3", "fair-esm>=2.0"]
 graph = ["cobra>=0.29", "omnipath>=1.0", "decoupler>=1.5", "chembl_webresource_client>=0.10", "networkx>=3.0", "pyarrow>=14"]
 dev = ["pytest>=7.4", "ruff>=0.4", "ijson>=3.2"]  # ijson: experiments/extract_brenda_enzyme_regulation.py, imported by the regex audit test
+# the experiment scripts' own imports, which the technology audit of 16 October 2026 found declared in no extra:
+# scipy (the measurement scripts), h5py (build_dopaminergic_expression.py, the descriptors stage), matplotlib (the
+# figures), beautifulsoup4, openpyxl and pdfplumber (the exposure-source transcriptions)
+experiments = ["scipy>=1.11", "h5py>=3.9", "matplotlib>=3.8", "beautifulsoup4>=4.12", "openpyxl>=3.1", "pdfplumber>=0.11"]
 
 [tool.setuptools.packages.find]
 include = ["mechanistic_pathway_learning*"]
@@ -27,6 +31,11 @@ include = ["mechanistic_pathway_learning*"]
 [tool.ruff]
 line-length = 140
 target-version = "py310"
+
+[tool.ruff.lint]
+# pinned: with no selection the rule set is the installed ruff's default, which moved from 40 to 690 findings between
+# ruff versions without a line changing (the technology audit of 16 October 2026)
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

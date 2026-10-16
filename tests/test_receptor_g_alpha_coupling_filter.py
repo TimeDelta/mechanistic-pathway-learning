@@ -10,7 +10,6 @@ import csv
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from mechanistic_pathway_learning.graph.build_physiology_graph import (
     build_signaling_layer,

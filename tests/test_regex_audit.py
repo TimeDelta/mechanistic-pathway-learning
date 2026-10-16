@@ -18,7 +18,7 @@ import pytest
 
 # --- sign patterns -------------------------------------------------------------------------------------------
 
-from experiments.scope_off_target_binding import NEGATIVE_ACTIONS, POSITIVE_ACTIONS, action_sign
+from experiments.scope_off_target_binding import action_sign
 
 
 @pytest.mark.parametrize("action, expected_sign", [
@@ -191,7 +191,7 @@ def test_a_protein_named_without_any_word_for_binding_states_no_carrier():
 # --- the central action patterns, which already have their own module ----------------------------------------
 
 from experiments.read_label_central_action import (
-    CENTRAL_ACTION, READS_AS_AN_ADVERSE_EVENT, READS_AS_NOT_CENTRAL, SENTENCE,
+    READS_AS_AN_ADVERSE_EVENT, READS_AS_NOT_CENTRAL, SENTENCE,
 )
 
 
