@@ -144,10 +144,10 @@ fetch "$raw_directory/gtopdb/ligands.csv" "https://www.guidetopharmacology.org/D
 # IMPC: the knockout phenotype assertions (significant hits) and the full statistical results, which hold the
 # non-significant tests as well, so a tested-but-not-hit knockout is a measured negative at the test's power. CC BY 4.0
 # ("IMPC data is freely available to download and use", https://www.mousephenotype.org/about-impc/accessing-the-data/,
-# read 15 October 2026). The "latest" directory moves with each release; the README names the release.
-fetch "$raw_directory/impc/README.md" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/README.md"
-fetch "$raw_directory/impc/genotype-phenotype-assertions-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/genotype-phenotype-assertions-ALL.csv.gz"
-fetch "$raw_directory/impc/statistical-results-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/statistical-results-ALL.csv.gz"
+# read 15 October 2026). Pinned to release 24.0 (the files of 16 March 2026; "latest" pointed at it on 16 October 2026 and moves).
+fetch "$raw_directory/impc/README.md" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/release-24.0/results/README.md"
+fetch "$raw_directory/impc/genotype-phenotype-assertions-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/release-24.0/results/genotype-phenotype-assertions-ALL.csv.gz"
+fetch "$raw_directory/impc/statistical-results-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/release-24.0/results/statistical-results-ALL.csv.gz"
 
 if [ "$with_cellxgene" = "yes" ]; then
   # Adult human brain atlas dissections holding cluster 395 (Siletti et al. 2023; CELLxGENE collection

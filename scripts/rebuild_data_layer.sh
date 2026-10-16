@@ -139,6 +139,10 @@ if [ "$stage" = "graphs" ]; then
     python experiments/fetch_clinicaltrials_adverse_events.py --evidence-dir "$processed/evidence_full_v4"
   step "$processed/faers/faers_reports.parquet" "FAERS disproportionality (openFDA)" \
     python experiments/fetch_faers_disproportionality.py --evidence-dir "$processed/evidence_full_v4"
+  # IMPC knockouts, mapped to human genes through HGNC and to the graph's gene nodes; positives from the assertions,
+  # negatives from the statistical results (tested, no significant call); evidence class animal, grade D
+  step "$processed/impc/impc_reports.parquet" "IMPC knockout phenotypes (release 24.0)" \
+    python experiments/build_impc_reports.py --graph-dir "$processed/graph_full"
 fi
 
 # --- the monogenic slice (pilot) tables the slice-era tests read ---------------------------------------------------
