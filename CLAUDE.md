@@ -29,6 +29,14 @@ for every research pass a session starts, so a session passes them on to the pas
   repository, the data availability statement of the provider's paper. Quote the sentence and say where it was
   read. When every such route is closed, name the licence as unverified, list the routes tried and give the address
   for the owner to open.
+- **A failed source is not a finished search.** "Always try to find a second reputable source when one fails.
+  That's the best rule" (15 October 2026). When a source is missing a record, refuses, or cannot be read, name a
+  second reputable source and try it before reporting absence. Absence is reported only after the second source,
+  and the report says which sources were tried. This applies to a database that lacks a row as much as to a page
+  that will not load: OnSIDES holding no adverse-event rows for a drug is a failure of that source, not evidence
+  that the drug has no label. Where a drug is not approved by the agency behind the first source, the second
+  source is another agency - the EMA assessment reports in `configs/ema_assessment_reports.csv`, the archived
+  Health Canada monographs of item 9.34, or the UK eMC.
 - **A refusal by the site is respected.** A page behind a robots rule or a check that the visitor is human is not
   read through a cache, a mirror or a solved challenge. Record the refusal and use the provider's other
   publications.
