@@ -40,6 +40,9 @@ def report(perturbation, symptom, evidence_class, source, value=1, relation="ind
 def test_the_committed_tier_table_reads_and_names_every_soft_class():
     tiers = read_tiers(DEFAULT_TIERS_PATH)
     assert {key[0] for key in tiers} == {"monogenic", "human_association", "animal", "literature"}
+    assert tiers[("monogenic", "negative")].unit_strength == 0.5, "an HPO NOT annotation is the strongest curated absence in the inputs"
+    assert {key for key, tier in tiers.items() if tier.direction == "negative"} == {("monogenic", "negative"), ("human_association", "negative"), ("animal", "negative")}, \
+        "every class that can state an absence has a tier for it; the literature sources state none"
     assert tiers[("human_association", "negative")].prior_probability == 0.0 and tiers[("human_association", "negative")].unit_strength == 0.5, "the registered placebo weight"
     assert tiers[("literature", "positive")].unit_strength < tiers[("animal", "positive")].unit_strength < tiers[("human_association", "positive")].unit_strength
     assert all(0.5 < tier.prior_probability < 1.0 for tier in tiers.values() if tier.direction == "positive"), "a positive prior pulls above a coin toss and below a label"

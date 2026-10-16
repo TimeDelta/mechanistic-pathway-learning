@@ -30,6 +30,7 @@ The tiers are in `configs/soft_prior_tiers.csv` and are keyed by evidence class 
 | class | direction | prior probability | unit strength | the evidence |
 | --- | --- | --- | --- | --- |
 | monogenic | positive | 0.75 | 0.5 | an HPO annotation below the grade-A bar (grade C) |
+| monogenic | negative | 0 | 0.5 | an HPO annotation qualified NOT or Excluded, or with a zero patient fraction |
 | human_association | positive | 0.70 | 0.5 | a trial arm above placebo, or a FAERS signal (PRR >= 2, chi-square >= 4, >= 3 reports) |
 | human_association | negative | 0 | 0.5 | a trial arm with no excess at >= 100 exposed, or a FAERS absence at >= 2,000 drug reports |
 | animal | positive | 0.60 | 0.3 | an IMPC call on a crosswalked MP term |
@@ -156,3 +157,19 @@ difference with its 95 percent Newcombe score interval (`clinical_trial_adverse_
 only when its upper bound is below five in a hundred (`ABSENCE_RISK_DIFFERENCE_MARGIN`); the counts of rows admitted
 and refused are in `results.json` under `soft_priors.admission`. The reliability fit still reads the rows as the
 source states them. The margin is a choice and belongs with the tier numbers in the grid of section 4.
+
+## 7. Addition, 16 October 2026: the curated absence of the human genetics sources
+
+Built on the rebuilt v4 tables, `build_soft_priors` reported four monogenic rows under `classes_without_a_tier`: the
+grade-C records whose HPO annotation the curator qualified NOT or Excluded, or whose patient fraction is zero
+(`load_monogenic_phenotype_annotations` writes `report_value` 0 for these). That is the one curated statement of
+absence in the human genetics sources, which the research pass of 16 October named as the anchor set worth having,
+and it had no tier, so it was silently dropped. It now takes the human absence weight, 0.5. The 34 further monogenic
+records with a negative report are grade A, which makes them labels; a prior never touches a label, and the audit's
+`pairs_with_a_negative_report` column is where their contradiction shows.
+
+On the rebuilt tables the whole path gives: 25,612 resolved pairs, of which 4,563 fall inside the perturbation
+universe (1,636 perturbations over 24 symptoms), 2,973 on eligible cells and 1,590 on labelled or set-aside cells
+that the filter skips; 727 contested pairs take none. By class: animal 17,471 absences and 779 calls, literature
+5,337, human_association 1,187 positive and 92 absences, monogenic 746. The trial-arm bar refuses most of what the
+source calls an excess: 459 admitted of 2,792, and 738 absences admitted of 773.

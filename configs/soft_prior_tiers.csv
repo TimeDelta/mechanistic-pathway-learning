@@ -1,5 +1,6 @@
 evidence_class,direction,prior_probability,unit_strength,note
 monogenic,positive,0.75,0.5,"an HPO annotation below the grade-A bar (grade C in evidence_records): human genetics, curated, but not a clinical synopsis of a single-gene disease"
+monogenic,negative,0.0,0.5,"an HPO annotation the curator qualified NOT or Excluded for the disease, or whose patient fraction is zero (load_monogenic_phenotype_annotations writes report_value 0 for these): the one curated statement of absence in the human genetics sources, and the strongest absence here, so it takes the human weight"
 human_association,positive,0.70,0.5,"a placebo-controlled trial arm whose excess over placebo has a 95 percent Newcombe lower bound above 0 (ClinicalTrials.gov) or a FAERS disproportionality signal (PRR >= 2, chi-square >= 4, >= 3 reports)"
 human_association,negative,0.0,0.5,"a trial arm whose risk difference has a 95 percent upper bound below five in a hundred, or a FAERS absence at 2,000 or more drug reports: the weight of the registered placebo rule (amendment item 3)"
 animal,positive,0.60,0.3,"an IMPC knockout call on a crosswalked MP term (configs/impc_symptom_crosswalk.csv); cross-species, so below the human tiers"
