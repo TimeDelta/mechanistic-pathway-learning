@@ -234,3 +234,53 @@ stage took about 1 hour 45 minutes, the OnSIDES identifier bridge most of it. Wh
 
 The descriptors stage was started after the graphs stage, as the registered job `rebuild_descriptors`
 (`runs/jobs/`, `scripts/resume_jobs.sh --status`).
+
+## The rebuild of 16 October 2026
+
+A third new container (2 cores, Python 3.13, pandas 2.3.3 and pyarrow 25.0.1 pinned), on a repository that had gained
+the three absence sources, the two audits and the soft priors. The container was replaced once mid-run, which is why
+the chain's log holds four `stage graphs started` lines. What it found:
+
+- **The base graph was the release copy, and the copy had kept five approved changes out of every run** (decision
+  9.53, commit 31f9422). The physiology audit reported `stoichiometric_coefficient` absent from
+  `graph_full_neuronal_split_binders_drugs_v4`, which is item 20 inert exactly as decision 8.6 warned; the cause was
+  this document's own rule, that the rebuild copies `data/releases/v0.4/graph_full` to keep the release's row order.
+  A fresh build with the current builder has the same 33,964 nodes and differs by the approved changes alone: the
+  15,853 mirror edges of reversible reactions gone (8,540 `product_of`, 7,313 `substrate_of`), the 33 GRK and arrestin
+  edges corrected from `activates` +1 to `inhibits` -1, 282 receptor-to-G-alpha OmniPath edges dropped by the coupling
+  filter, `is_currency` changed on 41 nodes, and the coefficient column present. 255,367 edges become **239,232**.
+  `build_physiology_graph.py` now sorts a reaction's catalysing genes by id, so the row-order defect this document
+  recorded on 10 October is fixed rather than avoided, and the rebuild builds the base graph.
+- **The evidence tables do not depend on the graph's edges, measured rather than assumed.** Built on the new base
+  graph, every evidence hash is the one the copied graph gave: v3 records `ae73de729b4c6403`, v3 reports
+  `35992a4155bb4429`, v3 selection `a90d427696abfc13`, v3 parkinsonism `ce7391cc4b76c654` and `cc15a045d75ddb3d`, v4
+  records `e0206dbe181747e8`, v4 selection `1d0cde3b1292217c`. The assembly reads the node table, not the edges.
+- **The v3 tables still reproduce the 10 October rebuild byte for byte**, as they did on 15 October, so the assembly
+  stays deterministic across three containers.
+- **The OnSIDES v3 report table moved** (`177557ed28a85c12` to `c64294a9807bc3de`) while the 1,578 of its rows that
+  reach the assembled report table are identical: the bridge was refetched against ChEMBL_37, and the difference is
+  among the 5,853 rows of drugs that do not qualify. One bridge lookup failed after five attempts (indacaterol, not a
+  study drug) and is recorded under `errors`.
+- **Rebuilt graph counts and edge hashes** (nodes, edges, sha256 prefix of `edges.parquet`): `graph_full` 33,964 /
+  239,232 / `26a3216ae3fa6fc5`; `graph_full_neuronal` 36,865 / 254,977 / `ba7ccdf4185abb13`;
+  `graph_full_neuronal_split` 49,574 / 267,768 / `ae0f3acaa51c7370`;
+  `graph_full_neuronal_split_binders_drugs_v4` 49,796 / 268,954 / `55937989531bd83f`; the enzyme variant 49,796 /
+  268,977 / `eac0079a6d831bec`. The slice tables, which the slice stage copies from the release and rebuilds the
+  variants of: `graph` 24,185 / 94,786, `graph_neuronal` 28,118 / 109,892, `graph_split` 27,022 / 97,622. **Every
+  graph hash differs from any earlier run**, because the base graph is built rather than copied; a rewiring control
+  drawn on a copied graph is not comparable to one drawn on these.
+- **Item 20 is live**: 6,652 of 58,054 metabolic edges of the confirmatory graph carry a coefficient other than 1.
+- **The three absence sources built**: trial arms 3,565 reports (2,792 above placebo, 773 absences) over 121 drugs;
+  FAERS 2,369 (2,252 signals, 117 absences) over 208 drugs; IMPC release 24.0 22,346 (1,255 calls, 21,091 measured
+  absences) over 5,361 mouse genes with a one-to-one human orthologue in the graph.
+- **FAERS died once on a transient HTTP 500** from openFDA during the background counts; a probe a minute later
+  answered 200. Both that fetch and the trial-arm fetch now retry a 5xx with backoff, as they already did a 429.
+- **GtoPdb was on disk and invisible**: `scripts/fetch_raw_sources.sh` wrote `data/raw/gtopdb` and the five readers
+  look in `data/raw/gtopdb_2026`, so its test kept skipping. The fetch now writes the expected directory and adds
+  `ligand_id_mapping.csv`, which two readers need and no step fetched.
+- **The suite has no skips left**: 972 pass. `data/processed/label_review/drug_names.csv` has a script
+  (`experiments/label_review/build_drug_names.py`, 222 drugs, 203 with RxNorm names, 219 with a PubChem title), the
+  slice stage builds the slice tables, and GtoPdb is where its readers look.
+
+The descriptors stage was running when this entry was written; the ESM protein embeddings are the long pole on two
+cores (103 batches a shard, about four minutes a batch). Nothing in this entry waits on them.
