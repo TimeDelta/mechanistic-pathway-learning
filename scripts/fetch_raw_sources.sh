@@ -138,8 +138,11 @@ fetch "$raw_directory/intact/intact_negative.txt" "https://ftp.ebi.ac.uk/pub/dat
 # (mechanistic_pathway_learning/perturbation/gtopdb_drug_targets.py). ODbL for the database, CC BY-SA 4.0 for the
 # contents, read on https://www.guidetopharmacology.org/about.jsp on 15 October 2026. The files are rebuilt by the
 # provider with each release (no tag), so the row count is the only check.
-fetch "$raw_directory/gtopdb/interactions.csv" "https://www.guidetopharmacology.org/DATA/interactions.csv"
-fetch "$raw_directory/gtopdb/ligands.csv" "https://www.guidetopharmacology.org/DATA/ligands.csv"
+# the directory name every reader expects (gtopdb_drug_targets.GTOPDB_DIRECTORY and four scripts); the fetch of
+# 15 October wrote data/raw/gtopdb, which no reader looks in, so tests/test_gtopdb_drug_targets.py kept skipping
+fetch "$raw_directory/gtopdb_2026/interactions.csv" "https://www.guidetopharmacology.org/DATA/interactions.csv"
+fetch "$raw_directory/gtopdb_2026/ligands.csv" "https://www.guidetopharmacology.org/DATA/ligands.csv"
+fetch "$raw_directory/gtopdb_2026/ligand_id_mapping.csv" "https://www.guidetopharmacology.org/DATA/ligand_id_mapping.csv"
 
 # IMPC: the knockout phenotype assertions (significant hits) and the full statistical results, which hold the
 # non-significant tests as well, so a tested-but-not-hit knockout is a measured negative at the test's power. CC BY 4.0
