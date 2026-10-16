@@ -6,7 +6,9 @@
 # (docs/data_layer_rebuild.md gives what each step reproduced and what it did not). Every step is skipped when its
 # output exists, so the script can be rerun after a stop. Run it from the repository root:
 #
-#   bash scripts/rebuild_data_layer.sh            # graphs, evidence tables, label selections, drug entry nodes
+#   bash scripts/rebuild_data_layer.sh            # graphs, evidence tables, label selections, drug entry nodes, and the two
+#                                                   # evidence sources that record absences (trial arms, FAERS)
+#   bash scripts/rebuild_data_layer.sh slice        # the monogenic slice tables the slice-era tests read (minutes)
 #   bash scripts/rebuild_data_layer.sh descriptors  # then the node descriptors and cell-class weights (about 3 hours
 #                                                   # of ESM-2 embeddings on 2 cores, and a 1.24 GB download)
 #
@@ -127,6 +129,29 @@ if [ "$stage" = "graphs" ]; then
     python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v4" \
       --carrier-table configs/drug_plasma_carriers_v4.csv --clearing-enzymes configs/drug_clearing_enzymes.csv \
       --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v4_enzymes"
+fi
+
+# --- evidence sources that record absences (15 October 2026) --------------------------------------------------------
+# Placebo-controlled trial arms (ClinicalTrials.gov) and FAERS disproportionality (openFDA) for the drugs of the v4
+# table; every response is cached under data/raw and the scripts resume. They join the table through --extra-reports.
+if [ "$stage" = "graphs" ]; then
+  step "$processed/clinical_trials/clinical_trial_reports.parquet" "placebo-controlled trial arms (ClinicalTrials.gov)" \
+    python experiments/fetch_clinicaltrials_adverse_events.py --evidence-dir "$processed/evidence_full_v4"
+  step "$processed/faers/faers_reports.parquet" "FAERS disproportionality (openFDA)" \
+    python experiments/fetch_faers_disproportionality.py --evidence-dir "$processed/evidence_full_v4"
+fi
+
+# --- the monogenic slice (pilot) tables the slice-era tests read ---------------------------------------------------
+# data/processed/graph and data/processed/evidence are copied from the release, as graph_full is; the manganese,
+# neuronal and gene/protein-split variants are built on the slice graph the same way as on the full one.
+if [ "$stage" = "slice" ]; then
+  step "$processed/graph/nodes.parquet" "slice graph, from data/releases/v0.4" cp -r data/releases/v0.4/graph "$processed/graph"
+  step "$processed/evidence/evidence_records.parquet" "slice evidence table, from data/releases/v0.4" cp -r data/releases/v0.4/evidence_slice_sweeps "$processed/evidence"
+  step "$processed/graph_manganese/nodes.parquet" "manganese variant of the slice" python experiments/build_manganese_graph_variant.py --graph-dirs "$processed/graph"
+  step "$processed/graph_neuronal/nodes.parquet" "neuronal and oxidative variant of the slice" \
+    python experiments/build_neuronal_graph_variant.py --base-graph-dir "$processed/graph_manganese" --output-dir "$processed/graph_neuronal"
+  step "$processed/graph_split/nodes.parquet" "gene and protein split of the slice" \
+    python experiments/build_gene_protein_split.py --graph-dir "$processed/graph" --output-dir "$processed/graph_split"
 fi
 
 if [ "$stage" = "descriptors" ]; then
