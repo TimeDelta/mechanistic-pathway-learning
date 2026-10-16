@@ -855,19 +855,32 @@ def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | 
     return probability, strength, summary, literature
 
 
+def negative_share_scale(weights: np.ndarray, eligible: np.ndarray, negative_weight: float) -> np.ndarray:
+    """Per row, how much --equal-drug-shares rescaled its unlabelled negatives: the weight of one such cell divided by
+    --negative-weight (1 for a gene row, or a row with no such cell). A soft prior on a drug row is a pseudo-observation
+    of that drug and takes the same share, else a drug with few labels would weigh its priors less than its labels."""
+    scale = np.ones(len(weights))
+    for row in range(len(weights)):
+        cells = np.flatnonzero(eligible[row] & (weights[row] > 0))
+        if len(cells) and negative_weight > 0:
+            scale[row] = float(weights[row, cells[0]]) / negative_weight
+    return scale
+
+
 def fit_targets_with_soft_priors(outcomes: torch.Tensor, weights: torch.Tensor, positive_targets: torch.Tensor | None, fit_rows: np.ndarray,
                                  soft_prior_probability: np.ndarray | None, soft_prior_strength: np.ndarray | None, eligible: np.ndarray | None,
-                                 global_strength: float) -> tuple[dict, dict | None]:
+                                 global_strength: float, row_scale: np.ndarray | None = None) -> tuple[dict, dict | None]:
     """The target and weight tensors a fit trains on: the labels, and on the rows it fits the soft priors written into
     the eligible cells (evidence/soft_priors.py). Without priors the tensors are returned as they are, so the
     validation loss and every score, which read the plain matrices, see what the fit saw. With priors the targets
     tensor in use (positive_targets under --positive-target-from-frequency, else outcomes) and the weights are new
-    tensors; the inputs are not modified."""
+    tensors; the inputs are not modified. row_scale multiplies each row's prior strengths (negative_share_scale)."""
     targets = {"outcomes": outcomes, "weights": weights, "positive_targets": positive_targets}
     if soft_prior_probability is None:
         return targets, None
     base_targets = positive_targets.numpy() if positive_targets is not None else outcomes.numpy()
-    fitted_targets, fitted_weights, applied = apply_soft_priors(base_targets, weights.numpy(), soft_prior_probability, soft_prior_strength, eligible, fit_rows, global_strength)
+    strength = soft_prior_strength if row_scale is None else soft_prior_strength * np.asarray(row_scale, dtype=float)[:, None]
+    fitted_targets, fitted_weights, applied = apply_soft_priors(base_targets, weights.numpy(), soft_prior_probability, strength, eligible, fit_rows, global_strength)
     targets["weights"] = torch.as_tensor(fitted_weights, dtype=torch.float32)
     if positive_targets is not None:
         targets["positive_targets"] = torch.as_tensor(fitted_targets, dtype=torch.float32)
@@ -1755,8 +1768,12 @@ def main() -> None:
             print(f"soft priors permuted: {soft_prior_permutation}")
 
     def fit_targets(fit_rows: np.ndarray) -> tuple[dict, dict | None]:
+        row_scale = None
+        if soft_prior_probability is not None and arguments.equal_drug_shares:
+            fit_weights = loss_pair_weights(data, label_mask, arguments, fit_rows, frequency_targets=arguments.positive_target_from_frequency)
+            row_scale = negative_share_scale(fit_weights, soft_prior_eligible, arguments.negative_weight)
         return fit_targets_with_soft_priors(outcomes, weights, positive_targets, fit_rows, soft_prior_probability, soft_prior_strength, soft_prior_eligible,
-                                            arguments.soft_prior_strength)
+                                            arguments.soft_prior_strength, row_scale)
 
     fitted, soft_priors_applied_in_fit = fit_targets(train_indices)
     if soft_priors_applied_in_fit is not None:

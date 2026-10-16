@@ -73,6 +73,11 @@ a controlled comparison (the never-above-placebo pairs); on an unlabelled pair, 
 lacking a label grade (`ExperimentData.masked_for_soft_evidence`, written by the loader from the selection's
 `masks_a_negative` rows). The counts of priors that fell on ineligible cells are reported, not silently dropped.
 
+**A drug row's share.** Under `--equal-drug-shares` (registered) a drug's negatives are rescaled so every drug holds
+the same count; a prior on a drug row is a pseudo-observation of that drug and is multiplied by the same factor
+(`negative_share_scale`), else a drug with few labels would weigh its priors less than its labels. Gene rows are
+unchanged.
+
 **Fit rows only, and the lockbox never.** The priors are built after the lockbox is removed from the data, so no
 lockbox perturbation receives one; they are written into the targets of the rows the first fit trains on and, at the
 refit, of the training and validation rows together; the validation loss, the early stopping and every score read the
