@@ -1,0 +1,30 @@
+pattern,scale,construct,higher_is_worse,note
+hyperactiv\w*[ /-]*impulsiv|impulsiv\w*[ /-]*hyperactiv,ADHD hyperactivity-impulsivity subscale,hyperactivity,true,"ADHD-RS, CAARS, Conners, SNAP: the subscale, before any total"
+\binattent|inattention subscale|attention subscale,ADHD inattention subscale,cognitive_impairment,true,the coarse crosswalk files disturbance in attention under cognitive_impairment
+\bMADRS\b|Montgomery,MADRS,depressed_mood,true,multi-item depression severity; its core item is reported sadness
+\bHAM-?D\b|\bHDRS|\bHRSD|Hamilton (Depression|Rating Scale for Depression),HAM-D,depressed_mood,true,multi-item depression severity
+\bQIDS|\bPHQ-?9\b|\bBDI\b|Beck Depression|\bCDRS|Children'?s Depression Rating,depression self-report or clinician scale,depressed_mood,true,"QIDS, PHQ-9, BDI, CDRS"
+\bHAM-?A\b|\bHARS\b|Hamilton (Anxiety|Rating Scale for Anxiety)|\bGAD-?7\b|\bSTAI\b|State-Trait Anxiety|\bBAI\b|Beck Anxiety|\bPARS\b|Pediatric Anxiety,anxiety scale,anxiety,true,"HAM-A, GAD-7, STAI, BAI, PARS"
+\bYMRS\b|Young Mania,YMRS,elevated_mood_or_mania,true,
+\bSHAPS\b|Snaith[- ]Hamilton,SHAPS,anhedonia,true,"SHAPS totals count anhedonic responses, so higher is worse"
+Apathy Evaluation|\bAES\b|Apathy Scale,apathy scale,apathy,true,
+\bPANSS\b.*(positive|psychotic)|positive (symptom|subscale).*PANSS|\bSAPS\b|Scale for the Assessment of Positive,PANSS positive or SAPS,psychosis,true,positive symptoms; the PANSS total is a disorder-level composite and is not read
+\bPANSS\b.*negative|negative (symptom|subscale).*PANSS|\bSANS\b|Scale for the Assessment of Negative|\bNSA-?16\b,PANSS negative or SANS,apathy,true,avolition and blunting; the nearest construct is apathy
+Epworth|\bESS\b,Epworth Sleepiness Scale,somnolence_or_hypersomnia,true,
+Insomnia Severity|\bISI\b|Pittsburgh Sleep|\bPSQI\b|sleep onset latency|wake after sleep onset|\bWASO\b,insomnia scale or polysomnographic latency,insomnia,true,"ISI, PSQI, latency and wake time in minutes"
+total sleep time|\bTST\b|sleep efficiency,total sleep time or efficiency,insomnia,false,more sleep is better
+Columbia[- ]Suicide|\bC-?SSRS\b.*ideation|suicidal ideation,C-SSRS ideation,suicidal_ideation,true,
+\bMMSE\b|Mini[- ]Mental|\bMoCA\b|Montreal Cognitive,MMSE or MoCA,cognitive_impairment,false,higher is better
+\bADAS-?Cog\b|Alzheimer'?s Disease Assessment Scale,ADAS-Cog,cognitive_impairment,true,
+\bUPDRS\b.*(part )?III|\bMDS-UPDRS\b.*motor|motor examination,UPDRS part III,parkinsonism,true,
+Simpson[- ]Angus|\bSAS\b.*(extrapyramidal|parkinson)|Extrapyramidal Symptom Rating|\bESRS\b,Simpson-Angus or ESRS,parkinsonism,true,
+Barnes Akathisia|\bBARS\b,Barnes Akathisia,restlessness,true,akathisia is motor restlessness (fine construct restlessness)
+\bFACIT-?F,FACIT-Fatigue,fatigue,false,"counts well-being, so higher is better; before the fatigue rule because the first match decides"
+Fatigue Severity|\bFSS\b|Brief Fatigue|Multidimensional Fatigue|Chalder,fatigue scale,fatigue,true,"FSS, BFI, MFI, Chalder: higher is worse"
+Aberrant Behavior Checklist.*irritab|\bABC-?I\b|irritability subscale,ABC irritability subscale,irritability,true,
+Overt Aggression|\bMOAS\b|\bOAS\b|aggression (scale|subscale|score),aggression scale,aggressive_behavior,true,
+Yale[- ]Brown|\bY-?BOCS\b|\bCY-?BOCS\b,Y-BOCS,compulsive_behavior,true,obsessions and compulsions together; the nearest construct is compulsive behaviour
+Barratt Impulsiveness|\bBIS-?11\b,Barratt Impulsiveness Scale,disinhibition_or_impulsivity,true,
+\bCSFQ\b|Changes in Sexual Functioning,CSFQ,decreased_libido,false,higher is better; before the ASEX rule
+Arizona Sexual|\bASEX\b,sexual functioning scale,decreased_libido,true,ASEX: higher is worse
+Bush[- ]Francis|catatonia rating,Bush-Francis Catatonia Rating Scale,catatonia,true,

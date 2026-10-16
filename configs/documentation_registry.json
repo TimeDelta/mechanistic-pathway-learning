@@ -735,5 +735,9 @@
  "docs/fine_symptom_constructs.md": {
   "class": "generated",
   "generator": "experiments/build_fine_symptom_crosswalk.py"
+ },
+ "docs/clinical_trial_outcome_evidence.md": {
+  "class": "generated",
+  "generator": "experiments/fetch_clinicaltrials_outcomes.py"
  }
 }
