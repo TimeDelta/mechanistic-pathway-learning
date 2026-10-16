@@ -173,3 +173,14 @@ universe (1,636 perturbations over 24 symptoms), 2,973 on eligible cells and 1,5
 that the filter skips; 727 contested pairs take none. By class: animal 17,471 absences and 779 calls, literature
 5,337, human_association 1,187 positive and 92 absences, monogenic 746. The trial-arm bar refuses most of what the
 source calls an excess: 459 admitted of 2,792, and 738 absences admitted of 773.
+
+## 8. Addition, 16 October 2026: launching the grid
+
+`scripts/soft_prior_grid.sh <encoder> [--permuted]` loops `experiments/run_main_model_batch.py` over the grid of
+section 4 (strengths 0.25, 0.5, 1 by exponents 0, 0.5, 1; `MPL_GRID_STRENGTHS` and `MPL_GRID_EXPONENTS` override) on
+the five development folds with the lockbox removed, one run root per point under `runs/soft_prior_grid/`. The data
+flags are the confirmatory job's and go in `MPL_DATA_ARGS` (the job scripts under `runs/full/` carry them;
+`docs/confirmatory_runbook.md`); the report tables default to the rebuild's trial-arm, FAERS and IMPC outputs and the
+release's literature table (`MPL_SOFT_PRIOR_REPORTS`). `MPL_DRY_RUN=1` prints the commands. The point is chosen on the
+development folds against the three controls of section 3, the permuted arm is then run at that point alone, and the
+script chooses nothing.
