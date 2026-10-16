@@ -1,0 +1,43 @@
+target_symptom,relation,mp_term_ids,mp_term_names,negative_procedure_codes,validity,note
+hyperactivity,induces,MP:0001399,hyperactivity,OFD,strong,"locomotor hyperactivity in the open field, the accepted proxy and an IMPC core procedure; psychomotor_agitation reads the same measure and is left unmapped so one mouse readout is not counted for two human symptoms"
+psychomotor_retardation,induces,MP:0001402,decreased locomotor activity,OFD,moderate,"hypolocomotion in the open field; confounded by motor and sensory deficits, which the SHIRPA screen would show for the same line"
+anxiety,induces,MP:0001363;MP:0002797,increased anxiety-related response;increased thigmotaxis,OFD;LDT,moderate,"thigmotaxis in the open field and light avoidance in the light-dark box; face validity and predictive validity for anxiolytics, not for every anxiety construct"
+anxiety,relieves,MP:0001364;MP:0020870,decreased anxiety-related response;decreased thigmotaxis,,moderate,the reverse direction: a knockout that reduces anxiety-like behaviour
+irritability,induces,MP:0005655,increased aggression,,moderate,"observed in handling and resident-intruder settings, not from a powered core procedure, so no measured absence is read"
+aggressive_behavior,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to irritability (decision 9.58)
+cognitive_impairment,induces,MP:0009454;MP:0009456;MP:0020422;MP:0008428,impaired contextual conditioning behavior;impaired cued conditioning behavior;decreased freezing behavior;abnormal spatial working memory,FEA,moderate,fear-conditioning memory and working memory; narrower than human cognitive impairment
+cognitive_impairment,relieves,MP:0009453;MP:0009455,enhanced contextual conditioning behavior;enhanced cued conditioning behavior,,moderate,the reverse direction
+polyphagia,induces,MP:0011939,increased food intake,CAL,strong,"a physiological measure from indirect calorimetry, not a behavioural proxy; body weight alone is not read, because it also moves with energy expenditure"
+bulimia,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to polyphagia (decision 9.58)
+polyphagia,relieves,MP:0011940,decreased food intake,,strong,the reverse direction
+bulimia,relieves,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to polyphagia (decision 9.58)
+compulsive_behavior,induces,MP:0001408,stereotypic behavior,,weak,a SHIRPA observation without a powered test; excluded unless weak proxies are admitted
+insomnia,induces,,,SLW,moderate,"IMPC asserts only the undirected term abnormal sleep behavior, so no positive is read; the measured absence of a sleep change in the sleep-wake procedure is read for both sleep symptoms"
+somnolence_or_hypersomnia,induces,,,SLW,moderate,as for insomnia
+parkinsonism,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to resting_tremor (decision 9.58)
+bradykinesia,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to resting_tremor (decision 9.58)
+resting_tremor,induces,MP:0000745;MP:0001406,tremors;abnormal gait,,weak,"tremor and gait change in a mouse are more often cerebellar or neuromuscular than nigrostriatal, so these are excluded unless weak proxies are admitted"
+pill_rolling_tremor,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to resting_tremor (decision 9.58)
+cogwheel_rigidity,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to resting_tremor (decision 9.58)
+extrapyramidal_muscular_rigidity,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to resting_tremor (decision 9.58)
+psychosis,induces,,,,endophenotype_only,"prepulse inhibition and startle are a sensorimotor-gating endophenotype, not psychosis; never read"
+hallucinations,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to psychosis (decision 9.58)
+delusion,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to psychosis (decision 9.58)
+paranoia,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to psychosis (decision 9.58)
+depressed_mood,induces,,,,none,"behavioural despair tests (tail suspension, forced swim) are not IMPC core procedures and have face validity only"
+anhedonia,induces,,,,none,sucrose preference is not an IMPC procedure
+apathy,induces,,,,none,no accepted mouse proxy
+abulia,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to apathy (decision 9.58)
+suicidal_ideation,induces,,,,none,no mouse proxy
+suicide_behaviors,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to suicidal_ideation (decision 9.58)
+self_injury,induces,,,,none,barbering and over-grooming are observed
+disinhibition_or_impulsivity,induces,,,,none,premature responding and delay discounting are not IMPC core procedures
+emotional_lability,induces,,,,none,no mouse proxy
+abnormal_dreams,induces,,,,none,no mouse proxy
+decreased_libido,induces,,,,none,fertility is not libido
+catatonia,induces,,,,none,the catalepsy bar test is not an IMPC core procedure
+fatigue,induces,,,,none,endurance measures are confounded by motor deficits
+agitation,induces,,,,none,reads the open-field measure already mapped to hyperactivity
+restlessness,induces,,,,none,no mouse proxy stated at the fine level; the coarse row's proxy went to agitation (decision 9.58)
+elevated_mood_or_mania,induces,,,,none,no accepted single-test proxy
+intellectual_disability,induces,,,,none,added construct; no mouse proxy curated yet
