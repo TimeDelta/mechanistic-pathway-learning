@@ -128,6 +128,27 @@ fi
 # accepting it among other metals that the variant's summary records.
 fetch "$raw_directory/uniprot/uniprot_human_manganese_cofactor.tsv.gz" "https://rest.uniprot.org/uniprotkb/stream?query=(organism_id:9606)%20AND%20(reviewed:true)%20AND%20(cc_cofactor_chebi:%22CHEBI:29035%22)&fields=accession,gene_primary,cc_cofactor,cc_subcellular_location&format=tsv&compressed=true"
 
+# --- sources added 15 October 2026 for the evidence tiers, the negatives and the new modalities (docs/data_sources.md) ---
+# IntAct's curated negative interactions (PSI-MITAB; the pairs curators recorded as not interacting). 5,178,956 bytes on
+# 14 January 2026. The licence page is script-rendered; the EMBL-EBI terms of use (read 15 October 2026) impose no
+# restriction beyond the data owner's, and the row in docs/data_sources.md names the licence as unverified.
+fetch "$raw_directory/intact/intact_negative.txt" "https://ftp.ebi.ac.uk/pub/databases/intact/current/psimitab/intact_negative.txt"
+
+# IUPHAR/BPS Guide to PHARMACOLOGY: the two public CSV exports the drug-target re-derivation reads
+# (mechanistic_pathway_learning/perturbation/gtopdb_drug_targets.py). ODbL for the database, CC BY-SA 4.0 for the
+# contents, read on https://www.guidetopharmacology.org/about.jsp on 15 October 2026. The files are rebuilt by the
+# provider with each release (no tag), so the row count is the only check.
+fetch "$raw_directory/gtopdb/interactions.csv" "https://www.guidetopharmacology.org/DATA/interactions.csv"
+fetch "$raw_directory/gtopdb/ligands.csv" "https://www.guidetopharmacology.org/DATA/ligands.csv"
+
+# IMPC: the knockout phenotype assertions (significant hits) and the full statistical results, which hold the
+# non-significant tests as well, so a tested-but-not-hit knockout is a measured negative at the test's power. CC BY 4.0
+# ("IMPC data is freely available to download and use", https://www.mousephenotype.org/about-impc/accessing-the-data/,
+# read 15 October 2026). The "latest" directory moves with each release; the README names the release.
+fetch "$raw_directory/impc/README.md" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/README.md"
+fetch "$raw_directory/impc/genotype-phenotype-assertions-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/genotype-phenotype-assertions-ALL.csv.gz"
+fetch "$raw_directory/impc/statistical-results-ALL.csv.gz" "https://ftp.ebi.ac.uk/pub/databases/impc/all-data-releases/latest/results/statistical-results-ALL.csv.gz"
+
 if [ "$with_cellxgene" = "yes" ]; then
   # Adult human brain atlas dissections holding cluster 395 (Siletti et al. 2023; CELLxGENE collection
   # 283d65eb-dd53-496d-adb7-7570c7caa443). The identifiers docs/data_sources.md lists are dataset version ids, which
