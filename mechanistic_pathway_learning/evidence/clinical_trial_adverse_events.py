@@ -45,6 +45,8 @@ from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMN
 
 SOURCE_NAME = "ClinicalTrials-arms"
 EVIDENCE_CODE = "trial_arm_comparison"
+# the design's grade-C class (assign_evidence_grades): never a label by default, enters the reliability fit and the priors
+EVIDENCE_CLASS = "human_association"
 DEFAULT_MINIMUM_EXPOSURE_FOR_ABSENCE = 100  # drug-arm participants at risk before a non-excess counts as a measured absence
 DEFAULT_FREQUENCY_THRESHOLD = 5.0
 
@@ -231,7 +233,7 @@ def build_reports(studies: Iterable[dict], drug_name: str, perturbation: dict, p
             row.update({
                 "report_id": f"{SOURCE_NAME}|{perturbation['perturbation_id']}|{comparison.nct_id}|{symptom}|{comparison.seriousness}|{ordinal}",
                 "perturbation_id": perturbation["perturbation_id"], "perturbation_type": "drug", "perturbation_label": perturbation["perturbation_label"],
-                "symptom": symptom, "relation": "induces", "evidence_class": "pharmacological", "source": SOURCE_NAME, "report_value": report_value,
+                "symptom": symptom, "relation": "induces", "evidence_class": EVIDENCE_CLASS, "source": SOURCE_NAME, "report_value": report_value,
                 "source_record_id": comparison.nct_id, "source_record_label": study.get("protocolSection", {}).get("identificationModule", {}).get("briefTitle", ""),
                 "source_term_id": "", "source_term_label": comparison.term, "evidence_code": EVIDENCE_CODE,
                 "model_description": (f"human; placebo-controlled trial {comparison.nct_id}; drug arm {comparison.drug_affected}/{comparison.drug_at_risk} "

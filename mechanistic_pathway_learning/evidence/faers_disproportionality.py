@@ -28,6 +28,8 @@ from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMN
 
 SOURCE_NAME = "FAERS-disproportionality"
 EVIDENCE_CODE = "faers_disproportionality"
+# the design's grade-C class (assign_evidence_grades): never a label by default, enters the reliability fit and the priors
+EVIDENCE_CLASS = "human_association"
 DEFAULT_SIGNAL_PRR = 2.0
 DEFAULT_SIGNAL_CHI_SQUARE = 4.0
 DEFAULT_SIGNAL_MINIMUM_REPORTS = 3
@@ -146,7 +148,7 @@ def build_reports(drug_label: str, perturbation: dict, reaction_counts: dict[str
         row.update({
             "report_id": f"{SOURCE_NAME}|{perturbation['perturbation_id']}|{item.reaction.lower().replace(' ', '_')}|{symptom}",
             "perturbation_id": perturbation["perturbation_id"], "perturbation_type": "drug", "perturbation_label": perturbation["perturbation_label"],
-            "symptom": symptom, "relation": "induces", "evidence_class": "pharmacological", "source": SOURCE_NAME, "report_value": report_value,
+            "symptom": symptom, "relation": "induces", "evidence_class": EVIDENCE_CLASS, "source": SOURCE_NAME, "report_value": report_value,
             "source_record_id": f"openFDA:{drug_label}", "source_record_label": drug_label, "source_term_id": "", "source_term_label": item.reaction,
             "evidence_code": EVIDENCE_CODE,
             "model_description": (f"human; FAERS spontaneous reports via openFDA (retrieved {retrieved}); {'at most ' if item.bounded else ''}{item.with_drug} of {item.drug_total} reports naming the drug "

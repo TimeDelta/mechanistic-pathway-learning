@@ -172,17 +172,32 @@ def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linkin
     return disease_cluster_ids(records, max_genes_per_linking_entry)
 
 
+# The classes a pair's reports may carry, best first. A pair's primary class is the best one present, whatever the
+# order the reports arrived in, so a label pair stays a label pair however many soft sources join it later.
+# "human_association" (grade C) and "animal" (grade D) are the soft classes the design names and the trial-arm,
+# FAERS and IMPC sources use: they enter the reliability fit and the priors and never the grade of a label.
+EVIDENCE_CLASS_RANK: dict[str, int] = {"monogenic": 0, "pharmacological": 1, "open_targets": 2, "human_association": 3, "animal": 4, "literature": 5}
+SOFT_EVIDENCE_CLASSES: tuple[str, ...] = ("human_association", "animal")
+
+
+def primary_report(pair_reports: pd.DataFrame) -> pd.Series:
+    """The first report of the best class the pair carries (EVIDENCE_CLASS_RANK); the class that decides the grade."""
+    ranks = pair_reports.evidence_class.map(lambda name: EVIDENCE_CLASS_RANK.get(str(name), len(EVIDENCE_CLASS_RANK)))
+    return pair_reports.loc[ranks.idxmin()]
+
+
 def grade_weighting_rows(pair_reports: pd.DataFrame) -> pd.DataFrame:
-    """The reports the grade weighting reads for one pair: positive reports plus 0 of N patient-fraction rows.
+    """The reports the grade weighting reads for one pair: positive reports plus monogenic 0 of N patient-fraction rows.
 
     A phenotype.hpoa row stating that 0 of N patients had the symptom is an absence report (report_value 0)
     in the report table and the reliability fit. The version 0.4 loader (monogenic_evidence_records) read the
     same row as a presence row with frequency 0, which the frequency clip turned into the floor weight, and
     the default weighting must reproduce those weights exactly for the running sweeps, so the grade and the
     weight are still computed over these rows. Whether the pair is a positive label is decided by
-    positive_report_count, which counts report_value 1 only.
+    positive_report_count, which counts report_value 1 only. The rule is the monogenic loader's: a trial arm with
+    no event, which also has frequency 0 and a denominator, is an absence and nothing else.
     """
-    zero_fraction = (pair_reports.frequency == 0.0) & pair_reports.frequency_denominator.notna()
+    zero_fraction = (pair_reports.frequency == 0.0) & pair_reports.frequency_denominator.notna() & (pair_reports.evidence_class == "monogenic")
     return pair_reports[(pair_reports.report_value == 1) | zero_fraction]
 
 
@@ -197,9 +212,13 @@ def evidence_record_from_positive_reports(pair_reports: pd.DataFrame) -> Evidenc
     revisions and the default weighting has to reproduce it. A pair with no positive report yields a record
     with no provenance (grade C) or, for a drug, no dominant target (grade E).
     """
-    first = pair_reports.iloc[0]
+    first = primary_report(pair_reports)
     positive = grade_weighting_rows(pair_reports)
     positive = positive[positive.evidence_class == first.evidence_class]  # the grade reads the pair's primary class only; external classes (literature) enter the reliability fit, not the grade
+    if first.evidence_class in SOFT_EVIDENCE_CLASSES:
+        # a pair carried by trial arms, FAERS or a knockout alone: grade C or D by class, never a label (experiment_data.DEFAULT_LABEL_GRADES)
+        return EvidenceRecord(first.perturbation_id, first.symptom, first.relation, str(first.evidence_class),
+                              source=";".join(sorted(set(positive.source))) if len(positive) else str(first.source))
     if first.evidence_class == "monogenic":
         disease_ids = sorted(set(positive.source_record_id))
         frequencies = positive.frequency.dropna()
@@ -301,7 +320,7 @@ def aggregate_reports_to_observations(
     if not len(reports):
         return pd.DataFrame(rows)
     for (perturbation_id, symptom, relation), pair_reports in reports.groupby(["perturbation_id", "symptom", "relation"], sort=False):
-        first = pair_reports.iloc[0]
+        first = primary_report(pair_reports)
         positive = pair_reports[pair_reports.report_value == 1]
         graded = grade_weighting_rows(pair_reports)
         record = evidence_record_from_positive_reports(pair_reports)
@@ -315,13 +334,18 @@ def aggregate_reports_to_observations(
             "report_count": int(len(pair_reports)), "positive_report_count": int(len(positive)), "negative_report_count": int(len(pair_reports) - len(positive)),
             "perturbation_nodes": first.perturbation_nodes,
         }
-        if first.evidence_class == "monogenic":
-            all_disease_ids = sorted(set(pair_reports.source_record_id))
+        if first.perturbation_type == "gene":
+            # the disease identifiers and provenance counts read the monogenic reports only; a gene pair carried by a
+            # knockout alone (class animal) has none and is grouped as a singleton cluster of its own gene
+            monogenic_reports = pair_reports[pair_reports.evidence_class == "monogenic"]
+            all_disease_ids = sorted(set(monogenic_reports.source_record_id))
             denominators = graded.frequency_denominator.dropna()
+            other_sources = sorted(set(pair_reports.loc[pair_reports.evidence_class != "monogenic", "source"]))
             row.update({
                 "group_id": perturbation_id, "disease_cluster_id": cluster_by_gene.get(perturbation_id, "cluster:" + perturbation_id),
                 "label_frequency": record.max_annotation_frequency,
-                "source": "HPO genes_to_phenotype; diseases=" + ";".join(all_disease_ids),
+                "source": ("HPO genes_to_phenotype; diseases=" + ";".join(all_disease_ids) if all_disease_ids else "")
+                          + ("; " if all_disease_ids and other_sources else "") + ("; ".join(other_sources) if other_sources else ""),
                 "omim_entry_count": sum(1 for disease_id in all_disease_ids if disease_id.startswith("OMIM:")),
                 "orpha_entry_count": sum(1 for disease_id in all_disease_ids if disease_id.startswith("ORPHA:")),
                 "annotation_row_count": int(pair_reports[["source_record_id", "source_term_id"]].drop_duplicates().shape[0]),
