@@ -2,7 +2,7 @@
 
 Written 15 October 2026, after the audit the owner asked for ("audit and automate the documentation process in a
 way that avoids any issues with stale information interfering with your or anyone else's understanding but still
-maintains a valid research study log"). It extends the mechanism he settled for the registration the same day: a
+maintains a valid research study log"). It extends the mechanism they settled for the registration the same day: a
 frozen baseline, a living document free to be overwritten, and a history generated from the git log rather than
 written by hand (`experiments/generate_amendment_history.py`). The practices it draws on are the ones research-record
 and documentation standards agree on: a record is corrected by adding to it, never by overwriting it (NIH IRP notebook
@@ -92,4 +92,4 @@ on an id that names two rows. The six families of
 generated documents that exist in several versions (the Phase 2 baseline tables, the label plasma binders, the drug
 administration routes, the leakage group rules, the module health results, the rewiring null distribution) have no
 member marked current; `docs/status.md` lists the oldest unstamped documents, and the register's `family` field is
-where a current member is named once he decides.
+where a current member is named once they decide.

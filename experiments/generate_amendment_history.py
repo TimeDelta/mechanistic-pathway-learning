@@ -1,6 +1,6 @@
 """Generate docs/amendment_history.md from Amends: trailers in the git log (the owner's proposal, 15 October 2026).
 
-The design, in his words: "create a copy of the preregistration as it exists today that stays unmodified in the
+The design, in their words: "create a copy of the preregistration as it exists today that stays unmodified in the
 repository as starting file for the current state. Then the commit trailer works fine without any additional code
 unit stuff."
 

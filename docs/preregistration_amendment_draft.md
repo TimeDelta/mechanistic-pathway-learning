@@ -100,7 +100,7 @@ no clearance edge is registered: `graph_full_neuronal_split_binders_drugs_v4` an
 exist for the ablation the owner asked for on 10 October and for the checks, and whether a confirmatory configuration
 reads either is a separate decision.
 
-- **The propagation window, if the owner applies his decision of 12 October.** "Use the convergence instead of 8
+- **The propagation window, if the owner applies their decision of 12 October.** "Use the convergence instead of 8
   steps. 8 steps is arbitrary, not physiological." For the linear-response encoder this is a stopping rule and not a
   new architecture: the encoder holds the perturbation on at every step and its gains are bounded by the contraction,
   so a fixed point exists and the loop can run to a tolerance. The amendment has to name the tolerance, because it
@@ -111,7 +111,7 @@ reads either is a separate decision.
   the registered head choice and stopping rule invalid, because both were selected on three independent layers, so it
   needs its own development runs before any held-out run (`docs/label_source_review.md` 17.2).
 
-- **The message-passing encoder, if the owner applies his decision of 12 October.** "use the 4 bases and I think
+- **The message-passing encoder, if the owner applies their decision of 12 October.** "use the 4 bases and I think
   just the 1 layer, repeated." One set of relation transforms, each a mixture of four shared bases, applied
   repeatedly until the change falls below the tolerance of the item above. The relation transforms fall from 61,440
   to 4,176 and stay there at any depth, and the `clears` relation owns four coefficients, the same as the

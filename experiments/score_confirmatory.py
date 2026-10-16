@@ -313,7 +313,7 @@ def main() -> None:
     parser.add_argument("--floor-rule", choices=["none", "half_width_plus_margin", "fixed"], default="none",
                         help="none (the registered rule, the user's decision of 15 October 2026, \"no floor. paired interval\"): no magnitude bar, the "
                              "decision resting on the paired interval alone, with the effect sizes reported in standard errors of the available precision; "
-                             "half_width_plus_margin (superseded, his decision of 8 October 2026): each model's macro and micro floor is the half-width of "
+                             "half_width_plus_margin (superseded, their decision of 8 October 2026): each model's macro and micro floor is the half-width of "
                              "that difference's 95 percent interval under the deciding bootstrap plus --floor-margin; fixed (superseded): the two values below")
     parser.add_argument("--floor-margin", type=float, default=0.005)
     parser.add_argument("--minimum-macro-difference", type=float, default=0.032,

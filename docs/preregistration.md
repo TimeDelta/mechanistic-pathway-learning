@@ -1193,7 +1193,7 @@ same instrument item 29 already registers and not a new one. Whether off-targets
 
 **5b. Withdrawn on the day it was written, as a misreading. It restored the prohibition for off-targets and
 pointed the calibration at mechanism targets instead** (written against the owner's "Ooooh. I think it's better to
-put the measured values back then and calibrate the other way", 13 October 2026, and corrected by him the same
+put the measured values back then and calibrate the other way", 13 October 2026, and corrected by them the same
 evening: "No. That's not what i meant. I mean keep off targets but always use a measured value then impute all
 values to get the calibration shift and apply it to only the imputed values that have not been measured.").
 
@@ -1201,7 +1201,7 @@ values to get the calibration shift and apply it to only the imputed values that
 withdrew 5a and barred an off-target from taking a calibrated placeholder. The sentence was about item 29's claim
 that "every drug therefore carries an occupancy on one scale", which reads as putting every drug on the
 placeholder scale and so displacing the measurements of the drugs that have them. The owner was asking for those
-measurements to be used, not for off-targets to be dropped. Item 5c registers what he described and 5a stands.
+measurements to be used, not for off-targets to be dropped. Item 5c registers what they described and 5a stands.
 The text of 5b is kept below rather than deleted, because it is the second misreading of the same sentence in one
 day and the record should show what was registered in error.
 
@@ -1242,7 +1242,7 @@ some drugs legitimately don't have it"): the requirement is on an off-target ent
   and the worst tenth x13.0 or more, which is the off-target figure. A drug's weaker mechanism targets behave like
   off-targets because they sit where off-targets sit. Keying the permission on the imputed occupancy rather than
   on the role is the sharper rule and is not registered here; it is recorded as open point 9.1 of
-  `docs/open_decisions.md` for the owner, because the rule registered here is the one he stated.
+  `docs/open_decisions.md` for the owner, because the rule registered here is the one they stated.
 
 `has_measured_occupancy` is unaffected and stays: the mechanism side still carries imputed numbers, and that is
 what the stratum reads.
@@ -1254,7 +1254,7 @@ steps, in order, and the order is part of the registration:
 
 1. **Off-targets are kept.** No occupancy rule bars one. Whether an off-target enters the input at all, and above
    what occupancy, is decision 1.3 and the threshold there is still the owner's; what is settled here is that the
-   occupancy scheme does not decide it for him by withholding the number.
+   occupancy scheme does not decide it for them by withholding the number.
 2. **A measured value always wins.** Where a drug has a measured unbound concentration, its occupancies are read
    from that concentration at each target's own site, for every target of that drug and in both roles. No
    imputation displaces a measurement, which is the step item 29's "one scale" sentence obscured and item 29 is
@@ -1660,7 +1660,7 @@ it does not change is the fixed point, which is reached before the bottleneck is
 
 **No measurement decides whether this rule is used** (the owner, 13 October 2026, on being told the rule was
 registered without one: "that doesn't need measured for confirmation to be in the final models. It should just be
-in there to mirror the physiology"). He is right, and an earlier draft of this item said otherwise. The rule is
+in there to mirror the physiology"). They are right, and an earlier draft of this item said otherwise. The rule is
 chosen because the throughput of a chain at steady state is set by its weakest step, which is a fact about
 pathways and not a hypothesis this study tests; a comparison against the product rule would say how much the
 choice moves the predictions, which is not the same question and is not a reason to hold the rule back.
@@ -1837,7 +1837,7 @@ own targets.
 **What is principled here is the rule, and what is a convention is the size. The registration says which is which**
 (the owner, 13 October 2026: "we need a principled way of doing it instead of arbitrarily choosing a number of targets
 for hold out, right?", and then, of an attempt to derive the size from the registered held-out fraction: "that's not
-principled; it's just pushing the arbitrariness further down the chain"). He is right twice. A target fraction chosen
+principled; it's just pushing the arbitrariness further down the chain"). They are right twice. A target fraction chosen
 to reproduce the size the drug split happened to give is convenience; and deriving it instead from the registered
 one-seventh only relocates the choice to one seventh, which is itself a convention.
 
@@ -1902,7 +1902,7 @@ structurally. Permuting which targets each drug has and retraining must lower th
 permutation is drug identity and not mechanism, whatever the split.
 
 **b2. A symptom is scored only when both sides of the split support it** (the owner, 13 October 2026: "the target
-version doesn't guarantee all symptoms being trained either"). He is right, and it is measurable. Over 100 draws of
+version doesn't guarantee all symptoms being trained either"). They are right, and it is measurable. Over 100 draws of
 the rule in (a), a mean of **0.12 symptoms lose every training positive** (at most 1) and **1.05 fall below five**
 (at most 2). The cause is visible in the table: one symptom carries a single positive in the whole of it and two more
 carry 14 and 15, so a draw that takes that one positive leaves the symptom with nothing. A symptom in that state is
@@ -1986,7 +1986,7 @@ against 0.47 to 0.80 once one symptom trains.
 
 **This item previously read that a per-symptom fold is unavailable "at any parameterisation", and that was wrong.**
 The identity above holds only while the symptom's own output parameters sit at their initial values. The
-construction the owner specified does not leave them there, and the correction is his (13 October 2026): "i thought
+construction the owner specified does not leave them there, and the correction is their (13 October 2026): "i thought
 we talked about only doing the symptoms xval in the way that trains a lower rank of output matrix params on the
 whole data THEN uses those output matrix params for the per-symptom-folds xval, which is only valid because it's not
 being used to test the ability to generalize to new symptoms", and "it doesn't matter how much it leaks held-out
@@ -2243,14 +2243,14 @@ pattern counts as an action sentence and a reader would not. `docs/label_central
 proposed reading of each; decision 3.2 is that reading and remains the owner's.
 
 **a(i). The registered limitation of part (a): it filters on documentation, not on physiology.** Recorded on
-14 October 2026 at the owner's instruction, with his ruling on the trade ("label noise is too much of a hinderance
+14 October 2026 at the owner's instruction, with their ruling on the trade ("label noise is too much of a hinderance
 vs a disclaimable data skew in the physio graph"). Whether a label asserts a central action depends on when it was
 written and under which guidance, not on whether the drug acts centrally: codeine's label says "Codeine produces
 respiratory depression by direct action on brain stem respiratory centers" while ondansetron's says "It is not
 certain whether ondansetron's antiemetic action is mediated centrally, peripherally, or in both sites", and both
 drugs act centrally to some degree. **Corrected 14 October, the same day, after the owner challenged the
 first account of it** ("how can they be penalized by having BETTER structure to the data?! that sounds opposite to
-reality and also solvable either way if the data isn't thinner just differently structured"). He is right on both
+reality and also solvable either way if the data isn't thinner just differently structured"). They are right on both
 counts and the first account was wrong. It read: 13 of the 17 passing drugs pass on the older narrative CLINICAL
 PHARMACOLOGY section and only 4 on the PLR-format MECHANISM OF ACTION subsection, which was offered as a skew
 against better-structured labels. That comparison had no denominator. **With the base rates computed**: of the 80
@@ -2284,7 +2284,7 @@ the first was unfavourable selects the drug set on the outcome, which is the cir
 a reaction.)
 
 **b(i). The trigger is narrowed from "no section" to "no statement on the question", on the owner's distinction of
-14 October 2026.** His words: "it's fine to search for secondary sources as long as we don't override a
+14 October 2026.** Their words: "it's fine to search for secondary sources as long as we don't override a
 pre-existing explicit label: an implicit label coming from a lack of data though is what i was thinking of". The
 rule as first written triggered on the absence of a pharmacology section, which is a cruder proxy for what matters:
 whether the label ever addressed central action at all. An exclusion that rests on a label's **silence** is an

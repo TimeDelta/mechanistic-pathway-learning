@@ -1350,7 +1350,7 @@ the message-passing encoder). ClinPGx and the CPIC guidelines are the larger sou
 retrieved. So the recommendation is: if the owner wants the `clears` relation trained, curate **CYP and NAT gene
 perturbation labels**, not a drug-clearing enzyme table. The table already exists and is not the limit.
 
-The carrier edge, which the owner said he could live without, is in the same position for the same reason, and 13.7
+The carrier edge, which the owner said they could live without, is in the same position for the same reason, and 13.7
 holds the measurement.
 
 ## 15. Answers of 12 October, 15:30
@@ -1841,7 +1841,7 @@ spent.** That encoder writes the perturbation once into the initial state and gi
 there is nothing to iterate: more rounds means more parameters. Each layer is `relations x 32 x 32`, which at 20
 relations is 20,480 weights, so running to a depth that reaches the far field would multiply the parameter count
 against 2,975 labelled pairs. Convergence there needs the perturbation held on and the weights shared across rounds,
-which is what the owner proposed on 10 October himself: "something more creative like making a schema that reuses
+which is what the owner proposed on 10 October themself: "something more creative like making a schema that reuses
 some params across layers and not others or having multiple layer param sets that get collated".
 
 So the instruction can be met without a third encoder, by changing the two that exist rather than adding one:
@@ -2133,8 +2133,8 @@ channel, which is what the linear-response encoder gives every relation.
 **Recommended, replacing the four shared bases in the amendment draft**: a per-relation low-rank factorisation with
 the rank set by the relation's edge count, the tiers named in the registration, and the bottom tier diagonal. It
 answers the parameter objection as well as the shared basis does, it assumes nothing across relations, and the ranks
-are a stated rule rather than a fitted choice. The amendment still records the owner's "use the 4 bases" until he
-says otherwise.
+are a stated rule rather than a fitted choice. The amendment still records the owner's "use the 4 bases" until they
+say otherwise.
 
 ## 21. The rank each relation's evidence supports (12 October, 17:18)
 
@@ -2524,7 +2524,7 @@ treated differently:
 
 ### 25.2 Drop the message-passing encoder
 
-This is the single decision that closes the most. The owner raised it himself and I argued around it; on the
+This is the single decision that closes the most. The owner raised it themself and I argued around it; on the
 evidence I should have agreed.
 
 1. **It barely propagates.** At its registered three layers it reaches a median of **0.9 percent** of the nodes a

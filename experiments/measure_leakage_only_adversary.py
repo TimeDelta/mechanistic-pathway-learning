@@ -12,8 +12,8 @@ number is comparable with H1's 0.05 requirement and with the measured precision 
 
 Why pseudo-draws and not the real one. The adversary needs the held-out labels to be *scored*, which the lockbox
 forbids before `runs/confirmatory/SCORED` exists. Development pseudo-draws under the same rule need no lockbox label, so
-this runs before the draw and tells the owner whether the channel is worth anything at all - which is what he would
-otherwise learn only after the one scoring he gets.
+this runs before the draw and tells the owner whether the channel is worth anything at all - which is what they would
+otherwise learn only after the one scoring they get.
 
 Usage:
   python experiments/measure_leakage_only_adversary.py --num-draws 20

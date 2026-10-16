@@ -66,3 +66,9 @@ The table of licences is `docs/data_sources.md`. The quotes and where each was r
   under it). Edit a copy, or wait for `bash scripts/resume_jobs.sh --status` to show the job finished, then relaunch.
 - **Commit code before starting a job that depends on it.** A container can be replaced without warning; the disk
   of the earlier container stays with the owner, but a new session starts from the repository.
+
+## The owner (16 October 2026)
+
+- **The owner's pronouns are they/them** ("Please use they/them pronouns for me"). Every living, record and draft
+  document and every code comment was corrected on 16 October; `docs/preregistration_baseline_2026-10-15.md` is frozen
+  by its hash and keeps the wording it had, which is read as they/them.
