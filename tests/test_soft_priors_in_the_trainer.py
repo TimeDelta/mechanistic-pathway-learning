@@ -10,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 import torch
 
 from experiments.run_main_model import (
@@ -128,8 +127,9 @@ def test_build_soft_priors_reads_the_records_and_the_reports_into_aligned_matric
     paths = write_toy_dataset(tmp_path, num_genes=12)
     data = load_experiment_data(paths["graph"], paths["evidence"], label_selection=paths["selection"])
     arguments = Namespace(soft_prior_strength=1.0, soft_prior_tiers=REPOSITORY_ROOT / "configs/soft_prior_tiers.csv", evidence_dir=paths["evidence"],
-                          soft_prior_record_grades=["C"], soft_prior_reports=[paths["reports"]], soft_prior_tempering=0.5, soft_prior_count_cap=2)
-    probability, strength, summary, literature = build_soft_priors(data, arguments)
+                          soft_prior_record_grades=["C"], soft_prior_reports=[paths["reports"]], soft_prior_tempering=0.5, soft_prior_count_cap=2, soft_prior_probability="tier")
+    probability, strength, summary, literature, cells = build_soft_priors(data, arguments)
+    assert cells is None and summary["probability_source"] == "tier"
     assert probability.shape == data.outcomes.shape and literature is not None and (literature.evidence_class == "literature").any()
     psychosis = data.symptoms.index("psychosis")
     unlabelled_psychosis = data.outcomes[:, psychosis] == 0
@@ -142,7 +142,11 @@ def test_build_soft_priors_reads_the_records_and_the_reports_into_aligned_matric
     grade_c_on_psychosis = int((pd.read_parquet(paths["evidence"] / "evidence_records.parquet").query("grade == 'C' and symptom == 'psychosis'")).shape[0])
     assert literature_pairs + grade_c_on_psychosis == 12 and summary["classes_without_a_tier"] == {}, "one prior per gene on psychosis: the record where there is one, else the literature"
     assert summary["strength"] == 1.0 and summary["reports"] == [str(paths["reports"])]
-    assert build_soft_priors(data, Namespace(soft_prior_strength=0.0)) == (None, None, None, None)
+    assert build_soft_priors(data, Namespace(soft_prior_strength=0.0)) == (None, None, None, None, None)
+    calibrated = Namespace(**{**vars(arguments), "soft_prior_probability": "calibrated"})
+    probability_again, strength_again, _, _, cells = build_soft_priors(data, calibrated)
+    assert np.array_equal(np.nan_to_num(probability_again), np.nan_to_num(probability)) and np.array_equal(strength_again, strength), "the tiers' matrices; a fit calibrates them on its rows"
+    assert cells is not None and len(cells) == int((strength > 0).sum()) and {"row", "column", "log_records", "log_popularity", "perturbation:drug"} <= set(cells.columns)
 
 
 def run_trainer(paths: dict[str, Path], run_directory: Path, *extra: str) -> dict:
@@ -173,6 +177,19 @@ def test_end_to_end_the_prior_off_is_the_plain_run_and_on_it_trains_scores_and_r
     permuted = run_trainer(paths, tmp_path / "permuted", "--soft-prior-strength", "1.0", "--soft-prior-reports", str(paths["reports"]), "--permute-soft-priors", "--permute-labels")
     record = permuted["results"]["soft_priors"]["permutation"]
     assert record["seed"] == 0 and len(record["layout_sha256"]) == 64 and record["pairs"] > 0 and permuted["results"]["labels_permuted"]
+    calibrated = run_trainer(paths, tmp_path / "calibrated", "--soft-prior-strength", "1.0", "--soft-prior-reports", str(paths["reports"]), "--soft-prior-probability", "calibrated",
+                             "--soft-prior-calibration-minimum-cases", "2")
+    calibration = calibrated["results"]["soft_priors"]["calibration"]
+    assert set(calibration) == {"fit", "refit"} and calibration["refit"]["training_cells"] >= calibration["fit"]["training_cells"]
+    assert calibrated["results"]["soft_priors"]["probability_source"] == "calibrated"
+    if not calibration["fit"]["kept_tiers"]:
+        assert "log_popularity" in calibration["fit"]["coefficients"] and calibration["fit"]["mean_prediction_at_median_popularity"]
+        assert not np.array_equal(on["predictions"], calibrated["predictions"]), "a calibrated target moves the fit"
+    tiers_kept = run_trainer(paths, tmp_path / "kept", "--soft-prior-strength", "1.0", "--soft-prior-reports", str(paths["reports"]), "--soft-prior-probability", "calibrated",
+                             "--soft-prior-calibration-minimum-cases", "100000")
+    kept = tiers_kept["results"]["soft_priors"]["calibration"]
+    assert kept["fit"]["kept_tiers"] and "calibration cells" in kept["fit"]["reason"]
+    assert np.array_equal(on["predictions"], tiers_kept["predictions"]), "a calibration that keeps the tiers is the tier run, bit for bit"
 
 
 def test_a_drug_row_rescaled_by_equal_shares_scales_its_priors_the_same_way():

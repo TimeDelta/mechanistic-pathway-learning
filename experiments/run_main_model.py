@@ -75,6 +75,15 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scorable_symptom,
     scored_rows,
 )
+from mechanistic_pathway_learning.evidence.calibrated_reliability import (
+    MINIMUM_CALIBRATION_CASES,
+    calibrated_probability_matrix,
+    cell_table,
+    feature_frame,
+    fit_calibration,
+    permute_cell_rows,
+    summarise_calibration,
+)
 from mechanistic_pathway_learning.evidence.soft_priors import (
     DEFAULT_COUNT_CAP,
     DEFAULT_RECORD_GRADES,
@@ -409,7 +418,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
     "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "normalisation": "in_degree", "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
     "compartment_ph": False, "relation_parameterisation": "per_layer_dense", "reversible_reactions": False,
-    "soft_prior_strength": 0.0, "soft_prior_reports": [], "permute_soft_priors": False,
+    "soft_prior_strength": 0.0, "soft_prior_reports": [], "permute_soft_priors": False, "soft_prior_probability": "tier",
 }
 
 
@@ -457,7 +466,8 @@ ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes
                                     "drug_mechanism_before_first_layer", "sequestration_carries", "permute_drug_targets", "placebo_negative_weight",
                                     "soft_prior_strength"}
 # the settings of the soft prior mean nothing while its strength is 0, so they enter the fingerprint only when it is on
-SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_count_cap", "soft_prior_record_grades", "soft_prior_reports", "permute_soft_priors"}
+SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_count_cap", "soft_prior_record_grades", "soft_prior_reports", "permute_soft_priors",
+                       "soft_prior_probability", "soft_prior_calibration_minimum_cases"}
 
 
 def json_ready(value):
@@ -832,11 +842,13 @@ def placebo_weight_pairs_in_force(matrix: np.ndarray, outcomes: np.ndarray, evid
     return int((np.isfinite(matrix) & (np.asarray(outcomes) <= 0) & np.asarray(evidenced_negative, dtype=bool)).sum())
 
 
-def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | None, dict | None, pd.DataFrame | None]:
+def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | None, dict | None, pd.DataFrame | None, pd.DataFrame | None]:
     """The soft-prior matrices for data's perturbations and symptoms (evidence/soft_priors.py): None while the strength
-    is 0. Also returns the literature report table found among --soft-prior-reports, for the popularity bins."""
+    is 0. Also returns the literature report table found among --soft-prior-reports, for the popularity bins, and under
+    --soft-prior-probability calibrated the prior cells with their features (evidence/calibrated_reliability.py), which
+    each fit calibrates on its own rows."""
     if not arguments.soft_prior_strength:
-        return None, None, None, None
+        return None, None, None, None, None
     tiers = read_tiers(arguments.soft_prior_tiers)
     records = pd.read_parquet(Path(arguments.evidence_dir) / "evidence_records.parquet")
     frames = [soft_evidence_from_records(records, tuple(arguments.soft_prior_record_grades), TRAINED_RELATION)]
@@ -852,8 +864,14 @@ def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | 
     eligible = eligible_cells(data.outcomes, data.label_mask, data.evidenced_negative, data.masked_for_soft_evidence)
     summary = summarise_soft_priors(resolved, probability, strength, eligible)
     summary.update({"strength": arguments.soft_prior_strength, "tempering": arguments.soft_prior_tempering, "count_cap": arguments.soft_prior_count_cap, "admission": admission_counts,
-                    "record_grades": list(arguments.soft_prior_record_grades), "tiers": str(arguments.soft_prior_tiers), "reports": [str(path) for path in arguments.soft_prior_reports]})
-    return probability, strength, summary, literature
+                    "record_grades": list(arguments.soft_prior_record_grades), "tiers": str(arguments.soft_prior_tiers), "reports": [str(path) for path in arguments.soft_prior_reports],
+                    "probability_source": arguments.soft_prior_probability})
+    calibration_cells = None
+    if arguments.soft_prior_probability == "calibrated":
+        popularity = {} if literature is None else dict(zip(data.perturbation_ids, np.log1p(literature_popularity(data.perturbation_ids, literature))))
+        features = feature_frame(resolved.pairs, dict(zip(data.perturbation_ids, data.perturbation_types)), popularity)
+        calibration_cells = cell_table(resolved.pairs, features, data.perturbation_ids, data.symptoms)
+    return probability, strength, summary, literature, calibration_cells
 
 
 def negative_share_scale(weights: np.ndarray, eligible: np.ndarray, negative_weight: float) -> np.ndarray:
@@ -1484,6 +1502,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--soft-prior-tempering", type=float, default=DEFAULT_TEMPERING_EXPONENT, help="exponent on the capped count of independent records")
     parser.add_argument("--soft-prior-count-cap", type=int, default=DEFAULT_COUNT_CAP, help="records beyond this count add nothing")
     parser.add_argument("--soft-prior-record-grades", nargs="*", default=list(DEFAULT_RECORD_GRADES), help="grades of the evidence table that become soft priors")
+    parser.add_argument("--soft-prior-probability", choices=("tier", "calibrated"), default="tier",
+                        help="what a prior's target probability is: the tier table's fixed value, or (decision 9.59) a logistic regression of the label outcome on the "
+                             "prior's features, fitted on the rows each fit trains on and read at the median popularity; the tiers' strengths apply either way")
+    parser.add_argument("--soft-prior-calibration-minimum-cases", type=int, default=MINIMUM_CALIBRATION_CASES,
+                        help="below this many positive or negative calibration cells on the fit rows the tiers are kept")
     parser.add_argument("--permute-soft-priors", action="store_true",
                         help="negative control: the soft priors moved among eligible cells so that every perturbation and symptom keeps its number of them (the "
                              "layout is lost, the popularity is kept); the real arm must beat it for the prior to carry pair-specific information")
@@ -1592,7 +1615,7 @@ def main() -> None:
             in_lockbox = None
     # the soft priors are built on the perturbations that remain (the lockbox never receives one) and travel with the
     # label rows under --permute-labels, so a permuted-labels run sees no pair-specific information from them either
-    soft_prior_probability, soft_prior_strength, soft_priors_summary, literature_reports = build_soft_priors(data, arguments)
+    soft_prior_probability, soft_prior_strength, soft_priors_summary, literature_reports, calibration_cells = build_soft_priors(data, arguments)
     permutation_source_rows_sha256 = None
     if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
         source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=arguments.seed, partition=in_lockbox)
@@ -1608,6 +1631,8 @@ def main() -> None:
             data.evidenced_negative = data.evidenced_negative[source_row]
         if soft_prior_probability is not None:
             soft_prior_probability, soft_prior_strength = soft_prior_probability[source_row], soft_prior_strength[source_row]
+        if calibration_cells is not None:
+            calibration_cells = permute_cell_rows(calibration_cells, source_row)
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
     permuted_drug_targets_summary = None
     if arguments.permute_drug_targets:
@@ -1761,6 +1786,7 @@ def main() -> None:
         positive_targets = torch.as_tensor(np.where(data.outcomes > 0, frequency, 0.0), dtype=torch.float32)
     node_cost = float(np.log(len(data.node_ids)))
     soft_prior_eligible, soft_prior_permutation = None, None
+    tier_probability, tier_strength = soft_prior_probability, soft_prior_strength  # before any permutation: what a phase's calibration writes on
     if soft_prior_probability is not None:
         soft_prior_eligible = eligible_cells(data.outcomes, label_mask, data.evidenced_negative, data.masked_for_soft_evidence)
         if arguments.permute_soft_priors:
@@ -1768,12 +1794,23 @@ def main() -> None:
                                                                                                      np.arange(len(data.perturbation_ids)), random_seed=arguments.seed)
             print(f"soft priors permuted: {soft_prior_permutation}")
 
-    def fit_targets(fit_rows: np.ndarray) -> tuple[dict, dict | None]:
+    calibration_summaries: dict[str, dict] = {}
+
+    def fit_targets(fit_rows: np.ndarray, phase: str = "fit") -> tuple[dict, dict | None]:
         row_scale = None
+        probability = soft_prior_probability
+        if calibration_cells is not None and soft_prior_probability is not None:
+            # the regression is fitted on this phase's rows alone (the lockbox is already out, a held-out fold never in)
+            calibration = fit_calibration(calibration_cells, data.outcomes, label_mask, fit_rows, arguments.soft_prior_calibration_minimum_cases)
+            probability = calibrated_probability_matrix(calibration, calibration_cells, tier_probability)
+            if arguments.permute_soft_priors:  # the same swaps as the tiers' matrix took: the prior cells and the seed are the same
+                probability, _, _ = permute_soft_priors(probability, tier_strength, soft_prior_eligible, np.arange(len(data.perturbation_ids)), random_seed=arguments.seed)
+            calibration_summaries[phase] = summarise_calibration(calibration)
+            print(f"soft-prior calibration ({phase}): {calibration_summaries[phase]}")
         if soft_prior_probability is not None and arguments.equal_drug_shares:
             fit_weights = loss_pair_weights(data, label_mask, arguments, fit_rows, frequency_targets=arguments.positive_target_from_frequency)
             row_scale = negative_share_scale(fit_weights, soft_prior_eligible, arguments.negative_weight)
-        return fit_targets_with_soft_priors(outcomes, weights, positive_targets, fit_rows, soft_prior_probability, soft_prior_strength, soft_prior_eligible,
+        return fit_targets_with_soft_priors(outcomes, weights, positive_targets, fit_rows, probability, soft_prior_strength, soft_prior_eligible,
                                             arguments.soft_prior_strength, row_scale)
 
     fitted, soft_priors_applied_in_fit = fit_targets(train_indices)
@@ -1913,7 +1950,7 @@ def main() -> None:
         if state["best_epoch"] < 0:
             raise ValueError("no validation epoch improved (the validation loss was never finite), so the refit has no number of epochs to train for")
         refit_indices = np.sort(np.concatenate([train_indices, validation_indices]))
-        fitted, soft_priors_applied_in_refit = fit_targets(refit_indices)  # the validation rows join the fit, and so do their soft priors
+        fitted, soft_priors_applied_in_refit = fit_targets(refit_indices, "refit")  # the validation rows join the fit, and so do their soft priors
         refit_checkpoint_path = split_directory / "refit_checkpoint.pt"
         torch.manual_seed(arguments.seed)
         encoder, head = build_models(data, arguments, device)
@@ -2051,6 +2088,7 @@ def main() -> None:
         "laboratory_labels": laboratory_results,
         "lockbox": lockbox_summary, "rewiring": rewiring_summary, "refit": refit_summary,
         "soft_priors": None if soft_priors_summary is None else {**soft_priors_summary, "applied_in_fit": soft_priors_applied_in_fit, "applied_in_refit": soft_priors_applied_in_refit,
+                                                                  "calibration": calibration_summaries or None,
                                                                  "permutation": soft_prior_permutation},
     }
     if literature_reports is not None and time_split is None:
