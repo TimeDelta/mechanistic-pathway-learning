@@ -3703,3 +3703,35 @@
   doi     = {10.1002/j.1552-4604.1987.tb02993.x},
   note    = {Decision 9.39, the human pharmacokinetics behind guanfacine's exposure row. Quoted: "The mean plasma protein binding results were 71.6 percent, not influenced by plasma concentration or route of administration", which corroborates the 70 percent in configs/drug_label_protein_binding.csv from an independent source, and "The volume of distribution results were approximately 6 L/kg by both routes of administration", consistent with wide tissue distribution but not a measure of brain partitioning. Read from the Wiley Scholar Gateway index, 15 October 2026}
 }
+
+@article{meng2021b3db,
+  author  = {Meng, Fanwang and Xi, Yang and Huang, Jinfeng and Ayers, Paul W},
+  title   = {A curated diverse molecular database of blood-brain barrier permeability with chemical descriptors},
+  journal = {Scientific Data},
+  volume  = {8},
+  number  = {289},
+  year    = {2021},
+  doi     = {10.1038/s41597-021-01069-5},
+  note    = {Decision 9.40, the largest openly licensed logBB compilation and the candidate rejected for the exposure chain. 1,058 rows with a numerical logBB, 948 distinct PubChem CIDs, from 50 published resources. Licence CC0 1.0 Universal, verified twice in the provider's source repository theochem/B3DB at commit 75dab1c: LICENSE ("Affirmer hereby overtly, fully, permanently, irrevocably and unconditionally waives, abandons, and surrenders all of Affirmer's Copyright and Related Rights ... in the Work") and README.md ("The materials and data under this repo are distributed under the CC0 Licence"), read 15 October 2026. PMC refused the article with a human-verification interstitial; group definitions read from link.springer.com/10.1038/s41597-021-01069-5. Quoted group definitions: group A is "Molecules with only one unique log BB value", group B is "more than one log BB value, but all the the reported values differ by less than 5 percent from the mean value", group D is "Other molecules with more than two distinct values; whichever value occurs with greatest frequency is used". Not adopted: logBB is a total ratio and the repository holds no unbound brain fraction to convert it}
+}
+@article{abraham2006logbb,
+  author  = {Abraham, Michael H and Ibrahim, Adam and Zhao, Yuan and Acree, William E},
+  title   = {A data base for partition of volatile organic compounds and drugs from blood/plasma/serum to brain, and an LFER analysis of the data},
+  journal = {Journal of Pharmaceutical Sciences},
+  volume  = {95},
+  number  = {10},
+  year    = {2006},
+  doi     = {10.1002/jps.20595},
+  note    = {Decision 9.40, a second logBB compilation, smaller than B3DB and subject to the same total-ratio problem. Quoted: "Literature values of the in vivo distribution (BB) of drugs from blood, plasma, or serum to rat brain have been assembled for 207 compounds (233 data points)". Read from the Consensus MCP abstract, 15 October 2026}
+}
+
+@article{lanevskij2011logbb,
+  author  = {Lanevskij, Kiril and Dapkunas, Justas and Juska, Liutauras and Japertas, Pranas and Didziapetris, Remigijus},
+  title   = {QSAR analysis of blood-brain distribution: the influence of plasma and brain tissue binding},
+  journal = {Journal of Pharmaceutical Sciences},
+  volume  = {100},
+  number  = {6},
+  year    = {2011},
+  doi     = {10.1002/jps.22442},
+  note    = {Decision 9.40. Valuable not for its model but for its design filter, which is the discipline B3DB lacks. Quoted: "A data set consisting of 470 experimental log BB values determined in rodents was compiled and verified to ensure that selected data represented drug disposition governed by passive diffusion across blood-brain barrier", and it corrects logBB for the unbound fraction in plasma to isolate brain tissue binding, which it then predicts from octanol/water logP and pKa. That prediction is the QSAR the exposure chain would have to adopt to use any total ratio. Read from the Consensus MCP abstract, 15 October 2026}
+}
