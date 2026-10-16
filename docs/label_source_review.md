@@ -1752,6 +1752,8 @@ the curators found, not how much signal passes. Using a confidence as a magnitud
 twice already, in the occupancy placeholder and in the threshold grid, and I am not going to recommend it a third
 time.
 
+*Correction appended 16 October 2026 (decision 9.57): the two rulings named here rejected a placeholder magnitude and an arbitrary threshold grid, not evidence strength as a prior on an edge; the owner never ruled against the latter and has asked for it. The sentence above is left as written.*
+
 **2. Per-edge measured effect sizes, which is the right kind and is out of reach today.** A transcription factor
 knocked down, with the log fold change of each target, is a measured transmission magnitude for
 `regulates_transcription_of`; the same for a perturbation compendium over signalling edges. The two sources are
