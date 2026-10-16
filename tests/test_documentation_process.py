@@ -449,3 +449,18 @@ def test_the_documentation_module_states_the_classes_it_checks():
     assert set(DOCUMENT_CLASSES) == {"generated", "living", "record", "frozen", "draft"}
     for name in DOCUMENT_CLASSES:
         assert name in documentation.__doc__
+
+
+def test_the_history_check_accepts_a_closing_whose_commit_arrived_after_the_file_was_generated():
+    """The history is generated before the commit that closes a decision exists, so its committed copy says the
+    closing is in the working tree; the next regeneration names the commit. That lag passes --check; a changed
+    date, a changed status or an extra row does not."""
+    from experiments.generate_decision_history import only_pending_commits_resolved
+
+    committed = ["| id | recorded | closed | status |", "| 9.7a | 2026-10-15 (bdb896c) | uncommitted (working-tree) | closed |"]
+    resolved = ["| id | recorded | closed | status |", "| 9.7a | 2026-10-15 (bdb896c) | 2026-10-15 (190c7a9) | closed |"]
+    assert only_pending_commits_resolved(committed, resolved)
+    assert only_pending_commits_resolved(committed, committed)
+    assert not only_pending_commits_resolved(committed, ["| id | recorded | closed | status |", "| 9.7a | 2026-10-15 (bdb896c) | 2026-10-16 (190c7a9) | open |"])
+    assert not only_pending_commits_resolved(committed, resolved + ["| 9.8 | 2026-10-16 (abc1234) | - | open |"])
+    assert not only_pending_commits_resolved(["| 9.7a | 2026-10-15 (bdb896c) | - | open |"], ["| 9.7a | 2026-10-15 (bdb896c) | 2026-10-15 (190c7a9) | closed |"])
