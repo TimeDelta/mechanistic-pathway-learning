@@ -76,6 +76,7 @@ class ExperimentData:
     is_reversible_reaction: np.ndarray | None = None  # [num_nodes] the reaction node's reversible flag, from which the linear-response encoder derives product_opposes (item 27)
     placebo_negative_weight_matrix: np.ndarray | None = None  # [num_perturbations, num_symptoms] per-pair loss weight of those negatives, NaN where none is stated (amendment item 3; set by run_main_model.py, not by the loader)
     label_mask: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where a pair is labelled; False for a positive pair a label selection set aside (neither positive nor negative); None when no selection was given
+    masked_for_soft_evidence: np.ndarray | None = None  # [num_perturbations, num_symptoms] True where label_mask is False only because the pair's evidence is below the label grade (a selection's masks_a_negative rows); a soft prior may apply there (evidence/soft_priors.py)
     label_selection_summary: dict | None = None
     node_descriptor_table: pd.DataFrame | None = None  # set by a rewired run whose reaction expression follows the rewiring; None: read --node-descriptors
     cell_class_weight_table: pd.DataFrame | None = None  # the same for --cell-class-weights
@@ -192,7 +193,7 @@ PER_PERTURBATION_LISTS = ("perturbation_ids", "perturbation_labels", "perturbati
 # 13 October 2026, which broke every development run that used a placebo-negative label selection.
 PER_PERTURBATION_ARRAYS = ("outcomes", "weights", "in_metabolic_layer", "frequencies", "evidence_dates",
                            "evidence_date_is_publication", "label_mask", "evidenced_negative",
-                           "placebo_negative_weight_matrix")
+                           "placebo_negative_weight_matrix", "masked_for_soft_evidence")
 
 
 def restrict_to_perturbations(data: "ExperimentData", keep: np.ndarray) -> "ExperimentData":
@@ -538,6 +539,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     if label_selection is not None:
         selection = pd.read_parquet(label_selection)
         label_mask = np.ones_like(outcomes, dtype=bool)
+        masked_for_soft_evidence = np.zeros_like(outcomes, dtype=bool)
         perturbation_row = {perturbation_id: index for index, perturbation_id in enumerate(perturbation_ids)}
         masks_a_negative = selection.masks_a_negative.astype(bool) if "masks_a_negative" in selection.columns else pd.Series(False, index=selection.index)
         evidenced_negative = np.zeros_like(outcomes, dtype=bool)
@@ -563,6 +565,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
             position, column = perturbation_row.get(row.perturbation_id), symptom_index.get(row.symptom)
             if position is not None and column is not None and outcomes[position, column] == 0:
                 label_mask[position, column] = False
+                masked_for_soft_evidence[position, column] = True
                 masked_negatives += 1
         positive_pairs_before_relabelling = int(outcomes.sum()) + relabelled_as_negative
         selection = selection[~masks_a_negative]
@@ -641,6 +644,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_base_metabolite_id=nodes.base_metabolite_id.fillna("").to_numpy().astype(str) if "base_metabolite_id" in nodes.columns else None,
         node_display_name=nodes.display_name.fillna("").to_numpy().astype(str) if "display_name" in nodes.columns else None,
         label_mask=label_mask,
+        masked_for_soft_evidence=None if label_selection is None else masked_for_soft_evidence,
         evidenced_negative=None if label_selection is None else evidenced_negative,
         label_selection_summary=label_selection_summary,
         edge_weight=edge_weight,

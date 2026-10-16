@@ -67,12 +67,29 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     bootstrap_interval,
     expected_calibration_error,
     hits_at_k,
+    macro_auprc_by_degree_bin,
     mean_reciprocal_rank,
     micro_auprc,
     per_symptom_auprc,
     per_symptom_auroc,
     scorable_symptom,
     scored_rows,
+)
+from mechanistic_pathway_learning.evidence.soft_priors import (
+    DEFAULT_COUNT_CAP,
+    DEFAULT_RECORD_GRADES,
+    DEFAULT_TEMPERING_EXPONENT,
+    DEFAULT_TIERS_PATH,
+    apply_soft_priors,
+    eligible_cells,
+    literature_popularity,
+    permute_soft_priors,
+    read_tiers,
+    resolve_pairs,
+    soft_evidence_from_records,
+    soft_evidence_from_reports,
+    soft_prior_matrices,
+    summarise as summarise_soft_priors,
 )
 from mechanistic_pathway_learning.evidence.combined_perturbations import (
     COMBINATION_PERTURBATION_TYPE,
@@ -118,6 +135,7 @@ from mechanistic_pathway_learning.models.soft_constraint_losses import (
 )
 
 MESSAGE_PASSING_EDGE_SIGNS: tuple[str, ...] = ("graph", "unsigned")
+TRAINED_RELATION = "induces"  # the relation load_experiment_data reads by default and the soft priors are drawn on
 CHECKPOINT_REQUESTED = False
 MINIMUM_POSITIVES_TO_SCORE = 5
 
@@ -391,6 +409,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "module_bias_init": 0.0, "gate_init_noise": 0.01, "link_learning_rate": 0.0, "leak_learning_rate": 0.0, "gate_learning_rate": 0.0,
     "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "normalisation": "in_degree", "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
     "compartment_ph": False, "relation_parameterisation": "per_layer_dense", "reversible_reactions": False,
+    "soft_prior_strength": 0.0, "soft_prior_reports": [], "permute_soft_priors": False,
 }
 
 
@@ -435,7 +454,20 @@ def resolve_registered_defaults(arguments) -> None:
 RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epochs", "checkpoint_every_minutes", "time_budget_seconds", "timing_batches", "num_bootstrap"}
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
 ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input", "drug_entry",
-                                    "drug_mechanism_before_first_layer", "sequestration_carries", "permute_drug_targets", "placebo_negative_weight"}
+                                    "drug_mechanism_before_first_layer", "sequestration_carries", "permute_drug_targets", "placebo_negative_weight",
+                                    "soft_prior_strength"}
+# the settings of the soft prior mean nothing while its strength is 0, so they enter the fingerprint only when it is on
+SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_count_cap", "soft_prior_record_grades", "soft_prior_reports", "permute_soft_priors"}
+
+
+def json_ready(value):
+    """An argument value as results.json records it: basic types as they are, a list element by element, a path or
+    anything else as its string."""
+    if isinstance(value, (int, float, str, bool, type(None))):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [json_ready(item) for item in value]
+    return str(value)
 
 
 def array_sha256(values) -> str:
@@ -521,8 +553,10 @@ def perturbations_with_a_zero_signed_input(data) -> list[str]:
 def configuration_fingerprint(arguments, data, label_mask) -> dict:
     """The training arguments and digests of the inputs as loaded, recorded in the checkpoint so that a resume under
     other arguments or rebuilt inputs is reported (the split signature covers only the split and the controls)."""
+    soft_priors_on = bool(getattr(arguments, "soft_prior_strength", 0.0))
     fingerprint = {f"argument:{name}": str(value) for name, value in sorted(vars(arguments).items())
-                   if name not in RESUME_CONTROL_ARGUMENTS and not (name in ARGUMENTS_RECORDED_ONLY_WHEN_SET and not value)}
+                   if name not in RESUME_CONTROL_ARGUMENTS and not (name in ARGUMENTS_RECORDED_ONLY_WHEN_SET and not value)
+                   and not (name in SOFT_PRIOR_SETTINGS and not soft_priors_on)}
     fingerprint.update({
         "input:outcomes": array_sha256(data.outcomes), "input:weights": array_sha256(data.weights),
         "input:label_mask": None if label_mask is None else array_sha256(label_mask),
@@ -532,6 +566,10 @@ def configuration_fingerprint(arguments, data, label_mask) -> dict:
     for name in ("node_descriptors", "cell_class_weights", "laboratory_labels"):
         value = getattr(arguments, name, None)
         fingerprint[f"file:{name}"] = file_sha256(value) if value and Path(value).is_file() else None
+    if soft_priors_on:
+        fingerprint["file:soft_prior_tiers"] = file_sha256(arguments.soft_prior_tiers)
+        for path in getattr(arguments, "soft_prior_reports", None) or []:
+            fingerprint[f"file:soft_prior_reports:{Path(path).name}"] = file_sha256(path) if Path(path).is_file() else None
     return fingerprint
 
 
@@ -792,6 +830,50 @@ def placebo_weight_pairs_in_force(matrix: np.ndarray, outcomes: np.ndarray, evid
     if evidenced_negative is None:
         return 0
     return int((np.isfinite(matrix) & (np.asarray(outcomes) <= 0) & np.asarray(evidenced_negative, dtype=bool)).sum())
+
+
+def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | None, dict | None, pd.DataFrame | None]:
+    """The soft-prior matrices for data's perturbations and symptoms (evidence/soft_priors.py): None while the strength
+    is 0. Also returns the literature report table found among --soft-prior-reports, for the popularity bins."""
+    if not arguments.soft_prior_strength:
+        return None, None, None, None
+    tiers = read_tiers(arguments.soft_prior_tiers)
+    records = pd.read_parquet(Path(arguments.evidence_dir) / "evidence_records.parquet")
+    frames = [soft_evidence_from_records(records, tuple(arguments.soft_prior_record_grades), TRAINED_RELATION)]
+    literature = None
+    for path in arguments.soft_prior_reports:
+        reports = pd.read_parquet(path)
+        frames.append(soft_evidence_from_reports(reports, TRAINED_RELATION))
+        if "evidence_class" in reports.columns and (reports.evidence_class == "literature").any():
+            literature = reports if literature is None else pd.concat([literature, reports], ignore_index=True)
+    resolved = resolve_pairs(pd.concat(frames, ignore_index=True), tiers, arguments.soft_prior_tempering, arguments.soft_prior_count_cap)
+    probability, strength = soft_prior_matrices(resolved, data.perturbation_ids, data.symptoms)
+    eligible = eligible_cells(data.outcomes, data.label_mask, data.evidenced_negative, data.masked_for_soft_evidence)
+    summary = summarise_soft_priors(resolved, probability, strength, eligible)
+    summary.update({"strength": arguments.soft_prior_strength, "tempering": arguments.soft_prior_tempering, "count_cap": arguments.soft_prior_count_cap,
+                    "record_grades": list(arguments.soft_prior_record_grades), "tiers": str(arguments.soft_prior_tiers), "reports": [str(path) for path in arguments.soft_prior_reports]})
+    return probability, strength, summary, literature
+
+
+def fit_targets_with_soft_priors(outcomes: torch.Tensor, weights: torch.Tensor, positive_targets: torch.Tensor | None, fit_rows: np.ndarray,
+                                 soft_prior_probability: np.ndarray | None, soft_prior_strength: np.ndarray | None, eligible: np.ndarray | None,
+                                 global_strength: float) -> tuple[dict, dict | None]:
+    """The target and weight tensors a fit trains on: the labels, and on the rows it fits the soft priors written into
+    the eligible cells (evidence/soft_priors.py). Without priors the tensors are returned as they are, so the
+    validation loss and every score, which read the plain matrices, see what the fit saw. With priors the targets
+    tensor in use (positive_targets under --positive-target-from-frequency, else outcomes) and the weights are new
+    tensors; the inputs are not modified."""
+    targets = {"outcomes": outcomes, "weights": weights, "positive_targets": positive_targets}
+    if soft_prior_probability is None:
+        return targets, None
+    base_targets = positive_targets.numpy() if positive_targets is not None else outcomes.numpy()
+    fitted_targets, fitted_weights, applied = apply_soft_priors(base_targets, weights.numpy(), soft_prior_probability, soft_prior_strength, eligible, fit_rows, global_strength)
+    targets["weights"] = torch.as_tensor(fitted_weights, dtype=torch.float32)
+    if positive_targets is not None:
+        targets["positive_targets"] = torch.as_tensor(fitted_targets, dtype=torch.float32)
+    else:
+        targets["outcomes"] = torch.as_tensor(fitted_targets, dtype=torch.float32)
+    return targets, applied
 
 
 def loss_pair_weights(data, label_mask, arguments, fit_indices: np.ndarray, frequency_targets: bool = False) -> np.ndarray:
@@ -1377,6 +1459,20 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--placebo-negative-weights-file", type=path_or_none, default=REGISTERED_PLACEBO_NEGATIVE_WEIGHTS,
                         help="per-pair weights for those negatives (amendment item 3): n_effective / (n_effective + 214) where the drug's label states both arm "
                              "sizes, the default above where it does not. 'none' falls back to --placebo-negative-weight for every pair")
+    parser.add_argument("--soft-prior-strength", type=float, default=0.0,
+                        help="global multiplier on the soft priors of evidence/soft_priors.py (the power-prior exponent): a grade-C record or a report of the "
+                             "trial-arm, FAERS, IMPC or literature tables becomes a target and a weight on an unlabelled pair of a fitted row. 0 (the default, and "
+                             "the registered model) turns them off and leaves every run as it was")
+    parser.add_argument("--soft-prior-reports", type=Path, nargs="*", default=[],
+                        help="report tables (evidence_reports schema) whose rows become soft priors with --soft-prior-strength > 0, beside the grade-C rows of the "
+                             "evidence table; a literature table among them also gives the popularity bins of the test scores")
+    parser.add_argument("--soft-prior-tiers", type=Path, default=DEFAULT_TIERS_PATH, help="per evidence class and direction: prior probability and unit strength")
+    parser.add_argument("--soft-prior-tempering", type=float, default=DEFAULT_TEMPERING_EXPONENT, help="exponent on the capped count of independent records")
+    parser.add_argument("--soft-prior-count-cap", type=int, default=DEFAULT_COUNT_CAP, help="records beyond this count add nothing")
+    parser.add_argument("--soft-prior-record-grades", nargs="*", default=list(DEFAULT_RECORD_GRADES), help="grades of the evidence table that become soft priors")
+    parser.add_argument("--permute-soft-priors", action="store_true",
+                        help="negative control: the soft priors moved among eligible cells so that every perturbation and symptom keeps its number of them (the "
+                             "layout is lost, the popularity is kept); the real arm must beat it for the prior to carry pair-specific information")
     parser.add_argument("--equal-drug-shares", action=argparse.BooleanOptionalAction, default=True,
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
@@ -1480,6 +1576,9 @@ def main() -> None:
         if not arguments.score_lockbox:
             data = restrict_to_perturbations(data, ~in_lockbox)
             in_lockbox = None
+    # the soft priors are built on the perturbations that remain (the lockbox never receives one) and travel with the
+    # label rows under --permute-labels, so a permuted-labels run sees no pair-specific information from them either
+    soft_prior_probability, soft_prior_strength, soft_priors_summary, literature_reports = build_soft_priors(data, arguments)
     permutation_source_rows_sha256 = None
     if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
         source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=arguments.seed, partition=in_lockbox)
@@ -1489,6 +1588,12 @@ def main() -> None:
             data.frequencies = data.frequencies[source_row]
         if data.label_mask is not None:
             data.label_mask = data.label_mask[source_row]
+        if data.masked_for_soft_evidence is not None:
+            data.masked_for_soft_evidence = data.masked_for_soft_evidence[source_row]
+        if data.evidenced_negative is not None:
+            data.evidenced_negative = data.evidenced_negative[source_row]
+        if soft_prior_probability is not None:
+            soft_prior_probability, soft_prior_strength = soft_prior_probability[source_row], soft_prior_strength[source_row]
     label_mask = data.label_mask  # None without --label-selection: every pair is labelled
     permuted_drug_targets_summary = None
     if arguments.permute_drug_targets:
@@ -1641,6 +1746,21 @@ def main() -> None:
         frequency = np.where(np.isnan(data.frequencies), arguments.positive_target, np.maximum(data.frequencies, arguments.minimum_frequency_target))
         positive_targets = torch.as_tensor(np.where(data.outcomes > 0, frequency, 0.0), dtype=torch.float32)
     node_cost = float(np.log(len(data.node_ids)))
+    soft_prior_eligible, soft_prior_permutation = None, None
+    if soft_prior_probability is not None:
+        soft_prior_eligible = eligible_cells(data.outcomes, label_mask, data.evidenced_negative, data.masked_for_soft_evidence)
+        if arguments.permute_soft_priors:
+            soft_prior_probability, soft_prior_strength, soft_prior_permutation = permute_soft_priors(soft_prior_probability, soft_prior_strength, soft_prior_eligible,
+                                                                                                     np.arange(len(data.perturbation_ids)), random_seed=arguments.seed)
+            print(f"soft priors permuted: {soft_prior_permutation}")
+
+    def fit_targets(fit_rows: np.ndarray) -> tuple[dict, dict | None]:
+        return fit_targets_with_soft_priors(outcomes, weights, positive_targets, fit_rows, soft_prior_probability, soft_prior_strength, soft_prior_eligible,
+                                            arguments.soft_prior_strength)
+
+    fitted, soft_priors_applied_in_fit = fit_targets(train_indices)
+    if soft_priors_applied_in_fit is not None:
+        print(f"soft priors in the fit: {soft_priors_applied_in_fit}")
 
     def training_step(model_encoder, model_head, model_laboratory_readout, model_optimizer, batch) -> tuple[float, float, float, float | None]:
         """One optimizer step on a batch; returns the loss, its BCE and penalty parts and the laboratory loss (None without it)."""
@@ -1649,10 +1769,10 @@ def main() -> None:
         output = model_head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
         log_parts = ({"log_probability": output.symptom_log_probability, "log_complement": output.symptom_log_complement}
                      if arguments.bce_in_log_space else {})
-        if positive_targets is not None:
-            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, positive_targets[batch].to(device), weights[batch].to(device), positive_target=1.0, **log_parts)
+        if fitted["positive_targets"] is not None:
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, fitted["positive_targets"][batch].to(device), fitted["weights"][batch].to(device), positive_target=1.0, **log_parts)
         else:
-            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, outcomes[batch].to(device), weights[batch].to(device), positive_target=arguments.positive_target, **log_parts)
+            bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, fitted["outcomes"][batch].to(device), fitted["weights"][batch].to(device), positive_target=arguments.positive_target, **log_parts)
         penalty = arguments.description_length_coefficient * model_head.description_length_penalty(node_cost=node_cost)
         loss = bce + penalty
         laboratory_value = None
@@ -1763,6 +1883,7 @@ def main() -> None:
             laboratory_readout.load_state_dict(state["best_laboratory_readout"])
 
     refit_summary = None
+    soft_priors_applied_in_refit = None
     if arguments.refit_on_validation:
         # Goodfellow, Bengio and Courville, Deep Learning (2016), section 7.8, algorithm 7.2: initialise again and train on
         # all the training data for the number of epochs early stopping chose; same epochs, not same optimizer steps
@@ -1774,6 +1895,7 @@ def main() -> None:
         if state["best_epoch"] < 0:
             raise ValueError("no validation epoch improved (the validation loss was never finite), so the refit has no number of epochs to train for")
         refit_indices = np.sort(np.concatenate([train_indices, validation_indices]))
+        fitted, soft_priors_applied_in_refit = fit_targets(refit_indices)  # the validation rows join the fit, and so do their soft priors
         refit_checkpoint_path = split_directory / "refit_checkpoint.pt"
         torch.manual_seed(arguments.seed)
         encoder, head = build_models(data, arguments, device)
@@ -1882,7 +2004,7 @@ def main() -> None:
     results = {
         "split": split_name, "fold": None if (arguments.holdout_module or arguments.holdout_subsystem or arguments.score_lockbox) else arguments.fold, "holdout_module": arguments.holdout_module or None,
         "holdout_subsystem": arguments.holdout_subsystem or None, "labels_permuted": bool(arguments.permute_labels), "seed": arguments.seed,
-        "arguments": {key: (value if isinstance(value, (int, float, str, bool, list, type(None))) else str(value)) for key, value in vars(arguments).items()},
+        "arguments": {key: json_ready(value) for key, value in vars(arguments).items()},
         "num_train": len(train_indices), "num_validation": len(validation_indices), "num_test": len(test_indices),
         "epochs_completed": state["epoch"], "best_epoch": state["best_epoch"], "stopped_early": stopped_early, "history": state["history"],
         "macro_auprc": float(np.mean([entry["auprc"]["point"] for entry in per_symptom.values()])) if per_symptom else float("nan"),
@@ -1910,7 +2032,15 @@ def main() -> None:
                                             and getattr(encoder, "propagation_steps_taken", 0) >= getattr(encoder, "max_propagation_steps", 0)),
         "laboratory_labels": laboratory_results,
         "lockbox": lockbox_summary, "rewiring": rewiring_summary, "refit": refit_summary,
+        "soft_priors": None if soft_priors_summary is None else {**soft_priors_summary, "applied_in_fit": soft_priors_applied_in_fit, "applied_in_refit": soft_priors_applied_in_refit,
+                                                                 "permutation": soft_prior_permutation},
     }
+    if literature_reports is not None and time_split is None:
+        # the popularity axis the degree bins do not measure: distinct PMIDs per perturbation in the literature table
+        popularity = literature_popularity(data.perturbation_ids, literature_reports)[test_indices]
+        bins = macro_auprc_by_degree_bin(predictions, test_outcomes, popularity, num_bins=5, mask=test_mask)
+        results["macro_auprc_by_literature_popularity_bin"] = {label.replace("degree_bin", "popularity_bin"): value for label, value in bins.items()}
+        print(f"macro AUPRC by literature popularity bin: {results['macro_auprc_by_literature_popularity_bin']}")
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]
     np.save(split_directory / "test_predictions.npy", predictions)

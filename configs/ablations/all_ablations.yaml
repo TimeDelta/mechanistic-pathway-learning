@@ -19,3 +19,5 @@ no_propagation_route: {pending: true, note: needs the flux cache}
 currency_metabolites_retained: {pending: true}
 fixed_grade_weights_instead_of_learned: {pending: true, note: needs the pharmacological class for a third source}
 no_rubric_features: {pending: true}
+soft_priors_tiered: {configurations: [v4_linear_response_soft_priors, v4_message_passing_soft_priors], note: "the evidence below the label bar as tempered targets and weights on unlabelled training pairs (evidence/soft_priors.py); a secondary arm, off in the registered model"}
+soft_priors_permuted: {configurations: [v4_linear_response_soft_priors_permuted, v4_message_passing_soft_priors_permuted], note: "negative control for soft_priors_tiered: the same priors moved among eligible cells with every perturbation's and symptom's count kept; the real arm must beat it, and in the lowest popularity bins"}

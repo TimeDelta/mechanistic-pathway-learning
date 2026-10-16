@@ -298,6 +298,15 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "b3_sigmoid": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum"],
     "b3_sigmoid_absolute": ["--head", "sigmoid", "--field", "absolute", "--pooling", "mean"],
     "b3_sigmoid_permuted": ["--head", "sigmoid", "--field", "difference", "--pooling", "sum", "--permute-labels"],
+    # The soft-prior arm (evidence/soft_priors.py, 16 October 2026): the registered model with the evidence below the
+    # label bar - grade-C records and the trial-arm, FAERS, IMPC and literature report tables - as targets and weights
+    # on the unlabelled pairs of the rows a fit trains on, and its negative control, the same priors moved among
+    # eligible cells with every perturbation's and symptom's count kept. The report tables are data and go in --extra
+    # (--soft-prior-reports ...). Off (the default) is the registered model; nothing here is a primary reading.
+    "v4_linear_response_soft_priors": [*V4_LINEAR_RESPONSE_MODEL, "--soft-prior-strength", "1.0"],
+    "v4_linear_response_soft_priors_permuted": [*V4_LINEAR_RESPONSE_MODEL, "--soft-prior-strength", "1.0", "--permute-soft-priors"],
+    "v4_message_passing_soft_priors": [*V4_MESSAGE_PASSING_MODEL, "--soft-prior-strength", "1.0"],
+    "v4_message_passing_soft_priors_permuted": [*V4_MESSAGE_PASSING_MODEL, "--soft-prior-strength", "1.0", "--permute-soft-priors"],
 }
 
 

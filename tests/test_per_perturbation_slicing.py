@@ -44,7 +44,7 @@ def experiment_data_with_every_array_filled() -> ExperimentData:
     # missing field unset, the field would be None, and the check below would skip the very omission it is for.
     for name in ("in_metabolic_layer", "evidence_dates", "evidence_date_is_publication"):
         values[name] = np.ones(NUM_PERTURBATIONS, dtype=bool if name != "evidence_dates" else float)
-    for name in ("label_mask", "evidenced_negative"):
+    for name in ("label_mask", "evidenced_negative", "masked_for_soft_evidence"):
         values[name] = np.ones((NUM_PERTURBATIONS, NUM_SYMPTOMS), dtype=bool)
     values["frequencies"] = np.ones((NUM_PERTURBATIONS, NUM_SYMPTOMS))
     values["placebo_negative_weight_matrix"] = np.full((NUM_PERTURBATIONS, NUM_SYMPTOMS), 0.5)

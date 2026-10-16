@@ -667,6 +667,12 @@
    "recorded": "2026-10-07",
    "append_only": false
   },
+  "docs/soft_priors.md": {
+   "class": "record",
+   "recorded": "2026-10-16",
+   "append_only": true,
+   "what": "the design of the soft priors (evidence below the label bar as targets and weights), its reasons, the controls and what is provisional; decision 9.50"
+  },
   "docs/special_population_carrier_signal.md": {
    "class": "generated",
    "generator": "experiments/measure_special_population_carrier_signal.py"
