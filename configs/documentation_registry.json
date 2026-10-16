@@ -309,6 +309,10 @@
    "recorded": "2026-10-07",
    "append_only": false
   },
+  "docs/graph_summary.md": {
+   "class": "generated",
+   "generator": "experiments/summarise_graph.py"
+  },
   "docs/graph_reliance.md": {
    "class": "generated",
    "generator": "experiments/evaluate_on_rewired_graph.py"
