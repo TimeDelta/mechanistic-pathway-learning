@@ -138,3 +138,43 @@ def test_the_committed_validation_set_reads_with_every_row_complete():
         assert row["relation"] in ("induces", "relieves", "absent")
         if row["kind"] == "withdrawn":
             assert row["status"].startswith("withdrawn")
+
+
+def test_the_therapeutic_direction_counts_the_loss_from_disorder_to_symptom(tmp_path):
+    import csv as csv_module
+    import gzip as gzip_module
+
+    from experiments.audit_physiology import therapeutic_direction
+
+    crosswalk = tmp_path / "crosswalk.csv"
+    with crosswalk.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv_module.writer(handle)
+        writer.writerow(["target_symptom", "meddra_preferred_terms"])
+        writer.writerow(["anxiety", "Anxiety;Nervousness"])
+        writer.writerow(["insomnia", "Insomnia"])
+    indications = tmp_path / "meddra_all_indications.tsv.gz"
+    rows = [  # STITCH_flat, UMLS_label_cui, detection_method, label_concept_name, MedDRA_type, UMLS_meddra_cui, meddra_concept_name
+        ["CID100000001", "C1", "NLP_indication", "x", "PT", "C1", "Anxiety"],            # a study drug, a mapped symptom
+        ["CID100000001", "C2", "NLP_indication", "x", "PT", "C2", "Schizophrenia"],      # a study drug, a disorder the crosswalk does not map
+        ["CID100000002", "C3", "NLP_indication", "x", "PT", "C3", "Insomnia"],           # the second study drug
+        ["CID100000002", "C4", "NLP_precondition", "x", "PT", "C4", "Anxiety"],          # not an indication
+        ["CID100000002", "C5", "NLP_indication", "x", "LLT", "C5", "Anxiety"],           # not preferred-term level
+        ["CID100000009", "C6", "NLP_indication", "x", "PT", "C6", "Anxiety"],            # not a study drug
+    ]
+    with gzip_module.open(indications, "wt", encoding="utf-8") as handle:
+        csv_module.writer(handle, delimiter="\t").writerows(rows)
+    evidence = pd.DataFrame([
+        {"perturbation_id": "CID100000001", "perturbation_type": "drug", "relation": "relieves", "symptom": "anxiety"},
+        {"perturbation_id": "CID100000002", "perturbation_type": "drug", "relation": "induces", "symptom": "insomnia"},
+        {"perturbation_id": "CID100000003", "perturbation_type": "drug", "relation": "induces", "symptom": "anxiety"},
+        {"perturbation_id": "GENE1", "perturbation_type": "gene", "relation": "induces", "symptom": "anxiety"},
+    ])
+    result = therapeutic_direction(evidence, indications, crosswalk)
+    assert result["indications_read"] and result["crosswalk_preferred_terms"] == 3 and result["study_drugs"] == 3
+    assert result["relieves_pairs_in_the_evidence"] == 1
+    assert result["indication_rows"] == 4, "preferred-term NLP_indication rows only, over every drug"
+    assert result["indication_rows_on_a_study_drug"] == 3 and result["indication_rows_naming_a_study_symptom"] == 2
+    assert result["distinct_pairs_naming_a_study_symptom"] == 2
+    assert result["study_drugs_with_no_indication_row"] == 1, "CID100000003 has none"
+    assert result["most_common_indication_terms_outside_the_crosswalk"] == [("Schizophrenia", 1)]
+    assert therapeutic_direction(evidence, tmp_path / "absent.tsv.gz", crosswalk) == {"relieves_pairs_in_the_evidence": 1, "indications_read": False}
