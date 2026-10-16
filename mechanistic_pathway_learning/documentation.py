@@ -309,5 +309,7 @@ def decision_ids_dropped_or_renumbered(path: str = "docs/open_decisions.md", roo
 
 
 def duplicated_decision_ids(text: str) -> list[str]:
+    """Ids that name more than one row. When 9.5 closed on 15 October 2026 a second row was appended instead of the
+    first being struck; the two were merged into one row the same day, and this keeps it from recurring."""
     ids = decision_ids_in_log(text)
     return sorted({identifier for identifier in ids if ids.count(identifier) > 1})

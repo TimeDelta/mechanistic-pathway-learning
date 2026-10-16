@@ -15,7 +15,8 @@ Google*, 2020, ch. 10); and generated documents are regenerated and diffed in CI
 
 144 tracked Markdown documents. 93 are written by scripts, and almost none of them said when, from which data or at
 which commit: their only date was the last commit that touched them, and the oldest (the mechanism cards, the Phase 2
-baseline tables) describe runs from the first week of October that no longer exist on any disk. The README restated
+baseline tables) describe runs from the first week of October that live on the disks of the containers that made
+them (the owner keeps every container of this project), not in this repository. The README restated
 release counts by hand, and two of them were wrong against the manifest (261,369 edges against the manifest's
 255,367; an evidence table of 3,838 observations that had become 3,910 in the release and 5,604 in the rebuild).
 Decisions were recorded in the log after they were taken (the owner's complaint of 13 October); the git history
@@ -80,10 +81,12 @@ state is on a machine's disk and is read there (`bash scripts/resume_jobs.sh --s
 - A living document that `docs/status.md` lists as due is read against the repository, corrected by overwriting, and
   its `reviewed` date and `as_of_commit` are updated in the register.
 
-## Known defects left to the owner
+## Defects repaired, and what is left to the owner
 
-Repairing the decision log's line 204 (three rows behind literal `\n`) and its duplicate id 9.5 changes the record,
-so it is the owner's edit; the tests tolerate exactly those two defects and fail on any new one. The six families of
+Line 204 of the decision log (three rows behind literal `\n`) was split into its rows, and the opening row of 9.5 was
+merged with the closing row that had been appended below it, so the id names one row (the owner, 15 October:
+"Whatever you think is best for the 9.5 duplicate ... Just make it honest"); the tests fail on any literal `\n` or
+on an id that names two rows. The six families of
 generated documents that exist in several versions (the Phase 2 baseline tables, the label plasma binders, the drug
 administration routes, the leakage group rules, the module health results, the rewiring null distribution) have no
 member marked current; `docs/status.md` lists the oldest unstamped documents, and the register's `family` field is

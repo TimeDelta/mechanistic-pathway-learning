@@ -172,16 +172,19 @@ def test_the_decision_log_keeps_every_id_it_had_at_head():
     assert not dropped, f"a closed decision keeps its id, struck through; these ids left the log: {dropped}"
 
 
-def test_the_decision_log_carries_no_literal_newline_escapes_beyond_the_known_line():
-    """Line 204 held three rows behind literal backslash-n on 15 October 2026 and is left to the owner to repair; a
-    second such line is a regression."""
+def test_the_decision_log_carries_no_literal_newline_escapes():
+    """Line 204 held three rows behind literal backslash-n on 15 October 2026 (repaired the same day); any such line
+    hides the rows after it from Markdown and from readers that split on newlines."""
     lines = literal_newline_escapes(DECISION_LOG.read_text(encoding="utf-8"))
-    assert lines in ([], [204]), f"literal \\n hides rows from Markdown and from readers that split on newlines: lines {lines}"
+    assert lines == [], f"literal \\n on lines {lines}"
 
 
-def test_the_decision_log_uses_no_id_twice_beyond_the_known_duplicate():
+def test_the_decision_log_uses_no_id_twice():
+    """When 9.5 closed, a second row was appended under the same id instead of the first being struck; the two rows
+    were merged on 15 October 2026. An id names one row: close a decision by striking its id and appending the
+    closing text to its own row."""
     duplicated = duplicated_decision_ids(DECISION_LOG.read_text(encoding="utf-8"))
-    assert duplicated in ([], ["9.5"]), f"an id names one decision: {duplicated}"
+    assert duplicated == [], f"an id names one row: {duplicated}"
 
 
 def test_the_decision_history_is_current():
@@ -329,6 +332,7 @@ def test_decision_ids_are_read_struck_or_not_and_through_literal_newlines():
     assert closed_decision_ids(log) == {"1.3"}
     assert literal_newline_escapes(log) == [2]
     assert duplicated_decision_ids(log + "| 1.2 | again |\n") == ["1.2"]
+    assert duplicated_decision_ids(log + "| ~~1.2~~ | a second row under the same id, struck or not |\n") == ["1.2"]
 
 
 def test_decision_and_item_references_are_matched_by_word():

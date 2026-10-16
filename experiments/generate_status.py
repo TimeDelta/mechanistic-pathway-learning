@@ -209,7 +209,8 @@ def render(stamp: str, summaries: list[dict], rules: dict, decided: dict, docs: 
         lines.append(f"Frozen: `{row['path']}` {'intact' if row['intact'] else 'CHANGED'} (sha256 {row['sha256']}...).")
     lines.extend(["", f"Generated documents: {docs['stamped']} carry a provenance stamp (script, date, commit); {len(docs['unstamped'])} were generated before the "
                   f"stamp existed ({STAMP_POLICY_DATE.isoformat()}) and say only which script wrote them. Their last change in git is the only date they have; "
-                  "the oldest are the most likely to describe runs or tables that no longer exist:", ""])
+                  "the oldest describe runs or tables that live on the disk of the container that made them (every container of this project is kept), "
+                  "not in this repository:", ""])
     for path, changed, _ in docs["unstamped"][:12]:
         lines.append(f"- `{path}` last changed {changed}")
     if len(docs["unstamped"]) > 12:
