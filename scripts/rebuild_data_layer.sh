@@ -11,6 +11,7 @@
 #   bash scripts/rebuild_data_layer.sh slice        # the monogenic slice tables the slice-era tests read (minutes)
 #   bash scripts/rebuild_data_layer.sh descriptors  # then the node descriptors and cell-class weights (about 3 hours
 #                                                   # of ESM-2 embeddings on 2 cores, and a 1.24 GB download)
+#   bash scripts/rebuild_data_layer.sh fine         # the v5 tables on the fine symptom constructs (decision 9.58; an hour)
 #
 # Library versions matter for the file hashes: the tables of data/releases/v0.4 were written by pandas 2.3.3 and
 # pyarrow 25.0.1, and with those two the rebuilt tables that have a recorded hash and no fitted column match it
@@ -206,3 +207,39 @@ if [ "$stage" = "descriptors" ]; then
       --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_cell_class_weights.parquet"
 fi
 echo "done: $stage"
+
+# --- evidence tables v5: the fine symptom constructs (decision 9.58, 16 October 2026) ---------------------------------
+# docs/symptom_crosswalk_fine.csv is derived from the coarse crosswalk by experiments/build_fine_symptom_crosswalk.py
+# (committed, held to a fresh build by tests/test_symptom_constructs.py). The same pipeline as v4, pointed at it: the
+# label sources, the label selections, the three absence sources (their raw caches are per drug and are reused) and the
+# release's literature table re-keyed to the namesake constructs (its raw cache is not on this disk). The drugs and
+# their targets are those of v4, so the drug-entry graph of v4 serves the v5 tables.
+if [ "$stage" = "fine" ]; then
+  step "$processed/onsides_v5/onsides_reports.parquet" "OnSIDES reports v5 (fine constructs)" \
+    python experiments/build_onsides_reports.py --crosswalk docs/symptom_crosswalk_fine.csv --output-dir "$processed/onsides_v5" \
+      --markdown-output "$log_directory/onsides_v5.md" --evidence-dir "$processed/evidence_full_v5" --max-drug-targets 3
+  step "$processed/evidence_full_v5/evidence_records.parquet" "evidence table v5 (fine constructs)" \
+    python -m mechanistic_pathway_learning.evidence.assemble_evidence_table --crosswalk docs/symptom_crosswalk_fine.csv --graph-dir "$processed/graph_full" \
+      --output-dir "$processed/evidence_full_v5" --extra-reports "$processed/onsides_v5/onsides_reports.parquet" \
+      --onsides-bridge data/raw/onsides/v3.1.1/ingredient_identifier_bridge.json --max-drug-targets 3 --seed-gain-of-function-genes-positive
+  step "$processed/label_selection/better_v2_full_v5.parquet" "label selection better_v2 on v5, never-above-placebo pairs set aside" \
+    python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v5" --crosswalk docs/symptom_crosswalk_fine.csv --mask-grades C --mask-never-above-placebo \
+      --output "$processed/label_selection/better_v2_full_v5.parquet"
+  step "$processed/label_selection/better_v2_full_v5_placebo_negative.parquet" "label selection better_v2 on v5, never-above-placebo pairs as negatives" \
+    python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v5" --crosswalk docs/symptom_crosswalk_fine.csv --mask-grades C --never-above-placebo-as-negative \
+      --output "$processed/label_selection/better_v2_full_v5_placebo_negative.parquet"
+  step "$processed/clinical_trials_v5/clinical_trial_reports.parquet" "placebo-controlled trial arms at the fine level" \
+    python experiments/fetch_clinicaltrials_adverse_events.py --crosswalk docs/symptom_crosswalk_fine.csv --evidence-dir "$processed/evidence_full_v5" \
+      --output-dir "$processed/clinical_trials_v5" --markdown-output "$log_directory/clinical_trial_arm_evidence_v5.md"
+  step "$processed/faers_v5/faers_reports.parquet" "FAERS disproportionality at the fine level" \
+    python experiments/fetch_faers_disproportionality.py --crosswalk docs/symptom_crosswalk_fine.csv --evidence-dir "$processed/evidence_full_v5" \
+      --output-dir "$processed/faers_v5" --markdown-output "$log_directory/faers_disproportionality_evidence_v5.md"
+  step "$processed/impc_v5/impc_reports.parquet" "IMPC knockout phenotypes at the fine level" \
+    python experiments/build_impc_reports.py --graph-dir "$processed/graph_full" --crosswalk configs/impc_symptom_crosswalk_fine.csv \
+      --output-dir "$processed/impc_v5" --markdown-output "$log_directory/impc_knockout_evidence_v5.md"
+  step "$processed/literature_v5/literature_reports.parquet" "literature reports re-keyed to the fine namesakes" \
+    python experiments/rekey_literature_to_fine.py --input data/releases/v0.4/literature/literature_reports.parquet --output "$processed/literature_v5/literature_reports.parquet"
+  # trial outcome measures (decision 9.60): the per-drug cache under data/raw/clinicaltrials_outcomes is reused; fine constructs
+  step "$processed/clinical_trial_outcomes/clinical_trial_outcome_reports.parquet" "trial outcome measures on crosswalked scales" \
+    python experiments/fetch_clinicaltrials_outcomes.py --evidence-dir "$processed/evidence_full_v4"
+fi

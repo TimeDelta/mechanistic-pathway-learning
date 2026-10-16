@@ -23,6 +23,9 @@ excludes 0 on the worsening side. A comparison that decides none of these is und
 report table, since every reader of report_value takes 0 as an absence. Class human_association,
 source ClinicalTrials-outcomes, grade C: a soft prior, never a label (9.49, 9.50).
 
+A trial with several dose arms against one placebo reads the arm with the most
+participants, a choice made on the denominators before any outcome is seen; `drug_arms_available` records the count.
+
 What is not read. Trials without a placebo arm (an active comparator says nothing about the construct); disorder-level
 composites (CGI, PANSS total, a total ADHD score that fuses inattention with hyperactivity) unless the crosswalk names
 them; measures reported as medians or counts; a trial whose arms name two study drugs (9.48's combination rule).
@@ -48,7 +51,7 @@ Z_95 = 1.959964
 DEFAULT_SCALE_CROSSWALK = Path("configs/trial_outcome_scale_crosswalk.csv")
 OUTCOME_COLUMNS = ("nct_id", "outcome_title", "scale", "construct", "higher_is_worse", "param_type", "dispersion_type", "drug_group", "placebo_group",
                    "drug_n", "placebo_n", "drug_value", "placebo_value", "difference", "ci_lower", "ci_upper", "standardised_difference",
-                   "standardised_ci_lower", "standardised_ci_upper", "comparison_source", "verdict")
+                   "standardised_ci_lower", "standardised_ci_upper", "comparison_source", "verdict", "drug_arms_available")
 
 
 @dataclass(frozen=True)
@@ -192,13 +195,16 @@ def verdict_of(standardised: tuple[float, float, float] | None, raw: tuple[float
 
 def compare_outcome(outcome: dict, selection: GroupSelection, rule: ScaleRule) -> dict | None:
     """One comparison row for an outcome measure, or None when no placebo-controlled mean comparison can be read."""
-    if len(selection.drug_groups) != 1 or len(selection.placebo_groups) != 1:
-        return None  # several dose arms or several placebo arms: which pair to read is a choice this module does not make
-    drug_group, placebo_group = selection.drug_groups[0], selection.placebo_groups[0]
+    if not selection.drug_groups or not selection.placebo_groups:
+        return None
     parameter = str(outcome.get("paramType", "")).upper()
     if "MEAN" not in parameter:
         return None
     measurements, counts = first_measurements(outcome), group_counts(outcome)
+    # several dose arms against one placebo (the shape of a registration trial): the arm with the most participants is
+    # read, a choice made on the denominators and never on the outcome; the count of arms available is recorded
+    drug_group = max(selection.drug_groups, key=lambda group: (counts.get(group, 0), -selection.drug_groups.index(group)))
+    placebo_group = max(selection.placebo_groups, key=lambda group: (counts.get(group, 0), -selection.placebo_groups.index(group)))
     drug, placebo = measurements.get(drug_group), measurements.get(placebo_group)
     if drug is None or placebo is None:
         return None
@@ -225,7 +231,8 @@ def compare_outcome(outcome: dict, selection: GroupSelection, rule: ScaleRule) -
             "drug_n": drug_n, "placebo_n": placebo_n, "drug_value": drug_value, "placebo_value": placebo_value,
             "difference": raw[0], "ci_lower": raw[1], "ci_upper": raw[2],
             "standardised_difference": standardised[0] if standardised else None, "standardised_ci_lower": standardised[1] if standardised else None,
-            "standardised_ci_upper": standardised[2] if standardised else None, "comparison_source": source, "verdict": verdict}
+            "standardised_ci_upper": standardised[2] if standardised else None, "comparison_source": source, "verdict": verdict,
+            "drug_arms_available": len(selection.drug_groups)}
 
 
 def build_reports(studies: Iterable[dict], drug_name: str, perturbation: dict, rules: list[ScaleRule], other_study_drugs: Iterable[str] = ()) -> tuple[list[dict], dict]:
@@ -287,7 +294,7 @@ def rows_to_dataframe(rows: list[dict]):
     table["report_value"] = pd.to_numeric(table.report_value, errors="coerce").fillna(0).astype("int64")
     table["pubmed_reference_count"] = pd.to_numeric(table.pubmed_reference_count, errors="coerce").fillna(0).astype("int64")
     table["frequency"] = pd.to_numeric(table.frequency, errors="coerce").astype("float64")
-    for column in ("frequency_denominator", "drug_n", "placebo_n"):
+    for column in ("frequency_denominator", "drug_n", "placebo_n", "drug_arms_available"):
         table[column] = pd.array([None if value in ("", None) or (isinstance(value, float) and math.isnan(value)) else int(value) for value in table[column]], dtype="Int64")
     table["placebo_flag"] = table.placebo_flag.map(lambda value: bool(value) if value != "" else False).astype(bool)
     table["higher_is_worse"] = table.higher_is_worse.map(lambda value: bool(value) if value != "" else False).astype(bool)

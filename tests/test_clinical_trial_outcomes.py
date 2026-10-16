@@ -100,8 +100,9 @@ def test_a_comparison_needs_one_drug_arm_one_placebo_arm_and_a_mean():
     assert comparison["verdict"] == "relief" and comparison["comparison_source"] == "arm means, Welch interval"
     assert comparison["standardised_difference"] == pytest.approx(-0.4) and comparison["drug_n"] == 100
     assert compare_outcome(outcome(param_type="MEDIAN"), selection, MADRS) is None
-    two_doses = outcome(groups=[("OG000", "Placebo"), ("OG001", "Drugx 10 mg"), ("OG002", "Drugx 20 mg")], values=["-8", "-10", "-12"], spreads=["10", "10", "10"], counts=["100", "100", "100"])
-    assert compare_outcome(two_doses, select_outcome_groups(two_doses, "drugx"), MADRS) is None, "which dose arm to read is not this module's choice"
+    two_doses = outcome(groups=[("OG000", "Placebo"), ("OG001", "Drugx 10 mg"), ("OG002", "Drugx 20 mg")], values=["-8", "-10", "-12"], spreads=["10", "10", "10"], counts=["100", "90", "120"])
+    comparison = compare_outcome(two_doses, select_outcome_groups(two_doses, "drugx"), MADRS)
+    assert comparison["drug_group"] == "OG002" and comparison["drug_arms_available"] == 2, "the dose arm with the most participants is read"
     no_spread = outcome(spreads=[None, None])
     assert compare_outcome(no_spread, selection, MADRS) is None
     sponsor = outcome(spreads=[None, None], analyses=[{"groupIds": ["OG001", "OG000"], "paramType": "Mean Difference (Net)", "paramValue": "-4", "ciLowerLimit": "-6", "ciUpperLimit": "-2"}])
