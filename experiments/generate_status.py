@@ -12,6 +12,7 @@ and the day it was written into a committed document it was already wrong somewh
 Usage:
   python experiments/generate_status.py            # writes docs/status.md and the README block
   python experiments/generate_status.py --check    # fails if either is out of date against the sources
+  python experiments/generate_status.py --review   # the review diagnostics, which depend on today and on HEAD and are never committed
 """
 from __future__ import annotations
 
@@ -29,6 +30,7 @@ from mechanistic_pathway_learning.documentation import (
     STAMP_POLICY_DATE,
     dangling_paths,
     git_output,
+    head_commit,
     last_change_date,
     load_registry,
     parse_stamp,
@@ -215,18 +217,28 @@ def render(stamp: str, summaries: list[dict], rules: dict, decided: dict, docs: 
         lines.append(f"- `{path}` last changed {changed}")
     if len(docs["unstamped"]) > 12:
         lines.append(f"- and {len(docs['unstamped']) - 12} more; `python experiments/register_documents.py --report` lists every one")
-    lines.extend(["", f"Living documents (reviewed = last read against the repository; a review is due after {REVIEW_INTERVAL_DAYS} days or when a file the "
-                  "document names changed after `as_of_commit`):", "", "| document | reviewed | as of | review due? | files named that changed since |",
-                  "| --- | --- | --- | --- | --- |"])
+    lines.extend(["", "Living documents (reviewed = last read against the repository, at the commit named). Whether a review is due depends on "
+                  f"today's date ({REVIEW_INTERVAL_DAYS} days) and on what changed after that commit, so it is not written here, where it would be stale "
+                  "the next day; `python experiments/generate_status.py --review` prints it.", "",
+                  "| document | reviewed | as of |", "| --- | --- | --- |"])
     for row in docs["living"]:
-        due = "overdue" if row["overdue"] else ("yes" if row["changed_since"] else "no")
-        changed = ", ".join(f"`{path}`" for path in row["changed_since"][:6]) + (f" and {len(row['changed_since']) - 6} more" if len(row["changed_since"]) > 6 else "")
-        lines.append(f"| `{row['path']}` | {row['reviewed']} | {row['as_of_commit']} | {due} | {changed or '-'} |")
-    dangling = [(row["path"], row["dangling"]) for row in docs["living"] if row["dangling"]]
-    if dangling:
-        lines.extend(["", "Paths named by living documents that are not in the tree: " + "; ".join(f"`{path}`: {', '.join(missing)}" for path, missing in dangling) + "."])
+        lines.append(f"| `{row['path']}` | {row['reviewed']} | {row['as_of_commit']} |")
     lines.extend(["", f"Records: {docs['records']} dated documents that are corrected by a dated addition rather than an edit. Drafts awaiting the owner: "
                   + (", ".join(f"`{path}`" for path in docs["drafts"]) if docs["drafts"] else "none") + ".", ""])
+    return "\n".join(lines)
+
+
+def render_review(docs: dict, today: date) -> str:
+    """The diagnostics that depend on today and on HEAD: which living documents are due for a review and why. Printed,
+    never committed, because a committed copy is wrong by the next commit or the next day."""
+    lines = [f"Review diagnostics as of {today.isoformat()} at commit {head_commit()} (a review is due after {REVIEW_INTERVAL_DAYS} days, "
+             "or when a file the document names changed after its as_of_commit):", ""]
+    for row in docs["living"]:
+        due = "overdue" if row["overdue"] else ("due" if row["changed_since"] else "current")
+        changed = ", ".join(row["changed_since"][:8]) + (f" and {len(row['changed_since']) - 8} more" if len(row["changed_since"]) > 8 else "")
+        lines.append(f"  {due:8s} {row['path']}  (reviewed {row['reviewed']} at {row['as_of_commit']})" + (f": changed since: {changed}" if changed else ""))
+        if row["dangling"]:
+            lines.append(f"           names paths not in the tree: {', '.join(row['dangling'])}")
     return "\n".join(lines)
 
 
@@ -246,8 +258,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--review", action="store_true", help="print the review diagnostics (due reviews, files changed since) and write nothing")
     arguments = parser.parse_args()
     today = date.today()
+    if arguments.review:
+        print(render_review(documents(today), today))
+        return 0
     summaries = release_summaries()
     rendered = render(provenance_stamp("experiments/generate_status.py", ["data/releases/*/MANIFEST.json", "configs/registered_rules.json",
                                                                           "configs/documentation_registry.json", "the git log"]),
