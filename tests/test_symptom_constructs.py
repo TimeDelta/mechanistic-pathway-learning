@@ -210,3 +210,18 @@ def test_the_committed_fine_crosswalk_is_a_fresh_build_of_the_committed_inputs()
     coarse = read_rows(root / "docs/symptom_crosswalk.csv")
     assert len(fine) == sum(max(1, len([part for part in row["hpo_ids"].split(";") if part])) for row in coarse) + 1
     assert {row["coarse_symptom"] for row in fine} == {row["target_symptom"] for row in coarse} | {"intellectual_disability"}
+
+
+def test_the_literature_table_is_rekeyed_to_the_namesakes_without_a_row_moving():
+    import pandas as pd
+    from mechanistic_pathway_learning.evidence.symptom_constructs import namesake_of_coarse
+    from experiments.rekey_literature_to_fine import rekey
+    namesake = namesake_of_coarse(coarse_rows())
+    assert namesake == {"psychosis": "psychosis", "psychomotor_agitation": "agitation", "anxiety": "anxiety", "catatonia": "catatonia"}
+    reports = pd.DataFrame({"report_id": ["PubTator3|PMID:1|MESH:D011595|psychomotor_agitation|1", "CTD|PMID:2|MESH:D001007|anxiety|1"],
+                            "symptom": ["psychomotor_agitation", "anxiety"], "report_value": [1, 1]})
+    renamed = rekey(reports, namesake)
+    assert list(renamed.symptom) == ["agitation", "anxiety"] and list(renamed.coarse_symptom) == ["psychomotor_agitation", "anxiety"]
+    assert renamed.report_id[0] == "PubTator3|PMID:1|MESH:D011595|agitation|1" and renamed.report_id[1] == reports.report_id[1]
+    with pytest.raises(ValueError, match="no coarse construct"):
+        rekey(pd.DataFrame({"symptom": ["unknown"], "report_value": [1]}), namesake)

@@ -268,6 +268,11 @@ def coarse_of_fine(fine_rows: list[dict[str, str]]) -> dict[str, str]:
     return {row["target_symptom"]: row["coarse_symptom"] for row in fine_rows}
 
 
+def namesake_of_coarse(coarse_rows: list[dict[str, str]]) -> dict[str, str]:
+    """coarse construct -> the fine construct that carries its MeSH descriptors and questionnaire item (its namesake)."""
+    return {row["target_symptom"]: next(construct.name for construct in fine_constructs_of(row) if construct.is_namesake) for row in coarse_rows}
+
+
 def fine_impc_rows(impc_rows: list[dict[str, str]], coarse_rows: list[dict[str, str]], additions: list[dict[str, str]]) -> list[dict[str, str]]:
     """The IMPC crosswalk re-keyed to the fine constructs: a coarse row's proxy goes to the fine construct its MP term
     names match, else to the namesake; the other fine constructs of that coarse row take a row saying no proxy was
