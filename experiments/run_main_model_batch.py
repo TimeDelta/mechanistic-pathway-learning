@@ -307,6 +307,15 @@ CONFIGURATIONS: dict[str, list[str]] = {
     "v4_linear_response_soft_priors_permuted": [*V4_LINEAR_RESPONSE_MODEL, "--soft-prior-strength", "1.0", "--permute-soft-priors"],
     "v4_message_passing_soft_priors": [*V4_MESSAGE_PASSING_MODEL, "--soft-prior-strength", "1.0"],
     "v4_message_passing_soft_priors_permuted": [*V4_MESSAGE_PASSING_MODEL, "--soft-prior-strength", "1.0", "--permute-soft-priors"],
+    # The edge-prior arm (decision 9.57, 16 October 2026): the registered model with a learnable presence gate on every
+    # edge whose evidence has a tier (configs/edge_prior_tiers.csv), started at the edge's prior and pulled back to it,
+    # and its negative control, the same priors shuffled among the gated edges of each relation. Needs the graph's
+    # edge_evidence.parquet (experiments/build_edge_evidence.py). Off (the default) is the registered model; the tier
+    # values are provisional, so nothing here is a primary reading.
+    "v4_linear_response_edge_priors": [*V4_LINEAR_RESPONSE_MODEL, "--edge-prior-strength", "1.0"],
+    "v4_linear_response_edge_priors_permuted": [*V4_LINEAR_RESPONSE_MODEL, "--edge-prior-strength", "1.0", "--permute-edge-priors"],
+    "v4_message_passing_edge_priors": [*V4_MESSAGE_PASSING_MODEL, "--edge-prior-strength", "1.0"],
+    "v4_message_passing_edge_priors_permuted": [*V4_MESSAGE_PASSING_MODEL, "--edge-prior-strength", "1.0", "--permute-edge-priors"],
 }
 
 

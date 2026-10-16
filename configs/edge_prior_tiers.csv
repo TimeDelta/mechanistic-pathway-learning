@@ -4,5 +4,6 @@ signalling,text_mined_only,0.6,0.5,"references only from ProtMapper, which assem
 signalling,unreferenced,0.7,0.5,no literature reference in the row: a resource that states none; provisional
 transcription,curated,0.85,1.0,CollecTRI with a supporting resource other than the ExTRI text-mining layers; provisional
 transcription,text_mined_only,0.55,0.5,supported only by ExTRI text mining; provisional
+transcription,unreferenced,0.7,0.5,"no literature reference and not text-mined only (109 edges on the v4 graph): the same tier as signalling without a reference, so an edge with less evidence is never read as more certain than a curated one; provisional"
 enzyme_regulation,in_vitro,0.6,0.5,"BRENDA: measured in vitro, often in another species and at a concentration that is not physiological; the reference count tempers it; provisional"
 curated,curated,0.9,1.0,"this project's curated tables, each row with a PubMed id and a supporting quote; provisional"

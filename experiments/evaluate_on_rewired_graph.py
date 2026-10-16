@@ -37,7 +37,9 @@ import torch
 
 from experiments.run_main_model import (
     VALUES_BEFORE_THE_V4_DEFAULTS,
+    attach_edge_gates,
     build_argument_parser,
+    build_edge_priors,
     build_models,
     macro_auprc,
     message_passing_adjacencies,
@@ -61,7 +63,13 @@ def stored_arguments(results: dict) -> Namespace:
     parser = build_argument_parser()
     defaults = vars(parser.parse_args([]))
     path_arguments = {action.dest for action in parser._actions if action.type is Path}
-    stored = {key: (Path(value) if key in path_arguments and value is not None else value) for key, value in results["arguments"].items()}
+
+    def as_path(value):  # a list-valued path argument (--soft-prior-reports) is a list of paths; before 16 October this raised on it
+        if value is None:
+            return None
+        return [Path(item) for item in value] if isinstance(value, list) else Path(value)
+
+    stored = {key: (as_path(value) if key in path_arguments else value) for key, value in results["arguments"].items()}
     return Namespace(**{**defaults, **VALUES_BEFORE_THE_V4_DEFAULTS, **stored})
 
 
@@ -75,8 +83,11 @@ def refuse_unsupported(results: dict, arguments: Namespace, fold_directory: Path
 
 
 def experiment_data(arguments: Namespace):
+    """The run's data as the trainer loaded them: with its drug entry mode and its combined perturbations, which this read
+    without before 16 October 2026, so a run seeded on drug entry nodes was rebuilt on the graph without them."""
     data = load_experiment_data(arguments.graph_dir, arguments.evidence_dir, metabolic_layer_only=arguments.metabolic_layer_only, group_by=arguments.group_by,
-                                label_grades=tuple(arguments.label_grades) if arguments.label_grades else None, label_selection=arguments.label_selection)
+                                label_grades=tuple(arguments.label_grades) if arguments.label_grades else None, label_selection=arguments.label_selection,
+                                drug_entry=getattr(arguments, "drug_entry", None) or "nodes", combined_perturbations=getattr(arguments, "combined_perturbations", None))
     if arguments.lockbox is not None:
         data = restrict_to_perturbations(data, ~read_lockbox(arguments.lockbox, data, arguments.group_by, arguments.evidence_dir))
     return data
@@ -84,17 +95,19 @@ def experiment_data(arguments: Namespace):
 
 def trained_models(data, arguments: Namespace, checkpoint: dict, device):
     """A fresh encoder and head on data's current edges with the run's best weights (a fresh encoder, so no adjacency
-    cached for other edges is reused)."""
+    cached for other edges is reused). A run with edge priors gets its gates before its weights are loaded: the learned
+    gates come from the checkpoint and stay at their edge positions on a rewiring, as the signs do."""
     encoder, head = build_models(data, arguments, device)
-    state = checkpoint["state"]
-    encoder.load_state_dict(state["best_encoder"] if state.get("best_encoder") is not None else checkpoint["encoder"])
-    head.load_state_dict(state["best_head"] if state.get("best_head") is not None else checkpoint["head"])
     adjacencies = None
     if arguments.encoder == "message_passing":
         # the signs come from the rewired graph the data was loaded with, so the H2 arm reads the signs its own edges
         # carry rather than the real graph's (amendment item 9 of 12 October 2026)
         adjacencies = [adjacency.to(device) if adjacency is not None else None
                        for adjacency in message_passing_adjacencies(data, getattr(arguments, "message_passing_edge_signs", "graph"))]
+    attach_edge_gates(encoder, data, adjacencies, arguments)
+    state = checkpoint["state"]
+    encoder.load_state_dict(state["best_encoder"] if state.get("best_encoder") is not None else checkpoint["encoder"])
+    head.load_state_dict(state["best_head"] if state.get("best_head") is not None else checkpoint["head"])
     return encoder, head, adjacencies
 
 
@@ -109,11 +122,12 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
     refuse_unsupported(results, arguments, fold_directory)
     device = torch.device("cpu")
     data_key = (str(arguments.graph_dir), str(arguments.evidence_dir), arguments.group_by, tuple(arguments.label_grades or ()), str(arguments.label_selection),
-                str(arguments.lockbox), arguments.metabolic_layer_only)
+                str(arguments.lockbox), arguments.metabolic_layer_only, getattr(arguments, "drug_entry", None) or "nodes", str(getattr(arguments, "combined_perturbations", None)))
     if data_key not in data_cache:
         data_cache.clear()  # one data set in memory at a time
         data_cache[data_key] = experiment_data(arguments)
     data = data_cache[data_key]
+    build_edge_priors(data, arguments)  # per fold: the cached data must not keep another configuration's priors (None when off)
     position = {perturbation_id: index for index, perturbation_id in enumerate(data.perturbation_ids)}
     test_indices = np.array([position[perturbation_id] for perturbation_id in results["test_perturbation_ids"]])
     test_outcomes = data.outcomes[test_indices]
@@ -135,7 +149,8 @@ def evaluate_fold(fold_directory: Path, swaps_per_edge: int, rewiring_seed: int,
     undirected_relations = reciprocated_relations(original_edges, data.edge_relation) if keep_reciprocated_relations_symmetric else []
     rewired = fast_degree_preserving_rewiring(original_edges, data.edge_relation, num_swaps_per_edge=swaps_per_edge, random_seed=rewiring_seed,
                                               undirected_relations=undirected_relations,
-                                              fixed_relations=rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False)))
+                                              fixed_relations=rewiring_fixed_relations(data.relation_types, getattr(arguments, "rewire_encodes", False),
+                                                                                       has_entry_nodes=data.entry_node_mask is not None))
     try:
         # The signs stay at their edge positions. The rewiring exchanges targets between two edges of one relation, so
         # position i keeps its source and its sign and gets a new target: the control randomises which node an edge

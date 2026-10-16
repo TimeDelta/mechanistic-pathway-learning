@@ -78,6 +78,7 @@ import torch
 from torch import Tensor, nn
 
 from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_unit_mask
+from mechanistic_pathway_learning.models.edge_gates import EdgeGates, relation_adjacency_parts, sparse_layout, sparse_values_product
 
 PERTURBATION_FEATURE_DIM = 2  # (sign, magnitude)
 CONJUNCTION_AGGREGATIONS = ("mean", "minimum", "soft_minimum")
@@ -159,6 +160,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         change_only_edge_relation: Tensor | None = None,
     ) -> None:
         super().__init__()
+        self.edge_gates: EdgeGates | None = None  # attach_edge_gates (decision 9.57); None is the registered model
         if change_only_edge_relation is not None and change_only_relation_index is not None:
             raise ValueError("give the relation of the change-only edges once: one index for all of them, or one index per edge")
         if (change_only_edge_index is None) != (change_only_relation_index is None and change_only_edge_relation is None):
@@ -555,6 +557,72 @@ class RelationalMessagePassingEncoder(nn.Module):
         self._compressed_adjacency_cache = None
         return stacked, present_index
 
+    def attach_edge_gates(self, edge_gates: EdgeGates, edge_index: Tensor, edge_relation_type: Tensor, relation_adjacencies: list[Tensor | None],
+                          edge_sign: Tensor | None = None, edge_weight: Tensor | None = None) -> None:
+        """Gate every edge of the stacked relations by its evidence prior (decision 9.57, models/edge_gates.py). The
+        compressed adjacency's layout is read once from the static adjacencies; each propagate then rebuilds its values
+        from the edges' values times their gates, so nothing is cached by tensor identity. The conjunction, entry and
+        change-only relations are aggregated apart from the stack and are not gated; edge_sign and edge_weight must be
+        the ones the static adjacencies were built with (run_main_model.message_passing_adjacencies), which this checks:
+        with every gate at 1 the rebuilt values must equal the static ones."""
+        if self.edge_gates is not None:
+            raise ValueError("edge gates are attached once, to a freshly built encoder")
+        if edge_gates.num_edges != edge_index.shape[1]:
+            raise ValueError(f"edge_gates has {edge_gates.num_edges} edges and the graph {edge_index.shape[1]}")
+        device = self.layer_bias.device
+        static_compressed, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
+        _, present_index = self.stacked_relation_adjacency(relation_adjacencies)
+        parts = relation_adjacency_parts(edge_index.long().cpu(), edge_relation_type.long().cpu(), self.num_graph_nodes, self.num_relation_types,
+                                         None if edge_sign is None else edge_sign.cpu(), None if edge_weight is None else edge_weight.cpu())
+        self.gate_present_relations = [int(index) for index in present_index.tolist()]
+        for relation_index in self.gate_present_relations:
+            part = parts[relation_index]
+            for name in ("slot", "values", "edges"):
+                self.register_buffer(f"gate_part_{relation_index}_{name}", part[name].to(device), persistent=False)
+            setattr(self, f"gate_part_{relation_index}_num_slots", part["num_slots"])
+        self.register_buffer("gate_compressed_indices", static_compressed.indices().to(device), persistent=False)
+        transposed_indices, transposed_order = sparse_layout(self.gate_compressed_indices, static_compressed.shape[0])
+        self.register_buffer("gate_compressed_transposed_indices", transposed_indices, persistent=False)
+        self.register_buffer("gate_compressed_transposed_order", transposed_order, persistent=False)
+        self.register_buffer("gate_row_target", row_target.to(device), persistent=False)
+        self.gate_segments = segments
+        self.gate_compressed_shape = tuple(static_compressed.shape)
+        self.gate_relation_adjacencies = list(relation_adjacencies)  # held, so their identities cannot be reused while the encoder lives
+        with torch.no_grad():
+            ungated = self.gated_compressed_values(torch.ones(edge_gates.num_edges, device=device))
+        static_values = static_compressed.values().to(device)
+        if ungated.shape != static_values.shape or not torch.allclose(ungated, static_values, rtol=1e-6, atol=1e-9):
+            raise ValueError("with every gate at 1 the rebuilt adjacency differs from the static one: the edge signs or weights passed differ from the adjacencies'")
+        read = [getattr(self, f"gate_part_{relation_index}_edges") for relation_index in self.gate_present_relations]
+        self.edge_gates = edge_gates.to(device)
+        self.edge_gates.set_read_edges(torch.cat(read) if read else torch.zeros(0, dtype=torch.long, device=device))
+
+    def check_gated_adjacencies(self, relation_adjacencies: list[Tensor | None]) -> None:
+        """A gated encoder rebuilds the stack from the adjacencies its gates were attached to; refuse any others, which
+        would otherwise be silently replaced (a rewired graph needs a fresh encoder, as evaluate_on_rewired_graph.py builds)."""
+        attached = self.gate_relation_adjacencies
+        if relation_adjacencies is attached:
+            return
+        if len(relation_adjacencies) != len(attached) or any(given is not held for given, held in zip(relation_adjacencies, attached)):
+            raise ValueError("these adjacencies are not the ones the edge gates were attached to; build a fresh encoder and attach its gates to them")
+
+    def gated_compressed_values(self, edge_values: Tensor) -> Tensor:
+        """The compressed adjacency's values in its stored order: per present relation, each coalesced entry's sum of its
+        edges' values times their gates."""
+        values = []
+        for relation_index in self.gate_present_relations:
+            edge_value = getattr(self, f"gate_part_{relation_index}_values") * edge_values[getattr(self, f"gate_part_{relation_index}_edges")]
+            slots = torch.zeros(getattr(self, f"gate_part_{relation_index}_num_slots"), dtype=edge_value.dtype, device=edge_value.device)
+            values.append(slots.index_add(0, getattr(self, f"gate_part_{relation_index}_slot"), edge_value))
+        return torch.cat(values) if values else torch.zeros(0, device=edge_values.device)
+
+    def gated_compressed_adjacency(self) -> tuple[Tensor, Tensor, list[tuple[int, int, int]]]:
+        """The compressed adjacency with the gated values, as a sparse tensor for reading; propagate multiplies through
+        edge_gates.sparse_values_product instead, whose value gradient forms no dense matrix."""
+        values = self.gated_compressed_values(self.edge_gates.edge_values())
+        compressed = torch.sparse_coo_tensor(self.gate_compressed_indices, values, self.gate_compressed_shape, is_coalesced=True)
+        return compressed, self.gate_row_target, self.gate_segments
+
     def compressed_relation_adjacency(self, relation_adjacencies: list[Tensor | None]) -> tuple[Tensor, Tensor, list[tuple[int, int, int]]]:
         """The stacked rows that hold an edge, as their own sparse matrix [K, N], with the target node of each row and,
         per present relation, (relation index, first row, end row): rows stay in stack order, so a relation's rows are
@@ -656,7 +724,13 @@ class RelationalMessagePassingEncoder(nn.Module):
         of 700,435 rows. The output is identical to the full stacked product up to floating point rounding.
         """
         batch_size = node_state_field.shape[0]
-        compressed_adjacency, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
+        gated_values = None
+        if self.edge_gates is not None:  # rebuilt each call from the gates (decision 9.57); never cached by tensor identity
+            self.check_gated_adjacencies(relation_adjacencies)
+            gated_values = self.gated_compressed_values(self.edge_gates.edge_values())
+            compressed_adjacency, row_target, segments = None, self.gate_row_target, self.gate_segments
+        else:
+            compressed_adjacency, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
         member_edges = self.conjunction_member_edges(relation_adjacencies) if self.conjunction_relation_indices else []
         node_major_state = node_state_field.permute(1, 0, 2).contiguous()  # [N, B, D]
         node_major_presence = None
@@ -679,7 +753,11 @@ class RelationalMessagePassingEncoder(nn.Module):
                 self_messages = self_messages + self.change_only_messages(node_major_state, layer_index, reference_row)
             if segments:
                 flattened = node_major_state.reshape(self.num_graph_nodes, batch_size * self.node_state_dim)
-                aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
+                if gated_values is None:
+                    aggregated = torch.sparse.mm(compressed_adjacency.to(flattened.device), flattened).view(-1, batch_size, self.node_state_dim)  # [K, B, D]
+                else:
+                    aggregated = sparse_values_product(self.gate_compressed_indices, gated_values, flattened, self.gate_compressed_shape[0], self.gate_compressed_transposed_indices,
+                                                       self.gate_compressed_transposed_order).view(-1, batch_size, self.node_state_dim)
                 transformed = torch.cat([self.relation_transform(relation_index, parameter_layer)(aggregated[start:end]) for relation_index, start, end in segments], dim=0)
                 relation_messages = torch.zeros_like(self_messages).index_add(0, row_target.to(flattened.device), transformed)
                 if self.bounds_the_update:  # the summed relations are a mean, so the aggregate is bounded by one transform

@@ -34,6 +34,7 @@ from mechanistic_pathway_learning.graph.drug_entry_nodes import (
 )
 
 DRUG_ENTRY_MODES: tuple[str, ...] = ("targets", "nodes")
+EDGE_ROW_COLUMN = "_edge_row"  # the loader's own column: an edge's row in edges.parquet (ExperimentData.edge_row)
 
 
 @dataclass
@@ -90,6 +91,14 @@ class ExperimentData:
     # combination. None when no combination was loaded, so a run without them carries nothing new.
     perturbation_parts: list[list] | None = None
     perturbation_seed_parts: list[np.ndarray] | None = None  # per seed, the index of the part it came from; set with perturbation_parts
+    # Edge priors (decision 9.57: graph/edge_evidence.py, models/edge_gates.py). edge_row is the loader's: the row of each
+    # loaded edge in the graph's edges.parquet, which a table written row for row beside the graph (edge_evidence.parquet)
+    # is read through, since drug_entry "targets" drops rows. The other three are set by run_main_model.py under
+    # --edge-prior-strength, aligned to the loaded edges (gated, prior probability of presence, pseudo-count), else None.
+    edge_row: np.ndarray | None = None
+    edge_prior_gated: np.ndarray | None = None
+    edge_prior_probability: np.ndarray | None = None
+    edge_prior_strength: np.ndarray | None = None
 
     def structural_node_features(self) -> np.ndarray:
         """Fixed per-node features with no node identity: one-hot type, multi-hot compartment, log degree, currency, transport and reversibility flags, brain expression (log TPM and expressed flag).
@@ -451,6 +460,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
     group_column = GROUPING_COLUMNS[group_by]
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
     edges = pd.read_parquet(graph_directory / "edges.parquet")
+    edges = edges.assign(**{EDGE_ROW_COLUMN: np.arange(len(edges))})  # survives the entry-node drop below, which resets the index
     relation_types = json.loads((graph_directory / "relation_types.json").read_text())
     protein_of_gene = read_protein_of_gene(graph_directory)
     entry_table = pd.read_parquet(graph_directory / DRUG_ENTRY_FILE) if (Path(graph_directory) / DRUG_ENTRY_FILE).exists() else None
@@ -653,4 +663,5 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         drug_entry=None if entry_table is None else "nodes",
         perturbation_parts=None if combined_perturbations is None else [parts[p] for p in perturbation_ids],
         perturbation_seed_parts=None if combined_perturbations is None else [seed_parts[p] for p in perturbation_ids],
+        edge_row=edges[EDGE_ROW_COLUMN].to_numpy(dtype=np.int64),
     )

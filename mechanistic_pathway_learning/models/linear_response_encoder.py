@@ -99,6 +99,7 @@ import math
 import torch
 from torch import Tensor, nn
 
+from mechanistic_pathway_learning.models.edge_gates import EdgeGates, sparse_layout, sparse_values_product
 from mechanistic_pathway_learning.models.descriptor_treatments import (
     check_descriptor_treatment,
     features_without_descriptors,
@@ -489,13 +490,20 @@ class LinearResponseEncoder(nn.Module):
         entry_relation_names: tuple[str, ...] = (),
         edge_weight: Tensor | None = None,
         propagate_edge_weight: bool = True,
+        edge_gates: EdgeGates | None = None,
     ) -> None:
-        """propagate_edge_weight (decision 4.11, the owner on 13 October 2026: "4.11 yes: make the encoders agree like
+        """edge_gates (decision 9.57, models/edge_gates.py): a learnable presence gate per graph edge pulled toward its
+        evidence prior; with it the adjacency's values are recomputed each forward from the edges' weights times their
+        gates, over the fixed entries laid out once here. Without it (the registered model) nothing below changes.
+
+        propagate_edge_weight (decision 4.11, the owner on 13 October 2026: "4.11 yes: make the encoders agree like
         that") sends edge_weight into the propagation adjacency as well as the entry edges. Before this it scaled a
         drug's mechanism edges only, so item 13's six conductance weights were inert in this encoder while the
         message-passing one read them - the two registered encoders disagreed about the physics. False restores that."""
         super().__init__()
         self.register_buffer("seed_mask_partner_index", None if seed_mask_partner_index is None else seed_mask_partner_index.long(), persistent=False)
+        num_graph_edges = len(edge_sign)  # the gates index the graph's edges, before the entry edges leave the arrays below
+        kept_edge_position = torch.arange(num_graph_edges)
         entry_edges = None
         if entry_node_mask is None:
             if entry_relation_names:
@@ -516,6 +524,7 @@ class LinearResponseEncoder(nn.Module):
                            len(present_entry_relations))
             # the entry edges leave the arrays the normalised adjacency is built from; the relation list is unchanged
             edge_source, edge_target, edge_relation, edge_sign = edge_source[~is_entry_edge], edge_target[~is_entry_edge], edge_relation[~is_entry_edge], edge_sign[~is_entry_edge]
+            kept_edge_position = kept_edge_position[~is_entry_edge]
             if cofactor_edges is not None:
                 cofactor_edges = cofactor_edges[~is_entry_edge]
             if edge_weight is not None:  # the weight follows its edges out, so the adjacency still gets one per edge
@@ -586,6 +595,38 @@ class LinearResponseEncoder(nn.Module):
                                                                           edge_weight=edge_weight if propagate_edge_weight else None)
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
+        self.edge_gates = edge_gates
+        if edge_gates is not None:
+            if normalisation == "spectral":
+                raise ValueError("edge gates recompute the adjacency each step; the spectral normalisation's power iteration is not repeated per step, so use total_in_degree or in_degree")
+            if edge_gates.num_edges != num_graph_edges:
+                raise ValueError(f"edge_gates has {edge_gates.num_edges} edges and the graph {num_graph_edges}")
+            entries = self.expanded_adjacency_entries(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign, non_propagating_nodes,
+                                                      cofactor_edges, edge_signs, reversible_reactions, edge_weight if propagate_edge_weight else None)
+            if entries["relation_names"] != relation_names:
+                raise ValueError("the gated entries name other relations than the adjacency; the two layouts must agree")
+            # an entry's origin indexes the arrays above, which lack the entry edges; the gates index the graph's edges
+            entries["origin"] = kept_edge_position[entries["origin"]]
+            for name in ("row", "source", "target", "sign", "weight", "origin"):
+                self.register_buffer(f"gate_entry_{name}", entries[name], persistent=False)
+            edge_gates.set_read_edges(torch.unique(entries["origin"]))  # an entry edge is delivered apart and is not gated
+            key = entries["row"] * num_graph_nodes + entries["source"]
+            slot_keys, slot = torch.unique(key, return_inverse=True)  # sorted: the coalesced (row-major) order of stacked_adjacency
+            slot_rows = torch.div(slot_keys, num_graph_nodes, rounding_mode="floor")
+            gate_nonempty_rows = torch.unique(slot_rows)
+            self.register_buffer("gate_entry_slot", slot, persistent=False)
+            self.register_buffer("gate_slot_indices", torch.stack([slot_rows, slot_keys % num_graph_nodes]), persistent=False)
+            self.register_buffer("gate_slot_compressed_row", torch.searchsorted(gate_nonempty_rows, slot_rows), persistent=False)
+            self.gate_normalisation = normalisation
+            self.gate_divide_by_relations_feeding = not uses_mixture
+            self.gate_num_rows = len(gate_nonempty_rows)
+            # the transposed layouts the gated product's backward reads (edge_gates.SparseValuesProduct)
+            compressed_indices = torch.stack([self.gate_slot_compressed_row, self.gate_slot_indices[1]])
+            for name, indices, num_rows in (("compressed", compressed_indices, self.gate_num_rows), ("stacked", self.gate_slot_indices, len(relation_names) * num_graph_nodes)):
+                transposed_indices, transposed_order = sparse_layout(indices, num_rows)
+                self.register_buffer(f"gate_{name}_indices", indices, persistent=False)
+                self.register_buffer(f"gate_{name}_transposed_indices", transposed_indices, persistent=False)
+                self.register_buffer(f"gate_{name}_transposed_order", transposed_order, persistent=False)
         # the stacked rows that hold an edge, as their own matrix [K, N] with the relation and target of each row: with the
         # mean across relations the response sums the rows' messages times their relation's gain into their targets, so
         # the product needs only these K rows (54,982 of 700,435 on graph_full_neuronal) instead of all R * N
@@ -723,7 +764,27 @@ class LinearResponseEncoder(nn.Module):
         absolute conductances. With every weight 1 it reduces exactly to the unweighted form, so a graph with no
         weight column builds the adjacency it always built. A derived relation inherits its parent edge's weight:
         `depletes_substrate` takes the substrate edge's and `product_opposes` the product edge's, because each is the
-        same physical edge read in the other direction."""
+        same physical edge read in the other direction.
+
+        Built as two steps (16 October 2026, for the edge gates of decision 9.57): expanded_adjacency_entries lays out
+        every entry and the graph edge it came from, normalised_adjacency_values computes the values from the weights.
+        A gated encoder keeps the entries and recomputes only the values each step; this function is the two composed,
+        with the same operations in the same order as before the split."""
+        entries = LinearResponseEncoder.expanded_adjacency_entries(num_graph_nodes, relation_types, edge_source, edge_target, edge_relation, edge_sign,
+                                                                    non_propagating_nodes, cofactor_edges, edge_signs, reversible_reactions, edge_weight)
+        values = LinearResponseEncoder.normalised_adjacency_values(entries, num_graph_nodes, normalisation, divide_by_relations_feeding)
+        stacked = torch.sparse_coo_tensor(torch.stack([entries["row"], entries["source"]]), values,
+                                          (len(entries["relation_names"]) * num_graph_nodes, num_graph_nodes)).coalesce()
+        return stacked, entries["relation_names"]
+
+    @staticmethod
+    def expanded_adjacency_entries(num_graph_nodes: int, relation_types: list[str], edge_source: Tensor, edge_target: Tensor,
+                                   edge_relation: Tensor, edge_sign: Tensor, non_propagating_nodes: Tensor | None = None,
+                                   cofactor_edges: Tensor | None = None, edge_signs: str = "graph",
+                                   reversible_reactions: Tensor | None = None, edge_weight: Tensor | None = None) -> dict:
+        """Every entry of the stacked adjacency before normalisation: row (relation * N + target), source, target,
+        relation, sign, weight, and origin, the index of the graph edge the entry was read from (a derived relation's
+        entry points at its parent edge), with the relation names in stack order."""
         edge_relation = edge_relation.long().clone()
         relation_names = list(relation_types)
         if cofactor_edges is not None and SUBSTRATE_RELATION in relation_types and PRODUCT_RELATION in relation_types:
@@ -735,8 +796,9 @@ class LinearResponseEncoder(nn.Module):
                             else torch.as_tensor(edge_weight, dtype=torch.float32).reshape(-1).clamp_min(0.0))
         if weights_of_edges.shape != edge_sign.shape:
             raise ValueError("edge_weight needs one value per edge")
+        edge_index = torch.arange(len(edge_sign))
         sources, targets, relations, signs = [edge_source.long()], [edge_target.long()], [edge_relation], [edge_sign.float()]
-        weights = [weights_of_edges]
+        weights, origins = [weights_of_edges], [edge_index]
         for forward_relation, depletion_relation in ((SUBSTRATE_RELATION, DEPLETES_SUBSTRATE_RELATION),):  # carriers get none (module docstring)
             if forward_relation not in relation_names:
                 continue
@@ -747,6 +809,7 @@ class LinearResponseEncoder(nn.Module):
             relations.append(torch.full((int(forward_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
             signs.append(-torch.ones(int(forward_edges.sum())))
             weights.append(weights_of_edges[forward_edges])
+            origins.append(edge_index[forward_edges])
         if reversible_reactions is not None and PRODUCT_RELATION in relation_names and SUBSTRATE_RELATION in relation_names:
             reversible = reversible_reactions.bool()
             product_edges = (edge_relation == relation_names.index(PRODUCT_RELATION)) & reversible[edge_source.long()]
@@ -766,11 +829,12 @@ class LinearResponseEncoder(nn.Module):
             relations.append(torch.full((int(product_edges.sum()),), len(relation_names) - 1, dtype=torch.long))
             signs.append(-torch.ones(int(product_edges.sum())))
             weights.append(weights_of_edges[product_edges])
+            origins.append(edge_index[product_edges])
         source, target, relation, sign = torch.cat(sources), torch.cat(targets), torch.cat(relations), torch.cat(signs)
-        weight = torch.cat(weights)
+        weight, origin = torch.cat(weights), torch.cat(origins)
         if non_propagating_nodes is not None:
             keep = ~non_propagating_nodes.bool()[source]
-            source, target, relation, sign, weight = source[keep], target[keep], relation[keep], sign[keep], weight[keep]
+            source, target, relation, sign, weight, origin = source[keep], target[keep], relation[keep], sign[keep], weight[keep], origin[keep]
         for index, name in enumerate(relation_names):
             if name in UNSIGNED_RELATIONS:
                 sign = torch.where(relation == index, torch.ones_like(sign), sign)  # the learned gain carries the sign
@@ -780,24 +844,34 @@ class LinearResponseEncoder(nn.Module):
             sign = torch.ones_like(sign)
         elif edge_signs == "permuted":  # the sign permutation; see EDGE_SIGNS
             sign = sign[torch.randperm(len(sign), generator=torch.Generator().manual_seed(SIGN_PERMUTATION_SEED))]
+        row = relation * num_graph_nodes + target
+        return {"row": row, "source": source, "target": target, "relation": relation, "sign": sign, "weight": weight, "origin": origin,
+                "relation_names": relation_names}
+
+    @staticmethod
+    def normalised_adjacency_values(entries: dict, num_graph_nodes: int, normalisation: str = "total_in_degree", divide_by_relations_feeding: bool = True,
+                                    weight: Tensor | None = None) -> Tensor:
+        """The value of every entry: sign * weight over the normalisation's divisor. `weight` replaces the entries' own
+        weights (a gated encoder passes them times its gates); the divisors are read from the same weights."""
         if normalisation not in NORMALISATIONS:
             raise ValueError(f"normalisation must be one of {NORMALISATIONS}, not {normalisation!r}")
-        row = relation * num_graph_nodes + target
+        source, target, sign, row = entries["source"], entries["target"], entries["sign"], entries["row"]
+        weight = entries["weight"] if weight is None else weight
+        relation_names = entries["relation_names"]
         # Decision 4.11: every divisor is the sum of the weights feeding the destination rather than a count of the
         # edges, so an unsigned row still sums to 1 and the weight acts as a share. Weights of 1 give back the counts.
         if normalisation == "spectral":  # one global scale and no per-node divisor; see NORMALISATIONS
             radius = LinearResponseEncoder.spectral_radius_of_unsigned_aggregate(num_graph_nodes, source, target)
             values = sign * weight / max(radius, 1.0)
         elif normalisation == "total_in_degree":  # one per-node divisor over all relations together; see NORMALISATIONS
-            total_in_degree = torch.zeros(num_graph_nodes).index_add(0, target, weight).clamp_min(torch.finfo(torch.float32).tiny)
+            total_in_degree = torch.zeros(num_graph_nodes, dtype=weight.dtype, device=weight.device).index_add(0, target, weight).clamp_min(torch.finfo(torch.float32).tiny)
             values = sign * weight / total_in_degree[target]
         else:
-            in_degree = torch.zeros(len(relation_names) * num_graph_nodes).index_add(0, row, weight)
+            in_degree = torch.zeros(len(relation_names) * num_graph_nodes, dtype=weight.dtype, device=weight.device).index_add(0, row, weight)
             relations_feeding_node = (in_degree.view(len(relation_names), num_graph_nodes) > 0).sum(dim=0).clamp_min(1)
             cross_relation_divisor = relations_feeding_node[target] if divide_by_relations_feeding else 1.0
             values = sign * weight / (in_degree[row].clamp_min(torch.finfo(torch.float32).tiny) * cross_relation_divisor)
-        stacked = torch.sparse_coo_tensor(torch.stack([row, source]), values, (len(relation_names) * num_graph_nodes, num_graph_nodes)).coalesce()
-        return stacked, relation_names
+        return values
 
     def relation_gain(self) -> Tensor:
         """[R, D] gains: positive for signed relations, either sign for unsigned ones, all below the contraction bound."""
@@ -1031,6 +1105,8 @@ class LinearResponseEncoder(nn.Module):
         batch_size = sustained.shape[0]
         gain = self.relation_gain()  # [R, C]
         num_relations = gain.shape[0]
+        # the gated values are computed once per call and read by every round (decision 9.57); the registered model reads the buffers
+        gated_values = self.gated_slot_values() if self.edge_gates is not None else None
         node_major_input = sustained.permute(1, 0, 2).contiguous()  # [N, B, C]
         # the product rule weights the input and the messages inside the loop; the limiting-step rule leaves the loop
         # unweighted and multiplies the settled state by the bottleneck once, below. See CLASS_WEIGHT_RULES.
@@ -1050,10 +1126,10 @@ class LinearResponseEncoder(nn.Module):
         steps_taken = 0
         for _ in range(rounds):
             if row_gain is not None:  # the sum over relations of gain times the relation's messages, over the rows that hold an edge
-                row_messages = torch.sparse.mm(self.compressed_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
+                row_messages = self.adjacency_product("compressed", state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels), gated_values)
                 relation_messages = torch.zeros_like(state).index_add(0, self.row_target_index, row_messages.view(-1, batch_size, self.propagation_channels) * row_gain)
             else:
-                aggregated = torch.sparse.mm(self.stacked_adjacency, state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels))
+                aggregated = self.adjacency_product("stacked", state.reshape(self.num_graph_nodes, batch_size * self.propagation_channels), gated_values)
                 per_relation = aggregated.view(num_relations, self.num_graph_nodes, batch_size, self.propagation_channels) * gain[:, None, None, :]
                 relation_messages = self.cross_relation_mixture(per_relation, self.relation_feeds_node, self.node_type_index)
             if entry_edge_gain is not None:  # added on their own: no in-degree divisor, and no part in the mean or the mixture across relations
@@ -1104,6 +1180,33 @@ class LinearResponseEncoder(nn.Module):
         pooled_mean = by_class[:, :, self.shared_pool_classes, :].mean(dim=2, keepdim=True).expand_as(by_class)
         replace = self.extracellular_pool_nodes[:, None, None, None] & self.shared_pool_classes[None, None, :, None]
         return torch.where(replace, pooled_mean, by_class).reshape(num_nodes, batch_size, -1)
+
+    def gated_slot_values(self) -> Tensor:
+        """The adjacency's stored values with every entry's weight times its edge's gate (decision 9.57), in the
+        coalesced order of both the stacked [R * N, N] and the compressed [K, N] layouts, which share their entries. The
+        entries and their slots were laid out at construction, so this is arithmetic over fixed indices."""
+        weight = self.gate_entry_weight * self.edge_gates.edge_values()[self.gate_entry_origin]
+        entries = {"row": self.gate_entry_row, "source": self.gate_entry_source, "target": self.gate_entry_target, "sign": self.gate_entry_sign,
+                   "weight": self.gate_entry_weight, "relation_names": self.relation_names}
+        values = self.normalised_adjacency_values(entries, self.num_graph_nodes, self.gate_normalisation, self.gate_divide_by_relations_feeding, weight=weight)
+        return torch.zeros(self.gate_slot_indices.shape[1], dtype=values.dtype, device=values.device).index_add(0, self.gate_entry_slot, values)
+
+    def gated_adjacencies(self) -> tuple[Tensor, Tensor]:
+        """(stacked [R * N, N], compressed [K, N]) as sparse tensors with the gated values, for reading; the propagation
+        multiplies through adjacency_product instead, whose value gradient forms no dense matrix."""
+        values = self.gated_slot_values()
+        stacked = torch.sparse_coo_tensor(self.gate_stacked_indices, values, (len(self.relation_names) * self.num_graph_nodes, self.num_graph_nodes), is_coalesced=True)
+        compressed = torch.sparse_coo_tensor(self.gate_compressed_indices, values, (self.gate_num_rows, self.num_graph_nodes), is_coalesced=True)
+        return stacked, compressed
+
+    def adjacency_product(self, layout: str, dense: Tensor, gated_values: Tensor | None) -> Tensor:
+        """The "compressed" or "stacked" adjacency times dense: the registered buffers without gates, the gated values
+        through edge_gates.sparse_values_product with them."""
+        if gated_values is None:
+            return torch.sparse.mm(self.compressed_adjacency if layout == "compressed" else self.stacked_adjacency, dense)
+        num_rows = self.gate_num_rows if layout == "compressed" else len(self.relation_names) * self.num_graph_nodes
+        return sparse_values_product(getattr(self, f"gate_{layout}_indices"), gated_values, dense, num_rows,
+                                     getattr(self, f"gate_{layout}_transposed_indices"), getattr(self, f"gate_{layout}_transposed_order"))
 
     def forward(self, perturbation_node_index: Tensor, perturbation_sign_and_magnitude: Tensor, relation_adjacencies=None) -> Tensor:
         """The gated response field [B, N, D]; relation_adjacencies is accepted for the message passing signature and

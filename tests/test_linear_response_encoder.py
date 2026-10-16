@@ -1071,3 +1071,24 @@ def test_the_governing_proton_node_is_the_pool_the_reactions_use():
     assert governing == {"c": 0, "v": 2, "e": 3}  # Human-GEM wins in c; the vacuole is Reactome's alone
     order = sorted(governing)
     assert list(compartment_index_per_node(compartments, order)) == [0, 0, 2, 1, -1, -1]  # the transport reaction has none
+
+
+def test_the_trainers_compartment_ph_inputs_build_the_encoder_on_a_graph_with_proton_nodes():
+    """The registered model turns compartment pH on; until 16 October the trainer passed numpy index arrays and the
+    constructor failed on every graph with a proton node in a compartment, which no test graph had."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from experiments.run_main_model import compartment_ph_encoder_inputs
+
+    data = SimpleNamespace(node_ids=["MAM02039c", "R1", "MAM00001c", "MAM00002m", "MAM02039m"], node_display_name=["H+", "R1", "A", "B", "H+"],
+                           node_compartment=np.array(["c", "c", "c", "m", "m"]), node_degree=np.array([1.0, 3.0, 1.0, 1.0, 0.0]))
+    inputs = compartment_ph_encoder_inputs(data)
+    assert inputs["ph_compartment_names"] == ["c", "m"] and inputs["ph_proton_node_index"].tolist() == [0, 4]
+    assert inputs["ph_compartment_of_node"].tolist() == [0, 0, 0, 1, 1] and inputs["ph_proton_node_index"].dtype == torch.long
+    relations = ["substrate_of", "product_of"]
+    encoder = LinearResponseEncoder(5, relations, torch.tensor([2, 1, 1]), torch.tensor([1, 0, 3]), torch.tensor([0, 1, 1]), torch.ones(3), torch.eye(5), 4,
+                                    num_propagation_steps=6, fixed_point_tolerance=None, **inputs)
+    assert encoder.ph_proton_node_index.tolist() == [0, 4] and torch.isfinite(encoder.response(*perturb(2, -1.0))).all()
+

@@ -109,12 +109,22 @@ from mechanistic_pathway_learning.graph.brain_expression_weights import ALL_CELL
 from mechanistic_pathway_learning.graph.cofactor_edges import CARRIER_RULES, cofactor_edge_mask
 from mechanistic_pathway_learning.graph.compartment_ph import compartment_ph_inputs
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
+from mechanistic_pathway_learning.graph.edge_evidence import (
+    DEFAULT_COUNT_CAP as DEFAULT_EDGE_COUNT_CAP,
+    DEFAULT_TEMPERING as DEFAULT_EDGE_TEMPERING,
+    DEFAULT_TIERS_PATH as DEFAULT_EDGE_TIERS_PATH,
+    edge_priors,
+    permute_edge_priors,
+    read_edge_tiers,
+    summarise as summarise_edge_priors,
+)
 from mechanistic_pathway_learning.graph.gene_protein_split import ENCODES_RELATION
 from mechanistic_pathway_learning.graph.node_descriptors import DESCRIPTOR_BLOCK_PREFIXES, columns_a_seed_still_reads, descriptor_blocks
 from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder import LocalDescriptorEncoder
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
+from mechanistic_pathway_learning.models.edge_gates import EdgeGates, penalty_denominator
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CLASS_WEIGHT_RULES,
@@ -419,6 +429,7 @@ VALUES_BEFORE_THE_V4_DEFAULTS = {
     "placebo_negative_weight": None, "placebo_negative_weights_file": None, "equal_drug_shares": False, "normalisation": "in_degree", "message_passing_edge_signs": "unsigned", "combined_perturbations": None,
     "compartment_ph": False, "relation_parameterisation": "per_layer_dense", "reversible_reactions": False,
     "soft_prior_strength": 0.0, "soft_prior_reports": [], "permute_soft_priors": False, "soft_prior_probability": "tier",
+    "edge_prior_strength": 0.0, "permute_edge_priors": False,
 }
 
 
@@ -464,10 +475,14 @@ RESUME_CONTROL_ARGUMENTS = {"run_dir", "resume", "refit_on_validation", "max_epo
 # flags added after runs had started: off, they leave the fingerprint as it was, so a resumed run reports no change
 ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes", "equal_drug_shares", "normalise_drug_input", "drug_entry",
                                     "drug_mechanism_before_first_layer", "sequestration_carries", "permute_drug_targets", "placebo_negative_weight",
-                                    "soft_prior_strength"}
+                                    "soft_prior_strength", "edge_prior_strength"}
 # the settings of the soft prior mean nothing while its strength is 0, so they enter the fingerprint only when it is on
 SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_count_cap", "soft_prior_record_grades", "soft_prior_reports", "permute_soft_priors",
                        "soft_prior_probability", "soft_prior_calibration_minimum_cases"}
+# and the edge priors' settings mean nothing while their strength is 0 (decision 9.57)
+EDGE_PRIOR_SETTINGS = {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate"}
+EDGE_EVIDENCE_FILE = "edge_evidence.parquet"  # experiments/build_edge_evidence.py writes it beside the graph's edges.parquet
+EDGE_GATED_ENCODERS: tuple[str, ...] = ("linear_response", "message_passing")
 
 
 def json_ready(value):
@@ -564,9 +579,10 @@ def configuration_fingerprint(arguments, data, label_mask) -> dict:
     """The training arguments and digests of the inputs as loaded, recorded in the checkpoint so that a resume under
     other arguments or rebuilt inputs is reported (the split signature covers only the split and the controls)."""
     soft_priors_on = bool(getattr(arguments, "soft_prior_strength", 0.0))
+    edge_priors_on = bool(getattr(arguments, "edge_prior_strength", 0.0))
     fingerprint = {f"argument:{name}": str(value) for name, value in sorted(vars(arguments).items())
                    if name not in RESUME_CONTROL_ARGUMENTS and not (name in ARGUMENTS_RECORDED_ONLY_WHEN_SET and not value)
-                   and not (name in SOFT_PRIOR_SETTINGS and not soft_priors_on)}
+                   and not (name in SOFT_PRIOR_SETTINGS and not soft_priors_on) and not (name in EDGE_PRIOR_SETTINGS and not edge_priors_on)}
     fingerprint.update({
         "input:outcomes": array_sha256(data.outcomes), "input:weights": array_sha256(data.weights),
         "input:label_mask": None if label_mask is None else array_sha256(label_mask),
@@ -580,6 +596,10 @@ def configuration_fingerprint(arguments, data, label_mask) -> dict:
         fingerprint["file:soft_prior_tiers"] = file_sha256(arguments.soft_prior_tiers)
         for path in getattr(arguments, "soft_prior_reports", None) or []:
             fingerprint[f"file:soft_prior_reports:{Path(path).name}"] = file_sha256(path) if Path(path).is_file() else None
+    if edge_priors_on:
+        fingerprint["file:edge_prior_tiers"] = file_sha256(arguments.edge_prior_tiers)
+        evidence_path = Path(arguments.graph_dir) / EDGE_EVIDENCE_FILE
+        fingerprint["file:edge_evidence"] = file_sha256(evidence_path) if evidence_path.is_file() else None
     return fingerprint
 
 
@@ -593,8 +613,20 @@ def file_sha256(path) -> str | None:
     return digest.hexdigest()
 
 
+def compartment_ph_encoder_inputs(data) -> dict:
+    """compartment_ph_inputs as the linear-response encoder takes them, the index arrays as tensors. Until 16 October
+    2026 the numpy arrays went to the encoder as they were, and its constructor failed (".long()" on an array) on every
+    graph that names a proton node in a compartment, so the registered model, which turns compartment pH on, could not
+    be built on the real graph; the test graphs have no compartments and passed."""
+    return {name: torch.as_tensor(value, dtype=torch.long) if isinstance(value, np.ndarray) else value for name, value in compartment_ph_inputs(data).items()}
+
+
 def build_models(data, arguments, device):
+    """The encoder and the head. With edge priors on the data (build_edge_priors), the linear-response encoder takes its
+    edge gates here; the message-passing encoder takes them once its adjacencies exist (attach_edge_gates)."""
     resolve_registered_defaults(arguments)
+    if getattr(data, "edge_prior_gated", None) is not None and arguments.encoder not in EDGE_GATED_ENCODERS:
+        raise ValueError(f"the edge priors gate the edges an encoder propagates along; the {arguments.encoder} encoder reads none (use one of {EDGE_GATED_ENCODERS})")
     if arguments.encoder == "none":
         encoder = ZeroFieldEncoder(len(data.node_ids), arguments.node_state_dim).to(device)
     elif arguments.encoder == "local_descriptors":
@@ -623,7 +655,7 @@ def build_models(data, arguments, device):
                                         fixed_point_tolerance=arguments.fixed_point_tolerance,
                                         max_propagation_steps=arguments.max_propagation_steps,
                                 class_weight_rule=arguments.class_weight_rule, input_weights=arguments.input_weights,
-                                        **(compartment_ph_inputs(data) if arguments.compartment_ph else {}),
+                                        **(compartment_ph_encoder_inputs(data) if arguments.compartment_ph else {}),
                                         propagation_channels=arguments.propagation_channels, response_scale=arguments.response_scale, damping=arguments.propagation_damping,
                                         normalisation=arguments.normalisation, cross_relation_aggregator=arguments.cross_relation_aggregator,
                                         mixture_weighting=arguments.mixture_weighting, node_type_index=node_type_index,
@@ -632,7 +664,8 @@ def build_models(data, arguments, device):
                                         extracellular_pool_nodes=pool_nodes, shared_pool_classes=shared_pool_classes,
                                         **descriptor_treatment_inputs(data, arguments),
                                         **({"entry_relation_names": ENTRY_RELATIONS, "edge_weight": torch.as_tensor(data.edge_weight), **entry_node_inputs(data)}
-                                           if entry_node_inputs(data) else {})).to(device)
+                                           if entry_node_inputs(data) else {}),
+                                        edge_gates=edge_gates_of(data)).to(device)
         # Item 20, built 14 October 2026: the stoichiometric demand of the limiting-step pass. Before this
         # bottleneck_edge_demand was None and every demand was 1, so a reaction consuming two molecules counted as one.
         # A graph built before the column existed carries no coefficient and keeps the old behaviour.
@@ -729,20 +762,25 @@ def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) ->
     gates) whose learning rate is set; Adam moves a parameter by about one learning rate per step, so the rate is the
     time scale on which that parameter can change. extra_parameters (the laboratory readout) join the main group. Under
     --descriptor-treatment zero_init_slow the encoder's descriptor map is one more group, at --descriptor-learning-rate
-    with the main weight decay."""
+    with the main weight decay. With edge priors the edge gates' logits are a group of their own, at
+    --edge-gate-learning-rate (the main rate when unset) and without weight decay: decay pulls a logit toward 0, every
+    gate toward 0.5, which is a prior of its own that the evidence does not state."""
     rates = {"links": arguments.link_learning_rate, "leaks": arguments.leak_learning_rate, "module_biases": arguments.module_bias_learning_rate,
              "gates": getattr(arguments, "gate_learning_rate", 0.0)}
     descriptor_parameters = encoder.descriptor_parameters() if hasattr(encoder, "descriptor_parameters") else []
     descriptor_groups = [{"params": descriptor_parameters, "lr": arguments.descriptor_learning_rate}] if descriptor_parameters else []
-    descriptor_ids = {id(parameter) for parameter in descriptor_parameters}
-    encoder_parameters = [parameter for parameter in encoder.parameters() if id(parameter) not in descriptor_ids]
+    edge_gate_parameters = list(encoder.edge_gates.parameters()) if getattr(encoder, "edge_gates", None) is not None else []
+    edge_gate_groups = ([{"params": edge_gate_parameters, "lr": getattr(arguments, "edge_gate_learning_rate", None) or arguments.learning_rate, "weight_decay": 0.0}]
+                        if edge_gate_parameters else [])
+    grouped_apart = {id(parameter) for parameter in descriptor_parameters + edge_gate_parameters}
+    encoder_parameters = [parameter for parameter in encoder.parameters() if id(parameter) not in grouped_apart]
     if not hasattr(head, "time_scale_parameter_groups") or not any(rates.values()):
-        return [{"params": encoder_parameters + list(head.parameters()) + list(extra_parameters)}, *descriptor_groups]
+        return [{"params": encoder_parameters + list(head.parameters()) + list(extra_parameters)}, *descriptor_groups, *edge_gate_groups]
     separate_groups = [{"params": parameters, "lr": rates[name], "weight_decay": 0.0}
                        for name, parameters in head.time_scale_parameter_groups().items() if rates[name]]
     separated_ids = {id(parameter) for group in separate_groups for parameter in group["params"]}
     other_parameters = encoder_parameters + [parameter for parameter in head.parameters() if id(parameter) not in separated_ids] + list(extra_parameters)
-    return [{"params": other_parameters}, *separate_groups, *descriptor_groups]
+    return [{"params": other_parameters}, *separate_groups, *descriptor_groups, *edge_gate_groups]
 
 
 def encode(encoder, node_index, sign_and_magnitude, adjacencies, field_kind: str):
@@ -962,6 +1000,17 @@ def clamped_probability_report(predictions: np.ndarray, data, indices: np.ndarra
             "reopens_bce_in_log_space": bool((below & outcomes & labelled).any())}
 
 
+def message_passing_edge_arrays(data, edge_signs: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+    """(edge index, relation, sign or None, weight or None): what the message-passing adjacencies are built from, and
+    what its edge gates are laid out on (attach_edge_gates), so the two cannot read different signs or weights."""
+    if edge_signs not in MESSAGE_PASSING_EDGE_SIGNS:
+        raise ValueError(f"--message-passing-edge-signs must be one of {MESSAGE_PASSING_EDGE_SIGNS}, not {edge_signs!r}")
+    edge_sign = None if edge_signs == "unsigned" or data.edge_sign is None else torch.as_tensor(np.asarray(data.edge_sign), dtype=torch.float32)
+    edge_weight = None if edge_signs == "unsigned" or data.edge_weight is None else torch.as_tensor(np.asarray(data.edge_weight), dtype=torch.float32)
+    return (torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long), torch.as_tensor(data.edge_relation, dtype=torch.long),
+            edge_sign, edge_weight)
+
+
 def message_passing_adjacencies(data, edge_signs: str) -> list:
     """The message-passing encoder's per-relation adjacencies, signed from the graph under edge_signs "graph".
 
@@ -970,14 +1019,78 @@ def message_passing_adjacencies(data, edge_signs: str) -> list:
     reproduces every run made before that date. Under "graph" an edge also carries the weight the graph gives it, which
     today is the driving-force edges of the computed membrane potential; without such a column every weight is 1 and
     only the signs change."""
-    if edge_signs not in MESSAGE_PASSING_EDGE_SIGNS:
-        raise ValueError(f"--message-passing-edge-signs must be one of {MESSAGE_PASSING_EDGE_SIGNS}, not {edge_signs!r}")
-    edge_sign = None if edge_signs == "unsigned" or data.edge_sign is None else torch.as_tensor(np.asarray(data.edge_sign), dtype=torch.float32)
-    edge_weight = None if edge_signs == "unsigned" or data.edge_weight is None else torch.as_tensor(np.asarray(data.edge_weight), dtype=torch.float32)
-    return RelationalMessagePassingEncoder.build_relation_adjacencies(
-        torch.as_tensor(np.stack([data.edge_source, data.edge_target]), dtype=torch.long),
-        torch.as_tensor(data.edge_relation, dtype=torch.long), len(data.node_ids), len(data.relation_types),
-        edge_sign=edge_sign, edge_weight=edge_weight)
+    edge_index, edge_relation, edge_sign, edge_weight = message_passing_edge_arrays(data, edge_signs)
+    return RelationalMessagePassingEncoder.build_relation_adjacencies(edge_index, edge_relation, len(data.node_ids), len(data.relation_types),
+                                                                      edge_sign=edge_sign, edge_weight=edge_weight)
+
+
+def build_edge_priors(data, arguments) -> dict | None:
+    """The edge priors of decision 9.57, set on data aligned to its loaded edges (edge_prior_gated, edge_prior_probability,
+    edge_prior_strength) with their summary; at --edge-prior-strength 0, the registered model, the three are None and so
+    is the summary (set to None in either case, so a data set reused across runs never keeps another run's priors).
+
+    The table is <graph-dir>/edge_evidence.parquet (experiments/build_edge_evidence.py), one row per row of the graph's
+    edges.parquet with each edge's source_id, target_id and relation_type. It is refused unless those are the graph's,
+    and read through the loader's edge rows (ExperimentData.edge_row), which skip what drug_entry "targets" dropped. Read
+    before any rewiring, which then keeps each prior at its edge position as it keeps the signs (main)."""
+    data.edge_prior_gated = data.edge_prior_probability = data.edge_prior_strength = None
+    strength = float(getattr(arguments, "edge_prior_strength", 0.0) or 0.0)
+    if strength == 0.0:
+        return None
+    if strength < 0.0:
+        raise ValueError("--edge-prior-strength multiplies pseudo-counts and cannot be negative")
+    if arguments.encoder not in EDGE_GATED_ENCODERS:
+        raise ValueError(f"--edge-prior-strength gates the edges an encoder propagates along; the {arguments.encoder} encoder reads none (use one of {EDGE_GATED_ENCODERS})")
+    path = Path(arguments.graph_dir) / EDGE_EVIDENCE_FILE
+    if not path.is_file():
+        raise FileNotFoundError(f"{path} is missing; build it with: python experiments/build_edge_evidence.py --graph-dir {arguments.graph_dir}")
+    if getattr(data, "edge_row", None) is None:
+        raise ValueError("these data carry no edge rows (ExperimentData.edge_row); load them with load_experiment_data")
+    endpoint_columns = ["source_id", "target_id", "relation_type"]
+    evidence = pd.read_parquet(path)
+    graph_edges = pd.read_parquet(Path(arguments.graph_dir) / "edges.parquet", columns=endpoint_columns)
+    missing = [column for column in endpoint_columns if column not in evidence.columns]
+    if missing or len(evidence) != len(graph_edges) or not all(np.array_equal(evidence[column].to_numpy(dtype=object), graph_edges[column].to_numpy(dtype=object))
+                                                             for column in endpoint_columns):
+        raise ValueError(f"{path} does not hold this graph's edges row for row" + (" (it was written before the endpoint columns)" if missing else "")
+                         + f"; rebuild it with: python experiments/build_edge_evidence.py --graph-dir {arguments.graph_dir}")
+    rows = np.asarray(data.edge_row, dtype=np.int64)
+    # the loaded edges are those rows: a rewiring moves targets only and runs after this, so sources and relations must agree
+    node_ids, relation_names = np.asarray(data.node_ids, dtype=object), np.asarray(data.relation_types, dtype=object)
+    if not (np.array_equal(node_ids[np.asarray(data.edge_source)], evidence.source_id.to_numpy(dtype=object)[rows])
+            and np.array_equal(relation_names[np.asarray(data.edge_relation)], evidence.relation_type.to_numpy(dtype=object)[rows])):
+        raise ValueError(f"the loaded edges are not the rows of {path} the loader names; the edge table and the graph disagree")
+    evidence = evidence.iloc[rows].reset_index(drop=True)
+    gated, probability, pseudo_count = edge_priors(evidence, read_edge_tiers(arguments.edge_prior_tiers), global_strength=strength,
+                                                   tempering=arguments.edge_prior_tempering, count_cap=arguments.edge_prior_count_cap)
+    summary = {"path": str(path), "sha256": file_sha256(path), "tiers": str(arguments.edge_prior_tiers), "tiers_sha256": file_sha256(arguments.edge_prior_tiers),
+               "strength": strength, "tempering": arguments.edge_prior_tempering, "count_cap": arguments.edge_prior_count_cap,
+               **summarise_edge_priors(evidence, gated, probability, pseudo_count), "permutation": None}
+    if getattr(arguments, "permute_edge_priors", False):
+        probability, pseudo_count = permute_edge_priors(gated, probability, pseudo_count, np.asarray(data.edge_relation), random_seed=arguments.seed)
+        summary["permutation"] = {"seed": arguments.seed, "within": "relation", "priors_sha256": array_sha256(np.nan_to_num(probability, nan=-1.0))}
+    data.edge_prior_gated, data.edge_prior_probability, data.edge_prior_strength = gated, probability, pseudo_count
+    return summary
+
+
+def edge_gates_of(data) -> EdgeGates | None:
+    """Fresh edge gates at the data's edge priors, or None without them (the registered model)."""
+    if getattr(data, "edge_prior_gated", None) is None:
+        return None
+    return EdgeGates(data.edge_prior_gated, data.edge_prior_probability, data.edge_prior_strength)
+
+
+def attach_edge_gates(encoder, data, adjacencies, arguments) -> None:
+    """The message-passing encoder's edge gates, laid out on the adjacencies it reads, with the signs and weights those
+    were built from. A no-op for any other encoder (the linear-response one takes its gates in build_models) and without
+    edge priors. Call it on every freshly built encoder before its optimizer and before a state is loaded into it."""
+    if not isinstance(encoder, RelationalMessagePassingEncoder):
+        return
+    gates = edge_gates_of(data)
+    if gates is None:
+        return
+    edge_index, edge_relation, edge_sign, edge_weight = message_passing_edge_arrays(data, getattr(arguments, "message_passing_edge_signs", "graph"))
+    encoder.attach_edge_gates(gates, edge_index, edge_relation, adjacencies, edge_sign=edge_sign, edge_weight=edge_weight)
 
 
 def drug_loss_slots(data) -> np.ndarray | None:
@@ -1510,6 +1623,20 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--permute-soft-priors", action="store_true",
                         help="negative control: the soft priors moved among eligible cells so that every perturbation and symptom keeps its number of them (the "
                              "layout is lost, the popularity is kept); the real arm must beat it for the prior to carry pair-specific information")
+    parser.add_argument("--edge-prior-strength", type=float, default=0.0,
+                        help="global multiplier on the edge priors of decision 9.57 (graph/edge_evidence.py, models/edge_gates.py): every edge whose evidence "
+                             "has a tier gets a learnable presence gate, started at its prior probability and pulled back to it with this many pseudo-counts "
+                             "per unit of its tier's strength, one pseudo-count weighing as one unit of label weight. Needs <graph-dir>/edge_evidence.parquet. "
+                             "0 (the default, and the registered model) builds no gate and leaves every run as it was")
+    parser.add_argument("--edge-prior-tiers", type=Path, default=DEFAULT_EDGE_TIERS_PATH,
+                        help="per edge family and evidence kind: prior probability that the edge is present and unit strength")
+    parser.add_argument("--edge-prior-tempering", type=float, default=DEFAULT_EDGE_TEMPERING, help="exponent on an edge's capped count of distinct records")
+    parser.add_argument("--edge-prior-count-cap", type=int, default=DEFAULT_EDGE_COUNT_CAP, help="an edge's records beyond this count add nothing")
+    parser.add_argument("--permute-edge-priors", action="store_true",
+                        help="negative control: the priors of the gated edges shuffled among the gated edges of each relation (the wiring and each relation's "
+                             "distribution of priors kept, which edge holds which lost); the real arm must beat it for the evidence to carry edge-specific information")
+    parser.add_argument("--edge-gate-learning-rate", type=float, default=None,
+                        help="learning rate of the edge gates' logits, which take no weight decay; the main learning rate when unset")
     parser.add_argument("--equal-drug-shares", action=argparse.BooleanOptionalAction, default=True,
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
@@ -1616,6 +1743,12 @@ def main() -> None:
     # the soft priors are built on the perturbations that remain (the lockbox never receives one) and travel with the
     # label rows under --permute-labels, so a permuted-labels run sees no pair-specific information from them either
     soft_prior_probability, soft_prior_strength, soft_priors_summary, literature_reports, calibration_cells = build_soft_priors(data, arguments)
+    # the edge priors (decision 9.57) are read for the graph's own edges, before any rewiring below, which keeps each at its
+    # edge position as it keeps the signs: a relation keeps its distribution of priors and its sources their priors
+    edge_priors_summary = build_edge_priors(data, arguments)
+    if edge_priors_summary is not None:
+        print(f"edge priors: {edge_priors_summary['gated']:,} of {edge_priors_summary['edges']:,} edges gated at strength {edge_priors_summary['strength']:g}, "
+              f"{edge_priors_summary['contested']} with a curated absence" + (", priors permuted within each relation" if edge_priors_summary["permutation"] else ""))
     permutation_source_rows_sha256 = None
     if arguments.permute_labels:  # rows move whole, so a pair keeps its weight, frequency and label-mask entry
         source_row = degree_stratified_row_permutation(data.perturbation_degrees_for_strata, random_seed=arguments.seed, partition=in_lockbox)
@@ -1704,6 +1837,9 @@ def main() -> None:
     if arguments.encoder == "message_passing":
         adjacencies = [adjacency.to(device) if adjacency is not None else None
                        for adjacency in message_passing_adjacencies(data, arguments.message_passing_edge_signs)]
+    attach_edge_gates(encoder, data, adjacencies, arguments)
+    if getattr(encoder, "edge_gates", None) is not None:
+        print(f"edge gates: {encoder.edge_gates.summary()['gated_edges_the_encoder_reads']:,} of the gated edges are read by the {arguments.encoder} encoder")
     laboratory_index, laboratory_readout = None, None
     if arguments.laboratory_label_weight > 0:
         laboratory_index = LaboratoryLabelIndex(pd.read_parquet(arguments.laboratory_labels), data.perturbation_ids, data.node_base_metabolite_id)
@@ -1816,6 +1952,12 @@ def main() -> None:
     fitted, soft_priors_applied_in_fit = fit_targets(train_indices)
     if soft_priors_applied_in_fit is not None:
         print(f"soft priors in the fit: {soft_priors_applied_in_fit}")
+    # the edge priors' penalty is divided by the total loss weight of the pairs the fit trains on, because the BCE is a
+    # weighted mean: then one pseudo-count of an edge prior weighs as one unit of label weight (models/edge_gates.py)
+    edge_penalty_denominators: dict[str, float] = {}
+    edge_penalty_denominator = 1.0
+    if edge_priors_summary is not None:
+        edge_penalty_denominator = edge_penalty_denominators["fit"] = penalty_denominator(fitted["weights"].numpy(), train_indices)
 
     def training_step(model_encoder, model_head, model_laboratory_readout, model_optimizer, batch) -> tuple[float, float, float, float | None]:
         """One optimizer step on a batch; returns the loss, its BCE and penalty parts and the laboratory loss (None without it)."""
@@ -1829,6 +1971,8 @@ def main() -> None:
         else:
             bce = evidence_weighted_binary_cross_entropy(output.symptom_probability, fitted["outcomes"][batch].to(device), fitted["weights"][batch].to(device), positive_target=arguments.positive_target, **log_parts)
         penalty = arguments.description_length_coefficient * model_head.description_length_penalty(node_cost=node_cost)
+        if getattr(model_encoder, "edge_gates", None) is not None:  # decision 9.57: the gates' pull back to their evidence priors
+            penalty = penalty + model_encoder.edge_gates.kl_penalty() / edge_penalty_denominator
         loss = bce + penalty
         laboratory_value = None
         if model_laboratory_readout is not None and laboratory_index.count(batch):
@@ -1885,6 +2029,8 @@ def main() -> None:
                     print("checkpoint written on signal; exiting for requeue")
                     return
         entry = {"epoch": epoch, "train_loss": epoch_loss / max(1, len(order)), "train_bce": epoch_bce / max(1, len(order)), "train_penalty": epoch_penalty / max(1, len(order)), "elapsed_seconds": time.time() - started}
+        if getattr(encoder, "edge_gates", None) is not None:  # the edge priors' part of train_penalty, at the end of the epoch
+            entry["edge_prior_penalty"] = float(encoder.edge_gates.kl_penalty()) / edge_penalty_denominator
         if laboratory_readout is not None:
             entry["train_laboratory_loss"] = epoch_laboratory / max(1, len(order))
         if len(validation_indices):
@@ -1951,9 +2097,12 @@ def main() -> None:
             raise ValueError("no validation epoch improved (the validation loss was never finite), so the refit has no number of epochs to train for")
         refit_indices = np.sort(np.concatenate([train_indices, validation_indices]))
         fitted, soft_priors_applied_in_refit = fit_targets(refit_indices, "refit")  # the validation rows join the fit, and so do their soft priors
+        if edge_priors_summary is not None:
+            edge_penalty_denominator = edge_penalty_denominators["refit"] = penalty_denominator(fitted["weights"].numpy(), refit_indices)
         refit_checkpoint_path = split_directory / "refit_checkpoint.pt"
         torch.manual_seed(arguments.seed)
         encoder, head = build_models(data, arguments, device)
+        attach_edge_gates(encoder, data, adjacencies, arguments)  # fresh gates at the priors, as every other parameter starts again
         initialise_leaks_from_base_rates(head, data, refit_indices, label_mask, arguments, device)
         initialise_rates_at_weighted_optimum(head, data, refit_indices, label_mask, arguments, device)
         optimizer = torch.optim.AdamW(optimizer_parameter_groups(encoder, head, arguments), lr=arguments.learning_rate, weight_decay=arguments.weight_decay)
@@ -1991,6 +2140,8 @@ def main() -> None:
                         return
             loss_sum, bce_sum, penalty_sum = refit_state["epoch_sums"]
             refit_state["history"].append({"epoch": epoch, "train_loss": loss_sum / len(order), "train_bce": bce_sum / len(order), "train_penalty": penalty_sum / len(order)})
+            if getattr(encoder, "edge_gates", None) is not None:
+                refit_state["history"][-1]["edge_prior_penalty"] = float(encoder.edge_gates.kl_penalty()) / edge_penalty_denominator
             refit_state.update(epoch=epoch + 1, next_batch_start=0, epoch_sums=[0.0, 0.0, 0.0])
             save_refit_checkpoint()
             print(f"refit epoch {epoch} loss {refit_state['history'][-1]['train_loss']:.4f}", flush=True)
@@ -2090,6 +2241,8 @@ def main() -> None:
         "soft_priors": None if soft_priors_summary is None else {**soft_priors_summary, "applied_in_fit": soft_priors_applied_in_fit, "applied_in_refit": soft_priors_applied_in_refit,
                                                                   "calibration": calibration_summaries or None,
                                                                  "permutation": soft_prior_permutation},
+        "edge_priors": None if edge_priors_summary is None else {**edge_priors_summary, "penalty_denominator": edge_penalty_denominators,
+                                                                  "gates": encoder.edge_gates.summary(), "gate_values": "edge_gate_values.npy"},
     }
     if literature_reports is not None and time_split is None:
         # the popularity axis the degree bins do not measure: distinct PMIDs per perturbation in the literature table
@@ -2100,6 +2253,9 @@ def main() -> None:
     if time_split_results is not None:
         results["macro_auprc"], results["macro_auroc"] = time_split_results["macro_auprc"], time_split_results["macro_auroc"]
     np.save(split_directory / "test_predictions.npy", predictions)
+    if edge_priors_summary is not None:  # [num_edges] the scored model's gate per edge, NaN where an edge has none
+        np.save(split_directory / "edge_gate_values.npy", encoder.edge_gates.values_per_edge())
+        print(f"edge gates: {results['edge_priors']['gates']}")
     if arguments.head == "noisy_or":
         with torch.no_grad():
             head.eval()
