@@ -22,6 +22,18 @@
             "statusMessage": "Running the test suite"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r changed_file; case \"$changed_file\" in *docs/*.md|*README.md|*CLAUDE.md|*configs/documentation_registry.json|*configs/registered_rules.json) cd \"${CLAUDE_PROJECT_DIR:-.}\" && OMP_NUM_THREADS=1 nice -n 15 python3 -m pytest tests/test_documentation_process.py tests/test_amendment_history.py -q || exit 2 ;; esac; }",
+            "asyncRewake": true,
+            "timeout": 120,
+            "statusMessage": "Checking the documents against the register, the manifests and the git log"
+          }
+        ]
       }
     ]
   },

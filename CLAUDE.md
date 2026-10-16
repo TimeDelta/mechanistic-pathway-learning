@@ -43,3 +43,17 @@ for every research pass a session starts, so a session passes them on to the pas
 
 The table of licences is `docs/data_sources.md`. The quotes and where each was read are in
 `docs/label_source_review.md`, section 11.
+
+## Documents (15 October 2026)
+
+- **What is current is generated, not remembered.** Read `docs/status.md` (releases, registered rules, decisions,
+  which documents are dated) before acting on any statement about the current state, and the stamp or date of the
+  document the statement is in. The rules and the classes are in `docs/documentation_process.md`.
+- **Record decisions in the turn they are taken** (the owner, 13 October 2026) in `docs/open_decisions.md`; close
+  by striking the id; never drop or renumber one. Registered rules change through `Amends:` trailers.
+- **After changing data, rules, decisions or documents:** `python experiments/generate_status.py`,
+  `python experiments/generate_decision_history.py`, `python experiments/generate_amendment_history.py`,
+  `pytest tests/test_documentation_process.py -q`. A new document is registered in
+  `configs/documentation_registry.json` before it is committed.
+- **No container or session state in a living document.** That state is on the machine
+  (`bash scripts/resume_jobs.sh --status`); a dated record may describe it, a living document may not.

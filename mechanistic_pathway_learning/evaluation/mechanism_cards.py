@@ -43,8 +43,12 @@ def evidence_limitations_for_symptom(reports: pd.DataFrame, symptom: str, max_pa
     return lines
 
 
-def build_mechanism_card(symptom_identifier: str, analysis: dict, top_nodes: int = 10, reports: pd.DataFrame | None = None) -> str:
-    lines = [f"# Mechanism card: {symptom_identifier}", "", f"Run: {analysis.get('run_dir', '')}", ""]
+def build_mechanism_card(symptom_identifier: str, analysis: dict, top_nodes: int = 10, reports: pd.DataFrame | None = None,
+                         stamp: str | None = None) -> str:
+    # the stamp (mechanistic_pathway_learning.documentation.provenance_stamp) says which script wrote the card, when, at
+    # which commit and from which run; a card without one predates 16 October 2026 and has only its commit date
+    lines = [f"# Mechanism card: {symptom_identifier}", "",
+             stamp or "Written by mechanistic_pathway_learning/evaluation/mechanism_cards.py", "", f"Run: {analysis.get('run_dir', '')}", ""]
     if reports is not None:
         lines += ["## Supporting evidence", "", *(f"- {line}" for line in evidence_limitations_for_symptom(reports, symptom_identifier)), ""]
     stability = analysis.get("stability", {})
@@ -82,9 +86,11 @@ def write_mechanism_cards(analysis_path: Path, output_directory: Path | None = N
     output_directory.mkdir(parents=True, exist_ok=True)
     symptoms = sorted({symptom for split in analysis.get("splits", {}).values() for symptom in split.get("symptoms", {})})
     written = []
+    from mechanistic_pathway_learning.documentation import provenance_stamp
+    stamp = provenance_stamp("mechanistic_pathway_learning/evaluation/mechanism_cards.py", [str(analysis_path)])
     for symptom in symptoms:
         path = output_directory / f"{symptom}.md"
-        path.write_text(build_mechanism_card(symptom, analysis))
+        path.write_text(build_mechanism_card(symptom, analysis, stamp=stamp))
         written.append(path)
     return written
 

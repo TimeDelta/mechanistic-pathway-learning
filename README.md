@@ -11,6 +11,20 @@ docs/experiment_design.md. Read that first.
 
 ## Status
 
+What is current is generated, not written here: `docs/status.md` (data releases and their counts, the registered rules
+and their amendments, the decisions open and closed, which documents are generated and when, which living documents
+are due for a review) and `docs/decision_history.md` (when each decision was recorded and closed, from the git
+history). `docs/documentation_process.md` states which documents are kept current by overwriting, which are dated
+records, and the checks `tests/test_documentation_process.py` runs. The release counts below are rendered from the
+manifests by `experiments/generate_status.py`:
+
+<!-- generated:release_counts -->
+- `data/releases/v0.4` (created 2026-10-06, commit b1c9d02, 44 files, 1 manifest amendment): `graph_full` 33,964 nodes and 255,367 edges; `graph` 24,185 nodes and 94,786 edges; `evidence_full` 3,910 observations over 1,655 perturbations and 11 symptoms; `evidence_slice_sweeps` 861 observations over 451 perturbations and 10 symptoms; `evidence_two_entries` 861 observations over 451 perturbations and 10 symptoms.
+<!-- /generated:release_counts -->
+
+The narrative that follows is the state of the project when it was last written; the dated documents it names carry
+the measurements, and `docs/status.md` says which of them are current.
+
 Phase 1 is measured and Phases 2 and 3 have started on the monogenic slice. The slice is a pilot; the confirmatory test is the full graph with every layer (docs/preregistration.md, amendment of 7 October 2026). Implemented and tested:
 the noisy-OR pathway module head (sum or mean pooling over hard-concrete supports), soft constraint
 losses, a relational message passing encoder with absolute and perturbation-difference field
@@ -37,19 +51,19 @@ document's reference list for import into a reference manager.
 
 Still stubs: the SemMedDB predication loader (the OnSIDES slice and the literature class are built), the diagnosis proxy audit, the flux-sampling job
 (written, not yet run), the flux-feature and language-model baselines, the MAGMA wrapper. The pharmacological evidence class and the signaling, transcription and small-molecule layers were
-added once the environment's network policy allowed the SIDER, ChEMBL, UniChem and OmniPath hosts:
-the full graph (data/processed/graph_full) has 33,964 nodes and 261,369 typed edges, and the full
-evidence table (data/processed/evidence_full) 3,838 observations (3,034 monogenic gene rows, 804 drug-label
-rows for 72 drugs with a single ChEMBL mechanism target). Baselines and the first model configurations on
-the full data are running under runs/full; results go to docs/phase2_baselines_full_disease_cluster.md
-and docs/phase3_main_model.md when they finish.
+added once the environment's network policy allowed the SIDER, ChEMBL, UniChem and OmniPath hosts; the full graph and
+the full evidence table are the release tables counted in the block above (data/releases/v0.4/MANIFEST.json), and the
+later tables a rebuild produces (evidence v3, v3 with parkinsonism and v4; the neuronal, split, binder and drug-entry
+graph variants) are counted in docs/data_layer_rebuild.md. Baselines and model configurations on the full data run
+under runs/full; their results are docs/phase2_baselines_full_disease_cluster.md and docs/phase3_main_model.md, each
+of which names the run it was generated from.
 
 The literature class E3 is in place (docs/literature_survey_spec.md): the symptom
 crosswalk carries verified MeSH descriptors with a symptom, diagnosis or mixed-polarity level flag, every gene node has an
-NCBI Gene id through Human-GEM and HGNC (12,537 of 12,627), and two fetch scripts filter the PubTator3 bulk
+NCBI Gene id through Human-GEM and HGNC (12,537 of the 12,627 gene nodes of data/releases/v0.4), and two fetch scripts filter the PubTator3 bulk
 relation file and the CTD chemical-disease file to graph genes and SIDER drugs on those descriptors (one SIDER drug per MeSH chemical), writing
 one report per (paper, relation) in the evidence_reports.parquet schema under data/processed/literature with the source named by extraction type (PubTator3-cause, CTD-curated). The
-rows are grade E soft priors and never labels or evaluation positives (the experiment loader refuses grades D and E). The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations, species first; the tables are in the data release and join the assembled table through --extra-reports. The component was reviewed adversarially on 6 October 2026 (docs/design_review_v04.md, third table); the fixes are in the code and were applied to the data the same day on the PubTator3 bulk file NCBI published then (214,375 reports over 134,747 papers), and release v0.4 holds those tables.
+rows are grade E soft priors and never labels or evaluation positives (the experiment loader refuses grades D and E). The appraisal half (experiments/fetch_pubtator_documents.py, experiments/survey_literature.py; docs/literature_survey.md) rates each report from publication types and species annotations, species first; the tables are in the data release and join the assembled table through --extra-reports. The component was reviewed adversarially on 6 October 2026 (docs/design_review_v04.md, third table); the fixes are in the code and were applied to the data the same day on the PubTator3 bulk file NCBI published then, and data/releases/v0.4 holds those tables (214,375 appraised reports over 134,747 papers).
 
 A new container has no `data/raw`, `data/processed` or `runs/`. `bash scripts/rebuild_data_layer.sh` fetches the pinned sources and rebuilds the
 graphs, the evidence tables and the label selections in dependency order; docs/data_layer_rebuild.md records what that reproduced on 10 October 2026
@@ -79,7 +93,7 @@ python experiments/aggregate_main_model_runs.py --run-dirs runs/b6_default_disea
 python experiments/analyze_pathway_modules.py --run-dir runs/b6_default_disease_cluster
 ```
 
-OnSIDES later label slice. The OnSIDES v3.1.1 label statements are bridged to ChEMBL and unified with the SIDER drugs (experiments/fetch_onsides_identifier_bridge.py, experiments/build_onsides_reports.py; docs/onsides_label_slice.md): 587 drug-symptom pairs, 304 of them absent from the qualified SIDER table and 100 absent from the 2015 labels altogether (docs/onsides_label_slice_spec.md states the rules, after the adversarial review of 5 October 2026). They join the assembled table and the reliability fit through --extra-reports (3,910 observations, 876 drug pairs over 142 drugs).
+OnSIDES later label slice. The OnSIDES v3.1.1 label statements are bridged to ChEMBL and unified with the SIDER drugs (experiments/fetch_onsides_identifier_bridge.py, experiments/build_onsides_reports.py; docs/onsides_label_slice.md): 587 drug-symptom pairs, 304 of them absent from the qualified SIDER table and 100 absent from the 2015 labels altogether (docs/onsides_label_slice_spec.md states the rules, after the adversarial review of 5 October 2026). They join the assembled table and the reliability fit through --extra-reports (the `evidence_full` table of data/releases/v0.4: 3,910 observations, 876 drug pairs over 142 drugs; the tables a rebuild writes are larger, docs/data_layer_rebuild.md).
 
 Data releases. The processed tables of each design version are committed under data/releases/<version>/ with MANIFEST.json (SHA-256, size and row count per file, the producing commit, the source pins and the license statement), so a checkout trains and evaluates without any download: `python experiments/run_main_model.py --graph-dir data/releases/v0.4/graph_full --evidence-dir data/releases/v0.4/evidence_full ...`; `python experiments/make_data_release.py --version v0.4 --verify-only` recomputes the checksums. MedDRA term names are blanked on label-derived report rows before release; raw downloads are never committed (docs/data_sources.md pins them).
 
@@ -132,6 +146,7 @@ behind them.
 - https://claude.ai/share/d762a865-1455-4feb-875d-13e94719f70c
 - https://claude.ai/share/3f0e9a27-772b-489e-9eb3-0053cdbd5523
 - https://claude.ai/share/d8d0612d-1c85-4966-8a13-995d8c98ee2d
+- https://claude.ai/share/de207981-68b8-49cf-826b-c0a201a84135
 
 ## Conventions
 
