@@ -730,14 +730,10 @@
   "docs/twin_comparisons.md": {
    "class": "generated",
    "generator": "experiments/compare_twin_runs.py"
+  },
+  "docs/fine_symptom_constructs.md": {
+   "class": "generated",
+   "generator": "experiments/build_fine_symptom_crosswalk.py"
   }
- },
- "docs/fine_symptom_constructs.md": {
-  "class": "generated",
-  "generator": "experiments/build_fine_symptom_crosswalk.py"
- },
- "docs/clinical_trial_outcome_evidence.md": {
-  "class": "generated",
-  "generator": "experiments/fetch_clinicaltrials_outcomes.py"
  }
 }
