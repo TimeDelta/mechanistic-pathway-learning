@@ -2,8 +2,10 @@
 
 Reads the raw OmniPath and CollecTRI tables (their references and sources, which the graph build fetches and drops),
 IntAct's curated non-interacting pairs and the graph's edges; writes <graph-dir>/edge_evidence.parquet aligned to
-edges.parquet row for row (family, kind, records, contested) and edge_evidence_summary.json. The graph files themselves
-are not touched, so no graph hash moves. The priors are computed from this table by the loader under --edge-prior-strength.
+edges.parquet row for row (family, kind, records, contested, and the edge's own source_id, target_id and relation_type,
+which the trainer checks against the graph before it reads a row) and edge_evidence_summary.json, which records the
+SHA-256 of the edges.parquet it was built from. The graph files themselves are not touched, so no graph hash moves. The
+priors are computed from this table by experiments/run_main_model.py under --edge-prior-strength.
 
 Usage:
   python experiments/build_edge_evidence.py --graph-dir data/processed/graph_full_neuronal_split_binders_drugs_v4
@@ -11,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -43,9 +46,11 @@ def main() -> int:
     negative_pairs = {frozenset((pair.gene_a, pair.gene_b)) for pair in read_human_negative_pairs(arguments.intact_negative) if pair.gene_a and pair.gene_b}
     edges = pd.read_parquet(arguments.graph_dir / "edges.parquet")
     evidence = edge_evidence_table(edges, references, negative_pairs)
+    evidence = evidence.assign(source_id=edges.source_id.to_numpy(), target_id=edges.target_id.to_numpy(), relation_type=edges.relation_type.to_numpy())
     evidence.to_parquet(arguments.graph_dir / "edge_evidence.parquet", index=False)
     gated, probability, strength = edge_priors(evidence, read_edge_tiers(arguments.tiers))
-    summary = {"graph_dir": str(arguments.graph_dir), "tiers": str(arguments.tiers), **summarise(evidence, gated, probability, strength)}
+    edges_sha256 = hashlib.sha256((arguments.graph_dir / "edges.parquet").read_bytes()).hexdigest()
+    summary = {"graph_dir": str(arguments.graph_dir), "edges_sha256": edges_sha256, "tiers": str(arguments.tiers), **summarise(evidence, gated, probability, strength)}
     (arguments.graph_dir / "edge_evidence_summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {arguments.graph_dir / 'edge_evidence.parquet'}: {summary['gated']:,} of {summary['edges']:,} edges gated, {summary['contested']} contested")
     for key, value in summary["by_family_and_kind"].items():
