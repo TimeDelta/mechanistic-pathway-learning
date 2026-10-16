@@ -184,3 +184,26 @@ flags are the confirmatory job's and go in `MPL_DATA_ARGS` (the job scripts unde
 release's literature table (`MPL_SOFT_PRIOR_REPORTS`). `MPL_DRY_RUN=1` prints the commands. The point is chosen on the
 development folds against the three controls of section 3, the permuted arm is then run at that point alone, and the
 script chooses nothing.
+
+## 9. Addition, 16 October 2026: the probability a prior pulls toward, calibrated (decision 9.59)
+
+`--soft-prior-probability calibrated` replaces the tier table's fixed probability with the prediction of a logistic
+regression (`evidence/calibrated_reliability.py`) of the label outcome on each prior cell's features: the evidence
+class, the direction, each source present, the log of the deduplicated record count, the species the source measured
+in (mouse for IMPC, human otherwise), the perturbation's type and its literature popularity. The regression is fitted
+on the cells of the rows a phase trains on whose label the table states (a positive is 1, a labelled non-positive 0, a
+pair the selection set aside is left out), once for the fit and again for the refit, so it never sees a held-out fold
+or the lockbox. Its prediction is read with popularity held at the training median: popularity is a feature so that
+the volume of reports on a well-studied perturbation is attributed to reporting propensity, and holding it fixed keeps
+that propensity out of the prior. Species is a feature rather than a separate fit, as the owner asked (9.56): a mouse
+absence is weighted by what the regression learns from the pairs the human sources also cover.
+
+What it keeps from the tiers: the unit strengths and the tempered count still set how hard a prior pulls; the
+regression sets only what it pulls toward. Below 20 positive or 20 negative calibration cells (a flag) the tiers are
+kept and results.json says why; a calibration that keeps the tiers is bit-identical to the tier run (tested end to
+end). Under `--permute-soft-priors` the calibrated matrix takes the same swaps as the tier matrix, so the permuted
+control stays a control.
+
+What it is not: Dawid-Skene. There is no latent truth and no conditional-independence assumption; the target is the
+label table, with its own ascertainment, which is why popularity is in the model and why the arm is still read against
+the permuted prior. The calibrated arm joins the grid of section 4 as a third axis (tier against calibrated).
