@@ -205,6 +205,12 @@
    "recorded": "2026-10-08",
    "append_only": false
   },
+  "docs/edge_priors.md": {
+   "class": "record",
+   "recorded": "2026-10-16",
+   "append_only": true,
+   "what": "the design of the edge priors (evidence strength as a prior on whether an edge is there, learnable gates pulled toward it), how each encoder reads a gate, the controls and what is provisional; decision 9.57"
+  },
   "docs/effect_site_data_coverage.md": {
    "class": "generated",
    "generator": "experiments/label_review/effect_site_coverage.py"
