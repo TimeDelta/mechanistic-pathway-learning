@@ -63,6 +63,9 @@ def query(parameters: dict, pause: float) -> dict:
             if error.code == 429 and attempt < 4:
                 time.sleep(30 * (attempt + 1))
                 continue
+            if error.code >= 500 and attempt < 4:  # a transient server error (the rebuild of 16 October 2026 died on one HTTP 500)
+                time.sleep(10 * (attempt + 1))
+                continue
             raise
         except (urllib.error.URLError, ConnectionResetError, TimeoutError):
             if attempt < 4:

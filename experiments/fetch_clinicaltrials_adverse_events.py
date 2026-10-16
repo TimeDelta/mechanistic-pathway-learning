@@ -50,7 +50,7 @@ def request_json(address: str) -> dict:
             with urllib.request.urlopen(request, timeout=120) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
-            if error.code == 429 and attempt < 4:
+            if error.code in (429, 500, 502, 503, 504) and attempt < 4:  # rate limited, or a transient server error
                 time.sleep(10 * (attempt + 1))
                 continue
             raise
