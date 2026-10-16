@@ -179,3 +179,12 @@ diagnostic of the fit.
   carry. A prior there would need another source, such as the enzyme's measured presence in the tissue, which is a
   question for the owner and not a tier.
 - **A prior on edge sign** is not part of this: the sign is the graph's, and a gate never flips it.
+
+## 9. Correction, 16 October 2026: why 700 signalling edges are unmatched
+
+Sections 2 and 8 say the 700 unmatched signalling edges "were renamed by the graph build so they match no raw row".
+Measured against the raw OmniPath table and HGNC's complete set, that is true of 7 at most: only 7 have an endpoint
+whose HGNC previous symbol or alias appears in the raw table. 81 have both symbols in the raw table under the same
+names, so another matching rule failed for them (a direction or a kind). The examples are gene families the build
+expands, the histone cluster genes (`H4C14`, `H3C11`) and a node naming two genes (`CCL3L1; CCL3L3`). Matching them
+needs the build's own expansion of a raw row into graph nodes, read edge by edge; it is not a renaming table.
