@@ -25,6 +25,7 @@ import json
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -34,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from mechanistic_pathway_learning.evidence.load_drug_label_events import pubchem_cid_from_stitch_flat  # noqa: E402
 
 PUBCHEM_TITLE_ADDRESS = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cids}/property/Title/JSON"
+PUBCHEM_NAME_TITLE_ADDRESS = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/Title/JSON"
 DEFAULT_SELECTIONS = {"in_current": Path("data/processed/label_selection/better_v2_full_v4.parquet"),
                       "in_approved": Path("data/processed/label_review/selection_approved.parquet"),
                       "in_approved_with_list": Path("data/processed/label_review/selection_approved_with_list.parquet")}
@@ -47,47 +49,75 @@ def study_drugs(evidence_directory: Path) -> pd.DataFrame:
 
 
 def rxnorm_names_by_perturbation(bridge_document: dict) -> dict[str, str]:
-    """perturbation_id -> the RxNorm ingredient names the bridge unified with it, sorted and semicolon-joined."""
+    """perturbation_id -> the RxNorm ingredient names the bridge unified with it (a SIDER drug), or the ingredient's own
+    name for a drug that enters under its RxCUI (an OnSIDES-only drug, id "RXCUI:<rxcui>"); sorted, semicolon-joined."""
     names: dict[str, set[str]] = {}
-    for record in bridge_document.get("ingredients", {}).values():
+    for ingredient_id, record in bridge_document.get("ingredients", {}).items():
+        name = str(record.get("ingredient_name", "")).strip()
         if record.get("unified_with_sider") and record.get("perturbation_id"):
-            names.setdefault(record["perturbation_id"], set()).add(str(record.get("ingredient_name", "")).strip())
+            names.setdefault(record["perturbation_id"], set()).add(name)
+        if record.get("identifier_system") == "RXCUI":
+            names.setdefault(f"RXCUI:{ingredient_id}", set()).add(name)
     return {perturbation_id: ";".join(sorted(name for name in collected if name)) for perturbation_id, collected in names.items()}
 
 
-def fetch_titles(cids: list[int], retries: int = 4) -> dict[int, str]:
-    """PubChem titles for the CIDs, one request per batch; a CID PubChem does not know is left out."""
-    titles: dict[int, str] = {}
+def pubchem_key(perturbation_id: str, perturbation_label: str) -> tuple[str, str]:
+    """How PubChem is asked for the drug's title: ("cid", "<cid>") for a SIDER identifier, ("name", "<label>") for an RxCUI."""
+    if perturbation_id.startswith("CID1"):
+        return "cid", str(pubchem_cid_from_stitch_flat(perturbation_id))
+    return "name", str(perturbation_label).strip().lower()
+
+
+def read_json(address: str, retries: int = 4) -> dict:
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(address, headers={"User-Agent": "perturbation-symptom-modules/drug-names"}), timeout=60) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            if error.code == 404:  # PubChem answers 404 for a name or CID it does not know
+                return {}
+            if attempt == retries - 1:
+                raise
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError) as error:
+            if attempt == retries - 1:
+                raise
+            print(f"retry {attempt + 1} after {error}", flush=True)
+        time.sleep(2.0 * (attempt + 1))
+    return {}
+
+
+def fetch_titles(keys: list[tuple[str, str]]) -> dict[tuple[str, str], str]:
+    """PubChem titles: the CIDs in batches of BATCH_SIZE, the names one request each; a key PubChem does not know is
+    left out. PubChem asks for no more than five requests a second."""
+    titles: dict[tuple[str, str], str] = {}
+    cids = sorted({value for kind, value in keys if kind == "cid"}, key=int)
     for start in range(0, len(cids), BATCH_SIZE):
         batch = cids[start:start + BATCH_SIZE]
-        address = PUBCHEM_TITLE_ADDRESS.format(cids=",".join(str(cid) for cid in batch))
-        for attempt in range(retries):
-            try:
-                with urllib.request.urlopen(urllib.request.Request(address, headers={"User-Agent": "perturbation-symptom-modules/drug-names"}), timeout=60) as response:
-                    document = json.loads(response.read().decode("utf-8"))
-                break
-            except (urllib.error.URLError, ConnectionResetError, TimeoutError) as error:
-                if attempt == retries - 1:
-                    raise
-                print(f"retry {attempt + 1} after {error}", flush=True)
-                time.sleep(2.0 * (attempt + 1))
+        document = read_json(PUBCHEM_TITLE_ADDRESS.format(cids=",".join(batch)))
         for item in document.get("PropertyTable", {}).get("Properties", []):
             if "Title" in item:
-                titles[int(item["CID"])] = str(item["Title"])
-        time.sleep(0.25)  # PubChem asks for no more than five requests a second
+                titles[("cid", str(item["CID"]))] = str(item["Title"])
+        time.sleep(0.25)
+    for name in sorted({value for kind, value in keys if kind == "name"}):
+        document = read_json(PUBCHEM_NAME_TITLE_ADDRESS.format(name=urllib.parse.quote(name)))
+        properties = document.get("PropertyTable", {}).get("Properties", [])
+        if properties and "Title" in properties[0]:
+            titles[("name", name)] = str(properties[0]["Title"])
+        time.sleep(0.25)
     return titles
 
 
-def pubchem_titles(cids: list[int], cache_path: Path, fetch: bool = True) -> dict[int, str]:
-    """Titles from the cache, fetching the missing ones when allowed and extending the cache in place."""
+def pubchem_titles(keys: list[tuple[str, str]], cache_path: Path, fetch: bool = True) -> dict[tuple[str, str], str]:
+    """Titles from the cache (keyed "cid:<cid>" and "name:<name>"), fetching the missing ones when allowed and extending
+    the cache in place."""
     cache = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
-    titles = {int(cid): title for cid, title in cache.items()}
-    missing = sorted(cid for cid in set(cids) if cid not in titles)
+    titles = {tuple(key.split(":", 1)): title for key, title in cache.items()}
+    missing = sorted(set(keys) - set(titles))
     if missing and fetch:
         titles.update(fetch_titles(missing))
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps({str(cid): title for cid, title in sorted(titles.items())}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    return {cid: titles[cid] for cid in cids if cid in titles}
+        cache_path.write_text(json.dumps({f"{kind}:{value}": title for (kind, value), title in sorted(titles.items())}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {key: titles[key] for key in keys if key in titles}
 
 
 def kept_drugs(selection_path: Path) -> set[str] | None:
@@ -102,7 +132,7 @@ def kept_drugs(selection_path: Path) -> set[str] | None:
 def build_table(drugs: pd.DataFrame, rxnorm_names: dict[str, str], titles: dict[int, str], selections: dict[str, set[str] | None]) -> pd.DataFrame:
     table = drugs.copy()
     table["rxnorm_names"] = table.perturbation_id.map(rxnorm_names).fillna("")
-    table["pubchem_title"] = [titles.get(pubchem_cid_from_stitch_flat(perturbation_id), "") for perturbation_id in table.perturbation_id]
+    table["pubchem_title"] = [titles.get(pubchem_key(perturbation_id, label), "") for perturbation_id, label in zip(table.perturbation_id, table.perturbation_label)]
     for column, kept in selections.items():
         table[column] = [bool(kept is not None and perturbation_id in kept) for perturbation_id in table.perturbation_id]
     return table
@@ -120,7 +150,8 @@ def main() -> int:
     arguments = parser.parse_args()
     drugs = study_drugs(arguments.evidence_dir)
     rxnorm_names = rxnorm_names_by_perturbation(json.loads(arguments.bridge.read_text(encoding="utf-8"))) if arguments.bridge.exists() else {}
-    titles = pubchem_titles([pubchem_cid_from_stitch_flat(perturbation_id) for perturbation_id in drugs.perturbation_id], arguments.pubchem_cache, fetch=not arguments.no_fetch)
+    titles = pubchem_titles([pubchem_key(perturbation_id, label) for perturbation_id, label in zip(drugs.perturbation_id, drugs.perturbation_label)],
+                            arguments.pubchem_cache, fetch=not arguments.no_fetch)
     selections = {column: kept_drugs(getattr(arguments, column)) for column in DEFAULT_SELECTIONS}
     table = build_table(drugs, rxnorm_names, titles, selections)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)

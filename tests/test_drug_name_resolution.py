@@ -39,7 +39,10 @@ ACCEPTED_SYNONYMS: dict[str, str] = {
     "CID100121892": "retigabine is the INN, ezogabine the USAN",
 }
 
-# Labels that are wrong rather than synonymous, pinned until the rebuild fixes the name resolution.
+# Labels that are wrong rather than synonymous, pinned until the rebuild fixes the name resolution. Since 16 October 2026
+# the table is built by experiments/label_review/build_drug_names.py from the registered v4 drug set (222 drugs), so a
+# pinned drug outside that set (dronabinol and etonogestrel entered through the approved-variant tables of 10 October)
+# is checked only when the table holds it; the tests say which pins were not checked.
 KNOWN_BAD_LABELS: dict[str, tuple[str, str]] = {
     "CID109966051": ("Lu", "vortioxetine"),      # truncated from the development code Lu AA21004
     "CID100002978": ("delta", "dronabinol"),     # truncated from a delta-9- prefixed name
@@ -88,10 +91,11 @@ def test_the_known_bad_labels_are_still_the_only_bad_ones(drug_names):
     """Pins the defect. When the rebuild fixes the name resolution this fails, and the entries move out of
     KNOWN_BAD_LABELS rather than the assertion being loosened."""
     unmatched = labels_matching_no_curated_name(drug_names)
-    still_broken = {identifier for identifier in KNOWN_BAD_LABELS if identifier in unmatched}
-    assert still_broken == set(KNOWN_BAD_LABELS), (
+    present = {identifier for identifier in KNOWN_BAD_LABELS if identifier in set(drug_names.perturbation_id)}
+    still_broken = {identifier for identifier in present if identifier in unmatched}
+    assert still_broken == present, (
         "a pinned bad label now resolves, which is the fix landing; remove it from KNOWN_BAD_LABELS. "
-        f"Still broken: {sorted(still_broken)}")
+        f"Still broken: {sorted(still_broken)}; pins outside this table's drug set, not checked: {sorted(set(KNOWN_BAD_LABELS) - present)}")
 
 
 def test_no_label_is_a_bare_fragment(drug_names):
@@ -108,10 +112,14 @@ def test_the_curated_name_is_available_for_every_known_defect(drug_names):
     """The fix needs no new data: the correct name is already in the same row. This asserts that, so the fix cannot be
     argued to need a fetch."""
     indexed = drug_names.set_index("perturbation_id")
+    checked = 0
     for identifier, (_, expected_generic) in KNOWN_BAD_LABELS.items():
-        assert identifier in indexed.index, f"{identifier} is absent from drug_names.csv"
+        if identifier not in indexed.index:  # a pin for a drug outside this table's drug set
+            continue
+        checked += 1
         row = indexed.loc[identifier]
         available = normalise(row.rxnorm_names) + " " + normalise(row.pubchem_title)
         assert expected_generic in available, (
             f"{identifier}: the correct generic {expected_generic!r} is not in the row's own rxnorm_names or "
             f"pubchem_title, so the fix would need a lookup after all")
+    assert checked >= 1, "no pinned drug is in the table, so the defect class is unchecked"
