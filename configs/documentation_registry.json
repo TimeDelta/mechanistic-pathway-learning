@@ -583,6 +583,10 @@
    "recorded": "2026-10-13",
    "append_only": false
   },
+  "docs/physiology_audit.md": {
+   "class": "generated",
+   "generator": "experiments/audit_physiology.py"
+  },
   "docs/placeholder_concentration_calibration.md": {
    "class": "generated",
    "generator": "experiments/label_review/placeholder_concentration_calibration.py"
@@ -698,6 +702,10 @@
   "docs/target_split_options.md": {
    "class": "generated",
    "generator": "experiments/label_review/target_split_options.py"
+  },
+  "docs/technology_audit.md": {
+   "class": "generated",
+   "generator": "experiments/audit_technology.py"
   },
   "docs/tissue_saturation.md": {
    "class": "generated",
