@@ -173,3 +173,17 @@ def test_end_to_end_the_prior_off_is_the_plain_run_and_on_it_trains_scores_and_r
     permuted = run_trainer(paths, tmp_path / "permuted", "--soft-prior-strength", "1.0", "--soft-prior-reports", str(paths["reports"]), "--permute-soft-priors", "--permute-labels")
     record = permuted["results"]["soft_priors"]["permutation"]
     assert record["seed"] == 0 and len(record["layout_sha256"]) == 64 and record["pairs"] > 0 and permuted["results"]["labels_permuted"]
+
+
+def test_a_drug_row_rescaled_by_equal_shares_scales_its_priors_the_same_way():
+    from experiments.run_main_model import negative_share_scale
+
+    outcomes = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+    eligible = outcomes == 0
+    weights = np.array([[1.0, 0.4, 0.4], [0.2, 0.2, 1.0], [0.0, 1.0, 0.0]])  # row 0's negatives were doubled; row 2 has no weighted negative
+    assert negative_share_scale(weights, eligible, 0.2).tolist() == [2.0, 1.0, 1.0]
+    probability = np.array([[np.nan, 0.7, np.nan], [0.7, np.nan, np.nan], [0.7, np.nan, np.nan]])
+    strength = np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.5, 0.0, 0.0]])
+    fitted, _ = fit_targets_with_soft_priors(torch.as_tensor(outcomes, dtype=torch.float32), torch.as_tensor(weights, dtype=torch.float32), None, np.arange(3),
+                                             probability, strength, eligible, 1.0, row_scale=negative_share_scale(weights, eligible, 0.2))
+    assert np.allclose(fitted["weights"].numpy()[[0, 1, 2], [1, 0, 0]], [1.0, 0.5, 0.5]), "row 0's prior is doubled with its negatives"
