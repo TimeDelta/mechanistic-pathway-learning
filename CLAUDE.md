@@ -57,3 +57,12 @@ The table of licences is `docs/data_sources.md`. The quotes and where each was r
   `configs/documentation_registry.json` before it is committed.
 - **No container or session state in a living document.** That state is on the machine
   (`bash scripts/resume_jobs.sh --status`); a dated record may describe it, a living document may not.
+
+## Jobs (16 October 2026)
+
+- **Never edit a shell script while a job is running it.** bash reads a script incrementally, so an edit that changes
+  the byte offset of text before the current line makes the running job execute a garbled command (the rebuild of
+  16 October died at "iments/fetch_reactome_pathways.py: No such file" after `scripts/rebuild_data_layer.sh` was edited
+  under it). Edit a copy, or wait for `bash scripts/resume_jobs.sh --status` to show the job finished, then relaunch.
+- **Commit code before starting a job that depends on it.** A container can be replaced without warning; the disk
+  of the earlier container stays with the owner, but a new session starts from the repository.
