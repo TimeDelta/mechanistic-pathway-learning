@@ -841,16 +841,17 @@ def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | 
     records = pd.read_parquet(Path(arguments.evidence_dir) / "evidence_records.parquet")
     frames = [soft_evidence_from_records(records, tuple(arguments.soft_prior_record_grades), TRAINED_RELATION)]
     literature = None
+    admission_counts: dict = {}
     for path in arguments.soft_prior_reports:
         reports = pd.read_parquet(path)
-        frames.append(soft_evidence_from_reports(reports, TRAINED_RELATION))
+        frames.append(soft_evidence_from_reports(reports, TRAINED_RELATION, admission_counts))
         if "evidence_class" in reports.columns and (reports.evidence_class == "literature").any():
             literature = reports if literature is None else pd.concat([literature, reports], ignore_index=True)
     resolved = resolve_pairs(pd.concat(frames, ignore_index=True), tiers, arguments.soft_prior_tempering, arguments.soft_prior_count_cap)
     probability, strength = soft_prior_matrices(resolved, data.perturbation_ids, data.symptoms)
     eligible = eligible_cells(data.outcomes, data.label_mask, data.evidenced_negative, data.masked_for_soft_evidence)
     summary = summarise_soft_priors(resolved, probability, strength, eligible)
-    summary.update({"strength": arguments.soft_prior_strength, "tempering": arguments.soft_prior_tempering, "count_cap": arguments.soft_prior_count_cap,
+    summary.update({"strength": arguments.soft_prior_strength, "tempering": arguments.soft_prior_tempering, "count_cap": arguments.soft_prior_count_cap, "admission": admission_counts,
                     "record_grades": list(arguments.soft_prior_record_grades), "tiers": str(arguments.soft_prior_tiers), "reports": [str(path) for path in arguments.soft_prior_reports]})
     return probability, strength, summary, literature
 

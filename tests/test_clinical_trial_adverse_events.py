@@ -11,12 +11,14 @@ import pandas as pd
 import pytest
 
 from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import (
+    ARM_COLUMNS,
     EVIDENCE_CODE,
     SOURCE_NAME,
     build_reports,
     name_pattern,
     perturbations_from_reports,
     read_lowest_level_to_preferred_term,
+    newcombe_risk_difference_interval,
     rows_to_dataframe,
     select_arms,
     study_descriptors,
@@ -151,9 +153,22 @@ def test_rows_become_a_table_with_the_report_schema_and_dtypes():
     trial = study("NCT8", [("EG0", "Examplone"), ("EG1", "Placebo")], [event("Insomnia", {"EG0": (10, 200), "EG1": (4, 200)})])
     rows, _ = build_reports([trial], "examplone", PERTURBATION, TERMS, {})
     table = rows_to_dataframe(rows)
-    assert list(table.columns) == list(REPORT_COLUMNS)
+    assert list(table.columns) == [*REPORT_COLUMNS, *ARM_COLUMNS]
     assert str(table.report_value.dtype) == "int64" and str(table.frequency_denominator.dtype) == "Int64" and table.placebo_flag.dtype == bool
-    assert rows_to_dataframe([]).empty and list(rows_to_dataframe([]).columns) == list(REPORT_COLUMNS)
+    assert str(table.drug_at_risk.dtype) == "Int64" and str(table.risk_difference_lower_95.dtype) == "float64"
+    assert table.drug_affected.tolist() == [10] and table.placebo_at_risk.tolist() == [200] and table.risk_difference.iloc[0] == pytest.approx(0.03)
+    assert rows_to_dataframe([]).empty and list(rows_to_dataframe([]).columns) == [*REPORT_COLUMNS, *ARM_COLUMNS]
+
+
+def test_the_newcombe_interval_has_width_at_zero_events_and_excludes_zero_for_a_clear_excess():
+    difference, lower, upper = newcombe_risk_difference_interval(0, 100, 0, 100)
+    assert difference == 0.0 and lower < 0 < upper and upper == pytest.approx(0.0370, abs=0.001), "0 of 100 against 0 of 100 leaves about 3.7 percent open either way"
+    difference, lower, upper = newcombe_risk_difference_interval(30, 200, 10, 200)
+    assert difference == pytest.approx(0.10) and lower > 0, "30 of 200 against 10 of 200 is an excess the interval supports"
+    difference, lower, upper = newcombe_risk_difference_interval(3, 100, 2, 100)
+    assert lower < 0 < upper, "3 of 100 against 2 of 100 is an excess the interval does not support"
+    rows, _ = build_reports([study("NCT9", [("EG0", "Examplone"), ("EG1", "Placebo")], [event("Insomnia", {"EG0": (3, 100), "EG1": (2, 100)})])], "examplone", PERTURBATION, TERMS, {})
+    assert rows[0]["report_value"] == 1 and rows[0]["risk_difference_lower_95"] < 0, "the row is positive by the source's rule and says so with its interval"
 
 
 def test_perturbations_are_read_from_the_assembled_report_table(tmp_path):

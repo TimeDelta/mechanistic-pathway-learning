@@ -91,6 +91,10 @@
    "class": "generated",
    "generator": "experiments/apply_central_action_rule.py"
   },
+  "docs/clinical_trial_arm_evidence.md": {
+   "class": "generated",
+   "generator": "experiments/fetch_clinicaltrials_adverse_events.py"
+  },
   "docs/combined_perturbations.md": {
    "class": "generated",
    "generator": "experiments/build_combined_perturbations.py"

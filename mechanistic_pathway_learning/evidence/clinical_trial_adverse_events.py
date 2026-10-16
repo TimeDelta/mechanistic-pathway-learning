@@ -44,6 +44,8 @@ from typing import Iterable
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 
 SOURCE_NAME = "ClinicalTrials-arms"
+# the arm counts and the risk difference with its 95 percent Newcombe interval, beside the REPORT_COLUMNS
+ARM_COLUMNS = ("drug_affected", "drug_at_risk", "placebo_affected", "placebo_at_risk", "risk_difference", "risk_difference_lower_95", "risk_difference_upper_95")
 EVIDENCE_CODE = "trial_arm_comparison"
 # the design's grade-C class (assign_evidence_grades): never a label by default, enters the reliability fit and the priors
 EVIDENCE_CLASS = "human_association"
@@ -84,6 +86,34 @@ class TermComparison:
     @property
     def placebo_rate(self) -> float | None:
         return self.placebo_affected / self.placebo_at_risk if self.placebo_at_risk else None
+
+    @property
+    def risk_difference_interval(self) -> tuple[float, float, float] | None:
+        """(difference, lower, upper): the drug-arm rate minus the placebo-arm rate with its 95 percent Newcombe interval."""
+        if not self.drug_at_risk or not self.placebo_at_risk:
+            return None
+        return newcombe_risk_difference_interval(self.drug_affected, self.drug_at_risk, self.placebo_affected, self.placebo_at_risk)
+
+
+def wilson_interval(affected: int, at_risk: int, z: float = 1.959964) -> tuple[float, float]:
+    """The Wilson score interval of a proportion; unlike the Wald interval it has width at 0 of n."""
+    proportion = affected / at_risk
+    centre = (proportion + z * z / (2 * at_risk)) / (1 + z * z / at_risk)
+    half_width = z * math.sqrt(proportion * (1 - proportion) / at_risk + z * z / (4 * at_risk * at_risk)) / (1 + z * z / at_risk)
+    return max(0.0, centre - half_width), min(1.0, centre + half_width)
+
+
+def newcombe_risk_difference_interval(drug_affected: int, drug_at_risk: int, placebo_affected: int, placebo_at_risk: int) -> tuple[float, float, float]:
+    """The difference of two proportions with Newcombe's hybrid score interval (Newcombe 1998, *Stat Med* 17:873, method
+    10): the Wilson limits of each proportion combined, which keeps a width at zero events where the Wald interval has
+    none. Returns (difference, lower, upper)."""
+    drug_rate, placebo_rate = drug_affected / drug_at_risk, placebo_affected / placebo_at_risk
+    drug_lower, drug_upper = wilson_interval(drug_affected, drug_at_risk)
+    placebo_lower, placebo_upper = wilson_interval(placebo_affected, placebo_at_risk)
+    difference = drug_rate - placebo_rate
+    lower = difference - math.sqrt((drug_rate - drug_lower) ** 2 + (placebo_upper - placebo_rate) ** 2)
+    upper = difference + math.sqrt((drug_upper - drug_rate) ** 2 + (placebo_rate - placebo_lower) ** 2)
+    return difference, lower, upper
 
 
 def name_pattern(drug_name: str) -> re.Pattern:
@@ -246,7 +276,14 @@ def build_reports(studies: Iterable[dict], drug_name: str, perturbation: dict, p
                 "rubric_evidence_code_pcs": 0.0, "rubric_evidence_code_tas": 0.0, "rubric_evidence_code_iea": 0.0,
                 "rubric_placebo_controlled": 1.0, "rubric_curated_synopsis": 0.0, "association_type": "", "rubric_causal_association": 0.0,
                 "limitations": limitations, "perturbation_nodes": perturbation.get("perturbation_nodes", ""),
+                # the arm counts and the risk difference with its interval, structured, so a reader of the table (the soft
+                # priors) can set its own bar for an excess or an absence instead of taking any excess at its word
+                "drug_affected": comparison.drug_affected, "drug_at_risk": comparison.drug_at_risk,
+                "placebo_affected": comparison.placebo_affected, "placebo_at_risk": comparison.placebo_at_risk,
             })
+            interval = comparison.risk_difference_interval
+            if interval is not None:
+                row["risk_difference"], row["risk_difference_lower_95"], row["risk_difference_upper_95"] = interval
             rows.append(row)
     return rows, counts
 
@@ -269,8 +306,12 @@ def rows_to_dataframe(rows: list[dict]):
     """Report rows as a table with the columns of REPORT_COLUMNS and the dtypes of evidence_reports.parquet, empty-safe."""
     import pandas as pd
 
-    table = pd.DataFrame(rows, columns=list(REPORT_COLUMNS))
+    table = pd.DataFrame(rows, columns=[*REPORT_COLUMNS, *ARM_COLUMNS])
     table["report_value"] = pd.to_numeric(table.report_value, errors="coerce").fillna(0).astype("int64")
+    for column in ARM_COLUMNS[:4]:
+        table[column] = pd.array([None if value in ("", None) or (isinstance(value, float) and math.isnan(value)) else int(value) for value in table[column]], dtype="Int64")
+    for column in ARM_COLUMNS[4:]:
+        table[column] = pd.to_numeric(table[column], errors="coerce").astype("float64")
     table["pubmed_reference_count"] = pd.to_numeric(table.pubmed_reference_count, errors="coerce").fillna(0).astype("int64")
     table["frequency"] = pd.to_numeric(table.frequency, errors="coerce").astype("float64")
     table["frequency_denominator"] = pd.array([None if value in ("", None) or (isinstance(value, float) and math.isnan(value)) else int(value)

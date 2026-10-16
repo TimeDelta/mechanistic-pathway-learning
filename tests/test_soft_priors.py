@@ -238,3 +238,28 @@ def test_the_summary_counts_pairs_by_class_and_where_they_fell():
     summary = summarise(resolved, probability, strength, eligible_cells(outcomes, label_mask, evidenced_negative, masked_for_soft))
     assert summary["resolved_pairs"] == 2 and summary["contested_pairs"] == 1 and summary["pairs_on_eligible_cells"] == 1 and summary["pairs_on_labelled_or_set_aside_cells"] == 1
     assert summary["by_class_and_direction"]["animal:positive"] == {"pairs": 1, "mean_strength": pytest.approx(0.3 * np.sqrt(2)), "n_distinct_at_least_two": 1}
+
+
+def test_trial_arm_rows_enter_only_where_their_interval_supports_them():
+    def trial(symptom, value, record, lower, upper):
+        row = report("D", symptom, "human_association", "ClinicalTrials-arms", value, record=record)
+        row.update({"risk_difference_lower_95": lower, "risk_difference_upper_95": upper})
+        return row
+
+    reports = pd.DataFrame([
+        trial("anxiety", 1, "NCT1", 0.02, 0.10),       # an excess the interval supports
+        trial("anxiety", 1, "NCT2", -0.01, 0.05),      # 3 of 100 against 2 of 100: an excess the interval does not support
+        trial("insomnia", 0, "NCT3", -0.04, 0.03),     # an absence with the excess bounded below five in a hundred
+        trial("insomnia", 0, "NCT4", -0.10, 0.12),     # an absence that leaves a large excess open
+        report("G", "anxiety", "animal", "IMPC", 1, record="MGI:1"),  # another source passes as it is
+    ])
+    counts = {}
+    evidence = soft_evidence_from_reports(reports, "induces", counts)
+    rows = {(row.perturbation_id, row.symptom, row.direction): row.n_distinct for row in evidence.itertuples(index=False)}
+    assert rows == {("D", "anxiety", "positive"): 1, ("D", "insomnia", "negative"): 1, ("G", "anxiety", "positive"): 1}
+    assert counts == {"trial_arm_excesses_admitted": 1, "trial_arm_excesses_not_supported_by_the_interval": 1, "trial_arm_absences_admitted": 1,
+                      "trial_arm_absences_with_an_excess_left_open": 1}
+    without_interval = reports.drop(columns=["risk_difference_lower_95", "risk_difference_upper_95"])
+    counts = {}
+    evidence = soft_evidence_from_reports(without_interval, "induces", counts)
+    assert len(evidence) == 3 and counts == {"trial_arm_rows_without_an_interval": 4}, "a table without the interval passes as it is and says so"

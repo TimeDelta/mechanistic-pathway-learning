@@ -49,6 +49,12 @@ DEFAULT_COUNT_CAP = 2
 DEFAULT_RECORD_GRADES = ("C",)
 # the literature relations admitted as evidence of induction; co-mention ("associated_with") is not a direction
 LITERATURE_SOURCES_ADMITTED = ("PubTator3-cause", "PubTator3-stimulate", "PubTator3-inhibit", "CTD-curated")
+# A trial-arm comparison is positive in its report table on any excess over placebo (3 of 100 against 2 of 100 counts),
+# which is the right record of the measurement and too weak a bar for a prior. Here an excess enters only when the
+# lower 95 percent bound of the risk difference (Newcombe's score interval, clinical_trial_adverse_events) is above 0,
+# and an absence only when the upper bound is below this margin: the drug adds at most five in a hundred.
+TRIAL_ARM_SOURCE = "ClinicalTrials-arms"
+ABSENCE_RISK_DIFFERENCE_MARGIN = 0.05
 
 
 @dataclass(frozen=True)
@@ -98,13 +104,37 @@ def record_key(row) -> str:
     return str(row.report_id)
 
 
-def soft_evidence_from_reports(reports: pd.DataFrame, relation: str = "induces") -> pd.DataFrame:
+def admit_trial_arm_reports(table: pd.DataFrame, counts: dict | None = None, absence_margin: float = ABSENCE_RISK_DIFFERENCE_MARGIN) -> pd.DataFrame:
+    """The trial-arm rows whose interval supports them: an excess with its lower bound above 0, an absence with its upper
+    bound below the margin. Rows of other sources pass; a trial-arm table without the interval columns passes as it is
+    and is counted as such."""
+    if "source" not in table.columns or not (table.source == TRIAL_ARM_SOURCE).any():
+        return table
+    is_trial = table.source == TRIAL_ARM_SOURCE
+    if "risk_difference_lower_95" not in table.columns or "risk_difference_upper_95" not in table.columns:
+        if counts is not None:
+            counts["trial_arm_rows_without_an_interval"] = int(is_trial.sum())
+        return table
+    lower, upper = pd.to_numeric(table.risk_difference_lower_95, errors="coerce"), pd.to_numeric(table.risk_difference_upper_95, errors="coerce")
+    positive = table.report_value.astype(int) == 1
+    admitted = ~is_trial | (positive & (lower > 0)) | (~positive & (upper < absence_margin))
+    if counts is not None:
+        counts["trial_arm_excesses_admitted"] = int((is_trial & positive & admitted).sum())
+        counts["trial_arm_excesses_not_supported_by_the_interval"] = int((is_trial & positive & ~admitted).sum())
+        counts["trial_arm_absences_admitted"] = int((is_trial & ~positive & admitted).sum())
+        counts["trial_arm_absences_with_an_excess_left_open"] = int((is_trial & ~positive & ~admitted).sum())
+    return table[admitted]
+
+
+def soft_evidence_from_reports(reports: pd.DataFrame, relation: str = "induces", counts: dict | None = None) -> pd.DataFrame:
     """Per (perturbation, symptom, evidence_class, direction): the number of independent records and the sources.
 
     Takes a report table of the evidence_reports schema (one row per report, report_value 1 or 0). Literature rows
     enter only from the admitted sources (LITERATURE_SOURCES_ADMITTED) and only on the relation asked for; the
-    co-mention relation "associated_with" is not evidence of induction. Reports with the symptom-level crosswalk
-    flagged as indicated (an indication, not an adverse event) are the builders' business and are not re-filtered here.
+    co-mention relation "associated_with" is not evidence of induction. Trial-arm rows enter only where their interval
+    supports them (admit_trial_arm_reports). Reports with the symptom-level crosswalk flagged as indicated (an
+    indication, not an adverse event) are the builders' business and are not re-filtered here. `counts`, when given,
+    receives the admission counts.
     """
     if reports.empty:
         return pd.DataFrame(columns=["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "sources"])
@@ -112,6 +142,9 @@ def soft_evidence_from_reports(reports: pd.DataFrame, relation: str = "induces")
     if "evidence_class" in table.columns:
         is_literature = table.evidence_class == "literature"
         table = table[~is_literature | table.source.isin(LITERATURE_SOURCES_ADMITTED)]
+    table = admit_trial_arm_reports(table, counts)
+    if table.empty:
+        return pd.DataFrame(columns=["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "sources"])
     rows = []
     for row in table.itertuples(index=False):
         rows.append((str(row.perturbation_id), str(row.symptom), str(row.evidence_class), "positive" if int(row.report_value) == 1 else "negative", record_key(row), str(row.source)))

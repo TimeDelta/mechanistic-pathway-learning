@@ -145,3 +145,14 @@ naming the prior only while it is on, the fit targets, the loader's `masked_for_
 on a toy dataset, and an end-to-end run of the trainer three times (plain, strength 0 with every flag set, strength 1,
 then permuted with permuted labels) checking bit-identical predictions and an unchanged fingerprint at strength 0 and
 the recorded summaries at strength 1.
+
+## 6. Addition, 16 October 2026: the bar for a trial-arm comparison
+
+The first run of the trial-arm fetch on the v4 drugs gave 2,792 positive and 773 negative reports from 1,729 usable
+studies, and a positive there is any excess over placebo (3 of 100 against 2 of 100 counts), which is the right
+record of the measurement and too weak a bar for a prior. The report rows now carry the arm counts and the risk
+difference with its 95 percent Newcombe score interval (`clinical_trial_adverse_events.ARM_COLUMNS`), and
+`soft_priors.admit_trial_arm_reports` lets an excess in only when the interval's lower bound is above 0 and an absence
+only when its upper bound is below five in a hundred (`ABSENCE_RISK_DIFFERENCE_MARGIN`); the counts of rows admitted
+and refused are in `results.json` under `soft_priors.admission`. The reliability fit still reads the rows as the
+source states them. The margin is a choice and belongs with the tier numbers in the grid of section 4.
