@@ -53,9 +53,13 @@ step data/raw/plasma_protein_binding/fraction_unbound_database.xlsx "fraction-un
 step data/raw/onsides/v3.1.1/ingredient_identifier_bridge.json "OnSIDES identifier bridge" python experiments/fetch_onsides_identifier_bridge.py
 
 # --- graphs ---------------------------------------------------------------------------------------------------------
-# The base graph is copied from the release, not rebuilt: build_physiology_graph.py orders a reaction's catalysing genes
-# by set iteration, so a rebuild has the release's rows in another order (16,056 catalyzed_by rows moved on 10 October).
-step "$processed/graph_full/nodes.parquet" "base graph, from data/releases/v0.4" cp -r data/releases/v0.4/graph_full "$processed/graph_full"
+# The base graph is built, not copied from the release (16 October 2026, decision 9.53). The copy kept the release's
+# row order but also kept its physiology: the physiology audit found the copied graph without the 15,853 mirror edges'
+# removal (item 27, decision 4.10), the 33 GRK and arrestin sign corrections, the receptor-to-G-alpha coupling filter
+# (9.23), the currency-tag fixes and the stoichiometric coefficients (item 20), all built after the release of 6 October.
+# The builder now orders a reaction's catalysing genes by id, so the build is reproducible across containers.
+step "$processed/graph_full/nodes.parquet" "base graph (build_physiology_graph, deterministic order)" \
+  python -m mechanistic_pathway_learning.graph.build_physiology_graph --output-dir "$processed/graph_full"
 step "$processed/literature/gene_identifier_map.parquet" "gene identifier map" python -m mechanistic_pathway_learning.evidence.gene_identifier_map
 step "$processed/graph_full_manganese/nodes.parquet" "manganese variant" python experiments/build_manganese_graph_variant.py --graph-dirs "$processed/graph_full"
 step "$processed/graph_full_neuronal/nodes.parquet" "neuronal and oxidative variant" \

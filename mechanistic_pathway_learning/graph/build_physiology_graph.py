@@ -182,7 +182,9 @@ def build_metabolic_layer(model, symbol_by_ensembl: dict[str, str], model_yaml_p
             # receptor halves what arrives. Before this the coefficient was read for `is_substrate` and discarded, so
             # every demand was 1 and a reaction consuming two molecules counted as one.
             edge_rows.append({"source_id": metabolite.id if is_substrate else reaction.id, "target_id": reaction.id if is_substrate else metabolite.id, "relation_type": "substrate_of" if is_substrate else "product_of", "sign": 1.0, "evidence_source": "Human-GEM", "stoichiometric_coefficient": abs(float(coefficient))})
-        for gene in reaction.genes:
+        # cobra's reaction.genes is a frozenset, so its iteration order follows the hash seed and a rebuild moved
+        # 16,056 catalyzed_by rows on 10 October 2026 (docs/data_layer_rebuild.md); sorted, the build is reproducible
+        for gene in sorted(reaction.genes, key=lambda gene: gene.id):
             edge_rows.append({"source_id": metabolic_gene_node(gene.id), "target_id": reaction.id, "relation_type": "catalyzed_by", "sign": 1.0, "evidence_source": "Human-GEM GPR", "stoichiometric_coefficient": 1.0})
     nodes = pd.DataFrame(node_rows)
     edges = pd.DataFrame(edge_rows).drop_duplicates()
