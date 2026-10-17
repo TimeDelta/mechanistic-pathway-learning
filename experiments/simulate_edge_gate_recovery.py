@@ -46,6 +46,7 @@ from mechanistic_pathway_learning.models.edge_gate_passes import (
     objective_change_estimates,
     set_gate_state,
 )
+from mechanistic_pathway_learning.models.edge_gate_passes import closure_evidence as shared_closure_evidence
 from mechanistic_pathway_learning.models.edge_gates import HardConcreteEdgeGates, binary_edge_prior
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder
 
@@ -259,22 +260,10 @@ def fit(world: World, train_rows: np.ndarray, arguments, seed: int) -> dict:
 
 
 def closure_evidence(encoder, gates, data_loss, batches, penalty_denominator, surrogate_width) -> dict:
-    """{edge index: nats}: for each closed gate, how much the data part of the objective, times W (so in nats of
-    log-likelihood over the training labels), rises when that edge alone is reopened; positive supports the closure.
-    Keyed by the edge's index in the graph (gates.gated_edges), so it can be compared with the truth directly."""
-    def data_objective() -> float:
-        with torch.no_grad():
-            return sum(float(data_loss(batch)) for batch in batches) / len(batches)
-
-    base = data_objective()
-    evidence = {}
-    for gate_index in torch.nonzero(gates.read_out() < 0.5).flatten().tolist():
-        previous = float(gates.log_alpha[gate_index])
-        set_gate_state(gates, gate_index, True, 4.0 * surrogate_width)
-        evidence[int(gates.gated_edges[gate_index])] = (data_objective() - base) * penalty_denominator
-        with torch.no_grad():
-            gates.log_alpha[gate_index] = previous
-    return evidence
+    """{edge index: nats}: each closed edge's exact evidence for its closure, the rise in the data part of the objective,
+    times W, when that edge alone is reopened (models/edge_gate_passes.closure_evidence, which the trainer reports too)."""
+    measured = shared_closure_evidence(encoder, gates, data_loss, batches, penalty_denominator, surrogate_width=surrogate_width)
+    return {record["edge"]: record["evidence_nats"] for record in measured["records"]}
 
 
 def estimator_quality(encoder, gates, data_loss, batches, penalty_denominator, sample_size, surrogate_width, seed) -> dict:

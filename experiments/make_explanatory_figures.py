@@ -13,7 +13,15 @@
   11. allele_perturbations: the allele as the perturbation (decision 9.54), HTT's two alleles and where each
       disease's mechanism came from;
   12. edge_priors: the prior that an edge is real by its evidence, the cost of closing it, and how a hard concrete
-      gate reads at its prior (decisions 9.57 and 9.62).
+      gate reads at its prior (decisions 9.57 and 9.62);
+  13. edge_gate_training: how the hard gates are fitted, stage by stage, the prior as the cost per edge in each pass,
+      and the proxy gradient of the binary pass;
+  14. gate_share_reading: a closed gate is a deleted edge in both encoders, computed with their adjacency functions,
+      and the sole input whose cliff the slope cannot see;
+  15. gate_simulation_recovery: in planted worlds, which closures to believe, the calibration of the posterior from
+      the exact evidence, and the first-order flip estimate against the exact change;
+  16. gate_simulation_conditions: the same when the favourable assumptions are dropped one at a time, and how much
+      the labels say per edge in the worlds and on v5 (docs/edge_gate_simulation_results.json).
 
 Figures whose inputs are missing are skipped with a message. Writes PNG files to docs/figures/. Idempotent.
 
@@ -211,7 +219,7 @@ def figure_model_pipeline() -> None:
                      f"edges by layer:\n{layer_lines}\n\n"
                      "signed edges: activation +1, inhibition and\nrepression -1, substrate depletion -1, binding 0\n\n"
                      f"edge priors (9.57): {gate_counts['gated']:,} edges carry a prior\nthat they are real; off in the registered\n"
-                     "model; hard gates with a binary second\npass decided (9.62), being built",
+                     "model; hard gates, a binary second pass and\nexact flip checks built (9.62; figures 13-16)",
                      BOX_COLOURS["graph"]),
         measured_box(figure, axis, "3. Encoder (one per tested model)",
                      "message passing: 3 layers of typed messages,\nrelations shared through a rank-2 factorisation,\n"
@@ -219,6 +227,7 @@ def figure_model_pipeline() -> None:
                      "linear response, to a fixed point (tolerance\n0.001, at most 60 rounds):\n"
                      "h(t+1) = (1 - d) h(t) + d (sum_r g_r S_r h(t) + u)\n"
                      "S_r: signed adjacency of relation r, normalised\nby total in-degree; g_r: learned gain per relation\n"
+                     "with gates, both encoders read a closed gate as a\ndeleted edge (figure 14)\n"
                      "positive input weights, cofactor relations,\nreversible reactions, compartment pH\n"
                      f"class k reads b_k h*: b_k, the weakest node weight\non the widest route (the limiting step;\n"
                      f"{len(cell_classes)} classes and all cells); extracellular\npools shared across classes (figure 2)\n\n"
@@ -877,13 +886,470 @@ def figure_edge_priors() -> None:
     gate_axis.spines[["top", "right"]].set_visible(False)
     gate_axis.set_title("A hard concrete gate at its prior is not hard: most samples are fractional\n"
                         "(Louizos et al. 2018: gamma -0.1, zeta 1.1, beta 2/3), so the build ends with a binary pass", fontsize=10.5, fontweight="bold")
-    figure.suptitle("Edge priors (decision 9.57) and the hard gates decided on 16 October 2026 (decision 9.62, being built)", fontsize=12.5, fontweight="bold")
+    figure.suptitle("Edge priors (decision 9.57) and the hard gates decided and built on 16 October 2026 (decision 9.62; figures 13 to 16)", fontsize=12.5, fontweight="bold")
     figure.text(0.5, 0.055, "Closing an edge costs logit(prior) = n logit p nats of fit; with the gate's entropy, the per-edge cost is the KL divergence to "
                 "Bernoulli(prior). A positive closing cost keeps open an edge the data say nothing about;\nonly the 15 edges an IntAct absence lowered below "
                 "one half are cheaper closed. The binary second pass trains the gates alone with the read-out in the forward pass and a surrogate gradient, a "
                 "steep sigmoid at the threshold,\nin the backward pass. Numbers from experiments/measure_edge_gate_readings.py.", ha="center", va="top", fontsize=8)
     figure.tight_layout(rect=(0, 0.075, 1, 0.94))
     save(figure, "edge_priors")
+
+
+def framed_row(axis, boxes: list[tuple[float, str, str, str]], top: float, title_size: float = 9.6, body_size: float = 7.9) -> list[tuple[float, float, float, float]]:
+    """A row of framed boxes in axis coordinates, each a bold title over a body, centred at its x, sharing one top edge
+    and one bottom edge (the lowest the texts need), so the row reads as one stage after another. Returns each frame's
+    (left, bottom, right, top). The frames are measured from the drawn text, so no frame is narrower than its lines."""
+    renderer = axis.figure.canvas.get_renderer()
+    to_axis = axis.transAxes.inverted()
+    pad_x, pad_y, title_gap = 0.007, 0.035, 0.025
+    extents = []
+    for centre_x, title, body, _ in boxes:
+        title_text = axis.text(centre_x, top - pad_y, title, transform=axis.transAxes, ha="center", va="top", fontsize=title_size, fontweight="bold", zorder=3)
+        title_extent = title_text.get_window_extent(renderer).transformed(to_axis)
+        body_text = axis.text(centre_x, title_extent.y0 - title_gap, body, transform=axis.transAxes, ha="center", va="top", fontsize=body_size,
+                              linespacing=1.38, zorder=3)
+        body_extent = body_text.get_window_extent(renderer).transformed(to_axis)
+        extents.append((min(title_extent.x0, body_extent.x0) - pad_x, body_extent.y0 - pad_y, max(title_extent.x1, body_extent.x1) + pad_x))
+    bottom = min(extent[1] for extent in extents)
+    frames = []
+    for (left, _, right), (_, _, _, colour) in zip(extents, boxes):
+        axis.add_patch(FancyBboxPatch((left, bottom), right - left, top - bottom, transform=axis.transAxes, boxstyle="round,pad=0,rounding_size=0.012",
+                                      facecolor=colour, edgecolor="#555555", linewidth=1.1, zorder=1, clip_on=False))
+        frames.append((left, bottom, right, top))
+    for (_, low, right, high), (next_left, _, _, _) in zip(frames, frames[1:]):
+        middle = (low + high) / 2
+        axis.add_patch(FancyArrowPatch((right + 0.003, middle), (next_left - 0.003, middle), transform=axis.transAxes, arrowstyle="-|>", mutation_scale=16,
+                                       color="#444444", linewidth=1.4, zorder=3))
+    return frames
+
+
+def figure_edge_gate_training() -> None:
+    """How the hard edge gates of decision 9.62 (e) are fitted (models/edge_gates.py, models/edge_gate_passes.py): the
+    stages in order; the per-edge cost the prior sets in each pass; and the proxy gradient of the binary pass, drawn
+    from the functions the code uses (binary_edge_prior, HardConcreteEdgeGates.apply_flip_gradient's sigmoid)."""
+    from mechanistic_pathway_learning.models.edge_gate_passes import DEFAULT_SURROGATE_WIDTH
+    from mechanistic_pathway_learning.models.edge_gates import HARD_CONCRETE_BETA, HARD_CONCRETE_GAMMA, HARD_CONCRETE_ZETA, binary_edge_prior
+
+    figure = plt.figure(figsize=(18.5, 8.8))
+    grid = figure.add_gridspec(2, 2, height_ratios=[0.44, 1.0], hspace=0.24, wspace=0.18)
+    flow_axis = figure.add_subplot(grid[0, :])
+    flow_axis.axis("off")
+    stages = [
+        (0.095, "1. The prior that an edge is real",
+         "p from the edge's evidence tier and n from\nthe tier's tempered record count (9.57):\n"
+         "π = sigmoid(n · logit p), 9.62 sub-choice (iii)\n\nclosing the edge costs logit π nats of fit;\n"
+         "reopening a closed edge pays them back", BOX_COLOURS["input"]),
+        (0.297, "2. Stochastic pass, with the whole model",
+         f"one hard concrete sample per gate and\nminibatch (γ {HARD_CONCRETE_GAMMA:g}, ζ {HARD_CONCRETE_ZETA:g}, β {HARD_CONCRETE_BETA:.2g};\n"
+         "Louizos et al. 2018), read by both\nencoders as the sampled graph (figure 14)\n\n"
+         "loss = data loss + Σ KL(Bern(q) ‖ Bern(π)) / W\nq = P(gate open), started at q = π", BOX_COLOURS["graph"]),
+        (0.5, "3. Binary pass, the gates alone",
+         "forward: the read-out, open where q ≥ 1/2,\nso the graph fitted is the graph read out\n\n"
+         "backward: from D, the estimated change in\nthe objective if one edge alone flipped (its\n"
+         "data part to first order, its prior part,\n± logit π / W, exact), passed to the gate\n"
+         "through the sigmoid of the lower right", BOX_COLOURS["propagation"]),
+        (0.703, "4. Exact flip checks",
+         "the 30 edges whose D promises the largest\nfall are flipped one at a time; a flip is\n"
+         "kept only where the exact objective falls\n\nin the simulations about one promised\n"
+         "fall in three was real (figure 15)", BOX_COLOURS["readout"]),
+        (0.905, "5. What a fit reports",
+         "the read-out graph, and its fit;\nper closed edge, its exact evidence E: the\n"
+         "rise in data loss × W, in nats, when it\nalone reopens, and P(false) =\nsigmoid(E − logit π);\n"
+         "per edge, its closing frequency over\nrefits on halves (stability selection;\nsimulated, not yet in the trainer)", BOX_COLOURS["output"]),
+    ]
+    framed_row(flow_axis, stages, top=0.97)
+    flow_axis.set_title("Fitting the hard edge gates (decision 9.62 (e), built 16 October 2026)", fontsize=12, fontweight="bold", loc="left")
+
+    cost_axis = figure.add_subplot(grid[1, 0])
+    open_share = np.linspace(1e-4, 1 - 1e-4, 400)
+    tiers = (("curated", 0.9, 1.0, "#2b6ca3"), ("unreferenced", 0.7, 0.5, "#e08e2b"), ("text-mined only", 0.55, 0.5, "#8e44ad"))
+    for offset, (name, p, n, colour) in enumerate(tiers):
+        prior = float(binary_edge_prior(np.array([p]), np.array([n]))[0])
+        kl = open_share * np.log(open_share / prior) + (1 - open_share) * np.log((1 - open_share) / (1 - prior))
+        closed_cost, open_cost = -np.log(1 - prior), -np.log(prior)
+        cost_axis.plot(open_share, kl, color=colour, linewidth=2,
+                       label=f"{name}: p {p:g}, n {n:g}, π {prior:.3f}; closing costs logit π = {np.log(prior / (1 - prior)):.2f} nats")
+        cost_axis.plot([0, 1], [closed_cost, open_cost], "o", color=colour, markersize=6)
+        # the gap between the two end points, drawn at q = 1 where the open end sits
+        cost_axis.annotate("", xy=(1.0 - 0.025 * (offset + 1), open_cost), xytext=(1.0 - 0.025 * (offset + 1), closed_cost),
+                           arrowprops={"arrowstyle": "<->", "color": colour, "linewidth": 1.1})
+        cost_axis.plot([1.0 - 0.025 * (offset + 1), 1.0], [closed_cost, closed_cost], color=colour, linewidth=0.8, linestyle=":")
+    cost_axis.set_xlabel("q, the gate's probability of being open")
+    cost_axis.set_ylabel("per-edge penalty, nats")
+    cost_axis.set_xlim(0, 1)
+    cost_axis.legend(fontsize=7.8, loc="upper center")
+    cost_axis.spines[["top", "right"]].set_visible(False)
+    cost_axis.set_title("The prior is the cost per edge. Stochastic pass: KL(Bern(q) ‖ Bern(π)), zero at q = π;\n"
+                        "binary pass: the end points (dots). Closing costs the gap between them, logit π",
+                        fontsize=10, fontweight="bold")
+
+    proxy_axis = figure.add_subplot(grid[1, 1])
+    log_odds = np.linspace(-4, 4, 801)
+    proxy_axis.plot(log_odds, (log_odds >= 0).astype(float), color="#111111", linewidth=2.4, label="read-out: open when m ≥ 0 (q ≥ 1/2), the cliff")
+    for width, style in ((0.25, ":"), (DEFAULT_SURROGATE_WIDTH, "-"), (1.0, "--")):
+        proxy_axis.plot(log_odds, 1 / (1 + np.exp(-log_odds / width)), color="#2b6ca3", linestyle=style, linewidth=1.6 if width == DEFAULT_SURROGATE_WIDTH else 1.1,
+                        label=f"sigmoid(m / T), T = {width:g}" + (" (default)" if width == DEFAULT_SURROGATE_WIDTH else ""))
+    derivative_axis = proxy_axis.twinx()
+    slope = 1 / (1 + np.exp(-log_odds / DEFAULT_SURROGATE_WIDTH))
+    derivative_axis.fill_between(log_odds, slope * (1 - slope) / DEFAULT_SURROGATE_WIDTH, color="#e08e2b", alpha=0.3,
+                                 label=f"σ'(m / T) / T at T = {DEFAULT_SURROGATE_WIDTH:g}: the share of D a gate receives")
+    derivative_axis.set_ylim(0, 1.1 * 0.25 / DEFAULT_SURROGATE_WIDTH)
+    derivative_axis.set_ylabel("proxy derivative, per unit of open log-odds", color="#9c5d12")
+    proxy_axis.set_xlabel("m, the gate's open log-odds, logit q")
+    proxy_axis.set_ylabel("gate as the forward pass reads it")
+    proxy_axis.set_ylim(-0.03, 1.08)
+    handles = proxy_axis.get_legend_handles_labels()[0] + derivative_axis.get_legend_handles_labels()[0]
+    proxy_axis.legend(handles, [handle.get_label() for handle in handles], fontsize=7.8, loc="upper left")
+    proxy_axis.spines[["top"]].set_visible(False)
+    derivative_axis.spines[["top"]].set_visible(False)
+    proxy_axis.set_title("The cliff and its proxy: dJ/dm = (J(open) − J(closed)) · σ'(m / T) / T,\n"
+                         "so a gate near the threshold moves toward the side that lowers the objective", fontsize=10, fontweight="bold")
+    figure.text(0.5, 0.015, "J(open) − J(closed) is −D for an open edge and +D for a closed one (HardConcreteEdgeGates.apply_flip_gradient). Adam scales each gate's step "
+                "by its own gradient history, so the width T mostly decides which gates move at all;\nin the simulations T = 0.25, 0.5 and 1 gave the same read-out in world 0. "
+                "W is the total loss weight of the fit (the number of training labels in the simulations), so one nat of prior weighs as one label's log-loss.",
+                ha="center", fontsize=8)
+    save(figure, "edge_gate_training")
+
+
+def share_reading_values() -> dict:
+    """What each encoder multiplies the inputs of a node by, computed with the encoders' own functions on a star of three
+    inputs a, b and c into t (one relation, all signs +1, edge weights 1, 2 and 1): with every gate open, with b's gate
+    closed, and on the graph without b; and the value of one input against its gate's value on a grid, among three
+    inputs and as a sole input. Linear response: expanded_adjacency_entries and normalised_adjacency_values, the entries'
+    weights times the gates (as the gated encoder passes them). Message passing: relation_adjacency_parts and
+    gated_relation_adjacencies."""
+    from mechanistic_pathway_learning.models.edge_gates import gated_relation_adjacencies, relation_adjacency_parts
+
+    num_nodes, target_node = 4, 3
+    source, target = torch.tensor([0, 1, 2]), torch.tensor([3, 3, 3])
+    relation, sign, weight = torch.zeros(3, dtype=torch.long), torch.ones(3), torch.tensor([1.0, 2.0, 1.0])
+    kept = torch.tensor([0, 2])
+
+    def linear(sources, targets, relations, signs, weights, gates) -> list[float]:
+        entries = LinearResponseEncoder.expanded_adjacency_entries(num_nodes, ["activates"], sources, targets, relations, signs, edge_weight=weights)
+        values = LinearResponseEncoder.normalised_adjacency_values(entries, num_nodes, weight=entries["weight"] * gates[entries["origin"]])
+        into_target = {int(entry): 0.0 for entry in range(3)}
+        for value, entry_source, entry_target in zip(values.tolist(), entries["source"].tolist(), entries["target"].tolist()):
+            if entry_target == target_node:
+                into_target[entry_source] += value
+        return [into_target[node] for node in range(3)]
+
+    def message(sources, targets, relations, signs, weights, gates) -> list[float]:
+        parts = relation_adjacency_parts(torch.stack([sources, targets]), relations, num_nodes, 1, edge_sign=signs, edge_weight=weights)
+        adjacency = gated_relation_adjacencies(parts, gates, num_nodes)[0].to_dense()
+        return [float(adjacency[target_node, node]) for node in range(3)]
+
+    values = {}
+    for name, function in (("linear_response", linear), ("message_passing", message)):
+        values[name] = {"every_gate_open": function(source, target, relation, sign, weight, torch.ones(3)),
+                        "b_closed": function(source, target, relation, sign, weight, torch.tensor([1.0, 0.0, 1.0])),
+                        "graph_without_b": function(source[kept], target[kept], relation[kept], sign[kept], weight[kept], torch.ones(2))}
+    gate_grid = np.linspace(0.0, 1.0, 201)
+    one_of_three, sole = [], []
+    for gate in gate_grid:
+        one_of_three.append(linear(source, target, relation, sign, torch.ones(3), torch.tensor([float(gate), 1.0, 1.0]))[0])
+        sole.append(linear(source[:1], target[:1], relation[:1], sign[:1], torch.ones(1), torch.tensor([float(gate)]))[0])
+    values["gate_grid"], values["one_of_three_inputs"], values["sole_input"] = gate_grid, np.array(one_of_three), np.array(sole)
+    return values
+
+
+def figure_gate_share_reading() -> None:
+    """Why a closed gate is a deleted edge in both encoders (decision 9.62), and why the binary pass estimates flips
+    instead of following the slope: the numbers are computed by share_reading_values with the encoders' functions."""
+    values = share_reading_values()
+    figure = plt.figure(figsize=(17.5, 7.4))
+    grid = figure.add_gridspec(1, 3, width_ratios=[1.0, 1.0, 0.95], wspace=0.22, top=0.8, bottom=0.12)
+    states = (("every_gate_open", "every gate open"), ("b_closed", "b's gate closed (0)"), ("graph_without_b", "the graph without b"))
+    for column, (encoder, title, rule) in enumerate((
+            ("linear_response", "Linear response: each input is a share", "value = sign · w · g / Σ (w · g) at t"),
+            ("message_passing", "Message passing: a mean over open inputs", "value = sign · w · g / Σ g at t"))):
+        axis = figure.add_subplot(grid[0, column])
+        axis.set_xlim(0, 1)
+        axis.set_ylim(0, 1)
+        axis.axis("off")
+        for row, (state, label) in enumerate(states):
+            top = 0.84 - row * 0.3
+            numbers = values[encoder][state]
+            node_texts = {}
+            for index, (name, x) in enumerate((("a  (w 1)", 0.1), ("b  (w 2)", 0.1), ("c  (w 1)", 0.1))):
+                node_texts[index] = axis.text(x, top - index * 0.085, name, ha="center", va="center", fontsize=8,
+                                              bbox={"boxstyle": "round,pad=0.25", "facecolor": "#dbe9f6" if not (state != "every_gate_open" and index == 1) else "#f4f4f4",
+                                                    "edgecolor": "#333333", "linestyle": "-" if not (state == "graph_without_b" and index == 1) else ":"})
+            target_text = axis.text(0.62, top - 0.085, "t", ha="center", va="center", fontsize=9, bbox={"boxstyle": "circle,pad=0.3", "facecolor": "#e3f1df", "edgecolor": "#333333"})
+            figure.canvas.draw()
+            for index in range(3):
+                if state == "graph_without_b" and index == 1:
+                    continue
+                closed = state == "b_closed" and index == 1
+                axis.annotate("", xy=(0.5, 0.5), xycoords=target_text, xytext=(0.5, 0.5), textcoords=node_texts[index],
+                              arrowprops={"arrowstyle": "-|>", "color": "#c0392b" if closed else "#555555", "linestyle": "--" if closed else "-",
+                                          "patchA": node_texts[index].get_bbox_patch(), "patchB": target_text.get_bbox_patch(), "shrinkA": 2, "shrinkB": 2})
+                axis.text(0.36, top - index * 0.085 + 0.012, f"{numbers[index]:.3g}" + ("  (g = 0)" if closed else ""), fontsize=8.5, ha="center",
+                          color="#c0392b" if closed else "#222222")
+            axis.text(0.8, top - 0.085, label, fontsize=8.5, ha="left", va="center", fontweight="bold" if state != "every_gate_open" else "normal")
+        same = np.allclose(values[encoder]["b_closed"], values[encoder]["graph_without_b"], atol=1e-6)
+        axis.set_title(f"{title}\n{rule}\nb closed {'equals' if same else 'differs from'} the graph without b", fontsize=10, fontweight="bold")
+
+    curve_axis = figure.add_subplot(grid[0, 2])
+    grid_values = values["gate_grid"]
+    curve_axis.plot(grid_values, values["one_of_three_inputs"], color="#2b6ca3", linewidth=2, label="one of three equal inputs: g / (g + 2)")
+    curve_axis.plot(grid_values[1:], values["sole_input"][1:], color="#c0392b", linewidth=2, label="a sole input: 1 for any g > 0")
+    curve_axis.plot([0], [values["sole_input"][0]], "o", color="#c0392b", markersize=7)
+    curve_axis.plot([0], [1.0], "o", markerfacecolor="white", markeredgecolor="#c0392b", markersize=7)
+    curve_axis.annotate("the sole input's cliff:\nits slope is 0 for every g > 0,\nso gradient descent cannot see\nthat closing it removes the input;\n"
+                        "the flip estimate D does:\nthe value goes from 1 to 0", xy=(0.0, 0.0), xytext=(0.3, 0.5), fontsize=8,
+                        arrowprops={"arrowstyle": "-|>", "color": "#555555"})
+    curve_axis.set_xlabel("g, the input's gate")
+    curve_axis.set_ylabel("the input's value at t (linear response)")
+    curve_axis.set_ylim(-0.05, 1.1)
+    curve_axis.legend(fontsize=8, loc="center right", bbox_to_anchor=(1.0, 0.76))
+    curve_axis.spines[["top", "right"]].set_visible(False)
+    curve_axis.set_title("What the slope sees and what it misses", fontsize=10, fontweight="bold")
+    figure.suptitle("A closed gate is a deleted edge in both encoders (decision 9.62); computed with the encoders' adjacency functions", fontsize=12.5, fontweight="bold",
+                    y=0.98)
+    figure.text(0.5, 0.01, "Linear response divides by the gated sum of the input weights at the target (decision 4.11: weights are shares); message passing divides by "
+                "the gated in-degree, the sum of the gates, and keeps the weights in the numerator.\nWith gates of exactly 0 and 1 both give the graph without the closed edges, "
+                "which tests/test_hard_edge_gates.py checks end to end, the limiting-step bottleneck included. A soft gate that is its target's sole input "
+                "therefore has no slope at all, which is why the binary pass estimates each flip instead.", ha="center", va="bottom", fontsize=8)
+    save(figure, "gate_share_reading")
+
+
+SIMULATION_DIGEST = Path("docs/edge_gate_simulation_results.json")
+CALIBRATED_WORLDS = tuple(f"b3_s{seed}" for seed in range(5))
+SELECTOR_COLOURS = {"read-out": "#111111", "exact evidence": "#2b6ca3", "posterior P(false)": "#8e44ad", "stability": "#e08e2b"}
+
+
+def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """The Wilson score interval of a binomial proportion; (nan, nan) for an empty total."""
+    if total == 0:
+        return float("nan"), float("nan")
+    share = successes / total
+    denominator = 1 + z * z / total
+    centre = (share + z * z / (2 * total)) / denominator
+    half_width = z * np.sqrt(share * (1 - share) / total + z * z / (4 * total * total)) / denominator
+    return float(centre - half_width), float(centre + half_width)
+
+
+def pooled_selector_points(runs: dict, worlds: tuple[str, ...]) -> dict[str, list[dict]]:
+    """Per selector family, one point per threshold: closures per world (mean), the pooled precision over the worlds
+    (false closures over closures) and its Wilson interval. The read-out is every closed edge."""
+    families: dict[str, list[tuple[str, list[tuple[int, int]]]]] = {"read-out": [], "exact evidence": [], "posterior P(false)": [], "stability": []}
+
+    def counts(entry: dict | None) -> tuple[int, int]:
+        if entry is None or not entry.get("closed"):
+            return 0, 0
+        closed = int(entry["closed"])
+        false = int(entry["false"]) if "false" in entry else int(round(entry["precision"] * closed))
+        return closed, false
+
+    families["read-out"].append(("every closed edge", [counts(runs[world]["fit"]) for world in worlds]))
+    for threshold in ("0.5", "1.0", "2.0"):
+        families["exact evidence"].append((f"E ≥ {threshold} nats", [counts(runs[world]["closures_by_evidence"].get(f"at least {threshold} nats")) for world in worlds]))
+    for level in ("0.7", "0.8", "0.9", "0.95"):
+        families["posterior P(false)"].append((f"P(false) ≥ {level}", [counts(runs[world]["closures_by_posterior_false"].get(f"at least {level}")) for world in worlds]))
+    for threshold in ("0.6", "0.7", "0.8", "0.9"):
+        families["stability"].append((f"frequency ≥ {threshold}", [counts(runs[world]["stability"]["thresholds"].get(threshold)) for world in worlds]))
+    points: dict[str, list[dict]] = {}
+    for family, thresholds in families.items():
+        points[family] = []
+        for label, per_world in thresholds:
+            closed, false = sum(count[0] for count in per_world), sum(count[1] for count in per_world)
+            if closed == 0:
+                continue
+            low, high = wilson_interval(false, closed)
+            points[family].append({"label": label, "closures_per_world": closed / len(worlds), "precision": false / closed, "low": low, "high": high, "closed": closed})
+    return points
+
+
+def posterior_calibration(runs: dict, worlds: tuple[str, ...], edges: tuple[float, ...] = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0)) -> list[dict]:
+    """The closed edges of the given worlds pooled and binned by their P(false); per bin, the mean P(false), the share
+    that are false and its Wilson interval."""
+    rows = [row for world in worlds for row in runs[world].get("closed_edges", []) if row[4] is not None]
+    columns = runs[worlds[0]]["closed_edges_columns"]
+    posterior_index, real_index = columns.index("posterior_false"), columns.index("real")
+    bins = []
+    for low, high in zip(edges, edges[1:]):
+        inside = [row for row in rows if low <= row[posterior_index] < high or (high == edges[-1] and row[posterior_index] == high)]
+        if not inside:
+            continue
+        false = sum(1 - row[real_index] for row in inside)
+        interval = wilson_interval(false, len(inside))
+        bins.append({"low": low, "high": high, "edges": len(inside), "mean_posterior_false": float(np.mean([row[posterior_index] for row in inside])),
+                     "share_false": false / len(inside), "interval": interval})
+    return bins
+
+
+def figure_gate_simulation_recovery() -> None:
+    """Five planted worlds, calibrated priors, the encoder's true parameters: which closures to believe (decision 9.62)."""
+    digest = json.loads(SIMULATION_DIGEST.read_text())
+    runs = digest["runs"]
+    worlds = tuple(world for world in CALIBRATED_WORLDS if world in runs)
+    figure, (selector_axis, calibration_axis, estimator_axis) = plt.subplots(1, 3, figsize=(19, 6.6), gridspec_kw={"width_ratios": [1.15, 0.95, 0.95]})
+    base_rates = [runs[world]["world"]["false_edges"] / runs[world]["world"]["edges"] for world in worlds]
+    for family, points in pooled_selector_points(runs, worlds).items():
+        if not points:
+            continue
+        x = [point["closures_per_world"] for point in points]
+        y = [point["precision"] for point in points]
+        errors = np.array([[point["precision"] - point["low"] for point in points], [point["high"] - point["precision"] for point in points]])
+        selector_axis.errorbar(x, y, yerr=errors, color=SELECTOR_COLOURS[family], marker="o", markersize=5, linewidth=1.4, capsize=3, label=family)
+        for point in points:
+            selector_axis.annotate(point["label"], (point["closures_per_world"], point["precision"]), textcoords="offset points", xytext=(5, -10),
+                                   fontsize=6.8, color=SELECTOR_COLOURS[family])
+    selector_axis.axhline(np.mean(base_rates), color="#999999", linestyle="--", linewidth=1)
+    selector_axis.text(1.05, np.mean(base_rates) + 0.015, f"share of edges that are false: {np.mean(base_rates):.2f}", fontsize=7.5, color="#666666")
+    selector_axis.set_xscale("log")
+    selector_axis.set_ylim(0, 1.05)
+    selector_axis.set_xlabel("edges closed per world (log scale)")
+    selector_axis.set_ylabel("share of the closed edges that are false (pooled, 95% Wilson interval)")
+    selector_axis.legend(fontsize=8, loc="lower left")
+    selector_axis.spines[["top", "right"]].set_visible(False)
+    selector_axis.set_title(f"Which closures to believe, {len(worlds)} worlds pooled:\nthe read-out against three stricter rules", fontsize=10.5, fontweight="bold")
+
+    bins = posterior_calibration(runs, worlds)
+    calibration_axis.plot([0.5, 1.0], [0.5, 1.0], color="#999999", linestyle="--", linewidth=1, label="calibrated")
+    for item in bins:
+        calibration_axis.errorbar(item["mean_posterior_false"], item["share_false"], yerr=[[item["share_false"] - item["interval"][0]], [item["interval"][1] - item["share_false"]]],
+                                  color="#8e44ad", marker="o", capsize=3)
+        calibration_axis.annotate(f"{item['edges']}", (item["mean_posterior_false"], item["share_false"]), textcoords="offset points", xytext=(6, 4), fontsize=7.5, color="#8e44ad")
+    calibration_axis.set_xlim(0.45, 1.02)
+    calibration_axis.set_ylim(0, 1.05)
+    calibration_axis.set_xlabel("P(false) = sigmoid(E − logit π), binned")
+    calibration_axis.set_ylabel("share false in the bin (95% Wilson interval)")
+    calibration_axis.legend(fontsize=8, loc="lower right")
+    calibration_axis.spines[["top", "right"]].set_visible(False)
+    calibration_axis.set_title("Is the posterior from the exact evidence calibrated?\n(numbers: closed edges in each bin)", fontsize=10.5, fontweight="bold")
+
+    pairs = np.array([pair for world in worlds for pair in runs[world].get("estimator", {}).get("per_edge_data_part_nats", [])], dtype=float)
+    if len(pairs):
+        estimator_axis.scatter(pairs[:, 1], pairs[:, 0], s=7, alpha=0.45, color="#2b6ca3", edgecolors="none")
+        limit = float(np.abs(pairs).max()) * 1.1
+        estimator_axis.plot([-limit, limit], [-limit, limit], color="#999999", linestyle="--", linewidth=1)
+        estimator_axis.set_xscale("symlog", linthresh=1e-3)
+        estimator_axis.set_yscale("symlog", linthresh=1e-3)
+        correlation = float(np.corrcoef(pairs[:, 0], pairs[:, 1])[0, 1])
+        agree = float(np.mean(np.sign(pairs[:, 0]) == np.sign(pairs[:, 1])))
+        estimator_axis.set_title(f"The first-order flip estimate against the exact change\n{len(pairs)} random edges; correlation {correlation:.2f}, "
+                                 f"signs agree {agree:.0%}", fontsize=10.5, fontweight="bold")
+    estimator_axis.set_xlabel("exact change in data loss × W if the edge alone flips, nats (symlog)")
+    estimator_axis.set_ylabel("first-order estimate, nats (symlog)")
+    estimator_axis.spines[["top", "right"]].set_visible(False)
+    worlds_text = runs[worlds[0]]["world"]
+    figure.suptitle(f"Edge-gate recovery in planted worlds ({worlds_text['nodes']} nodes, about {worlds_text['edges']:,} edges, {worlds_text['perturbations']} perturbations, "
+                    f"{worlds_text['symptoms']} symptoms; docs/edge_gate_simulation.md)", fontsize=12, fontweight="bold")
+    figure.text(0.5, -0.04, "Every world is the most favourable case: priors calibrated by construction (each edge is real with its prior π) and the encoder's parameters "
+                "the truth's, so only the gates learn. E is the exact rise in the training data loss, times W, when the edge alone is reopened with every other\nedge "
+                "as fitted; the read-out closes an edge when E > logit π, so P(false) ≥ 1/2. Stability: closing frequency over 20 refits on complementary halves "
+                "of the training perturbations (Shah and Samworth 2013). Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
+    figure.tight_layout()
+    save(figure, "gate_simulation_recovery")
+
+
+CONDITION_ROWS = (  # (label, runs pooled)
+    ("calibrated priors, true parameters\n(5 worlds pooled)", CALIBRATED_WORLDS),
+    ("without the binary pass and the\nflip checks (5 worlds pooled)", tuple(f"b3_s{seed}_nobinary" for seed in range(5))),
+    ("3,000 perturbations (world 0)", ("b3_s0_p3000",)),
+    ("priors too optimistic: fewer edges\nreal than π says (world 0)", ("b3_s0_optimistic_priors",)),
+    ("priors too pessimistic: more edges\nreal than π says (world 0)", ("b3_s0_pessimistic_priors",)),
+    ("half the true positives observed\n(world 0)", ("b3_s0_pu",)),
+    ("joint fit, fresh start, readout on\nthe true nodes (world 0)", ("b3_s0_joint_random_support",)),
+    ("joint fit, fresh start, readout on\nevery node (world 0)", ("b2_s0_joint_random_dense",)),
+    ("joint fit from the truth, readout\non every node (world 0)", ("b2_s0_joint_oracle_dense",)),
+    ("v5's positives per gated edge\n(2,000 nodes, 20 symptoms)", ("b2_realratio",)),
+)
+
+
+def condition_summary(runs: dict, names: tuple[str, ...]) -> dict | None:
+    """Pooled over the named runs that exist: closures, the read-out's precision and recall, the precision of the
+    closures with at least 1 nat of exact evidence, the share of edges that are false, and the share of the attainable
+    held-out gain the fitted graph realised, (open - fitted) / (open - true), averaged over the runs."""
+    present = [runs[name] for name in names if name in runs]
+    if not present:
+        return None
+    closed = sum(run["fit"]["closed"] for run in present)
+    false_closed = sum(int(round((run["fit"]["precision"] or 0.0) * run["fit"]["closed"])) for run in present)
+    false_edges = sum(run["fit"]["false_edges"] for run in present)
+    edges = sum(run["world"]["edges"] for run in present)
+    evidence = [run["closures_by_evidence"]["at least 1.0 nats"] for run in present if run.get("closures_by_evidence")]
+    evidence_closed = sum(entry["closed"] for entry in evidence)
+    evidence_false = sum(int(round((entry["precision"] or 0.0) * entry["closed"])) for entry in evidence)
+    gains = []
+    for run in present:
+        loss = run["held_out_loss"]
+        attainable = loss["every_edge_open"] - loss["true_graph"]
+        if attainable > 0:
+            gains.append((loss["every_edge_open"] - loss["fitted_graph"]) / attainable)
+    return {"runs": len(present), "closed": closed, "precision": false_closed / closed if closed else None, "recall": false_closed / false_edges if false_edges else None,
+            "evidence_closed": evidence_closed, "evidence_precision": evidence_false / evidence_closed if evidence_closed else None,
+            "base_rate": false_edges / edges, "held_out_gain_share": float(np.mean(gains)) if gains else None}
+
+
+def figure_gate_simulation_conditions() -> None:
+    """How the read-out fares when the favourable assumptions are dropped one at a time, and how far v5 is from the worlds."""
+    digest = json.loads(SIMULATION_DIGEST.read_text())
+    runs = digest["runs"]
+    rows = [(label, condition_summary(runs, names)) for label, names in CONDITION_ROWS]
+    rows = [(label, summary) for label, summary in rows if summary is not None]
+    figure, (precision_axis, gain_axis, density_axis) = plt.subplots(1, 3, figsize=(19, 7.6), gridspec_kw={"width_ratios": [1.25, 0.8, 0.95]})
+    positions = np.arange(len(rows))[::-1]
+    precision = [summary["precision"] or 0.0 for _, summary in rows]
+    precision_axis.barh(positions, precision, color="#7a9cc6", height=0.62, label="read-out: every closed edge")
+    for position, (_, summary) in zip(positions, rows):
+        precision_axis.plot([summary["base_rate"]], [position], marker="|", color="#c0392b", markersize=16, markeredgewidth=2.2)
+        if summary["evidence_precision"] is not None:
+            precision_axis.plot([summary["evidence_precision"]], [position], marker="D", color="#2b6ca3", markersize=6)
+        precision_axis.text(1.02, position, f"{summary['closed']} closed, recall {summary['recall']:.1%}; E ≥ 1 nat: {summary['evidence_closed']}",
+                            va="center", fontsize=7.6)
+    precision_axis.plot([], [], marker="|", color="#c0392b", linestyle="none", markersize=12, markeredgewidth=2.2, label="share of edges that are false")
+    precision_axis.plot([], [], marker="D", color="#2b6ca3", linestyle="none", label="closures with E ≥ 1 nat")
+    precision_axis.set_yticks(positions, [label for label, _ in rows], fontsize=8)
+    precision_axis.set_xlim(0, 1.6)
+    precision_axis.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    precision_axis.set_xlabel("share of the closed edges that are false")
+    precision_axis.legend(fontsize=7.8, loc="lower right")
+    precision_axis.spines[["top", "right"]].set_visible(False)
+    precision_axis.set_title("Precision of the closures under each condition", fontsize=10.5, fontweight="bold")
+
+    gains = [summary["held_out_gain_share"] for _, summary in rows]
+    gain_axis.barh(positions, [gain if gain is not None else 0.0 for gain in gains], color=["#2b6ca3" if (gain or 0) >= 0 else "#c0392b" for gain in gains], height=0.62)
+    for position, gain in zip(positions, gains):
+        if gain is not None:
+            gain_axis.text(gain + (0.03 if gain >= 0 else -0.03), position, f"{gain:+.2f}", va="center", ha="left" if gain >= 0 else "right", fontsize=7.6)
+    gain_axis.axvline(0, color="#555555", linewidth=1)
+    gain_axis.set_yticks(positions, [""] * len(rows))
+    finite_gains = [gain for gain in gains if gain is not None]
+    gain_axis.set_xlim(min(-0.6, min(finite_gains) * 1.3) if finite_gains else -1, 1.2)
+    gain_axis.set_xlabel("(loss, every edge open − loss, fitted graph) /\n(loss, every edge open − loss, true graph), held out")
+    gain_axis.spines[["top", "right"]].set_visible(False)
+    gain_axis.set_title("Share of the attainable held-out gain\nthe fitted graph realised (1 = the true graph)", fontsize=10.5, fontweight="bold")
+
+    density_rows = []
+    for name, label in (("b3_s0", "world 0, 800 perturbations"), ("b3_s0_p3000", "world 0, 3,000 perturbations"), ("b2_realratio", "the v5-ratio world")):
+        if name in runs and "training_positives_per_edge" in runs[name]["world"]:
+            world = runs[name]["world"]
+            density_rows.append((label, world["training_labels_per_edge"], world["training_positives_per_edge"]))
+    if digest.get("v5"):
+        density_rows.append(("v5, every perturbation\n(an upper bound for a fold)", digest["v5"]["cells_per_gated_edge"], digest["v5"]["positives_per_gated_edge"]))
+    density_positions = np.arange(len(density_rows))[::-1]
+    density_axis.barh(density_positions + 0.18, [row[1] for row in density_rows], height=0.34, color="#d5dbe1", label="label cells per gated edge")
+    density_axis.barh(density_positions - 0.18, [row[2] for row in density_rows], height=0.34, color="#2b6ca3", label="positive labels per gated edge")
+    for position, (_, cells, positives) in zip(density_positions, density_rows):
+        density_axis.text(cells * 1.15, position + 0.18, f"{cells:.2g}", va="center", fontsize=7.6)
+        density_axis.text(positives * 1.15, position - 0.18, f"{positives:.2g}", va="center", fontsize=7.6)
+    density_axis.set_xscale("log")
+    density_axis.set_yticks(density_positions, [row[0] for row in density_rows], fontsize=8)
+    density_axis.set_xlim(0.01, 60)
+    density_axis.legend(fontsize=7.8, loc="lower right")
+    density_axis.spines[["top", "right"]].set_visible(False)
+    density_axis.set_xlabel("per gated edge (log scale); the worlds count their training rows")
+    density_axis.set_title("How much the labels say per edge", fontsize=10.5, fontweight="bold")
+    figure.suptitle("Edge-gate recovery when the favourable assumptions are dropped one at a time (docs/edge_gate_simulation.md)", fontsize=12, fontweight="bold")
+    figure.text(0.5, -0.03, "Each condition changes one thing from the calibrated world of figure 15. Precision is the share of closed edges that are false; the red "
+                "mark is that share among all edges, what closing at random would give. A held-out gain share below 0 means the fitted graph predicted the\nheld-out "
+                "perturbations worse than the database graph with every edge open. Joint fits learn the encoder's parameters and the readout with the gates, with "
+                "AdamW and early stopping on an inner validation share, as the trainer does. Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
+    figure.tight_layout()
+    save(figure, "gate_simulation_conditions")
 
 
 FIGURES = {
@@ -901,6 +1367,10 @@ FIGURES = {
     "allele_perturbations": (figure_allele_perturbations, [EVIDENCE_DIRECTORY / "evidence_reports.parquet", EVIDENCE_DIRECTORY / "evidence_summary.json",
                                                            CONFIRMATORY_GRAPH_DIRECTORY / "edges.parquet"]),
     "edge_priors": (figure_edge_priors, [CONFIRMATORY_GRAPH_DIRECTORY / "edge_evidence.parquet", EDGE_PRIOR_TIERS]),
+    "edge_gate_training": (figure_edge_gate_training, []),
+    "gate_share_reading": (figure_gate_share_reading, []),
+    "gate_simulation_recovery": (figure_gate_simulation_recovery, [SIMULATION_DIGEST]),
+    "gate_simulation_conditions": (figure_gate_simulation_conditions, [SIMULATION_DIGEST]),
 }
 
 

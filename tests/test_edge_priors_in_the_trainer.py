@@ -218,10 +218,17 @@ def test_end_to_end_hard_gates_train_run_the_binary_pass_and_save_the_scored_rea
     gated, _, _ = edge_priors(table, read_edge_tiers(TIERS))
     for encoder in ("linear_response", "message_passing"):
         run = run_trainer(paths, tmp_path / encoder, "--encoder", encoder, "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05",
-                          "--edge-gate-binary-epochs", "2", "--edge-gate-flip-checks", "3")
+                          "--edge-gate-binary-epochs", "2", "--edge-gate-flip-checks", "3", "--edge-gate-closure-evidence", "50")
         record = run["results"]["edge_priors"]
         assert record["gates"]["kind"] == "hard_concrete" and record["gates"]["phase"] == "binary"
         assert len(record["binary_pass"]["history"]) == 2 and record["binary_pass"]["flip_checks"]["checked"] <= 3
+        evidence = record["binary_pass"]["closure_evidence"]
+        closures = pd.read_csv(run["directory"] / evidence["file"])
+        assert evidence["evaluated"] == len(closures) == min(evidence["closed"], 50) == record["gates"]["closed_at_read_out"], "every closed edge measured"
+        if len(closures):
+            expected = 1 / (1 + np.exp(-(closures.evidence_nats - np.log(closures.prior / (1 - closures.prior)))))
+            assert np.allclose(closures.posterior_false, expected), "P(false) = sigmoid(evidence - logit prior)"
+            assert closures.prior.is_monotonic_decreasing, "the closures against the strongest priors are measured first"
         read_out = np.load(run["directory"] / "edge_gate_read_out.npy")
         assert set(np.unique(read_out)) <= {0, 1} and read_out[~gated].all(), "an ungated edge is always open"
         assert int((read_out[gated] == 0).sum()) == record["gates"]["closed_at_read_out"]

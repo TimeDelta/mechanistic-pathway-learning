@@ -165,6 +165,35 @@ its prior is mostly fractional, and the paper's test-time gate reads a 0.9 edge 
 ends with a binary pass, which trains the gates alone with the read-out (open when P(open) is at least one half) in the
 forward pass and a surrogate gradient in the backward pass.
 
+## 13. Fitting the hard edge gates
+
+![edge gate training](figures/edge_gate_training.png)
+
+Top: the stages of decision 9.62 (e) as built on 16 October 2026 (`models/edge_gates.py`, `models/edge_gate_passes.py`
+and the trainer's `--edge-gate-kind hard_concrete`, the default kind, which acts only when edge priors are on). Lower
+left: the prior is the cost per edge (the owner, 16 October 2026: "Yes the prior probability should be the cost per
+edge absolutely"). In the stochastic pass each gate pays KL(Bern(q) ‖ Bern(π)), which is 0 at its prior; in the
+binary pass it pays −log Bern(z; π) at its read-out, the curve's end points. The gap between them, logit π, is what
+closing costs: 2.20 nats for a curated edge, 0.42 for an unreferenced one and 0.10 for a text-mined one. Lower right:
+the owner's proxy for the read-out's cliff ("a proxy gradient that resembles the cliff discontinuity"): the forward
+pass reads the step, and the backward pass sends each gate the estimated change D of its own flip through
+σ'(m / T) / T. The exact flip checks of stage 4 test the largest promised falls one at a time; in the simulations about
+one in three was real (figure 15). Stability selection is simulated and not yet built into the trainer.
+
+## 14. A closed gate is a deleted edge in both encoders
+
+![gate share reading](figures/gate_share_reading.png)
+
+Left and centre: what each encoder multiplies a node's inputs by, computed with its own adjacency functions on a star
+of three inputs into t with weights 1, 2 and 1. Linear response takes each input's share of the gated weights at the
+target (decision 4.11); message passing divides by the gated in-degree and keeps the weights in the numerator. With
+b's gate at exactly 0 both give the values of the graph without b, which is the answer built for the owner's "The
+gates need to be read equivalently in both encoders" (decision 9.62); `tests/test_hard_edge_gates.py` checks it on
+whole responses, the limiting-step bottleneck included. Right: why the binary pass estimates flips. One of three equal
+inputs takes g / (g + 2), which a gradient can follow; a sole input takes all of its target's input for any g above 0
+and nothing at 0, so its slope is 0 wherever a gradient could see it. The flip estimate sees the cliff: the value
+goes from 1 to 0.
+
 ## How they are drawn
 
 Every figure is saved at 240 dpi (150 until 9 October 2026, which left the dense pipeline figure soft). Figure 1 is

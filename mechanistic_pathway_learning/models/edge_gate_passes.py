@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -117,3 +118,43 @@ def exact_flip_checks(encoder, gates: HardConcreteEdgeGates, data_loss: Callable
     agreement = float(torch.corrcoef(torch.stack([estimated, exact_changes]))[0, 1]) if len(records) > 2 else None
     return {"checked": len(records), "accepted": len(accepted), "accepted_gates": accepted, "objective": current,
             "estimate_exact_correlation": agreement, "records": records}
+
+
+def closure_evidence(encoder, gates: HardConcreteEdgeGates, data_loss: Callable[[object], Tensor], batches: list, penalty_denominator: float,
+                     budget: int | None = None, surrogate_width: float = DEFAULT_SURROGATE_WIDTH, margin_in_widths: float = DEFAULT_FLIP_MARGIN) -> dict:
+    """Each closed edge's exact evidence for its closure, and the posterior that it is false.
+
+    For a gated edge the read-out closes (and the encoder reads), E is how much the data part of the objective (the mean
+    of data_loss over the batches), times W, rises when that edge alone is reopened: nats of the fit's weighted
+    log-likelihood, positive where the data support the closure. With pi the prior that the edge is real, the posterior
+    log-odds that it is false, given every other edge as read out and the fitted parameters, is E - logit(pi), so
+    P(false) = sigmoid(E - logit(pi)). At a local optimum under single flips every closed edge has E > logit(pi), so
+    P(false) > 1/2; a closure below one half is one the passes left where reopening it alone would lower the objective.
+
+    Why it is reported (docs/edge_gate_simulation.md): in planted worlds the closures with E of 1 nat or more were false
+    far more often than the read-out's closures as a whole, so a closure's E says how far to believe it. Each closed edge
+    costs one pass over the batches; with a budget, the closures against the strongest priors come first, since those
+    are the ones a reader would most want checked. The gates are left as they were."""
+    gates.set_phase("binary")
+
+    def data_objective() -> float:
+        with torch.no_grad():
+            return sum(float(data_loss(batch)) for batch in batches) / len(batches)
+
+    closed = [int(index) for index in torch.nonzero((gates.read_out() < 0.5) & gates.read_by_encoder).flatten()]
+    closed.sort(key=lambda index: -float(gates.prior_open[index]))
+    chosen = closed if budget is None else closed[:max(int(budget), 0)]
+    base = data_objective() if chosen else None
+    margin = margin_in_widths * surrogate_width
+    records = []
+    for gate_index in chosen:
+        previous = float(gates.log_alpha[gate_index])
+        set_gate_state(gates, gate_index, True, margin)
+        evidence = (data_objective() - base) * penalty_denominator
+        with torch.no_grad():
+            gates.log_alpha[gate_index] = previous
+        prior = float(gates.prior_open[gate_index])
+        log_odds_false = evidence - float(np.log(prior / (1.0 - prior)))
+        records.append({"gate": gate_index, "edge": int(gates.gated_edges[gate_index]), "prior": prior, "evidence_nats": evidence,
+                        "posterior_false": float(1.0 / (1.0 + np.exp(-log_odds_false)))})
+    return {"closed": len(closed), "evaluated": len(records), "records": records}

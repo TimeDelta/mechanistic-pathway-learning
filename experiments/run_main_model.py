@@ -125,7 +125,7 @@ from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder impo
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
-from mechanistic_pathway_learning.models.edge_gate_passes import DEFAULT_SURROGATE_WIDTH, binary_pass_step, exact_flip_checks
+from mechanistic_pathway_learning.models.edge_gate_passes import DEFAULT_SURROGATE_WIDTH, binary_pass_step, closure_evidence, exact_flip_checks
 from mechanistic_pathway_learning.models.edge_gates import EDGE_GATE_KINDS, HARD_CONCRETE_BETA, EdgeGates, HardConcreteEdgeGates, penalty_denominator
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
@@ -802,13 +802,32 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
         checks = None
         if arguments.edge_gate_flip_checks > 0:
             checks = exact_flip_checks(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_flip_checks, arguments.edge_gate_surrogate_width)
+        evidence = None
+        if getattr(arguments, "edge_gate_closure_evidence", 0) > 0:
+            evidence = closure_evidence(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_closure_evidence,
+                                        arguments.edge_gate_surrogate_width)
     finally:
         for parameter in frozen:
             parameter.requires_grad_(True)
     return {"fit_rows": int(len(fit_rows)), "epochs": arguments.edge_gate_binary_epochs, "learning_rate": arguments.edge_gate_binary_learning_rate,
             "surrogate_width": arguments.edge_gate_surrogate_width, "full_batch": bool(arguments.edge_gate_binary_full_batch),
             "closed_before": closed_before, "closed_after": int((gates.read_out() < 0.5).sum()), "history": history, "flip_checks": checks,
-            "seconds": time.time() - started}
+            "closure_evidence": evidence, "seconds": time.time() - started}
+
+
+def write_closure_evidence(evidence: dict, data, directory: Path) -> dict:
+    """Writes edge_gate_closures.csv (one row per closed edge measured: its graph edge with source, target and relation,
+    its prior, its evidence in nats and P(false)) and returns the summary results.json keeps in place of the rows."""
+    rows = [{"edge": record["edge"], "source_id": str(data.node_ids[int(data.edge_source[record["edge"]])]),
+             "target_id": str(data.node_ids[int(data.edge_target[record["edge"]])]),
+             "relation": str(data.relation_types[int(data.edge_relation[record["edge"]])]), "prior": record["prior"],
+             "evidence_nats": record["evidence_nats"], "posterior_false": record["posterior_false"]} for record in evidence["records"]]
+    pd.DataFrame(rows, columns=["edge", "source_id", "target_id", "relation", "prior", "evidence_nats", "posterior_false"]).to_csv(
+        directory / "edge_gate_closures.csv", index=False)
+    evidences = np.array([row["evidence_nats"] for row in rows], dtype=float)
+    posteriors = np.array([row["posterior_false"] for row in rows], dtype=float)
+    return {"closed": evidence["closed"], "evaluated": evidence["evaluated"], "file": "edge_gate_closures.csv",
+            "evidence_at_least_1_nat": int((evidences >= 1.0).sum()), "posterior_false_at_least_0_9": int((posteriors >= 0.9).sum())}
 
 
 def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) -> list[dict]:
@@ -1727,6 +1746,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
     parser.add_argument("--edge-gate-binary-full-batch", action=argparse.BooleanOptionalAction, default=True,
                         help="hard gates: one binary-pass step per epoch on the flips' effect averaged over every fit batch (no minibatch noise), or one per batch")
+    parser.add_argument("--edge-gate-closure-evidence", type=int, default=0,
+                        help="hard gates: after the binary pass and the checks, measure for up to this many closed edges (strongest priors first) the exact "
+                             "evidence for the closure, the rise in the data loss times W when the edge alone is reopened, and P(false) = sigmoid(evidence - "
+                             "logit prior), written to edge_gate_closures.csv; each edge is one pass over the fit rows; 0 skips it")
     parser.add_argument("--edge-gate-flip-checks", type=int, default=0,
                         help="hard gates: after the binary pass, flip this many of the most promising edges one at a time and keep a flip only when the exact "
                              "objective falls; each check is one pass over the fit rows")
@@ -2249,10 +2272,13 @@ def main() -> None:
 
     edge_gate_binary_pass = None
     final_gates = getattr(encoder, "edge_gates", None)
-    if isinstance(final_gates, HardConcreteEdgeGates) and (arguments.edge_gate_binary_epochs > 0 or arguments.edge_gate_flip_checks > 0):
+    if isinstance(final_gates, HardConcreteEdgeGates) and (arguments.edge_gate_binary_epochs > 0 or arguments.edge_gate_flip_checks > 0
+                                                           or arguments.edge_gate_closure_evidence > 0):
         final_fit_rows = np.sort(refit_indices) if arguments.refit_on_validation else np.sort(train_indices)
         edge_gate_binary_pass = run_edge_gate_binary_pass(encoder, head, final_gates, final_fit_rows, fitted, data, adjacencies, arguments, device, edge_penalty_denominator)
         print(f"edge gates after the binary pass: {final_gates.summary()}")
+        if edge_gate_binary_pass["closure_evidence"] is not None:  # the table goes beside the read-out; results.json keeps its summary
+            edge_gate_binary_pass["closure_evidence"] = write_closure_evidence(edge_gate_binary_pass["closure_evidence"], data, split_directory)
         # the scored model is the one after the pass, so it is what the saved state holds (experiments/evaluate_on_rewired_graph.py rebuilds from it)
         if arguments.refit_on_validation:
             save_refit_checkpoint()
