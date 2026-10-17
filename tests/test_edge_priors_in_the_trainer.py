@@ -301,3 +301,18 @@ def test_end_to_end_hard_gates_train_run_the_binary_pass_and_save_the_scored_rea
         evaluation = evaluate_fold(run["directory"], swaps_per_edge=2, rewiring_seed=0, data_cache={})
         assert evaluation["reproduced"], (encoder, evaluation["reproduction_max_abs_difference"])
 
+
+
+def test_the_timing_mode_runs_with_hard_gates(tmp_path):
+    """--timing-batches times training steps outside the training loop; with hard gates each step must draw its own
+    sample, or the second backward runs through the first step's freed graph (found on the v5 graph, 17 October 2026)."""
+    paths = write_toy_dataset(tmp_path)
+    write_edge_evidence(paths["graph"])
+    command = [sys.executable, "experiments/run_main_model.py", "--graph-dir", str(paths["graph"]), "--evidence-dir", str(paths["evidence"]),
+               "--run-dir", str(tmp_path / "timing"), "--encoder", "linear_response", "--fold", "0", "--seed", "0", "--batch-size", "8",
+               "--placebo-negative-weights-file", "none", "--group-by", "disease_cluster", "--label-selection", str(paths["selection"]),
+               "--edge-prior-strength", "1.0", "--timing-batches", "3"]
+    completed = subprocess.run(command, cwd=REPOSITORY_ROOT, capture_output=True, text=True, env={"PYTHONPATH": ".", "PATH": "/usr/bin:/bin:/usr/local/bin", "OMP_NUM_THREADS": "1"})
+    assert completed.returncode == 0, completed.stderr[-3000:]
+    timing = json.loads(next(line for line in completed.stdout.splitlines() if line.startswith("{") and "median_step_seconds" in line))
+    assert timing["timing_batches"] == 3 and timing["median_step_seconds"] >= 0

@@ -1528,9 +1528,12 @@ def time_training_steps(data, encoder, head, optimizer, train_indices, validatio
     weights = torch.as_tensor(loss_pair_weights(data, label_mask, arguments, train_indices), dtype=torch.float32)
     order = np.random.default_rng(arguments.seed).permutation(train_indices)
     step_seconds = []
+    gates = getattr(encoder, "edge_gates", None)
     for step in range(arguments.timing_batches):
         batch = order[(step * arguments.batch_size) % len(order):][: arguments.batch_size]
         started = time.time()
+        if isinstance(gates, HardConcreteEdgeGates) and gates.phase == "stochastic":
+            gates.resample()  # as training_step does: a sample is drawn per batch, and a kept one would carry the last step's freed graph
         node_index, sign_and_magnitude = pad_perturbations(data, batch)
         field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
         output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))

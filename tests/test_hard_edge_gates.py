@@ -215,3 +215,28 @@ def test_the_proxy_gradient_pushes_each_gate_toward_the_side_that_lowers_the_obj
     gates.apply_flip_gradient(torch.tensor([-1.0, 1.0, -1.0]), surrogate_width=0.5)
     gradient = gates.log_alpha.grad
     assert float(gradient[0]) > 0 and float(gradient[1]) < 0 and float(gradient[2]) < 0, "descent closes 0, keeps 1 open and opens 2"
+
+
+def test_the_estimated_closure_evidence_is_the_exact_one_when_the_loss_is_linear_in_the_adjacency():
+    """Decision 9.63 (c) lists every closure; the first-order estimate ranks them in one pass. Where the estimate is exact
+    (one round of linear response, a linear loss), it must give each closed edge the exact closure evidence and P(false)."""
+    from mechanistic_pathway_learning.models.edge_gate_passes import closure_evidence, estimated_closure_evidence
+
+    open_edges = [True, True, False, True, False, True]
+    gates = hard_gates(len(LINEAR_EDGES), prior=0.7)
+    encoder = linear_response(LINEAR_EDGES, gates, num_propagation_steps=1, fixed_point_tolerance=None, damping=1.0)
+    set_read_out(gates, open_edges)
+    seeds, injection = torch.tensor([[0], [1], [2]]), torch.tensor([[[1.0, 1.0]], [[1.0, 1.0]], [[-1.0, 1.0]]])
+    readout = torch.randn(NUM_NODES, encoder.propagation_channels, generator=torch.Generator().manual_seed(1))
+
+    def data_loss(batch) -> torch.Tensor:
+        return (encoder.response(seeds, injection) * readout).sum()
+
+    estimated = estimated_closure_evidence(encoder, gates, data_loss, [None], penalty_denominator=10.0)
+    exact = {record["edge"]: record for record in closure_evidence(encoder, gates, data_loss, [None], penalty_denominator=10.0)["records"]}
+    assert set(estimated) == set(exact) == {2, 4}, "every closed edge the encoder reads, keyed by graph edge"
+    for edge, record in exact.items():
+        assert estimated[edge]["estimated_evidence_nats"] == pytest.approx(record["evidence_nats"], abs=1e-4)
+        assert estimated[edge]["estimated_posterior_false"] == pytest.approx(record["posterior_false"], abs=1e-5)
+    set_read_out(gates, [True] * len(LINEAR_EDGES))
+    assert estimated_closure_evidence(encoder, gates, data_loss, [None], penalty_denominator=10.0) == {}, "no closure, nothing to list"

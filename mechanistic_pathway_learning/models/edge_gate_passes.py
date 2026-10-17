@@ -120,6 +120,27 @@ def exact_flip_checks(encoder, gates: HardConcreteEdgeGates, data_loss: Callable
             "estimate_exact_correlation": agreement, "records": records}
 
 
+def estimated_closure_evidence(encoder, gates: HardConcreteEdgeGates, data_loss: Callable[[object], Tensor], batches: list,
+                               penalty_denominator: float) -> dict[int, dict]:
+    """The first-order estimate of every closed edge's closure evidence, from one pass over the batches: per edge the
+    data part of the estimated change of reopening it, times W, and the P(false) that estimate gives. It is what the
+    binary pass reads, at the gates as they end; on the planted worlds of docs/edge_gate_simulation.md it correlated
+    0.75 with the exact change over random edges and much less among the largest promised changes, so it ranks the
+    closures for review and does not replace closure_evidence. Keyed by graph edge."""
+    gates.set_phase("binary")
+    change = objective_change_estimates(encoder, gates, data_loss, batches, penalty_denominator)
+    prior_change = gates.flip_prior_change().detach() / penalty_denominator
+    closed = torch.nonzero((gates.read_out() < 0.5) & gates.read_by_encoder).flatten()
+    records = {}
+    for gate_index in closed.tolist():
+        edge = int(gates.gated_edges[gate_index])
+        evidence = float(change[edge] - prior_change[edge]) * penalty_denominator
+        prior = float(gates.prior_open[gate_index])
+        records[edge] = {"gate": int(gate_index), "prior": prior, "estimated_evidence_nats": evidence,
+                         "estimated_posterior_false": float(1.0 / (1.0 + np.exp(-(evidence - float(np.log(prior / (1.0 - prior)))))))}
+    return records
+
+
 def closure_evidence(encoder, gates: HardConcreteEdgeGates, data_loss: Callable[[object], Tensor], batches: list, penalty_denominator: float,
                      budget: int | None = None, surrogate_width: float = DEFAULT_SURROGATE_WIDTH, margin_in_widths: float = DEFAULT_FLIP_MARGIN) -> dict:
     """Each closed edge's exact evidence for its closure, and the posterior that it is false.
