@@ -125,7 +125,8 @@ from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder impo
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
-from mechanistic_pathway_learning.models.edge_gates import EdgeGates, penalty_denominator
+from mechanistic_pathway_learning.models.edge_gate_passes import DEFAULT_SURROGATE_WIDTH, binary_pass_step, exact_flip_checks
+from mechanistic_pathway_learning.models.edge_gates import EDGE_GATE_KINDS, HARD_CONCRETE_BETA, EdgeGates, HardConcreteEdgeGates, penalty_denominator
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
     CLASS_WEIGHT_RULES,
@@ -666,7 +667,7 @@ def build_models(data, arguments, device):
                                         **descriptor_treatment_inputs(data, arguments),
                                         **({"entry_relation_names": ENTRY_RELATIONS, "edge_weight": torch.as_tensor(data.edge_weight), **entry_node_inputs(data)}
                                            if entry_node_inputs(data) else {}),
-                                        edge_gates=edge_gates_of(data)).to(device)
+                                        edge_gates=edge_gates_of(data, arguments)).to(device)
         # Item 20, built 14 October 2026: the stoichiometric demand of the limiting-step pass. Before this
         # bottleneck_edge_demand was None and every demand was 1, so a reaction consuming two molecules counted as one.
         # A graph built before the column existed carries no coefficient and keeps the old behaviour.
@@ -756,6 +757,58 @@ def git_provenance() -> dict:
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "tracked_changes": None}
     return {"commit": commit, "tracked_changes": [line[3:] for line in status.splitlines() if line.strip()]}
+
+
+def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_rows: np.ndarray, fitted: dict, data, adjacencies, arguments, device,
+                              edge_penalty_denominator: float) -> dict:
+    """The binary pass over hard edge gates (decision 9.62; models/edge_gate_passes.py), after the fit and before the
+    test is scored: the gates alone, every other parameter frozen, the encoder and head in evaluation mode so every
+    forward reads the binary read-out, and the data loss the fit minimised (the weighted BCE of the final fit's targets,
+    without the head's description-length penalty, which no gate moves). Then, with --edge-gate-flip-checks, the exact
+    checks of the most promising flips."""
+    batches = [fit_rows[start : start + arguments.batch_size] for start in range(0, len(fit_rows), arguments.batch_size)]
+
+    def data_loss(batch) -> torch.Tensor:
+        node_index, sign_and_magnitude = pad_perturbations(data, batch)
+        field = encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
+        output = head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
+        log_parts = ({"log_probability": output.symptom_log_probability, "log_complement": output.symptom_log_complement} if arguments.bce_in_log_space else {})
+        if fitted["positive_targets"] is not None:
+            return evidence_weighted_binary_cross_entropy(output.symptom_probability, fitted["positive_targets"][batch].to(device), fitted["weights"][batch].to(device),
+                                                          positive_target=1.0, **log_parts)
+        return evidence_weighted_binary_cross_entropy(output.symptom_probability, fitted["outcomes"][batch].to(device), fitted["weights"][batch].to(device),
+                                                      positive_target=arguments.positive_target, **log_parts)
+
+    frozen = [parameter for parameter in list(encoder.parameters()) + list(head.parameters()) if parameter is not gates.log_alpha and parameter.requires_grad]
+    for parameter in frozen:
+        parameter.requires_grad_(False)
+    encoder.eval()
+    head.eval()
+    gates.set_phase("binary")
+    started = time.time()
+    closed_before = int((gates.read_out() < 0.5).sum())
+    optimizer = torch.optim.Adam([gates.log_alpha], lr=arguments.edge_gate_binary_learning_rate)
+    history = []
+    try:
+        for epoch in range(arguments.edge_gate_binary_epochs):
+            flips = 0
+            if arguments.edge_gate_binary_full_batch:
+                flips += binary_pass_step(encoder, gates, data_loss, None, edge_penalty_denominator, optimizer, arguments.edge_gate_surrogate_width, batches=batches)["flipped"]
+            else:
+                for batch in batches:
+                    flips += binary_pass_step(encoder, gates, data_loss, batch, edge_penalty_denominator, optimizer, arguments.edge_gate_surrogate_width)["flipped"]
+            history.append({"epoch": epoch, "flips": flips, "closed_at_read_out": int((gates.read_out() < 0.5).sum()), "elapsed_seconds": time.time() - started})
+            print(f"edge-gate binary pass epoch {epoch}: {flips} flips, {history[-1]['closed_at_read_out']} closed", flush=True)
+        checks = None
+        if arguments.edge_gate_flip_checks > 0:
+            checks = exact_flip_checks(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_flip_checks, arguments.edge_gate_surrogate_width)
+    finally:
+        for parameter in frozen:
+            parameter.requires_grad_(True)
+    return {"fit_rows": int(len(fit_rows)), "epochs": arguments.edge_gate_binary_epochs, "learning_rate": arguments.edge_gate_binary_learning_rate,
+            "surrogate_width": arguments.edge_gate_surrogate_width, "full_batch": bool(arguments.edge_gate_binary_full_batch),
+            "closed_before": closed_before, "closed_after": int((gates.read_out() < 0.5).sum()), "history": history, "flip_checks": checks,
+            "seconds": time.time() - started}
 
 
 def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) -> list[dict]:
@@ -1093,10 +1146,15 @@ def build_edge_priors(data, arguments) -> dict | None:
     return summary
 
 
-def edge_gates_of(data) -> EdgeGates | None:
-    """Fresh edge gates at the data's edge priors, or None without them (the registered model)."""
+def edge_gates_of(data, arguments=None) -> EdgeGates | HardConcreteEdgeGates | None:
+    """Fresh edge gates at the data's edge priors, or None without them (the registered model). --edge-gate-kind picks
+    the hard gates decided on 16 October 2026 (decision 9.62 (e), the default) or the soft gates of 9.57."""
     if getattr(data, "edge_prior_gated", None) is None:
         return None
+    kind = getattr(arguments, "edge_gate_kind", "soft") if arguments is not None else "soft"
+    if kind == "hard_concrete":
+        return HardConcreteEdgeGates(data.edge_prior_gated, data.edge_prior_probability, data.edge_prior_strength,
+                                     beta=getattr(arguments, "edge_gate_beta", HARD_CONCRETE_BETA))
     return EdgeGates(data.edge_prior_gated, data.edge_prior_probability, data.edge_prior_strength)
 
 
@@ -1106,7 +1164,7 @@ def attach_edge_gates(encoder, data, adjacencies, arguments) -> None:
     edge priors. Call it on every freshly built encoder before its optimizer and before a state is loaded into it."""
     if not isinstance(encoder, RelationalMessagePassingEncoder):
         return
-    gates = edge_gates_of(data)
+    gates = edge_gates_of(data, arguments)
     if gates is None:
         return
     edge_index, edge_relation, edge_sign, edge_weight = message_passing_edge_arrays(data, getattr(arguments, "message_passing_edge_signs", "graph"))
@@ -1657,6 +1715,21 @@ def build_argument_parser() -> argparse.ArgumentParser:
                              "distribution of priors kept, which edge holds which lost); the real arm must beat it for the evidence to carry edge-specific information")
     parser.add_argument("--edge-gate-learning-rate", type=float, default=None,
                         help="learning rate of the edge gates' logits, which take no weight decay; the main learning rate when unset")
+    parser.add_argument("--edge-gate-kind", choices=EDGE_GATE_KINDS, default="hard_concrete",
+                        help="with edge priors: hard_concrete (decision 9.62 (e), the owner's choice of 16 October 2026), gates that are exactly 0 or 1 at the read-out, "
+                             "sampled as hard concrete while training, with the prior sigmoid(n logit p) as each edge's cost; or soft, the deterministic gates of 9.57")
+    parser.add_argument("--edge-gate-beta", type=float, default=HARD_CONCRETE_BETA, help="the hard concrete temperature (Louizos et al. 2018 use 2/3)")
+    parser.add_argument("--edge-gate-binary-epochs", type=int, default=5,
+                        help="hard gates: epochs of the binary pass after the fit, over the gates alone, with the read-out in the forward pass and the flips' "
+                             "estimated effect as the proxy gradient (models/edge_gate_passes.py); 0 skips it")
+    parser.add_argument("--edge-gate-binary-learning-rate", type=float, default=0.1, help="hard gates: the binary pass's learning rate on the gates' logits")
+    parser.add_argument("--edge-gate-surrogate-width", type=float, default=DEFAULT_SURROGATE_WIDTH,
+                        help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
+    parser.add_argument("--edge-gate-binary-full-batch", action=argparse.BooleanOptionalAction, default=True,
+                        help="hard gates: one binary-pass step per epoch on the flips' effect averaged over every fit batch (no minibatch noise), or one per batch")
+    parser.add_argument("--edge-gate-flip-checks", type=int, default=0,
+                        help="hard gates: after the binary pass, flip this many of the most promising edges one at a time and keep a flip only when the exact "
+                             "objective falls; each check is one pass over the fit rows")
     parser.add_argument("--equal-drug-shares", action=argparse.BooleanOptionalAction, default=True,
                         help="rescale each drug's positives and, apart, its negatives so every drug holds the mean count of each over the training drugs; evidence weights still differ between drugs; gene rows unchanged")
     parser.add_argument("--normalise-drug-input", action="store_true",
@@ -1981,6 +2054,9 @@ def main() -> None:
 
     def training_step(model_encoder, model_head, model_laboratory_readout, model_optimizer, batch) -> tuple[float, float, float, float | None]:
         """One optimizer step on a batch; returns the loss, its BCE and penalty parts and the laboratory loss (None without it)."""
+        model_gates = getattr(model_encoder, "edge_gates", None)
+        if isinstance(model_gates, HardConcreteEdgeGates) and model_gates.phase == "stochastic":
+            model_gates.resample()  # one hard concrete sample per batch, as Louizos et al. (2018) drew it
         node_index, sign_and_magnitude = pad_perturbations(data, batch)
         field = encode(model_encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field)
         output = model_head(field, relation_index=0, perturbation_covariate=covariate_of(data, batch, arguments, device))
@@ -2171,6 +2247,18 @@ def main() -> None:
         if not arguments.score_lockbox:
             print(f"early-stopped model on the test: macro AUPRC {early_stopped_scores['macro_auprc']:.3f}, micro AUPRC {early_stopped_scores['micro_auprc']:.3f}")
 
+    edge_gate_binary_pass = None
+    final_gates = getattr(encoder, "edge_gates", None)
+    if isinstance(final_gates, HardConcreteEdgeGates) and (arguments.edge_gate_binary_epochs > 0 or arguments.edge_gate_flip_checks > 0):
+        final_fit_rows = np.sort(refit_indices) if arguments.refit_on_validation else np.sort(train_indices)
+        edge_gate_binary_pass = run_edge_gate_binary_pass(encoder, head, final_gates, final_fit_rows, fitted, data, adjacencies, arguments, device, edge_penalty_denominator)
+        print(f"edge gates after the binary pass: {final_gates.summary()}")
+        # the scored model is the one after the pass, so it is what the saved state holds (experiments/evaluate_on_rewired_graph.py rebuilds from it)
+        if arguments.refit_on_validation:
+            save_refit_checkpoint()
+        else:
+            state["best_encoder"], state["best_head"] = copy.deepcopy(encoder.state_dict()), copy.deepcopy(head.state_dict())
+            save_checkpoint()
     predictions = predict(encoder, head, data, test_indices, adjacencies, arguments, device)
     clamped_probabilities = clamped_probability_report(predictions, data, test_indices, label_mask)
     print(f"clamped probabilities: {clamped_probabilities}")
@@ -2262,7 +2350,9 @@ def main() -> None:
                                                                   "calibration": calibration_summaries or None,
                                                                  "permutation": soft_prior_permutation},
         "edge_priors": None if edge_priors_summary is None else {**edge_priors_summary, "penalty_denominator": edge_penalty_denominators,
-                                                                  "gates": encoder.edge_gates.summary(), "gate_values": "edge_gate_values.npy"},
+                                                                  "gates": encoder.edge_gates.summary(), "gate_values": "edge_gate_values.npy",
+                                                                  **({"binary_pass": edge_gate_binary_pass, "gate_read_out": "edge_gate_read_out.npy"}
+                                                                     if isinstance(encoder.edge_gates, HardConcreteEdgeGates) else {})},
     }
     if literature_reports is not None and time_split is None:
         # the popularity axis the degree bins do not measure: distinct PMIDs per perturbation in the literature table
@@ -2275,6 +2365,8 @@ def main() -> None:
     np.save(split_directory / "test_predictions.npy", predictions)
     if edge_priors_summary is not None:  # [num_edges] the scored model's gate per edge, NaN where an edge has none
         np.save(split_directory / "edge_gate_values.npy", encoder.edge_gates.values_per_edge())
+        if isinstance(encoder.edge_gates, HardConcreteEdgeGates):  # [num_edges] 1 open, 0 closed at the read-out the test was scored with
+            np.save(split_directory / "edge_gate_read_out.npy", encoder.edge_gates.open_edges().cpu().numpy().astype(np.int8))
         print(f"edge gates: {results['edge_priors']['gates']}")
     if arguments.head == "noisy_or":
         with torch.no_grad():

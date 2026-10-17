@@ -182,7 +182,7 @@ def test_end_to_end_the_edge_prior_off_is_the_plain_run_and_on_it_gates_trains_a
     assert plain["results"]["configuration_fingerprint"] == off["results"]["configuration_fingerprint"] and off["results"]["edge_priors"] is None
     assert not (off["directory"] / "edge_gate_values.npy").exists()
 
-    on = run_trainer(paths, tmp_path / "on", "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05")
+    on = run_trainer(paths, tmp_path / "on", "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05", "--edge-gate-kind", "soft")
     record = on["results"]["edge_priors"]
     gated, _, _ = edge_priors(table, read_edge_tiers(TIERS))
     assert record["gated"] == int(gated.sum()) and record["gates"]["gated_edges_the_encoder_reads"] == int(gated.sum()), "on the toy graph every gated edge is propagated along"
@@ -193,16 +193,40 @@ def test_end_to_end_the_edge_prior_off_is_the_plain_run_and_on_it_gates_trains_a
     assert np.isnan(values[~gated]).all() and ((values[gated] > 0) & (values[gated] < 1)).all()
     assert len(on["results"]["configuration_fingerprint"]["file:edge_evidence"]) == 64
 
-    permuted = run_trainer(paths, tmp_path / "permuted", "--edge-prior-strength", "1.0", "--permute-edge-priors")
+    permuted = run_trainer(paths, tmp_path / "permuted", "--edge-prior-strength", "1.0", "--permute-edge-priors", "--edge-gate-kind", "soft")
     assert permuted["results"]["edge_priors"]["permutation"]["seed"] == 0
     # the toy message-passing model predicts the same for every perturbation (its field does not reach the head here),
     # so whether the gates move predictions is read on the linear-response model, whose predictions do depend on its field
     linear_plain = run_trainer(paths, tmp_path / "linear_plain", "--encoder", "linear_response")
     assert np.ptp(linear_plain["predictions"], axis=0).max() > 0
-    linear = run_trainer(paths, tmp_path / "linear", "--encoder", "linear_response", "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05")
+    linear = run_trainer(paths, tmp_path / "linear", "--encoder", "linear_response", "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05",
+                         "--edge-gate-kind", "soft")
     assert linear["results"]["edge_priors"]["gates"]["gated_edges_the_encoder_reads"] == int(gated.sum())
     assert not np.array_equal(linear_plain["predictions"], linear["predictions"]), "gates that differ at a node change its shares and so the field"
 
     # the rewired-graph evaluation rebuilds the gated run from its checkpoint (gates attached before the weights load)
     evaluation = evaluate_fold(on["directory"], swaps_per_edge=2, rewiring_seed=0, data_cache={})
     assert evaluation["reproduced"], evaluation["reproduction_max_abs_difference"]
+
+
+def test_end_to_end_hard_gates_train_run_the_binary_pass_and_save_the_scored_read_out(tmp_path):
+    """Decision 9.62 (e): with the default gate kind the run samples hard concrete gates while it fits, runs the binary
+    pass and the exact checks, scores the test with the binary read-out, saves it, and leaves the saved state at the
+    scored model, so the rewired-graph evaluation reproduces the predictions."""
+    paths = write_toy_dataset(tmp_path)
+    table = write_edge_evidence(paths["graph"])
+    gated, _, _ = edge_priors(table, read_edge_tiers(TIERS))
+    for encoder in ("linear_response", "message_passing"):
+        run = run_trainer(paths, tmp_path / encoder, "--encoder", encoder, "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05",
+                          "--edge-gate-binary-epochs", "2", "--edge-gate-flip-checks", "3")
+        record = run["results"]["edge_priors"]
+        assert record["gates"]["kind"] == "hard_concrete" and record["gates"]["phase"] == "binary"
+        assert len(record["binary_pass"]["history"]) == 2 and record["binary_pass"]["flip_checks"]["checked"] <= 3
+        read_out = np.load(run["directory"] / "edge_gate_read_out.npy")
+        assert set(np.unique(read_out)) <= {0, 1} and read_out[~gated].all(), "an ungated edge is always open"
+        assert int((read_out[gated] == 0).sum()) == record["gates"]["closed_at_read_out"]
+        probability = np.load(run["directory"] / "edge_gate_values.npy")
+        assert np.isnan(probability[~gated]).all() and ((probability[gated] > 0) & (probability[gated] < 1)).all()
+        evaluation = evaluate_fold(run["directory"], swaps_per_edge=2, rewiring_seed=0, data_cache={})
+        assert evaluation["reproduced"], (encoder, evaluation["reproduction_max_abs_difference"])
+
