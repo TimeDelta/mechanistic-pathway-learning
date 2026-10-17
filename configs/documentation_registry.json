@@ -776,6 +776,11 @@
    "recorded": "2026-10-17",
    "append_only": true,
    "what": "published practice for building a signed causal knowledge graph read against this build, with measurements on v5 and ten ranked changes; decision 9.70"
+  },
+  "docs/channel_conduction_audit.md": {
+   "class": "generated",
+   "generator": "experiments/audit_channel_conduction.py",
+   "what": "which ion channel genes of the graph catalyse a reaction that reaches the membrane potential, by family; decision 9.71"
   }
  }
 }
