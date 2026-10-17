@@ -4,6 +4,7 @@
 # Seconds to minutes per run on two cores; about 40 minutes in all.
 #   bash scripts/run_edge_gate_simulations.sh            # every run
 #   bash scripts/run_edge_gate_simulations.sh b3_s0      # the named runs only
+#   bash scripts/run_edge_gate_simulations.sh --list     # each run's name and arguments, one per line, tab-separated
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH=.
@@ -23,6 +24,17 @@ RUN[b3_s0_joint_random_support]="--world-seed 0 $binary --joint --joint-start ra
 RUN[b2_s0_joint_random_dense]="--world-seed 0 $binary --joint --joint-start random --stochastic-epochs 60 --closure-evidence"
 RUN[b2_s0_joint_oracle_dense]="--world-seed 0 $binary --joint --stochastic-epochs 60 --closure-evidence"
 RUN[b2_realratio]="--world-seed 0 $binary --nodes 2000 --symptoms 20 --label-bias -3 --stability-refits 10 --stability-scheme complementary --closure-evidence"
+for seed in 0 1 2 3 4; do
+  RUN[b3_s${seed}_curated_fixed]="--world-seed $seed $binary --ungated-tiers curated $detail"
+done
+RUN[b2_s0_nochecks]="--world-seed 0 --binary-full-batch --flip-checks 0 --closure-evidence"
+for width in 0.25 0.5 1; do
+  RUN[b2_s0_width${width/./}]="--world-seed 0 $binary --closure-evidence --surrogate-width $width"
+done
+if [ "${1:-}" = "--list" ]; then
+  for name in "${!RUN[@]}"; do printf '%s\t%s\n' "$name" "${RUN[$name]}"; done | sort
+  exit 0
+fi
 names=("$@")
 if [ ${#names[@]} -eq 0 ]; then names=($(printf '%s\n' "${!RUN[@]}" | sort)); fi
 for name in "${names[@]}"; do

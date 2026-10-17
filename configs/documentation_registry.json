@@ -220,6 +220,12 @@
    "recorded": "2026-10-08",
    "append_only": false
   },
+  "docs/edge_gate_simulation.md": {
+   "class": "record",
+   "recorded": "2026-10-16",
+   "append_only": true,
+   "what": "planted-truth simulations of the hard edge gates (decision 9.62): what the read-out, the exact closure evidence and stability selection recover, under which assumptions, and what that says for a fit on v5"
+  },
   "docs/edge_priors.md": {
    "class": "record",
    "recorded": "2026-10-16",
@@ -290,7 +296,7 @@
   "docs/figures.md": {
    "class": "living",
    "reviewed": "2026-10-16",
-   "as_of_commit": "08bdffd"
+   "as_of_commit": "ccc7b2a"
   },
   "docs/fine_symptom_constructs.md": {
    "class": "generated",

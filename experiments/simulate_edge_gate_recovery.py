@@ -315,7 +315,8 @@ def held_out_loss(world: World, rows: np.ndarray, closed: np.ndarray, encoder_pa
         return float(loss_of(encoder, world, rows, readout, bias))
 
 
-def main() -> None:
+def build_argument_parser() -> argparse.ArgumentParser:
+    """The simulation's arguments; tests/test_edge_gate_simulation.py reads its defaults."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--world-seed", type=int, default=0)
     parser.add_argument("--nodes", type=int, default=300)
@@ -355,7 +356,11 @@ def main() -> None:
     parser.add_argument("--stability-thresholds", type=float, nargs="*", default=[0.6, 0.7, 0.8, 0.9])
     parser.add_argument("--quick", action="store_true", help="a small world and few epochs, for a smoke run")
     parser.add_argument("--output", type=Path, default=None)
-    arguments = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    arguments = build_argument_parser().parse_args()
     if arguments.quick:
         arguments.nodes, arguments.perturbations, arguments.symptoms = 60, 160, 6
         arguments.stochastic_epochs, arguments.binary_epochs, arguments.flip_checks = 3, 2, 5

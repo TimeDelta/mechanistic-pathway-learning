@@ -1117,6 +1117,9 @@ def figure_gate_share_reading() -> None:
 SIMULATION_DIGEST = Path("docs/edge_gate_simulation_results.json")
 CALIBRATED_WORLDS = tuple(f"b3_s{seed}" for seed in range(5))
 SELECTOR_COLOURS = {"read-out": "#111111", "exact evidence": "#2b6ca3", "posterior P(false)": "#8e44ad", "stability": "#e08e2b"}
+SELECTOR_LEGEND = {"read-out": "the read-out: every closed edge", "exact evidence": "closures with exact evidence E ≥ the value shown, nats",
+                   "posterior P(false)": "closures with P(false) ≥ the value shown", "stability": "closing frequency over refits ≥ the value shown"}
+SELECTOR_LABEL_OFFSETS = {"read-out": (0, 8), "exact evidence": (0, -14), "posterior P(false)": (0, 8), "stability": (0, -14)}
 
 
 def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
@@ -1144,11 +1147,11 @@ def pooled_selector_points(runs: dict, worlds: tuple[str, ...]) -> dict[str, lis
 
     families["read-out"].append(("every closed edge", [counts(runs[world]["fit"]) for world in worlds]))
     for threshold in ("0.5", "1.0", "2.0"):
-        families["exact evidence"].append((f"E ≥ {threshold} nats", [counts(runs[world]["closures_by_evidence"].get(f"at least {threshold} nats")) for world in worlds]))
+        families["exact evidence"].append((f"{float(threshold):g}", [counts(runs[world]["closures_by_evidence"].get(f"at least {threshold} nats")) for world in worlds]))
     for level in ("0.7", "0.8", "0.9", "0.95"):
-        families["posterior P(false)"].append((f"P(false) ≥ {level}", [counts(runs[world]["closures_by_posterior_false"].get(f"at least {level}")) for world in worlds]))
+        families["posterior P(false)"].append((level, [counts(runs[world]["closures_by_posterior_false"].get(f"at least {level}")) for world in worlds]))
     for threshold in ("0.6", "0.7", "0.8", "0.9"):
-        families["stability"].append((f"frequency ≥ {threshold}", [counts(runs[world]["stability"]["thresholds"].get(threshold)) for world in worlds]))
+        families["stability"].append((threshold, [counts(runs[world]["stability"]["thresholds"].get(threshold)) for world in worlds]))
     points: dict[str, list[dict]] = {}
     for family, thresholds in families.items():
         points[family] = []
@@ -1191,14 +1194,17 @@ def figure_gate_simulation_recovery() -> None:
             continue
         x = [point["closures_per_world"] for point in points]
         y = [point["precision"] for point in points]
-        errors = np.array([[point["precision"] - point["low"] for point in points], [point["high"] - point["precision"] for point in points]])
-        selector_axis.errorbar(x, y, yerr=errors, color=SELECTOR_COLOURS[family], marker="o", markersize=5, linewidth=1.4, capsize=3, label=family)
+        errors = np.clip(np.array([[point["precision"] - point["low"] for point in points], [point["high"] - point["precision"] for point in points]]), 0.0, None)
+        selector_axis.errorbar(x, y, yerr=errors, color=SELECTOR_COLOURS[family], marker="o", markersize=5, linewidth=1.4, capsize=3, label=SELECTOR_LEGEND[family])
+        offset = SELECTOR_LABEL_OFFSETS[family]
         for point in points:
-            selector_axis.annotate(point["label"], (point["closures_per_world"], point["precision"]), textcoords="offset points", xytext=(5, -10),
-                                   fontsize=6.8, color=SELECTOR_COLOURS[family])
+            selector_axis.annotate(point["label"], (point["closures_per_world"], point["precision"]), textcoords="offset points", xytext=offset,
+                                   fontsize=7.2, color=SELECTOR_COLOURS[family], ha="center")
     selector_axis.axhline(np.mean(base_rates), color="#999999", linestyle="--", linewidth=1)
-    selector_axis.text(1.05, np.mean(base_rates) + 0.015, f"share of edges that are false: {np.mean(base_rates):.2f}", fontsize=7.5, color="#666666")
+    selector_axis.text(0.98, np.mean(base_rates) + 0.015, f"share of all edges that are false: {np.mean(base_rates):.2f}", fontsize=7.5, color="#666666",
+                       ha="right", transform=selector_axis.get_yaxis_transform())
     selector_axis.set_xscale("log")
+    selector_axis.set_xticks([3, 5, 10, 20, 50], ["3", "5", "10", "20", "50"])
     selector_axis.set_ylim(0, 1.05)
     selector_axis.set_xlabel("edges closed per world (log scale)")
     selector_axis.set_ylabel("share of the closed edges that are false (pooled, 95% Wilson interval)")
@@ -1209,7 +1215,7 @@ def figure_gate_simulation_recovery() -> None:
     bins = posterior_calibration(runs, worlds)
     calibration_axis.plot([0.5, 1.0], [0.5, 1.0], color="#999999", linestyle="--", linewidth=1, label="calibrated")
     for item in bins:
-        calibration_axis.errorbar(item["mean_posterior_false"], item["share_false"], yerr=[[item["share_false"] - item["interval"][0]], [item["interval"][1] - item["share_false"]]],
+        calibration_axis.errorbar(item["mean_posterior_false"], item["share_false"], yerr=[[max(item["share_false"] - item["interval"][0], 0.0)], [max(item["interval"][1] - item["share_false"], 0.0)]],
                                   color="#8e44ad", marker="o", capsize=3)
         calibration_axis.annotate(f"{item['edges']}", (item["mean_posterior_false"], item["share_false"]), textcoords="offset points", xytext=(6, 4), fontsize=7.5, color="#8e44ad")
     calibration_axis.set_xlim(0.45, 1.02)
@@ -1237,17 +1243,22 @@ def figure_gate_simulation_recovery() -> None:
     worlds_text = runs[worlds[0]]["world"]
     figure.suptitle(f"Edge-gate recovery in planted worlds ({worlds_text['nodes']} nodes, about {worlds_text['edges']:,} edges, {worlds_text['perturbations']} perturbations, "
                     f"{worlds_text['symptoms']} symptoms; docs/edge_gate_simulation.md)", fontsize=12, fontweight="bold")
+    closed_rows = [row for world in worlds for row in runs[world].get("closed_edges", [])]
+    below = sum(1 for row in closed_rows if row[4] is not None and row[4] < 0.5)
     figure.text(0.5, -0.04, "Every world is the most favourable case: priors calibrated by construction (each edge is real with its prior π) and the encoder's parameters "
                 "the truth's, so only the gates learn. E is the exact rise in the training data loss, times W, when the edge alone is reopened with every other\nedge "
-                "as fitted; the read-out closes an edge when E > logit π, so P(false) ≥ 1/2. Stability: closing frequency over 20 refits on complementary halves "
-                "of the training perturbations (Shah and Samworth 2013). Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
+                f"as fitted. At a local optimum under single flips a closed edge has E > logit π, so P(false) > 1/2; {below} of the {len(closed_rows)} closures fell below one "
+                "half and are not binned. Stability: closing frequency over 20 refits on complementary halves of the training perturbations (Shah and Samworth 2013). "
+                "Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
     figure.tight_layout()
     save(figure, "gate_simulation_recovery")
 
 
 CONDITION_ROWS = (  # (label, runs pooled)
     ("calibrated priors, true parameters\n(5 worlds pooled)", CALIBRATED_WORLDS),
+    ("calibrated priors, true parameters\n(world 0 alone)", ("b3_s0",)),
     ("without the binary pass and the\nflip checks (5 worlds pooled)", tuple(f"b3_s{seed}_nobinary" for seed in range(5))),
+    ("curated edges taken as known, no\ngate (5 worlds pooled; 9.63)", tuple(f"b3_s{seed}_curated_fixed" for seed in range(5))),
     ("3,000 perturbations (world 0)", ("b3_s0_p3000",)),
     ("priors too optimistic: fewer edges\nreal than π says (world 0)", ("b3_s0_optimistic_priors",)),
     ("priors too pessimistic: more edges\nreal than π says (world 0)", ("b3_s0_pessimistic_priors",)),
@@ -1306,7 +1317,7 @@ def figure_gate_simulation_conditions() -> None:
     precision_axis.set_xlim(0, 1.6)
     precision_axis.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
     precision_axis.set_xlabel("share of the closed edges that are false")
-    precision_axis.legend(fontsize=7.8, loc="lower right")
+    precision_axis.legend(fontsize=7.8, loc="upper center", bbox_to_anchor=(0.45, -0.1), ncol=3, frameon=False)
     precision_axis.spines[["top", "right"]].set_visible(False)
     precision_axis.set_title("Precision of the closures under each condition", fontsize=10.5, fontweight="bold")
 
@@ -1344,10 +1355,13 @@ def figure_gate_simulation_conditions() -> None:
     density_axis.set_xlabel("per gated edge (log scale); the worlds count their training rows")
     density_axis.set_title("How much the labels say per edge", fontsize=10.5, fontweight="bold")
     figure.suptitle("Edge-gate recovery when the favourable assumptions are dropped one at a time (docs/edge_gate_simulation.md)", fontsize=12, fontweight="bold")
-    figure.text(0.5, -0.03, "Each condition changes one thing from the calibrated world of figure 15. Precision is the share of closed edges that are false; the red "
-                "mark is that share among all edges, what closing at random would give. A held-out gain share below 0 means the fitted graph predicted the\nheld-out "
-                "perturbations worse than the database graph with every edge open. Joint fits learn the encoder's parameters and the readout with the gates, with "
-                "AdamW and early stopping on an inner validation share, as the trainer does. Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
+    figure.text(0.5, -0.08, "Each condition changes one thing from the calibrated world of figure 15; a world-0 condition is to be read against the world-0 row. Precision is "
+                "the share of closed edges that are false; the red mark is that share among all edges, what closing at random would give. A held-out gain share\nbelow 0 "
+                "means the fitted graph predicted the held-out perturbations worse than the database graph with every edge open; no bar where the true graph itself did not "
+                "predict better than every edge open (with half the positives observed, the true graph is not the best\npredictor of the observed labels). The share is "
+                "noisy: the attainable gain is 0.0013 to 0.0060 nats per held-out label, and over the five calibrated worlds the share ran from -1.20 (world 0) to +0.84. "
+                "Joint fits learn the encoder's parameters and the readout\nwith the gates, with AdamW and early stopping on an inner validation share, as the trainer "
+                "does. Drawn from docs/edge_gate_simulation_results.json.", ha="center", fontsize=8)
     figure.tight_layout()
     save(figure, "gate_simulation_conditions")
 

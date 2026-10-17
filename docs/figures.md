@@ -4,7 +4,8 @@ Drawn by experiments/make_explanatory_figures.py from the repository's own outpu
 results), so each figure can be regenerated after the inputs change; a figure whose inputs are absent is skipped with a
 message and keeps its last drawing. Figures 1 to 3 and 7 to 12 read the v5 tables and the graph the registered model
 reads with them, `graph_full_neuronal_split_binders_drugs_v5`. Figures 5 and 6 are the monogenic slice pilot's, drawn
-from its runs of 8 October 2026, and are unchanged since. No figure reads a lockbox output, and no full-graph model has
+from its runs of 8 October 2026, and are unchanged since. Figures 15 and 16 read the planted-truth simulations of the
+hard edge gates (`docs/edge_gate_simulation_results.json`). No figure reads a lockbox output, and no full-graph model has
 been scored.
 
 ## 1. The model
@@ -193,6 +194,37 @@ whole responses, the limiting-step bottleneck included. Right: why the binary pa
 inputs takes g / (g + 2), which a gradient can follow; a sole input takes all of its target's input for any g above 0
 and nothing at 0, so its slope is 0 wherever a gradient could see it. The flip estimate sees the cliff: the value
 goes from 1 to 0.
+
+## 15. What the gates recover in planted worlds
+
+![gate simulation recovery](figures/gate_simulation_recovery.png)
+
+Five worlds of about 2,300 edges with the v5 graph's tier proportions, priors calibrated by construction, the
+encoder's true parameters and 800 perturbations (`docs/edge_gate_simulation.md`). Left: which closures to believe. The
+read-out closes about 47 edges per world, 64 percent of them false against 21 percent of all edges. The closures with
+exact evidence E of at least 1 nat number 13.4 per world at a precision of 0.91, and those with a posterior P(false) =
+sigmoid(E − logit π) of at least 0.7 number 11.6 at 0.93; the closing frequency over 20 refits (stability selection
+with complementary pairs) reaches a precision of 0.85 at 13.6 per world, from twenty-one fits instead of one. Centre:
+the posterior's calibration; each bin's mean P(false) lies within the Wilson interval of the share that is false, or
+below it, so the posterior was calibrated or conservative. Right: the binary pass's first-order estimate of a flip's
+effect on the data loss against the exact change, on 300 random edges per world: correlation 0.75, the same sign 96
+percent of the time. These are the most favourable conditions; figure 16 drops them one at a time.
+
+## 16. When the favourable assumptions are dropped
+
+![gate simulation conditions](figures/gate_simulation_conditions.png)
+
+Each row changes one thing from figure 15's worlds, and a world-0 row is read against "world 0 alone". Left: the
+precision of the read-out (bars) and of the closures with E ≥ 1 nat (diamonds), and what closing at random would give
+(red marks). Centre: the share of the attainable held-out gain the fitted graph realised. It is noisy, −1.20 to +0.84
+across the five calibrated worlds, so precision carries the comparisons. Right: how much the labels say per gated edge.
+More labelled perturbations helped: world 0 with 3,000 instead of 800 had precision 0.66 against 0.58, recall 12.8
+against 6.5 percent and a held-out share of +0.87 against −1.20. Priors that overstate how often edges are false made
+most closures wrong (precision 0.30; 33 of 47 closed a real edge). The joint fits, which learn the encoder and the
+readout with the gates, closed 9 to 35 edges and predicted the held-out labels worse than leaving every edge open.
+Taking curated edges as known (decision 9.63) removed the 11 curated closures and changed nothing measurable in the
+other tiers. At v5's ratio of positive labels to gated edges (0.05, an upper bound for one fold) the read-out closed
+0.2 percent of the edges, and its 5 closures with at least 1 nat of evidence were 4 false edges and 1 real one.
 
 ## How they are drawn
 

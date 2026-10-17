@@ -39,6 +39,8 @@ LABEL_GRADES = ("A", "B")
 RUNS = {
     **{f"b3_s{seed}": ("calibrated", f"world {seed}: calibrated priors, the encoder's true parameters, 800 perturbations") for seed in range(5)},
     **{f"b3_s{seed}_nobinary": ("no_binary_pass", f"world {seed} without the binary pass and the flip checks") for seed in range(5)},
+    **{f"b3_s{seed}_curated_fixed": ("curated_edges_as_labels", f"world {seed} with the curated tier taken as known: no gate, always open (decision 9.63)")
+       for seed in range(5)},
     "b3_s0_p3000": ("more_data", "world 0 with 3,000 perturbations"),
     "b3_s0_optimistic_priors": ("optimistic_priors", "world 0 with fewer real edges than the priors say (curated 0.8, unreferenced 0.45, text-mined 0.3)"),
     "b3_s0_pessimistic_priors": ("pessimistic_priors", "world 0 with more real edges than the priors say (curated 0.97, unreferenced 0.85, text-mined 0.75)"),
@@ -47,8 +49,17 @@ RUNS = {
     "b2_s0_joint_random_dense": ("joint_random_dense", "world 0, the encoder and readout learned from a fresh start, the readout on every node"),
     "b2_s0_joint_oracle_dense": ("joint_oracle_dense", "world 0, the encoder and readout learned from the truth's values, the readout on every node"),
     "b2_realratio": ("v5_labels_per_edge", "a world of 2,000 nodes and 20 symptoms at a 5 percent positive rate: about v5's labelled positives per gated edge"),
+    "b2_s0_nochecks": ("no_flip_checks", "world 0 with the binary pass but without the flip checks (batch 2)"),
+    **{f"b2_s0_width{label}": ("surrogate_width", f"world 0 with the binary pass's surrogate width {width} (batch 2)")
+       for label, width in (("025", "0.25"), ("05", "0.5"), ("1", "1"))},
 }
 KEPT_KEYS = ("world", "fit", "fit_by_tier", "held_out_loss", "closures_by_evidence", "flip_checks", "stability", "seconds")
+# the settings kept per run: enough to rebuild its command line (tests/test_edge_gate_simulation.py checks the runner against them) and to
+# compare the trainer's defaults with what was tested; a run made before a setting existed lacks it
+SETTING_KEYS = ("world_seed", "nodes", "mean_in_degree", "perturbations", "symptoms", "nodes_per_symptom", "held_out_share", "label_bias", "truth_real_probability",
+                "label_sensitivity", "ungated_tiers", "joint", "joint_start", "joint_readout", "beta", "batch_size", "gate_learning_rate", "learning_rate",
+                "stochastic_epochs", "binary_epochs", "binary_learning_rate", "binary_full_batch", "surrogate_width", "flip_checks", "closure_evidence",
+                "estimator_diagnostic", "stability_refits", "stability_scheme", "weight_decay", "patience", "joint_validation_share")
 
 
 def logit(probability: float) -> float:
@@ -68,9 +79,7 @@ def selected_scores(edges: list[dict], keep) -> dict:
 
 def digest_run(name: str, run: dict) -> dict:
     entry = {key: run.get(key) for key in KEPT_KEYS}
-    entry["settings"] = {key: run["settings"].get(key) for key in ("world_seed", "nodes", "perturbations", "symptoms", "label_bias", "truth_real_probability",
-                                                                    "label_sensitivity", "joint", "joint_start", "joint_readout", "binary_epochs", "flip_checks",
-                                                                    "surrogate_width", "stability_refits", "stability_scheme") if key in run["settings"]}
+    entry["settings"] = {key: run["settings"].get(key) for key in SETTING_KEYS if key in run["settings"]}
     if entry["flip_checks"]:
         entry["flip_checks"] = {key: value for key, value in entry["flip_checks"].items() if key != "accepted_gates"}
     closed = run.get("closed_edges")

@@ -188,3 +188,18 @@ whose HGNC previous symbol or alias appears in the raw table. 81 have both symbo
 names, so another matching rule failed for them (a direction or a kind). The examples are gene families the build
 expands, the histone cluster genes (`H4C14`, `H3C11`) and a node naming two genes (`CCL3L1; CCL3L3`). Matching them
 needs the build's own expansion of a raw row into graph nodes, read edge by edge; it is not a renaming table.
+
+## 10. Addition, 16 October 2026: the tiers under hard gates, and what planted worlds say about them
+
+Decision 9.62 (e) turned each tier's (p, n) into a binary prior π = sigmoid(n logit p) and made logit π the cost of
+closing an edge: 2.20 nats for a curated edge (p 0.9, n 1), 0.42 for an unreferenced one (0.7, 0.5) and 0.10 for a
+text-mined one (0.55, 0.5). The simulations of `docs/edge_gate_simulation.md`, in worlds with these tiers in the v5
+proportions, bear on the tier values in three ways. First, the cost sets where closures fall: with calibrated priors
+165 of the 234 closures in five worlds were of text-mined edges, where 0.10 nats is a bar that noise clears often, and
+95 of them were false (0.58, against 0.47 of the tier's edges). Second, the tier values weigh as much as the data:
+when the truth had more real edges than the tiers say (curated 0.97, unreferenced 0.85, text-mined 0.75 real), 33 of
+the 47 closures were of real edges, while the closures with at least 1 nat of evidence held up better (9 of 12
+false). Third, taking the curated tier as known (decision 9.63) changed nothing measurable in the other tiers. The
+tier values are therefore a first-order input to what the gates close, which decision 9.63 (d), tier values estimated
+from data as a control, addresses; until then every value in `configs/edge_prior_tiers.csv` stays provisional, as
+section 3 says.

@@ -1738,9 +1738,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="with edge priors: hard_concrete (decision 9.62 (e), the owner's choice of 16 October 2026), gates that are exactly 0 or 1 at the read-out, "
                              "sampled as hard concrete while training, with the prior sigmoid(n logit p) as each edge's cost; or soft, the deterministic gates of 9.57")
     parser.add_argument("--edge-gate-beta", type=float, default=HARD_CONCRETE_BETA, help="the hard concrete temperature (Louizos et al. 2018 use 2/3)")
-    parser.add_argument("--edge-gate-binary-epochs", type=int, default=5,
+    parser.add_argument("--edge-gate-binary-epochs", type=int, default=8,
                         help="hard gates: epochs of the binary pass after the fit, over the gates alone, with the read-out in the forward pass and the flips' "
-                             "estimated effect as the proxy gradient (models/edge_gate_passes.py); 0 skips it")
+                             "estimated effect as the proxy gradient (models/edge_gate_passes.py); 8 is the setting the simulations of "
+                             "docs/edge_gate_simulation.md tested (the pass had not settled by then: 2 to 5 flips in its last epoch); 0 skips it")
     parser.add_argument("--edge-gate-binary-learning-rate", type=float, default=0.1, help="hard gates: the binary pass's learning rate on the gates' logits")
     parser.add_argument("--edge-gate-surrogate-width", type=float, default=DEFAULT_SURROGATE_WIDTH,
                         help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
