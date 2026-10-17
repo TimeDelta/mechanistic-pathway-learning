@@ -13,6 +13,12 @@
    "reviewed": "2026-10-15",
    "as_of_commit": "6c6f4a3"
   },
+  "docs/allele_perturbations.md": {
+   "class": "record",
+   "recorded": "2026-10-16",
+   "append_only": true,
+   "what": "the allele as the perturbation (decision 9.54 (d)): the rule, the four sources of a disease's mechanism in order (Orphanet, its OMIM alignments, Gene2Phenotype, cited adjudications), the curated neomorph, what it changed in the v5 tables and what is still wrong"
+  },
   "docs/alternative_sources.md": {
    "class": "record",
    "recorded": "2026-10-03",

@@ -3433,3 +3433,26 @@ brain-expressed in the graph; and its measured Kp,uu,brain is at least 0.1. A dr
 reach the brain is excluded whatever the other halves say. On this evidence that admits metoprolol and propranolol, and
 holds pindolol, oxprenolol, timolol and carvedilol with the specific thing each is missing recorded, which is a better
 state than either the ATC list or the measured rule left them in.
+
+## 32. Two sources read for the allele perturbations (16 October 2026)
+
+Decision 9.54 (d) makes the allele the perturbation, with Orphanet's typed associations as the first source of a
+disease's mechanism and Gene2Phenotype's curated mechanism as the second (`docs/allele_perturbations.md`). Both terms
+were read again before either file entered a build.
+
+| source | used by the study | terms, in the provider's words | where it was read |
+| --- | --- | --- | --- |
+| Orphadata product 1 | yes, from 16 October (the OMIM alignment of each Orphanet disorder) | `<FullName lang="en">Creative Commons Attribution 4.0 International</FullName>`; `<ShortIdentifier>CC-BY-4.0</ShortIdentifier>`; `<LegalCode>https://creativecommons.org/licenses/by/4.0/legalcode</LegalCode>` | the `Availability` element at the head of `en_product1.xml` (JDBOR date 2026-06-23), the provider's own statement in the data file |
+| Gene2Phenotype | yes, from 16 October (section 11.2 listed it as a candidate) | "The G2P dataset is released under the Creative Commons Attribution 4.0 (CC BY 4.0) licence. If publishing work using G2P data, we request that you cite the latest G2P publication." | `src/views/ResponsibleHandoverView.vue` in `EBI-G2P/gene2phenotype_web`, commit b5542af of 16 October 2026, the source of the page the site draws with a script; the same sentence as on 11 October |
+
+Two refusals and one route, recorded as the working rules ask:
+
+- The static release directory, `ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/`, is disallowed for
+  automated readers by its robots file. It was not read, and no mirror of it was sought.
+- The download used is the one G2P's Data Download page gives for all panels, "curl -L -o AllG2P.csv
+  https://www.ebi.ac.uk/gene2phenotype/api/panel/all/download", whose robots rules admitted it. The same page says
+  "Downloads are created on the fly to provide the latest information", so the file is pinned by its hash and date
+  (`docs/data_sources.md`), not by a release.
+- The record of decision 9.54 of 16 October said G2P's licence was "not yet verified". It had been verified on 11
+  October (section 11.2); that sentence was wrong, and the decision log carries the correction.
+
