@@ -240,3 +240,22 @@ def test_the_estimated_closure_evidence_is_the_exact_one_when_the_loss_is_linear
         assert estimated[edge]["estimated_posterior_false"] == pytest.approx(record["posterior_false"], abs=1e-5)
     set_read_out(gates, [True] * len(LINEAR_EDGES))
     assert estimated_closure_evidence(encoder, gates, data_loss, [None], penalty_denominator=10.0) == {}, "no closure, nothing to list"
+
+
+def test_a_drugs_mechanism_edge_stays_a_route_of_the_bottleneck_under_hard_gates():
+    """The bottleneck's open entries are the gated adjacency's open entries followed by the drug's mechanism edges,
+    which carry no gate; closing the gate of the edge past the target cuts the route there and nowhere else."""
+    gates = HardConcreteEdgeGates(np.array([False, True]), np.array([np.nan, 0.8]), np.array([0.0, 1.0]))
+    torch.manual_seed(0)
+    encoder = LinearResponseEncoder(
+        3, ["activates", "targets"], edge_source=torch.tensor([0, 1]), edge_target=torch.tensor([1, 2]),
+        edge_relation=torch.tensor([1, 0]), edge_sign=torch.tensor([1.0, 1.0]), node_features=torch.eye(3), node_state_dim=4,
+        cell_class_weights=torch.tensor([[1.0], [0.6], [0.3]]), class_weight_rule="limiting_step",
+        entry_node_mask=torch.tensor([True, False, False]), entry_relation_names=("targets",), edge_weight=torch.tensor([1.0, 1.0]), edge_gates=gates)
+    set_read_out(gates, [True])
+    with torch.no_grad():
+        assert encoder.bottleneck_open_entries().tolist() == [True, True]
+        assert encoder.class_bottleneck(torch.tensor([[0]]))[:, 0, 0].tolist() == pytest.approx([1.0, 0.6, 0.3])
+        set_read_out(gates, [False])
+        assert encoder.bottleneck_open_entries().tolist() == [False, True], "the mechanism edge has no gate to close"
+        assert encoder.class_bottleneck(torch.tensor([[0]]))[:, 0, 0].tolist() == pytest.approx([1.0, 0.6, 0.0])

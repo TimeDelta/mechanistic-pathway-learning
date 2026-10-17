@@ -1092,3 +1092,23 @@ def test_the_trainers_compartment_ph_inputs_build_the_encoder_on_a_graph_with_pr
                                     num_propagation_steps=6, fixed_point_tolerance=None, **inputs)
     assert encoder.ph_proton_node_index.tolist() == [0, 4] and torch.isfinite(encoder.response(*perturb(2, -1.0))).all()
 
+
+
+def test_a_drugs_mechanism_edges_are_routes_of_the_limiting_step_bottleneck():
+    """A drug's mechanism edges (entry relations) leave the normalised adjacency and are added on their own, so the
+    bottleneck pass did not walk them: every node past the entry node had a bottleneck of 0, and the limiting-step rule
+    multiplied the drug's whole response by it (found on the v5 graph, 17 October 2026). Node 0 is the drug, 1 its
+    target, 2 downstream of the target."""
+    torch.manual_seed(0)
+    encoder = LinearResponseEncoder(
+        3, ["activates", "targets"], edge_source=torch.tensor([0, 1]), edge_target=torch.tensor([1, 2]),
+        edge_relation=torch.tensor([1, 0]), edge_sign=torch.tensor([1.0, 1.0]), node_features=torch.eye(3), node_state_dim=4,
+        cell_class_weights=torch.tensor([[1.0], [0.6], [0.3]]), class_weight_rule="limiting_step",
+        entry_node_mask=torch.tensor([True, False, False]), entry_relation_names=("targets",), edge_weight=torch.tensor([1.0, 1.0]))
+    with torch.no_grad():
+        bottleneck = encoder.class_bottleneck(torch.tensor([[0]]))[:, 0, 0]
+        response = encoder.response(*perturb(0, 1.0))[0]
+    assert bottleneck.tolist() == pytest.approx([1.0, 0.6, 0.3]), "the widest route runs through the mechanism edge"
+    assert bool((response[1].abs() > 0).any()) and bool((response[2].abs() > 0).any()), "the drug's response reaches past its target"
+    demand = encoder.set_bottleneck_edge_demand_from_edges(torch.tensor([0, 1]), torch.tensor([1, 2]), torch.tensor([1, 0]), torch.tensor([1.0, 1.0]))
+    assert demand["bottleneck_entries"] == 2 and demand["largest_demand"] == 1.0, "the mechanism edge takes demand 1"

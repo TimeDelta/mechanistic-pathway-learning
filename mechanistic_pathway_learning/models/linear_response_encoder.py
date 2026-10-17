@@ -656,6 +656,19 @@ class LinearResponseEncoder(nn.Module):
             self.bottleneck_entry_slot = position
         self.register_buffer("bottleneck_edge_relation", torch.div(coalesced.indices()[0], num_graph_nodes, rounding_mode="floor"),
                              persistent=False)  # which relation each entry came from, so a stated coefficient can be found
+        # A drug's mechanism edges (the entry relations) left the arrays of the normalised adjacency above and are added on
+        # their own in the propagation; they are routes all the same, so the bottleneck walks them too. Until 17 October
+        # 2026 it did not, so every node past a drug's entry node had a bottleneck of 0 and the limiting-step rule multiplied
+        # the drug's whole response by it: on the v5 graph a drug's response was nonzero at its entry node only. They are
+        # appended after the adjacency's entries and are never gated (bottleneck_open_entries).
+        self.bottleneck_entry_edge_count = 0
+        if entry_edges is not None and len(entry_edges[0]):
+            entry_relation_index = torch.as_tensor([relation_types.index(present_entry_relations[int(local)]) for local in entry_edges[3]],
+                                                   dtype=torch.long)
+            self.bottleneck_edge_source = torch.cat([self.bottleneck_edge_source, entry_edges[0].long()])
+            self.bottleneck_edge_target = torch.cat([self.bottleneck_edge_target, entry_edges[1].long()])
+            self.bottleneck_edge_relation = torch.cat([self.bottleneck_edge_relation, entry_relation_index])
+            self.bottleneck_entry_edge_count = int(len(entry_edges[0]))
         # how many copies of the source a step consumes, which is that participant's stoichiometry. The graph does not
         # carry it on its edges yet, so this stays None and every demand is 1; see class_bottleneck.
         self.register_buffer("bottleneck_edge_demand", None, persistent=False)
@@ -1245,7 +1258,10 @@ class LinearResponseEncoder(nn.Module):
         open_edge = self.edge_gates.open_edges().to(self.gate_entry_origin.device)
         slot_open = torch.zeros(self.gate_slot_indices.shape[1], dtype=torch.float32, device=open_edge.device).index_add(
             0, self.gate_entry_slot, open_edge[self.gate_entry_origin].to(torch.float32)) > 0
-        return slot_open[self.bottleneck_entry_slot]
+        entries_open = slot_open[self.bottleneck_entry_slot]
+        if self.bottleneck_entry_edge_count:  # a drug's mechanism edges, appended after the adjacency's entries, carry no gate
+            entries_open = torch.cat([entries_open, torch.ones(self.bottleneck_entry_edge_count, dtype=torch.bool, device=entries_open.device)])
+        return entries_open
 
     def gated_adjacencies(self) -> tuple[Tensor, Tensor]:
         """(stacked [R * N, N], compressed [K, N]) as sparse tensors with the gated values, for reading; the propagation
