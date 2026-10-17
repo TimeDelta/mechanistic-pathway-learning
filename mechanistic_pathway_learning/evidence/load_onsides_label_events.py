@@ -44,6 +44,7 @@ import pandas as pd
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 from mechanistic_pathway_learning.evidence.load_drug_label_events import NERVOUS_SYSTEM_ATC_PREFIXES, has_admitted_atc_code
 from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import IngredientBridge, mechanism_targets_for_parent, passes_single_target_rule
+from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import pubchem_cid_from_perturbation_id
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import GraphNodeLookup, graph_compound_targets
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import DrugTarget
 
@@ -208,17 +209,23 @@ def onsides_reports(
     compounds_by_chembl_id: Mapping[str, list[str]] | None = None,
     max_drug_targets: int | None = 1,
     admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES,
+    complex_target_narrowing=None,
 ) -> tuple[pd.DataFrame, dict]:
     """Report rows (REPORT_COLUMNS first, then ONSIDES_EXTRA_COLUMNS) for every statement; qualifies marks the rows that enter the evidence table.
 
     node_lookup places each target on the graph (GraphNodeLookup); a gene symbol -> node id mapping places protein
-    targets only. max_drug_targets None or 0 lifts the single-target rule."""
+    targets only. max_drug_targets None or 0 lifts the single-target rule. complex_target_narrowing
+    (perturbation/gtopdb_drug_targets.ComplexTargetNarrowing, decision 8.11) narrows an ingredient's ChEMBL complex
+    targets to the subunits GtoPdb names before it is seeded, matched by the unified SIDER drug's PubChem CID or the
+    ingredient's name, as the SIDER route matches the same drug."""
     if not isinstance(node_lookup, GraphNodeLookup):
         node_lookup = GraphNodeLookup(dict(node_lookup), {}, {})
     scored = statements.max_pred1.where(statements.match_methods.astype(str).str.contains("PMB"))
     score_low, score_high = float(scored.min()) if scored.notna().any() else 0.0, float(scored.max()) if scored.notna().any() else 1.0
     counts = {"statements": int(len(statements)), "ingredients_without_bridge": 0, "disqualified": {}, "qualifying_reports": 0}
     qualifications: dict[str, OnsidesQualification] = {}
+    narrowed_targets: dict[str, list] = {}
+    narrowing_by_ingredient: dict[str, dict] = {}
     rows: list[dict] = []
     for statement in statements.itertuples(index=False):
         bridge = bridges.get(str(statement.ingredient_id))
@@ -227,7 +234,16 @@ def onsides_reports(
             continue
         qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id, max_drug_targets, admitted_atc_prefixes)
         qualifications[bridge.ingredient_id] = qualification
-        perturbation_nodes = node_lookup.perturbation_nodes(qualification.drug_targets)
+        drug_targets = qualification.drug_targets
+        if complex_target_narrowing is not None:
+            if bridge.ingredient_id not in narrowed_targets:
+                pubchem_cid = bridge.sider_pubchem_cid if bridge.sider_pubchem_cid is not None else pubchem_cid_from_perturbation_id(bridge.perturbation_id)
+                narrowed, record = complex_target_narrowing.narrow(qualification.drug_targets, pubchem_cid, bridge.sider_drug_name or bridge.ingredient_name)
+                narrowed_targets[bridge.ingredient_id] = narrowed
+                if record["narrowed"] or record["kept_whole"]:
+                    narrowing_by_ingredient[bridge.ingredient_id] = {"ingredient": bridge.ingredient_name, "perturbation_id": bridge.perturbation_id, **record}
+            drug_targets = narrowed_targets[bridge.ingredient_id]
+        perturbation_nodes = node_lookup.perturbation_nodes(drug_targets)
         combination_only = int(statement.single_ingredient_label_count) == 0
         qualifies = qualification.qualifies and not combination_only and bool(perturbation_nodes)
         if qualification.reason:
@@ -276,4 +292,8 @@ def onsides_reports(
     table = pd.DataFrame(rows, columns=columns)
     counts["qualifying_ingredients"] = int(table[table.qualifies].ingredient_id.nunique()) if len(table) else 0
     counts["qualifying_perturbations"] = int(table[table.qualifies].perturbation_id.nunique()) if len(table) else 0
+    if complex_target_narrowing is not None:  # decision 8.11, recorded only when the narrowing is on
+        counts["complex_target_narrowing"] = {**complex_target_narrowing.provenance,
+                                             "ingredients_narrowed": sum(1 for record in narrowing_by_ingredient.values() if record["narrowed"]),
+                                             "by_ingredient": dict(sorted(narrowing_by_ingredient.items()))}
     return table, counts

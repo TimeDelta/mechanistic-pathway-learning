@@ -33,6 +33,7 @@ from mechanistic_pathway_learning.evidence.onsides_identifier_bridge import (
     mechanisms_by_parent_and_molecule,
     stitch_flat_id_from_pubchem_cid,
 )
+from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import DEFAULT_BINDING_SITES_PATH, GTOPDB_DIRECTORY, ComplexTargetNarrowing
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
     DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
     NON_PROTEIN_TARGETS_PATH,
@@ -117,6 +118,11 @@ def main() -> None:
     parser.add_argument("--max-drug-targets", type=int, default=1, help="most mechanism targets a qualifying ingredient may have; 0 lifts the single-target rule")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
                         help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to the assembler")
+    parser.add_argument("--narrow-complex-targets", action=argparse.BooleanOptionalAction, default=True,
+                        help="decision 8.11: narrow an ingredient's ChEMBL complex targets to the subunits the Guide to PHARMACOLOGY names, as the "
+                             "evidence assembly does for SIDER drugs; pass it the same choice")
+    parser.add_argument("--gtopdb-dir", type=Path, default=GTOPDB_DIRECTORY)
+    parser.add_argument("--binding-sites", type=Path, default=DEFAULT_BINDING_SITES_PATH)
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/onsides_label_slice.md"))
     arguments = parser.parse_args()
 
@@ -131,7 +137,9 @@ def main() -> None:
     _, compounds_by_chembl_id = load_drugs_acting_as_graph_compounds(arguments.drugs_acting_as_graph_compounds)
     check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, mechanisms_by_molecule)
     admitted_atc_prefixes = read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES
-    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id, arguments.max_drug_targets or None, admitted_atc_prefixes)
+    narrowing = ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites) if arguments.narrow_complex_targets else None
+    reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id, arguments.max_drug_targets or None, admitted_atc_prefixes,
+                                      complex_target_narrowing=narrowing)
 
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     reports.to_parquet(arguments.output_dir / "onsides_reports.parquet", index=False)

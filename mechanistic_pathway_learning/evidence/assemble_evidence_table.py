@@ -108,6 +108,7 @@ from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations 
     parse_genes_to_phenotype,
     read_crosswalk_hpo_terms,
 )
+from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import DEFAULT_BINDING_SITES_PATH, GTOPDB_DIRECTORY, ComplexTargetNarrowing
 from mechanistic_pathway_learning.perturbation.map_drug_targets_to_graph_nodes import (
     DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH,
     NON_PROTEIN_TARGETS_PATH,
@@ -181,6 +182,7 @@ class AssembledEvidence:
     reports_dropped_unknown_provenance: int = 0  # genes_to_phenotype rows whose disease prefix is neither OMIM: nor ORPHA:
     genes_seeded_as_gain_of_function: tuple[str, ...] = ()  # genes seeded with sign +1 (seed_gain_of_function_genes_positive), sorted
     allele_summary: dict | None = None  # allele_perturbations: the alleles by class and the basis of each mechanism (decision 9.54)
+    complex_target_narrowing: dict | None = None  # decision 8.11: per drug, the ChEMBL complex targets narrowed to GtoPdb's subunits
 
 
 def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linking_entry: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, str]:
@@ -677,6 +679,7 @@ def assemble(
     neomorphic_alleles_path: Path | None = DEFAULT_NEOMORPHIC_ALLELES_PATH,
     gene2phenotype_path: Path | None = DEFAULT_GENE2PHENOTYPE_PATH,
     mechanism_adjudications_path: Path | None = DEFAULT_MECHANISM_ADJUDICATIONS_PATH,
+    complex_target_narrowing=None,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
 
@@ -691,7 +694,11 @@ def assemble(
     allele (neomorphic_alleles_path); every other report stays with the gene, seeded -1. Where Orphanet leaves a pair
     untyped, Gene2Phenotype's curated mechanism is the second source (gene2phenotype_path; None builds without it, which
     is recorded), and a pair the two dispute is settled by its cited adjudication where one exists
-    (mechanism_adjudications_path). It replaces seed_gain_of_function_genes_positive, and the two are not combined."""
+    (mechanism_adjudications_path). It replaces seed_gain_of_function_genes_positive, and the two are not combined.
+
+    complex_target_narrowing (perturbation/gtopdb_drug_targets.ComplexTargetNarrowing, decision 8.11) narrows each
+    SIDER drug's ChEMBL complex targets to the subunits the Guide to PHARMACOLOGY names before the drug is seeded;
+    None seeds every subunit of a complex, as every build before it did."""
     if allele_perturbations and seed_gain_of_function_genes_positive:
         raise ValueError("allele_perturbations replaces seed_gain_of_function_genes_positive; pass one of them")
     if weighting not in WEIGHTINGS:
@@ -752,6 +759,7 @@ def assemble(
         gain_of_function_genes = seed_monogenic_reports(report_list, node_by_symbol, seed_gain_of_function_genes_positive)
 
     drug_targets_by_perturbation: dict[str, str] = {}
+    narrowing_by_perturbation: dict[str, dict] = {}
     if sider_directory is not None and chembl_directory is not None and (chembl_directory / "targets.json").exists():
         caches = load_chembl_caches(chembl_directory)
         bridge_parents_by_cid = bridge_chembl_parents_by_sider_cid(onsides_bridge_path)
@@ -761,6 +769,10 @@ def assemble(
             drug_targets = sider_drug_targets(event.pubchem_cid, caches, bridge_parents_by_cid, compounds_by_pubchem_cid, compounds_by_chembl_id)
             if not (has_dominant_target(drug_targets, max_drug_targets) and has_admitted_atc_code(event.atc_codes, admitted_atc_prefixes)):
                 continue
+            if complex_target_narrowing is not None:
+                drug_targets, narrowing_record = complex_target_narrowing.narrow(drug_targets, event.pubchem_cid, event.drug_name)
+                if narrowing_record["narrowed"] or narrowing_record["kept_whole"]:
+                    narrowing_by_perturbation[event.stitch_flat_id] = {"drug": event.drug_name, **narrowing_record}
             perturbation_nodes = node_lookup.perturbation_nodes(drug_targets)
             targets = drug_target_description(drug_targets)
             if not perturbation_nodes:
@@ -825,7 +837,12 @@ def assemble(
         if weighting == "reliability":
             observations["weight"] = reliability_weights(reliability_fit, observations, reliability_global_scale)
         observations["weighting"] = weighting
-    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance), tuple(sorted(gain_of_function_genes)), allele_summary)
+    narrowing_summary = None
+    if complex_target_narrowing is not None:
+        narrowing_summary = {**complex_target_narrowing.provenance, "drugs_narrowed": sum(1 for record in narrowing_by_perturbation.values() if record["narrowed"]),
+                             "by_drug": dict(sorted(narrowing_by_perturbation.items()))}
+    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance), tuple(sorted(gain_of_function_genes)), allele_summary,
+                             narrowing_summary)
 
 
 def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -> dict:
@@ -926,6 +943,12 @@ def main() -> None:
                         help="Gene2Phenotype's all-panel download, the second source of a disease's mechanism where Orphanet types none (--allele-perturbations); none builds without it")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
                         help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to build_onsides_reports.py")
+    parser.add_argument("--narrow-complex-targets", action=argparse.BooleanOptionalAction, default=True,
+                        help="decision 8.11 (the owner, 13 October 2026): a drug's ChEMBL complex target is narrowed to the subunits the Guide to PHARMACOLOGY "
+                             "names for it, with the binding site's obligate subunits restored; GtoPdb targets outside every ChEMBL row are not added. "
+                             "Pass the same choice to build_onsides_reports.py")
+    parser.add_argument("--gtopdb-dir", type=Path, default=GTOPDB_DIRECTORY, help="the Guide to PHARMACOLOGY release the narrowing reads")
+    parser.add_argument("--binding-sites", type=Path, default=DEFAULT_BINDING_SITES_PATH, help="the drugs' binding sites, which name the obligate subunits")
     parser.add_argument("--open-targets-scoped-rows", type=Path, default=None,
                         help="data/processed/off_target_scoping/open_targets_symptom_rows.parquet (amendment item 12d, decision 8.5): the curated target-safety statements enter the Dawid-Skene reliability fit and reach no grade and no label. Omit the flag to assemble without the class")
     arguments = parser.parse_args()
@@ -941,7 +964,8 @@ def main() -> None:
                          allele_perturbations=arguments.allele_perturbations, orphadata_product1_path=arguments.orphadata_product1,
                          neomorphic_alleles_path=arguments.neomorphic_alleles,
                          gene2phenotype_path=None if str(arguments.gene2phenotype).lower() == "none" else Path(arguments.gene2phenotype),
-                         mechanism_adjudications_path=None if str(arguments.mechanism_adjudications).lower() == "none" else Path(arguments.mechanism_adjudications))
+                         mechanism_adjudications_path=None if str(arguments.mechanism_adjudications).lower() == "none" else Path(arguments.mechanism_adjudications),
+                         complex_target_narrowing=ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites) if arguments.narrow_complex_targets else None)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
@@ -954,6 +978,7 @@ def main() -> None:
         summary["genes_seeded_as_gain_of_function"] = list(assembled.genes_seeded_as_gain_of_function)
     if assembled.allele_summary is not None:  # decision 9.54, recorded only when the alleles are perturbations
         summary["alleles"] = {**assembled.allele_summary, "orphadata_product1": str(arguments.orphadata_product1), "neomorphic_alleles": str(arguments.neomorphic_alleles)}
+    summary["complex_target_narrowing"] = assembled.complex_target_narrowing  # decision 8.11; None when built with --no-narrow-complex-targets
     if arguments.admitted_atc_prefixes is not None:
         summary["admitted_atc_prefixes"] = {"file": str(arguments.admitted_atc_prefixes), "prefixes": list(read_admitted_atc_prefixes(arguments.admitted_atc_prefixes))}
     summary.update(summarize_reports(assembled.reports, assembled.reliability_fit, rubric_weight_defaults, assembled.observations, assembled.reports_dropped_unknown_provenance))
