@@ -128,3 +128,47 @@ def test_the_pinned_download_has_the_columns_and_mechanisms_the_reader_expects()
     assert set(GENE2PHENOTYPE_COLUMNS) <= set(pd.read_csv(DEFAULT_GENE2PHENOTYPE_PATH, nrows=0).columns)
     assert counts["records_with_an_omim_disease"] > 2000
     assert {record.mechanism for record in records} <= {"loss of function", "dominant negative", "gain of function", "undetermined", "undetermined non-loss-of-function"}
+
+
+def test_the_committed_adjudications_cite_every_row_and_settle_the_disputes_read_on_16_october():
+    from mechanistic_pathway_learning.evidence.allele_mechanisms import read_mechanism_adjudications
+
+    adjudications = read_mechanism_adjudications()
+    assert adjudications[("CDC73", "ORPHA:99880")].mechanism == LOSS_OF_FUNCTION, "a tumour suppressor: inactivating germline mutations"
+    assert adjudications[("PRPS1", "ORPHA:411536")].mechanism == GAIN_OF_FUNCTION, "catalytic superactivity: the normal enzyme overexpressed"
+    assert {pair: mechanism.mechanism for pair, mechanism in adjudications.items() if pair[0] in ("ARHGAP31", "KCNC1", "SLC40A1")} == {
+        ("ARHGAP31", "ORPHA:974"): GAIN_OF_FUNCTION, ("ARHGAP31", "OMIM:100300"): GAIN_OF_FUNCTION, ("KCNC1", "OMIM:616187"): LOSS_OF_FUNCTION,
+        ("SLC40A1", "OMIM:606069"): GAIN_OF_FUNCTION}
+    table = pd.read_csv("configs/allele_mechanism_adjudications.csv", dtype=str)
+    assert table.pmid.str.fullmatch(r"\d+").all() and (table.quote.str.len() > 40).all() and table.note.str.contains("Gene2Phenotype").all()
+
+
+@pytest.mark.parametrize("row,message", [({"mechanism": "neomorph"}, "mechanism must be one of"), ({"pmid": "x"}, "PubMed id"), ({"quote": " "}, "PubMed id and a quote"),
+                                         ({"disease_id": "MONDO:1"}, "not an OMIM or Orphanet")])
+def test_a_malformed_adjudication_is_refused(tmp_path, row, message):
+    from mechanistic_pathway_learning.evidence.allele_mechanisms import read_mechanism_adjudications
+
+    base = {"gene": "A", "disease_id": "OMIM:1", "mechanism": "loss_of_function", "pmid": "1", "quote": "a sentence from the paper", "note": ""}
+    pd.DataFrame([{**base, **row}]).to_csv(tmp_path / "adjudications.csv", index=False)
+    with pytest.raises(ValueError, match=message):
+        read_mechanism_adjudications(tmp_path / "adjudications.csv")
+    pd.DataFrame([base, base]).to_csv(tmp_path / "twice.csv", index=False)
+    with pytest.raises(ValueError, match="adjudicated twice"):
+        read_mechanism_adjudications(tmp_path / "twice.csv")
+
+
+def test_an_adjudication_replaces_both_sources_and_keeps_their_view_in_the_basis():
+    from mechanistic_pathway_learning.evidence.allele_mechanisms import apply_adjudications
+
+    mechanisms = {("CDC73", "ORPHA:99880"): DiseaseMechanism(GAIN_OF_FUNCTION, "orphanet typed; disputed by gene2phenotype G2P01833"),
+                  ("B", "OMIM:2"): DiseaseMechanism(UNTYPED, "untyped")}
+    adjudicated = apply_adjudications(mechanisms, {("CDC73", "ORPHA:99880"): DiseaseMechanism(LOSS_OF_FUNCTION, "adjudicated from PMID 12434154"),
+                                                   ("C", "OMIM:3"): DiseaseMechanism(GAIN_OF_FUNCTION, "adjudicated from PMID 1")})
+    assert adjudicated[("CDC73", "ORPHA:99880")] == DiseaseMechanism(LOSS_OF_FUNCTION, "adjudicated from PMID 12434154 (the sources: orphanet typed; disputed by gene2phenotype G2P01833)")
+    assert adjudicated[("B", "OMIM:2")] == mechanisms[("B", "OMIM:2")] and ("C", "OMIM:3") not in adjudicated, "a pair without a report is not added"
+    reports = [monogenic_report("CDC73", "ORPHA:99880", "fatigue", 0)]
+    assigned = assign_alleles(reports, adjudicated, {}, {"CDC73": "GENE:CDC73"})
+    assert reports[0].perturbation_id == "CDC73" and json.loads(reports[0].perturbation_nodes) == [["GENE:CDC73", -1.0, 1.0]]
+    summary = summarise_alleles(assigned, reports)
+    assert summary["pairs_adjudicated"] == ["CDC73 ORPHA:99880: loss_of_function, adjudicated from PMID 12434154 (the sources: orphanet typed; disputed by gene2phenotype G2P01833)"]
+    assert summary["pairs_disputed_by_the_second_source"] == [] and summary["reports_by_mechanism_basis"] == {"adjudicated": 1}

@@ -42,6 +42,12 @@ so the gene's net activity falls, which is what the seed -1 states; "gain of fun
 and "undetermined non-loss-of-function" type nothing and are written into the basis. G2P records that disagree on one
 pair leave it untyped as a conflict. The second source fills an absence and does not overrule the first: where both
 type a pair and disagree, Orphanet's type stands and the disagreement is written into the basis for the owner to see.
+
+Adjudication. A pair the two sources dispute is settled from the primary literature where a curated row says so
+(configs/allele_mechanism_adjudications.csv, one row per gene and disease, each with a PubMed id and a quote, the
+standard of the neomorphic allele table). The six pairs disputed on 16 October were read: Orphanet's type was wrong
+for two (CDC73 in the hyperparathyroidism-jaw tumour syndrome, a tumour suppressor typed as a gain; PRPS1 in mild
+superactivity, overexpression of the normal enzyme typed as a loss) and right for the other four.
 """
 from __future__ import annotations
 
@@ -70,6 +76,8 @@ GENE2PHENOTYPE_MECHANISM = {"loss of function": LOSS_OF_FUNCTION, "dominant nega
 GENE2PHENOTYPE_UNTYPED_MECHANISMS = ("undetermined", "undetermined non-loss-of-function")
 GENE2PHENOTYPE_CONFIDENCES = ("definitive", "strong", "moderate")
 GENE2PHENOTYPE_COLUMNS = ("g2p id", "gene symbol", "previous gene symbols", "disease mim", "confidence", "molecular mechanism", "allelic requirement")
+DEFAULT_MECHANISM_ADJUDICATIONS_PATH = Path("configs/allele_mechanism_adjudications.csv")
+ADJUDICATED_MECHANISMS = (LOSS_OF_FUNCTION, GAIN_OF_FUNCTION, UNTYPED)
 
 
 def load_orphanet_omim_mappings(product1_path: Path) -> dict[str, list[tuple[str, str]]]:
@@ -228,6 +236,35 @@ def first_source_unless_absent(first: Mapping[tuple[str, str], DiseaseMechanism]
             result[pair] = DiseaseMechanism(UNTYPED, f"{primary.basis}; {secondary.basis}")
         else:
             result[pair] = secondary
+    return result
+
+
+def read_mechanism_adjudications(path: Path = DEFAULT_MECHANISM_ADJUDICATIONS_PATH) -> dict[tuple[str, str], DiseaseMechanism]:
+    """(gene, disease) -> the mechanism the primary literature states, for pairs the sources dispute. Every row needs a
+    PubMed id and a quote; a pair appears once."""
+    adjudications: dict[tuple[str, str], DiseaseMechanism] = {}
+    with open(path, newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            pair = (row["gene"].strip(), row["disease_id"].strip())
+            if row["mechanism"] not in ADJUDICATED_MECHANISMS:
+                raise ValueError(f"{path}: mechanism must be one of {ADJUDICATED_MECHANISMS}, not {row['mechanism']!r}")
+            if not row["pmid"].strip().isdigit() or not row["quote"].strip():
+                raise ValueError(f"{path}: the adjudication of {pair} needs a PubMed id and a quote")
+            if not pair[1].startswith(("OMIM:", "ORPHA:")):
+                raise ValueError(f"{path}: {pair[1]!r} is not an OMIM or Orphanet disease id")
+            if pair in adjudications:
+                raise ValueError(f"{path}: {pair} is adjudicated twice")
+            adjudications[pair] = DiseaseMechanism(row["mechanism"], f"adjudicated from PMID {row['pmid'].strip()}")
+    return adjudications
+
+
+def apply_adjudications(mechanisms: Mapping[tuple[str, str], DiseaseMechanism],
+                        adjudications: Mapping[tuple[str, str], DiseaseMechanism]) -> dict[tuple[str, str], DiseaseMechanism]:
+    """The mechanisms with each adjudicated pair replaced by its adjudication, the sources' view kept in the basis."""
+    result = dict(mechanisms)
+    for pair, adjudicated in adjudications.items():
+        if pair in result:
+            result[pair] = DiseaseMechanism(adjudicated.mechanism, f"{adjudicated.basis} (the sources: {result[pair].basis})")
     return result
 
 

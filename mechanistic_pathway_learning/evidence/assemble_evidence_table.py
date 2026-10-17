@@ -81,18 +81,21 @@ from mechanistic_pathway_learning.evidence.evidence_reports import (
 )
 from mechanistic_pathway_learning.evidence.allele_mechanisms import (
     DEFAULT_GENE2PHENOTYPE_PATH,
+    DEFAULT_MECHANISM_ADJUDICATIONS_PATH,
     DEFAULT_NEOMORPHIC_ALLELES_PATH,
     HYPERMORPH,
     NEOMORPH,
     UNTYPED,
     DiseaseMechanism,
     allele_of,
+    apply_adjudications,
     disease_mechanisms,
     first_source_unless_absent,
     gene2phenotype_mechanisms,
     gene_of_perturbation,
     load_gene2phenotype,
     load_orphanet_omim_mappings,
+    read_mechanism_adjudications,
     read_neomorphic_alleles,
 )
 from mechanistic_pathway_learning.evidence.gene_disease_association_types import genes_with_gain_of_function_associations_only
@@ -635,7 +638,10 @@ def summarise_alleles(assigned: dict[str, tuple[str, str, str]], reports: list[E
             "pairs_typed_by_the_second_source_only": len({(assigned[report.report_id][0], report.source_record_id) for report in reports
                                                           if report.report_id in assigned and assigned[report.report_id][2].startswith("gene2phenotype")}),
             "pairs_disputed_by_the_second_source": sorted({f"{assigned[report.report_id][0]} {report.source_record_id}: {assigned[report.report_id][2]}" for report in reports
-                                                          if report.report_id in assigned and "; disputed by " in assigned[report.report_id][2]})}
+                                                          if report.report_id in assigned and "; disputed by " in assigned[report.report_id][2]
+                                                          and not assigned[report.report_id][2].startswith("adjudicated")}),
+            "pairs_adjudicated": sorted({f"{assigned[report.report_id][0]} {report.source_record_id}: {assigned[report.report_id][1]}, {assigned[report.report_id][2]}" for report in reports
+                                         if report.report_id in assigned and assigned[report.report_id][2].startswith("adjudicated")})}
 
 
 def drug_target_description(drug_targets) -> str:
@@ -670,6 +676,7 @@ def assemble(
     orphadata_product1_path: Path | None = None,
     neomorphic_alleles_path: Path | None = DEFAULT_NEOMORPHIC_ALLELES_PATH,
     gene2phenotype_path: Path | None = DEFAULT_GENE2PHENOTYPE_PATH,
+    mechanism_adjudications_path: Path | None = DEFAULT_MECHANISM_ADJUDICATIONS_PATH,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
 
@@ -683,7 +690,8 @@ def assemble(
     product 1, orphadata_product1_path) move to "<gene>|gain_of_function", seeded +1, or to the gene's curated neomorphic
     allele (neomorphic_alleles_path); every other report stays with the gene, seeded -1. Where Orphanet leaves a pair
     untyped, Gene2Phenotype's curated mechanism is the second source (gene2phenotype_path; None builds without it, which
-    is recorded). It replaces seed_gain_of_function_genes_positive, and the two are not combined."""
+    is recorded), and a pair the two dispute is settled by its cited adjudication where one exists
+    (mechanism_adjudications_path). It replaces seed_gain_of_function_genes_positive, and the two are not combined."""
     if allele_perturbations and seed_gain_of_function_genes_positive:
         raise ValueError("allele_perturbations replaces seed_gain_of_function_genes_positive; pass one of them")
     if weighting not in WEIGHTINGS:
@@ -730,6 +738,12 @@ def assemble(
             gene2phenotype_records, record_counts = load_gene2phenotype(Path(gene2phenotype_path))
             mechanisms = first_source_unless_absent(mechanisms, gene2phenotype_mechanisms(gene2phenotype_records, mappings, pairs), pairs)
             second_source_summary = {"gene2phenotype": str(gene2phenotype_path), "gene2phenotype_sha256": hashlib.sha256(Path(gene2phenotype_path).read_bytes()).hexdigest(), **record_counts}
+        if mechanism_adjudications_path is not None:
+            adjudications = read_mechanism_adjudications(Path(mechanism_adjudications_path))
+            mechanisms = apply_adjudications(mechanisms, adjudications)
+            second_source_summary.update(mechanism_adjudications=str(mechanism_adjudications_path),
+                                         mechanism_adjudications_sha256=hashlib.sha256(Path(mechanism_adjudications_path).read_bytes()).hexdigest(),
+                                         adjudications_without_a_report=sorted(f"{gene} {disease}" for gene, disease in adjudications if (gene, disease) not in pairs))
         neomorphic_alleles = read_neomorphic_alleles(Path(neomorphic_alleles_path)) if neomorphic_alleles_path is not None else {}
         allele_assignment = assign_alleles(report_list, mechanisms, neomorphic_alleles, node_by_symbol)
         allele_summary = {**summarise_alleles(allele_assignment, report_list), **second_source_summary}
@@ -906,6 +920,8 @@ def main() -> None:
                         help="Orphadata product 1: how each Orphanet disorder maps to OMIM, which carries a typed mechanism to the same disease's OMIM record")
     parser.add_argument("--neomorphic-alleles", type=Path, default=DEFAULT_NEOMORPHIC_ALLELES_PATH,
                         help="curated neomorphic alleles, one row per cited mechanism edge (--allele-perturbations)")
+    parser.add_argument("--mechanism-adjudications", default=str(DEFAULT_MECHANISM_ADJUDICATIONS_PATH),
+                        help="cited adjudications of the pairs the two sources of a mechanism dispute (--allele-perturbations); none applies none")
     parser.add_argument("--gene2phenotype", default=str(DEFAULT_GENE2PHENOTYPE_PATH),
                         help="Gene2Phenotype's all-panel download, the second source of a disease's mechanism where Orphanet types none (--allele-perturbations); none builds without it")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
@@ -924,7 +940,8 @@ def main() -> None:
                          open_targets_scoped_rows_path=arguments.open_targets_scoped_rows,
                          allele_perturbations=arguments.allele_perturbations, orphadata_product1_path=arguments.orphadata_product1,
                          neomorphic_alleles_path=arguments.neomorphic_alleles,
-                         gene2phenotype_path=None if str(arguments.gene2phenotype).lower() == "none" else Path(arguments.gene2phenotype))
+                         gene2phenotype_path=None if str(arguments.gene2phenotype).lower() == "none" else Path(arguments.gene2phenotype),
+                         mechanism_adjudications_path=None if str(arguments.mechanism_adjudications).lower() == "none" else Path(arguments.mechanism_adjudications))
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
