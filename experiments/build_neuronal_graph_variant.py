@@ -138,6 +138,26 @@ CURATED_REACTIONS = [
     # Products are the neuronal pool nodes, so these currents reach the pools as Reactome's ion species do.
     CuratedReaction("MAR_NAV_SODIUM", "sodium entry through voltage-gated sodium channels", ("MAM02519e",), ("NEURON_MAM02519c",),
                     ("SCN1A", "SCN2A", "SCN3A", "SCN4A", "SCN5A", "SCN8A", "SCN9A", "SCN10A", "SCN11A"), "voltage-gated sodium channel (PMID 33199904)"),
+    # Calcium entry through the CaV1 (L-type) and CaV3 (T-type) channels, which no imported Reactome pathway and no
+    # Human-GEM reaction carries: the graph's one voltage-gated calcium entry was Reactome's presynaptic RCT_210420,
+    # catalysed by the CaV2 set (CACNA1A, CACNA1B, CACNA1E; decision 9.69). "The Ca(V)1 subfamily initiates contraction,
+    # secretion, regulation of gene expression, integration of synaptic input in neurons, and synaptic transmission at
+    # ribbon synapses in specialized sensory cells. ... The Ca(V)3 subfamily is important for repetitive firing of action
+    # potentials in rhythmically firing cells such as cardiac myocytes and thalamic neurons" (Catterall 2011, PMID
+    # 21746798). T-type channels "can be activated by small depolarizations of the plasma membrane", and "Ca2+ entry via
+    # T-type channels can directly regulate intracellular Ca2+ concentrations" (Perez-Reyes 2003, PMID 12506128). Both
+    # families open on depolarisation (DEPOLARISATION_ACTIVATED_PATTERN already names CACNA1A to CACNA1I and CACNA1S) and
+    # carry Ca2+ inward, so they depolarise and raise the neuronal calcium pool, which drives release and the Ca2+-
+    # activated channels. The auxiliary alpha2delta and beta subunits "enhance channel trafficking, increase the
+    # expression of functional calcium channels at the plasma membrane and influence the channels' biophysical
+    # properties" (Dolphin 2012, PMID 22805911), so they raise the CaV1 reaction's rate as activators rather than
+    # catalysing it; the CaV3 alpha1 subunits are written without them. CACNA1F (retina) and CACNA1S (skeletal muscle)
+    # are in the family as SCN4A and SCN5A are in the sodium one, and the cell-class weights give each class its share.
+    CuratedReaction("MAR_CAV1_CALCIUM", "calcium entry through L-type voltage-gated calcium channels (CaV1)", ("MAM01413e",), ("NEURON_MAM01413c",),
+                    ("CACNA1C", "CACNA1D", "CACNA1F", "CACNA1S"), "L-type voltage-gated calcium channel, CaV1 (PMID 21746798; auxiliary subunits PMID 22805911)",
+                    activators=("CACNA2D1", "CACNA2D2", "CACNA2D3", "CACNA2D4", "CACNB1", "CACNB2", "CACNB3", "CACNB4")),
+    CuratedReaction("MAR_CAV3_CALCIUM", "calcium entry through T-type voltage-gated calcium channels (CaV3)", ("MAM01413e",), ("NEURON_MAM01413c",),
+                    ("CACNA1G", "CACNA1H", "CACNA1I"), "T-type voltage-gated calcium channel, CaV3 (PMID 21746798; PMID 12506128)"),
     # HCN: mixed sodium and potassium current; its net sign at rest is set explicitly (see CuratedReaction).
     CuratedReaction("MAR_HCN_CURRENT", "mixed sodium and potassium current through HCN channels", ("MAM02519e", "NEURON_MAM02200c"),
                     ("NEURON_MAM02519c", "NEURON_MAM02200e"), ("HCN1", "HCN2", "HCN3", "HCN4"),

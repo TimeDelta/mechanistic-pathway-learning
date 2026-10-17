@@ -507,3 +507,50 @@ def test_the_law_can_be_built_beside_the_reaction_edges():
     assert (into_the_potential[into_the_potential.relation_type == "changes_membrane_potential"].weight == 1.0).all()
     with pytest.raises(ValueError, match="membrane_potential_build must be one of"):
         run_import(membrane_potential_build="nernst")
+
+
+def test_the_calcium_channel_families_open_on_depolarisation_depolarise_and_feed_the_calcium_pool():
+    """Decision 9.69: the graph's one voltage-gated calcium entry was Reactome's presynaptic CaV2 reaction. The curated
+    CaV1 (L-type) and CaV3 (T-type) reactions carry extracellular Ca2+ into the neuronal calcium pool, open on
+    depolarisation and depolarise; the CaV1 reaction takes the alpha2delta and beta subunits as activators."""
+    from experiments.build_neuronal_graph_variant import CURATED_REACTIONS
+
+    families = [curated for curated in CURATED_REACTIONS if curated.reaction_id in ("MAR_CAV1_CALCIUM", "MAR_CAV3_CALCIUM")]
+    assert len(families) == 2
+    _, edges, _, summary = run_import(curated_reactions=families)
+    calcium_pool = neuronal_pool_id(CALCIUM, "c")
+    for reaction in ("MAR_CAV1_CALCIUM", "MAR_CAV3_CALCIUM"):
+        assert ((edges.source_id == f"{CALCIUM}e") & (edges.target_id == reaction) & (edges.relation_type == "substrate_of")).any()
+        assert ((edges.source_id == reaction) & (edges.target_id == calcium_pool) & (edges.relation_type == "product_of")).any()
+    gating = edges[edges.relation_type == "voltage_gates"].set_index("target_id").sign
+    assert gating["MAR_CAV1_CALCIUM"] == 1.0 and gating["MAR_CAV3_CALCIUM"] == 1.0, "both families open on depolarisation"
+    depolarising = edges[edges.relation_type == "changes_membrane_potential"].set_index("source_id").sign
+    assert depolarising["MAR_CAV1_CALCIUM"] == 1.0 and depolarising["MAR_CAV3_CALCIUM"] == 1.0, "Ca2+ entering depolarises"
+    catalysts = edges[edges.relation_type == "catalyzed_by"]
+    assert set(catalysts[catalysts.target_id == "MAR_CAV1_CALCIUM"].source_id) == {f"GENE:{gene}" for gene in ("CACNA1C", "CACNA1D", "CACNA1F", "CACNA1S")}
+    assert set(catalysts[catalysts.target_id == "MAR_CAV3_CALCIUM"].source_id) == {f"GENE:{gene}" for gene in ("CACNA1G", "CACNA1H", "CACNA1I")}
+    activators = edges[(edges.relation_type == "activates") & edges.target_id.isin(["MAR_CAV1_CALCIUM", "MAR_CAV3_CALCIUM"])]
+    assert set(activators.target_id) == {"MAR_CAV1_CALCIUM"} and (activators.sign == 1.0).all()
+    assert {"GENE:CACNA2D1", "GENE:CACNB2"} <= set(activators.source_id), "gabapentin's subunit and a beta subunit raise the L-type current"
+    assert summary["voltage_gating_edges"].get("curated") == 2
+
+
+def test_an_activator_feeds_its_reaction_and_takes_no_part_in_the_gating():
+    """Only the catalysts are pores, so only they decide the voltage gating; a gene cannot be both."""
+    pumped = CuratedReaction("MAR_TEST", "a pump with an auxiliary subunit", (f"{SODIUM}c",), (f"{SODIUM}e",), ("ATP1A3",), "test", activators=("CACNA1C",))
+    _, edges, _, _ = run_import(curated_reactions=[pumped])
+    assert ((edges.source_id == "GENE:CACNA1C") & (edges.target_id == "MAR_TEST") & (edges.relation_type == "activates") & (edges.sign == 1.0)).any()
+    assert not ((edges.relation_type == "voltage_gates") & (edges.target_id == "MAR_TEST")).any(), "a voltage-gated gene as an activator gates nothing"
+    both = CuratedReaction("MAR_BOTH", "a gene listed twice", (f"{SODIUM}e",), (f"{SODIUM}c",), ("SCN1A",), "test", activators=("SCN1A",))
+    with pytest.raises(ValueError, match="catalyst and as an activator"):
+        run_import(curated_reactions=[both])
+
+
+def test_every_calcium_channel_pore_gene_has_one_route_in_the_curated_set():
+    """The CaV2 pores (CACNA1A, CACNA1B, CACNA1E) are Reactome's; every other CACNA1 gene is a catalyst of exactly one
+    curated reaction, so no family is left without conduction and none is counted twice."""
+    from experiments.build_neuronal_graph_variant import CURATED_REACTIONS
+
+    pore_genes = [gene for curated in CURATED_REACTIONS for gene in curated.catalysts if gene.startswith("CACNA1")]
+    assert sorted(pore_genes) == ["CACNA1C", "CACNA1D", "CACNA1F", "CACNA1G", "CACNA1H", "CACNA1I", "CACNA1S"]
+    assert all(voltage_gating_sign({gene}) == 1.0 for gene in pore_genes)
