@@ -108,6 +108,18 @@ CURATED_REACTIONS = [
     CuratedReaction("MAR_NORADRENALINE_VESICLE_SYNTHESIS", "dopamine beta-monooxygenase (vesicle lumen)", ("MAM01736v", "MAM02630c", "MAM01368c"),
                     ("MAM02617v", "MAM01655c", "MAM02040c"), ("DBH",), "dopamine beta-hydroxylase inside the storage vesicle (PMID 6998654)"),
     CuratedReaction("MAR_GLYCINE_LOADING", "loading of glycine into inhibitory vesicles", ("MAM01986c",), ("MAM01986v",), ("SLC32A1",), "shared vesicular inhibitory amino acid transporter (PMID 16701208)"),
+    # Glutamate loading by VGLUT2 and VGLUT3 (decision 9.71). Reactome's loading (R-HSA-210444) is catalysed by its empty
+    # glutamate vesicle entity, whose only transporter is VGLUT1 (SLC17A7), and the Human-GEM shortcuts that VGLUT2 and
+    # VGLUT3 also catalysed are deleted above, so without this reaction SLC17A6 and SLC17A8 kept only binding edges.
+    # "excitatory neurons lacking VGLUT1 express a closely related protein ... Like VGLUT1, this protein localizes to
+    # synaptic vesicles and functions as a vesicular glutamate transporter (VGLUT2). The complementary expression of
+    # VGLUT1 and 2 defines two distinct classes of excitatory synapse" (Fremeau et al. 2001, PMID 11502256, rat), and
+    # "subpopulations of inhibitory neurons as well as cholinergic interneurons, monoamine neurons, and glia express
+    # VGLUT3" (Fremeau et al. 2002, PMID 12388773). The lumen copy it makes is a substrate of Reactome's glutamate
+    # release by the rule that connects every lumen transmitter to its release (reactome_import.import_reactome_layer);
+    # VGLUT1 keeps Reactome's route and is not listed here, so no transporter is counted twice.
+    CuratedReaction("MAR_GLUTAMATE_LOADING_VGLUT2_3", "loading of glutamate into synaptic vesicles by VGLUT2 and VGLUT3", ("MAM01974c",), ("MAM01974v",),
+                    ("SLC17A6", "SLC17A8"), "vesicular glutamate transporters 2 and 3 (PMID 11502256; PMID 12388773)"),
     CuratedReaction("MAR_HISTAMINE_RELEASE", "release of histamine at the synapse", ("MAM02124v",), ("MAM02124e",), ("SYT1", "STX1A", "SNAP25", "VAMP2"),
                     "Ca2+-triggered exocytosis (PMID 24183019)", release="MAM02124"),
     CuratedReaction("MAR_GLYCINE_RELEASE", "release of glycine at the synapse", ("MAM01986v",), ("MAM01986e",), ("SYT1", "STX1A", "SNAP25", "VAMP2"),
