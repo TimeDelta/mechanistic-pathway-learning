@@ -3456,3 +3456,121 @@ Two refusals and one route, recorded as the working rules ask:
 - The record of decision 9.54 of 16 October said G2P's licence was "not yet verified". It had been verified on 11
   October (section 11.2); that sentence was wrong, and the decision log carries the correction.
 
+
+## 33. A research report on further label sources, checked against this review (17 October 2026)
+
+On 17 October 2026 a web research run started for the owner returned a report that ranks five further sources of
+perturbation-to-symptom evidence and says it could not read this review or `docs/alternative_sources.md`. This section
+checks each proposal against what the repository already holds, reads its central claims at the providers' own
+sources and measures the one that is new. The report's words are quoted only where this section tests them. Nothing
+was added to the build; the decision is 9.73.
+
+### 33.1 What the repository already holds
+
+| proposal (the report's rank) | what the repository holds | standing |
+|---|---|---|
+| 1. "move from OnSIDES v3.1.1 to the current release" | v3.1.1 pinned (`docs/data_sources.md`); `docs/alternative_sources.md` found on 3 October that "git tags v3.2.0 and v3.2.1 (both 2026-04-28) are code/model releases ... with no release asset"; label section, extraction score, label count and country are already rubric features (`docs/onsides_label_slice.md`) | no newer data release, and a release from the newer model would lose precision (33.2) |
+| 2. Genebass and AstraZeneca burden statistics | `docs/pathway_test_options.md` (8 October) proposed Genebass for test 7, a module-level test, with "coverage of the items not verified" and its licence "not verified" | new as a label source; licence, items and agreement with the labels in 33.3 |
+| 3. a set of placebo-controlled trial results, "starting with EAGLES" | `configs/placebo_negative_weights.csv` weights 61 pairs by their placebo arms from label tables (section 15); decision 9.60 reads trial outcome measures for the therapeutic direction | partly covered (33.4) |
+| 4. DECIPHER/DDD with Gene2Phenotype | DECIPHER read in section 11 (bulk data under a data access agreement; the downloads page refused); Gene2Phenotype in use, its licence verified in section 32, so the report's "The licence of the DD panel could not be verified" is behind this review | covered |
+| 5. MGI behavioural phenotypes | MGI's licence verified in section 11 ("MGI data and annotations are licensed under a Creative Commons Attribution 4.0 International License"); IMPC in use; MGI's literature-curated annotations not used | not weighed here |
+| OFFSIDES and TWOSIDES, "Do not add them" | left out in sections 3, 6 and 11 (out of date; no licence stated for the data) | agrees |
+| copy-number variant cohorts (22q11.2, 1q21) | decision 9.13: no multi-gene perturbations, a disclosed gap | new; not read here |
+| Canada Vigilance | not used; Health Canada's archived monographs are (9.34) | new (33.5) |
+
+### 33.2 OnSIDES: no newer data release, and the newer model trades precision for recall
+
+Read in the provider's repository, `github.com/tatonetti-lab/onsides`, through git (HEAD fe6a4a4 of 4 August 2026; the
+GitHub interface for other repositories is closed to this session):
+
+- The counts the report gives for "the current release" are text carried over. The README at v3.1.1 already read
+  "currently contains more than 7.1 million drug-ADE pairs for 4,097 drug ingredients extracted from 51,460 labels
+  ... as of April 2025", and commit 50cf3d2 of 22 April 2026, "Update README data date from April 2025 to April 2026",
+  changed only the date. This repository measured the 3.1.1 data as 6,928,666 mentions over 41,119 labels and 1,866
+  ingredients (`docs/data_sources.md`).
+- v3.2.0 and v3.2.1 (both 28 April 2026) are a model and a fix. The v3.2.0 tag message reads "Unified PubMedBERT model
+  for all sections (AR, BW, WP) replaces three separate models, with per-section classification thresholds" and "TAC
+  F1: 89.87 (up from 87.54), Recall: 94.68 (up from 84.08)". No commit since v3.1.1 records a data release.
+- The hold-out precisions the report quotes belong to that model: the README introduces the 30-label hold-out table
+  with "A single fine-tuned PubMedBERT model trained on all sections is used for OnSIDES", and gives precision 0.871
+  (Adverse Reactions), 1.000 (Boxed Warning) and 0.789 (Warnings and Precautions). The report's summary line,
+  "precision on an independent 30-label hold-out is only 0.756–0.871", joins an F1 (0.756, Warnings and Precautions)
+  to a precision. On the TAC 2017 set the README gives the v3.2.0 model a precision of 85.52 against 91.29 for "OnSIDES
+  v2/3.0.0", with recall 94.68 against 84.08: a data release from the newer model would add recall and lose precision,
+  which is the wrong trade for labels.
+- The data licence file was written after the release. LICENSE-DATA first appears in commit 40c1f4f of 4 August 2026,
+  "updated the license for OnSIDES data"; the v3.1.1 tree holds only the MIT LICENSE. The added file covers "all data
+  files distributed as part of OnSIDES releases", so the CC BY 4.0 reading in `docs/data_sources.md` holds, on a
+  statement made after v3.1.1 was released.
+
+### 33.3 Genebass: licence verified, items read, and the labels agree with it at about the chance rate
+
+**Licence.** The terms page, `app.genebass.org/terms`, is drawn by the site's script, and its text is in that script
+(`https://app.genebass.org/main-ed3ab9ea1857efb02221.js`, read 17 October 2026 with `experiments/read_public_page.py`,
+SHA-256 0cd84d999fa414e9e9fec48d3f553613c9999166cfca1a1e96fc8165bd59ac8d; the site serves no robots file): "The
+association results data produced by genebass are available under the Creative Commons Attribution 4.0 International
+(CC BY 4.0) license. We request that you acknowledge and give attribution to both the manuscript below and the UK
+Biobank, and link back to the relevant page, wherever possible." The same page: "use of this data is bound by all terms
+of usage of the UK Biobank", and users "are bound by obligations agree to not attempt to re-identify participants".
+
+**Access.** The bulk tables sit in a requester-pays bucket: `https://storage.googleapis.com/ukbb-exome-public/500k/results/pheno_results.txt.bgz`
+answers "Bucket is a requester pays bucket but no user project provided.", so a bulk download bills a Google Cloud
+project, which would be the owner's to supply. The browser's own interface, `https://main.genebass.org/api`, serves
+the phenotype list and, per item and burden set, a gene-level table with BETA_Burden and Pvalue_Burden and no carrier
+count or standard error.
+
+**Items.** The phenotype list (`https://main.genebass.org/api/phenotypes`, 4,529 analyses, read 17 October 2026,
+SHA-256 1e7332eb6820dc63c3632757f77dac8ea10e439f81c6b6422adb730c8e68e0ad) holds none of the touchscreen mood items the
+report names ("mood swings, irritability, sleeplessness, low interest"): no analysis of mood swings (UK Biobank field
+1920), miserableness (1930), irritability (1940), fed-up feelings (1960), worrier (1980) or loneliness (2020). It holds
+insomnia (1200), daytime dozing (1220, which Genebass names narcolepsy_1220_binary), the online mental health
+questionnaire's recent-symptom items (about 128,000 respondents: 20505 irritability, 20506 nervousness, 20509 worry,
+20510 depressed mood, 20514 lack of interest or pleasure, 20519 tiredness, and 20511, 20517 and 20518, which each join
+two directions), the unusual experiences (20463 "Ever heard an un-real voice", 2,205 cases; 20471 "Ever seen an
+un-real vision", 4,082; 20468, a conspiracy against self, 999; 20474, un-real communications or signs, 880), 20501 (a
+period of mania, 5,284 cases), 20502 (a period of extreme irritability, 32,412) and fluid intelligence (20016). The
+hallucination, paranoia and delusion constructs therefore have human items, with few cases.
+
+**Agreement with the labels.** `experiments/measure_genebass_label_agreement.py` maps 15 items to 11 constructs
+(left out: 20534 and 20535, asked about the worst episode of depression only, and the two-direction items) and reads
+the pLoF burden table of each (pages read 17 October 2026, kept in `data/raw/public_pages/genebass_2026-10-17/`). Of
+2,931 pairs of a gene labelled "induces" and an item of its construct that Genebass tested, 122 show a nominal
+association (P_Burden below 0.05) in the symptom direction, against 109.6 expected at each item's rate over all the
+genes it tested (ratio 1.11). Split by the label's allele class: loss-of-function labels 46 against 42.4 (ratio 1.08,
+one-sided binomial p 0.31), the rest 76 against 67.2 (1.13, p 0.15). Split by Gene2Phenotype's allelic requirement:
+monoallelic genes 31 against 25.0 (1.24, p 0.13), biallelic genes 35 against 29.5 (1.19, p 0.17). The one item with a
+visible excess is fluid intelligence, 31 against 21.4. A gene enters once per item of its construct, and the items of
+one construct correlate, so the p values are descriptive.
+
+So even for genes whose disorders need one damaged copy, single-gene burden on these items barely separates the
+labelled genes from the rest. As a gene-level soft prior, Genebass would add mostly noise, and its gene-level table
+cannot give a measured absence in per-carrier units. The use that survives is the one `docs/pathway_test_options.md`
+proposed: a module-level test, where pooling over a module's genes gives the power one gene lacks. The report's point
+about dose stands: the carriers are mostly heterozygous, and the perturbations here carry no zygosity.
+
+### 33.4 A trial set: EAGLES read
+
+According to PubMed, EAGLES randomised 8,144 smokers; "In the non-psychiatric cohort, 13 (1·3%) of 990 participants
+reported moderate and severe neuropsychiatric adverse events in the varenicline group, 22 (2·2%) of 989 in the
+bupropion group, 25 (2·5%) of 1006 in the nicotine patch group, and 24 (2·4%) of 999 in the placebo group", and in the
+psychiatric cohort "The varenicline-placebo and bupropion-placebo RDs were 1·59 (95% CI -0·42 to 3·59) and 1·78 (-0·24
+to 3·81), respectively" (Anthenelli et al. 2016, [doi:10.1016/S0140-6736(16)30272-0](https://doi.org/10.1016/S0140-6736(16)30272-0)).
+Varenicline and bupropion are drug perturbations with 24 and 26 label records in `data/processed/evidence_full_v5`,
+among them anxiety, agitation, depressed mood and hallucinations. The trial's endpoint is "a composite measure of
+moderate and severe neuropsychiatric adverse events", so it reaches a construct only through its component table,
+which the abstract does not give. A set read from trial publications would be held out, with its confidence
+intervals, beside the label-table arms already in the build.
+
+### 33.5 Canada Vigilance
+
+The Open Government Portal's record of the Canada Vigilance Adverse Reaction Online Database
+(`https://open.canada.ca/data/en/dataset/9cbaef00-b52c-4a70-9fed-d9aa8263ab74`, read 17 October 2026, SHA-256
+c41a064dd5a15969a7a9602879fc9584d269a553aeb435de2d2901f450e3bef3) states "Licence: Open Government Licence - Canada"
+and "Maintenance and Update Frequency: Quarterly", record modified 2025-12-19. It would replicate the FAERS
+disproportionality prior (`docs/faers_disproportionality_evidence.md`) and shares the biases of spontaneous
+reporting; it is not independent evidence of truth.
+
+### 33.6 Not read here
+
+The AstraZeneca PheWAS portal (its licence and items), the terms of JADER and VigiBase, the copy-number cohort papers
+and the report's remaining references.
