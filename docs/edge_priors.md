@@ -217,3 +217,67 @@ PubMed ids, the resources that state it and each paper's species scores, which t
 (decision 9.63 (c)). The species is the paper's, not the interaction's, and a transcription edge's ids can include
 ids of the ExTRI text-mining layer, since CollecTRI attributes most of its ids to itself; both are put to the owner in
 `docs/open_decisions.md`, 9.63.
+
+## 12. Addition, 17 October 2026: the evidence behind a sign, apart from the pair's (decision 9.70)
+
+Section 11's rule counts the papers behind a pair of nodes. OmniPath records the support for an interaction's positive
+sign, its negative sign and its direction apart (`fields=evidences`), and CollecTRI states for each regulation how it
+decided the sign: from a paper ("PMID"), by a default when no paper stated one ("default activation") or from the
+factor's role across its regulon ("regulon"). `graph/sign_evidence.py` reads the two evidences downloads
+(`scripts/fetch_raw_sources.sh`; SHA-256 in `docs/data_sources.md`) and gives each signed signalling and transcription
+edge the PubMed ids behind its stored sign (`sign_pubmed_ids`, `sign_records`; the text-mining layers left out as in
+section 2) and, for a regulation, CollecTRI's decision (`sign_basis`). `experiments/build_edge_evidence.py` adds the
+three columns when the files are present. The label rule reads them only when asked:
+`--curated-label-minimum-sign-records N` (off by default) keeps a signed signalling label only with N ids behind its
+sign, and a regulation label only when CollecTRI decided its sign from a paper and N of CollecTRI's ids stand behind
+it. A binding has no sign and the rule does not concern it; a signed edge the downloads do not hold fails the rule.
+
+On v5, 40,847 of the 129,040 signed signalling and transcription edges have no PubMed id behind their sign. Of the
+14,680 signed signalling labels, 3,942 have none, 6,124 have one and 4,614 have two or more. Of the 15,076 regulation
+labels, CollecTRI decided the sign from a paper for 10,573, by default for 3,673 and from the regulon for 617, and 213
+carry more than one decision. With a minimum of one record the rule keeps 29,551 of the 38,435 labels (19,417
+signalling, 8,679 of them bindings, and 10,134 transcription); with two it keeps 20,007 (13,293 and 6,714).
+
+Two limits. The rule counts the ids a source puts behind a sign and cannot tell whether a paper states that sign:
+CollecTRI2 cites Shiio et al. 1992 behind TP53 activating RB1, and the paper's abstract reads "This study shows that
+wild-type p53 suppresses transcription of the retinoblastoma (Rb) gene" (decision 9.72). And for a regulation the rule
+reads only CollecTRI's 2023 release, the one entry that states a sign decision. OmniPath also holds a later release,
+CollecTRI2, which states none; the two state opposite signs for 3,795 of the 41,638 regulation edges, and one of them
+states both signs for 92 more. The sign the graph stores for those is OmniPath's consensus, which follows CollecTRI2 in
+2,445 of the 3,795 (decision 9.72). The table marks the 3,887 (`sign_disputed`), and
+`--curated-label-exclude-disputed-signs` (off by default) leaves them gated: 2,019 of the 38,435 labels are among
+them, and with a sign minimum of one record the rule keeps 29,306 labels instead of 29,551.
+
+## 13. Addition, 17 October 2026: the three label options measured together (decisions 9.70 and 9.72)
+
+The trainer now carries three label options, each off by default and each recorded in the run's labels summary:
+`--curated-label-minimum-sign-records N` (section 12), `--curated-label-exclude-disputed-signs` (a regulation whose
+two CollecTRI releases dispute its sign is left gated; 9.72) and `--curated-label-bulk-papers` (9.70 (3)): a PubMed
+id behind more than 100 signalling or transcription edges, of which v5 has 114 behind 48,887 edges, counts one record
+each as before (`count`), all of an edge's together as one (`one`) or not at all (`none`;
+`records_with_bulk_papers` in `graph/edge_evidence.py`). The labels each combination leaves on v5:
+
+| bulk papers | sign minimum | disputes left gated | labels | signalling | transcription |
+| --- | --- | --- | --- | --- | --- |
+| count | - | no | 38,435 | 23,359 | 15,076 |
+| count | - | yes | 36,416 | 23,359 | 13,057 |
+| count | 1 | no | 29,551 | 19,417 | 10,134 |
+| count | 1 | yes | 29,306 | 19,417 | 9,889 |
+| count | 2 | no | 20,007 | 13,293 | 6,714 |
+| count | 2 | yes | 19,831 | 13,293 | 6,538 |
+| one | - | no | 36,867 | 21,793 | 15,074 |
+| one | - | yes | 34,848 | 21,793 | 13,055 |
+| one | 1 | no | 28,123 | 17,990 | 10,133 |
+| one | 1 | yes | 27,878 | 17,990 | 9,888 |
+| one | 2 | no | 18,690 | 11,977 | 6,713 |
+| one | 2 | yes | 18,514 | 11,977 | 6,537 |
+| none | - | no | 33,796 | 18,950 | 14,846 |
+| none | - | yes | 31,794 | 18,950 | 12,844 |
+| none | 1 | no | 25,751 | 15,679 | 10,072 |
+| none | 1 | yes | 25,508 | 15,679 | 9,829 |
+| none | 2 | no | 17,016 | 10,339 | 6,677 |
+| none | 2 | yes | 16,840 | 10,339 | 6,501 |
+
+The "count" rows with no sign minimum and no dispute rule are the rule of section 11; the "none" row matches the
+practices review's count (4,639 labels with fewer than two records without the bulk papers). Bulk papers fall mostly
+on signalling edges; disputed signs fall only on regulations, and most of them already fail a sign minimum of one.

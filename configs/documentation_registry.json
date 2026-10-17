@@ -781,6 +781,12 @@
    "class": "generated",
    "generator": "experiments/audit_channel_conduction.py",
    "what": "which ion channel genes of the graph catalyse a reaction that reaches the membrane potential, by family; decision 9.71"
+  },
+  "docs/regulation_sign_recuration.md": {
+   "class": "record",
+   "recorded": "2026-10-17",
+   "append_only": true,
+   "what": "a seeded sample of 16 regulation labels whose two CollecTRI releases state opposite signs, read paper by paper; decision 9.72"
   }
  }
 }

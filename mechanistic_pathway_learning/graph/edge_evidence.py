@@ -68,6 +68,13 @@ FAMILY_OF_EVIDENCE_SOURCE = (("OmniPath small_molecule_protein", "small_molecule
 LABEL_FAMILIES = ("signalling", "transcription", "curated")  # the families whose curated kind can become an edge label (decision 9.63)
 DEFAULT_LABEL_MINIMUM_RECORDS = 2  # "two or more independent records" (decision 9.63 (b))
 DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS = 1  # "corroborating evidence from humans" (the owner, 16 October 2026)
+# Decision 9.70 (3), the knowledge-graph practices review's M3: a PubMed id behind more than this many signalling or
+# transcription edges is a bulk paper (114 on v5, among them a review of ubiquitin-conjugating enzymes behind 13,735
+# edges and the NetworKIN predictor's paper behind 7,166), and the label rule can count an edge's bulk papers as one
+# record ("one") or not at all ("none") instead of one record each ("count", the rule of 9.63).
+BULK_PAPER_EDGES = 100
+BULK_PAPER_FAMILIES = ("signalling", "transcription")
+BULK_PAPER_MODES = ("count", "one", "none")
 DEFAULT_HUMAN_SHARE_ABOVE = 0.0  # a paper is human evidence when iCite's human score is above this
 SPECIES_COLUMNS = ("human", "animal", "molecular_cellular")
 
@@ -284,9 +291,39 @@ def species_of_records(pubmed_ids: pd.Series, species: pd.DataFrame, human_share
                         index=pubmed_ids.index)
 
 
+def bulk_paper_ids(evidence: pd.DataFrame, threshold: int = BULK_PAPER_EDGES) -> set[str]:
+    """The PubMed ids that stand behind more than threshold signalling or transcription edges of the table."""
+    counts: dict[str, int] = {}
+    for family, cell in zip(evidence["family"], evidence["pubmed_ids"]):
+        if family in BULK_PAPER_FAMILIES:
+            for identifier in split_pubmed_ids(cell):
+                counts[identifier] = counts.get(identifier, 0) + 1
+    return {identifier for identifier, count in counts.items() if count > threshold}
+
+
+def records_with_bulk_papers(evidence: pd.DataFrame, mode: str, threshold: int = BULK_PAPER_EDGES) -> np.ndarray:
+    """Each edge's record count with its bulk papers counted one each ("count", the table's own records), together as
+    one record ("one") or not at all ("none"). Only the signalling and transcription families change, whose records
+    are their distinct PubMed ids; every other family keeps its records."""
+    if mode not in BULK_PAPER_MODES:
+        raise ValueError(f"bulk paper mode must be one of {BULK_PAPER_MODES}")
+    records = evidence["records"].to_numpy(dtype=float).copy()
+    if mode == "count":
+        return records
+    bulk = bulk_paper_ids(evidence, threshold)
+    for position, (family, cell) in enumerate(zip(evidence["family"], evidence["pubmed_ids"])):
+        if family not in BULK_PAPER_FAMILIES:
+            continue
+        identifiers = split_pubmed_ids(cell)
+        bulk_count = sum(identifier in bulk for identifier in identifiers)
+        if bulk_count:
+            records[position] = len(identifiers) - bulk_count + (1 if mode == "one" else 0)
+    return records
+
+
 def curated_edge_labels(evidence: pd.DataFrame, minimum_records: int = DEFAULT_LABEL_MINIMUM_RECORDS,
                         minimum_human_records: int = DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS, minimum_sign_records: int | None = None,
-                        exclude_disputed_signs: bool = False) -> np.ndarray:
+                        exclude_disputed_signs: bool = False, bulk_papers: str = "count") -> np.ndarray:
     """Decision 9.63 (b) with the owner's human-evidence rule: True for an edge of a curated kind (LABEL_FAMILIES), not
     contested by an IntAct absence, with at least minimum_records independent records of which at least
     minimum_human_records are human evidence. Such an edge is an edge label: taken as known, with no gate.
@@ -296,12 +333,16 @@ def curated_edge_labels(evidence: pd.DataFrame, minimum_records: int = DEFAULT_L
     a paper (graph/sign_evidence.py), since a label's sign is one no gate can flip.
 
     exclude_disputed_signs (decision 9.72, off by default): a regulation whose two CollecTRI releases state opposite
-    signs, or one of which states both, is not a label (graph/sign_evidence.py, sign_disputed)."""
+    signs, or one of which states both, is not a label (graph/sign_evidence.py, sign_disputed).
+
+    bulk_papers (decision 9.70 (3), "count" by default): how an edge's bulk papers count toward minimum_records,
+    records_with_bulk_papers."""
     if "human_records" not in evidence.columns:
         raise ValueError("the edge evidence table has no human_records column; rebuild it with experiments/build_edge_evidence.py, which reads the species "
                          "experiments/fetch_icite_species.py caches")
+    records = records_with_bulk_papers(evidence, bulk_papers)
     labels = ((evidence["kind"] == "curated") & evidence["family"].isin(LABEL_FAMILIES) & ~evidence["contested"].astype(bool)
-              & (evidence["records"] >= minimum_records) & (evidence["human_records"] >= minimum_human_records)).to_numpy()
+              & (evidence["human_records"] >= minimum_human_records)).to_numpy() & (records >= minimum_records)
     if minimum_sign_records is not None:
         from mechanistic_pathway_learning.graph.sign_evidence import sign_is_evidenced
 

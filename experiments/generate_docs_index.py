@@ -58,7 +58,7 @@ TOPICS = (
                               "docs/complex_*.md", "docs/membrane_potential_*.md", "docs/plasma_*.md", "docs/transporter_connectivity_audit.md",
                               "docs/superfluous_physiology_review.md", "docs/missing_physiology_review.md", "docs/physiological_adherence_review.md",
                               "docs/physiology_audit.md", "docs/family_in_graph.md", "docs/edge_priors.md", "docs/edge_gate_simulation.md",
-                              "docs/knowledge_graph_practices_review.md", "docs/channel_conduction_audit.md",
+                              "docs/knowledge_graph_practices_review.md", "docs/channel_conduction_audit.md", "docs/regulation_sign_recuration.md",
                               "docs/node_descriptor_columns.md", "docs/protein_descriptor_report.md", "docs/brain_expression_descriptors.md",
                               "docs/linear_response_sign_check.md", "docs/tissue_saturation.md", "docs/data_sources.md", "docs/alternative_sources.md")),
     ("Drugs: targets, exposure and entry", ("docs/drug_*.md", "docs/central_action_rule.md", "docs/label_central_action*.md", "docs/effect_site_data_coverage.md",
