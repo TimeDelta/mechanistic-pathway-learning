@@ -209,6 +209,14 @@ if [ "$stage" = "descriptors" ]; then
     python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v3_parkinsonism" --overwrite \
       --descriptor-table "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_drugs_descriptors_brain_expression.parquet" \
       --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_cell_class_weights.parquet"
+  # the v4 drug graph's per-node tables: its drug nodes are those of the v4 table, 68 more than the variant above has,
+  # so the registered configuration with descriptors could not run on it. --tables-only writes no graph file; the
+  # cell-class weights are written last, so they mark the step done
+  step "$weights/full_neuronal_split_drugs_v4_cell_class_weights.parquet" "per-node tables of the v4 drug graph" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v4" \
+      --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v4" --tables-only \
+      --descriptor-table "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_drugs_v4_descriptors_brain_expression.parquet" \
+      --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_v4_cell_class_weights.parquet"
 fi
 echo "done: $stage"
 
@@ -217,7 +225,9 @@ echo "done: $stage"
 # (committed, held to a fresh build by tests/test_symptom_constructs.py). The same pipeline as v4, pointed at it: the
 # label sources, the label selections, the three absence sources (their raw caches are per drug and are reused) and the
 # release's literature table re-keyed to the namesake constructs (its raw cache is not on this disk). The drugs and
-# their targets are those of v4, so the drug-entry graph of v4 serves the v5 tables.
+# their targets are those of v4. Since 16 October the gene perturbations are alleles (decision 9.54: --allele-perturbations,
+# with Orphadata product 1 and configs/neomorphic_alleles.csv), so the v5 tables have their own drug-entry graph, which
+# adds the neomorphic alleles' nodes, with its per-node tables and its edge evidence.
 if [ "$stage" = "fine" ]; then
   step "$processed/onsides_v5/onsides_reports.parquet" "OnSIDES reports v5 (fine constructs)" \
     python experiments/build_onsides_reports.py --crosswalk docs/symptom_crosswalk_fine.csv --output-dir "$processed/onsides_v5" \
@@ -225,13 +235,31 @@ if [ "$stage" = "fine" ]; then
   step "$processed/evidence_full_v5/evidence_records.parquet" "evidence table v5 (fine constructs)" \
     python -m mechanistic_pathway_learning.evidence.assemble_evidence_table --crosswalk docs/symptom_crosswalk_fine.csv --graph-dir "$processed/graph_full" \
       --output-dir "$processed/evidence_full_v5" --extra-reports "$processed/onsides_v5/onsides_reports.parquet" \
-      --onsides-bridge data/raw/onsides/v3.1.1/ingredient_identifier_bridge.json --max-drug-targets 3 --seed-gain-of-function-genes-positive
+      --onsides-bridge data/raw/onsides/v3.1.1/ingredient_identifier_bridge.json --max-drug-targets 3 --allele-perturbations
   step "$processed/label_selection/better_v2_full_v5.parquet" "label selection better_v2 on v5, never-above-placebo pairs set aside" \
     python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v5" --crosswalk docs/symptom_crosswalk_fine.csv --mask-grades C --mask-never-above-placebo \
       --output "$processed/label_selection/better_v2_full_v5.parquet"
   step "$processed/label_selection/better_v2_full_v5_placebo_negative.parquet" "label selection better_v2 on v5, never-above-placebo pairs as negatives" \
     python experiments/build_label_selection.py --evidence-dir "$processed/evidence_full_v5" --crosswalk docs/symptom_crosswalk_fine.csv --mask-grades C --never-above-placebo-as-negative \
       --output "$processed/label_selection/better_v2_full_v5_placebo_negative.parquet"
+  step "$processed/graph_full_neuronal_split_binders_drugs_v5/nodes.parquet" "drug entry nodes and neomorphic allele nodes for the v5 table" \
+    python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v5" \
+      --carrier-table configs/drug_plasma_carriers_v4.csv --neomorphic-alleles configs/neomorphic_alleles.csv \
+      --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v5"
+  step "$processed/graph_full_neuronal_split_binders_drugs_v5/edge_evidence.parquet" "per-edge evidence of the v5 graph" \
+    python experiments/build_edge_evidence.py --graph-dir "$processed/graph_full_neuronal_split_binders_drugs_v5"
+  # its per-node tables need the split's, which the descriptors stage writes: after that stage, run this one again
+  descriptors="$processed/node_descriptors"
+  weights="$processed/cell_class_weights"
+  if [ -e "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet" ] && [ -e "$weights/full_neuronal_split_cell_class_weights.parquet" ]; then
+    step "$weights/full_neuronal_split_drugs_v5_cell_class_weights.parquet" "per-node tables of the v5 drug graph" \
+      python experiments/build_drug_entry_node_variant.py --graph-dir "$processed/graph_full_neuronal_split_binders" --evidence-dir "$processed/evidence_full_v5" \
+        --output-dir "$processed/graph_full_neuronal_split_binders_drugs_v5" --tables-only \
+        --descriptor-table "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_drugs_v5_descriptors_brain_expression.parquet" \
+        --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_v5_cell_class_weights.parquet"
+  else
+    echo "skipped  per-node tables of the v5 drug graph: the split's tables are not built yet (run the descriptors stage, then this stage again)"
+  fi
   step "$processed/clinical_trials_v5/clinical_trial_reports.parquet" "placebo-controlled trial arms at the fine level" \
     python experiments/fetch_clinicaltrials_adverse_events.py --crosswalk docs/symptom_crosswalk_fine.csv --evidence-dir "$processed/evidence_full_v5" \
       --output-dir "$processed/clinical_trials_v5" --markdown-output "$log_directory/clinical_trial_arm_evidence_v5.md"

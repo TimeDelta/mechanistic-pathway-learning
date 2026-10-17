@@ -32,6 +32,12 @@ Two properties are kept on purpose, because the measurements of docs/drug_entry_
   - A drug node holds no identity. It has a type and a degree and nothing else, so a held-out drug's node is as
     informative as a training drug's and no parameter belongs to one drug.
 
+A neomorphic allele (decision 9.54 (d), evidence/allele_mechanisms.py) enters the same way: one node per curated
+allele, node type "allele", id ALLELE:<gene>_<allele>, with one targets edge per cited mechanism of the mutant product
+(configs/neomorphic_alleles.csv), to the target's protein nodes on a split graph or its gene node for a transcriptional
+effect. The CAG expansion of HTT is such a node: the mutant product is not more of huntingtin's normal activity, so it
+cannot be a sign on HTT's own node, and the wild-type copy keeps HTT's node as it was.
+
 A drug node exists only in the perturbation that takes the drug. The graph table holds every drug's node, because a
 table has one row per node, but the encoders treat a drug node that is not seeded as absent (state zero, nothing sent),
 and they add the mechanism edges without the in-degree divisor other relations use. Otherwise a target's input would be
@@ -39,6 +45,8 @@ divided by the number of study drugs that share it, and a gene knockout's respon
 study happens to contain (relational_message_passing_encoder.py and linear_response_encoder.py, entry edges).
 """
 from __future__ import annotations
+
+from collections.abc import Mapping
 
 import pandas as pd
 
@@ -55,7 +63,9 @@ CLEARANCE_SIGN = -1.0
 CHANGE_CARRYING_RELATIONS: tuple[str, ...] = (SEQUESTERS_RELATION, CLEARS_RELATION)
 # relations whose edges leave an entry node: added without an in-degree divisor, and silent unless their source is seeded
 ENTRY_RELATIONS: tuple[str, ...] = (DRUG_MECHANISM_RELATION,)
-ENTRY_NODE_TYPES: tuple[str, ...] = (DRUG_NODE_TYPE,)
+ALLELE_NODE_TYPE = "allele"
+ENTRY_NODE_TYPES: tuple[str, ...] = (DRUG_NODE_TYPE, ALLELE_NODE_TYPE)
+ALLELE_MECHANISM_EVIDENCE_PREFIX = "neomorphic allele mechanism"
 DRUG_ENTRY_FILE = "drug_entry_nodes.parquet"  # one row per mechanism edge; read by experiment_data.load_experiment_data
 DRUG_ENTRY_COLUMNS: tuple[str, ...] = ("perturbation_id", "drug_node_id", "target_node_id", "sign", "magnitude")
 MECHANISM_EVIDENCE = "drug mechanism (ChEMBL), moved from the perturbation's seeds"
@@ -231,6 +241,44 @@ def add_drug_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_type
             "enzyme_genes_without_a_node": sorted(set(enzymes_without_a_node)),
         })
     return new_nodes, new_edges, new_relations, entry_table, summary
+
+
+def add_allele_entry_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, relation_types: list[str], alleles: Mapping,
+                           protein_nodes_of_gene: Mapping[str, list[str]] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, list[str], pd.DataFrame, dict]:
+    """The graph with one entry node per curated neomorphic allele (allele_mechanisms.NeomorphicAllele, keyed by gene)
+    and its mechanism edges appended. A protein-level mechanism goes to the target gene's protein nodes on a split graph
+    (protein_nodes_of_gene, GENE:<symbol> -> its protein nodes) and to its gene node otherwise; a transcriptional one to
+    the gene node. Returns (nodes, edges, relation types, entry table rows, summary) as add_drug_entry_nodes does; an
+    allele none of whose targets is in the graph gets no node."""
+    node_ids = set(nodes.node_id)
+    blank_node = {column: None for column in nodes.columns}
+    node_rows, edge_rows, entry_rows, missing_targets = [], [], [], []
+    for gene in sorted(alleles):
+        allele = alleles[gene]
+        if allele.node_id in node_ids:
+            raise ValueError(f"{allele.node_id} is already a node of the graph")
+        degree = 0
+        for edge in allele.edges:
+            gene_node = f"GENE:{edge.target_symbol}"
+            targets = [gene_node] if edge.target_kind == "gene" else list((protein_nodes_of_gene or {}).get(gene_node, [gene_node]))
+            targets = [target for target in targets if target in node_ids]
+            if not targets:
+                missing_targets.append(f"{allele.allele_id} -> {edge.target_symbol}")
+            for target in targets:
+                edge_rows.append({"source_id": allele.node_id, "target_id": target, "relation_type": DRUG_MECHANISM_RELATION, "sign": edge.sign,
+                                  "evidence_source": f"{ALLELE_MECHANISM_EVIDENCE_PREFIX} (PMID {edge.pmid})"})
+                entry_rows.append({"perturbation_id": allele.allele_id, "drug_node_id": allele.node_id, "target_node_id": target, "sign": edge.sign,
+                                   "magnitude": edge.magnitude})
+                degree += 1
+        if degree:
+            node_rows.append({**blank_node, "node_id": allele.node_id, "node_type": ALLELE_NODE_TYPE, "display_name": allele.label, "degree": degree})
+    new_nodes = nodes if not node_rows else pd.DataFrame(
+        {column: pd.Series(list(nodes[column]) + [row[column] for row in node_rows], dtype=nodes[column].dtype) for column in nodes.columns})
+    new_edges = edges if not edge_rows else pd.concat([edges, pd.DataFrame(edge_rows, columns=edges.columns)], ignore_index=True).astype(edges.dtypes.to_dict())
+    new_relations = list(relation_types) + ([DRUG_MECHANISM_RELATION] if edge_rows and DRUG_MECHANISM_RELATION not in relation_types else [])
+    summary = {"allele_nodes_added": len(node_rows), "allele_mechanism_edges_added": len(edge_rows),
+               "alleles": {gene: alleles[gene].allele_id for gene in sorted(alleles)}, "allele_targets_absent_from_this_graph": missing_targets}
+    return new_nodes, new_edges, new_relations, pd.DataFrame(entry_rows, columns=list(DRUG_ENTRY_COLUMNS)), summary
 
 
 def extend_table_for_drug_nodes(table: pd.DataFrame, drug_node_ids: list[str], fill_value: float) -> pd.DataFrame:

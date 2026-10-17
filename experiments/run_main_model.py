@@ -75,6 +75,7 @@ from mechanistic_pathway_learning.evaluation.ranking_and_calibration_metrics imp
     scorable_symptom,
     scored_rows,
 )
+from mechanistic_pathway_learning.evidence.allele_mechanisms import gene_of_perturbation
 from mechanistic_pathway_learning.evidence.calibrated_reliability import (
     MINIMUM_CALIBRATION_CASES,
     calibrated_probability_matrix,
@@ -880,6 +881,15 @@ def placebo_weight_pairs_in_force(matrix: np.ndarray, outcomes: np.ndarray, evid
     return int((np.isfinite(matrix) & (np.asarray(outcomes) <= 0) & np.asarray(evidenced_negative, dtype=bool)).sum())
 
 
+def genes_with_several_alleles(perturbation_ids) -> set[str]:
+    """The genes that appear as more than one perturbation: an allele is "<gene>|<allele>" (decision 9.54)."""
+    alleles_of_gene: dict[str, int] = {}
+    for perturbation_id in perturbation_ids:
+        gene = gene_of_perturbation(perturbation_id)
+        alleles_of_gene[gene] = alleles_of_gene.get(gene, 0) + 1
+    return {gene for gene, count in alleles_of_gene.items() if count > 1 and any(identifier.startswith(gene + "|") for identifier in perturbation_ids)}
+
+
 def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | None, dict | None, pd.DataFrame | None, pd.DataFrame | None]:
     """The soft-prior matrices for data's perturbations and symptoms (evidence/soft_priors.py): None while the strength
     is 0. Also returns the literature report table found among --soft-prior-reports, for the popularity bins, and under
@@ -892,8 +902,16 @@ def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | 
     frames = [soft_evidence_from_records(records, tuple(arguments.soft_prior_record_grades), TRAINED_RELATION)]
     literature = None
     admission_counts: dict = {}
+    allele_genes = genes_with_several_alleles(data.perturbation_ids)
+    set_aside_for_alleles = 0
     for path in arguments.soft_prior_reports:
         reports = pd.read_parquet(path)
+        if allele_genes and "evidence_class" in reports.columns:
+            # a literature statement names a gene, not one of its alleles: where a gene has several (decision 9.54) it
+            # cannot be given to one of them, so it is set aside rather than credited to the gene's default allele
+            ambiguous = (reports.evidence_class == "literature") & reports.perturbation_id.astype(str).isin(allele_genes)
+            set_aside_for_alleles += int(ambiguous.sum())
+            reports = reports[~ambiguous]
         frames.append(soft_evidence_from_reports(reports, TRAINED_RELATION, admission_counts))
         if "evidence_class" in reports.columns and (reports.evidence_class == "literature").any():
             literature = reports if literature is None else pd.concat([literature, reports], ignore_index=True)
@@ -904,6 +922,8 @@ def build_soft_priors(data, arguments) -> tuple[np.ndarray | None, np.ndarray | 
     summary.update({"strength": arguments.soft_prior_strength, "tempering": arguments.soft_prior_tempering, "count_cap": arguments.soft_prior_count_cap, "admission": admission_counts,
                     "record_grades": list(arguments.soft_prior_record_grades), "tiers": str(arguments.soft_prior_tiers), "reports": [str(path) for path in arguments.soft_prior_reports],
                     "probability_source": arguments.soft_prior_probability})
+    if allele_genes:  # recorded only on a table with alleles, so an earlier run's summary is as it was
+        summary["literature_reports_set_aside_for_genes_with_several_alleles"] = set_aside_for_alleles
     calibration_cells = None
     if arguments.soft_prior_probability == "calibrated":
         popularity = {} if literature is None else dict(zip(data.perturbation_ids, np.log1p(literature_popularity(data.perturbation_ids, literature))))

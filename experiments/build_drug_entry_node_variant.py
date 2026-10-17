@@ -36,9 +36,12 @@ from pathlib import Path
 import pandas as pd
 
 from mechanistic_pathway_learning.evaluation.experiment_data import drug_seeds_on_proteins, read_protein_of_gene
+from mechanistic_pathway_learning.evidence.allele_mechanisms import read_neomorphic_alleles
 from mechanistic_pathway_learning.graph.drug_entry_nodes import (
     DRUG_ENTRY_FILE,
     DRUG_NODE_TYPE,
+    ENTRY_NODE_TYPES,
+    add_allele_entry_nodes,
     add_drug_entry_nodes,
     extend_table_for_drug_nodes,
 )
@@ -82,6 +85,37 @@ def graph_compound_base_ids(path: Path) -> list[frozenset[str]]:
     return [frozenset(base_id for base_id in cell.split(";") if base_id) for cell in table.base_metabolite_ids if cell]
 
 
+def extend_tables_for_entry_nodes(arguments) -> None:
+    """--tables-only: the per-node tables of a variant graph that was built without them. The graph files are read,
+    never written, so their hashes do not move; each table's source, hash and fill value are added to per_node_tables
+    in the variant's summary, where a full build records them."""
+    output_directory = arguments.output_dir or arguments.graph_dir.parent / f"{arguments.graph_dir.name}_drugs"
+    nodes = pd.read_parquet(output_directory / "nodes.parquet")
+    source_nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
+    entry_node_ids = list(nodes.node_id[nodes.node_type.isin(ENTRY_NODE_TYPES)])
+    written_tables = {}
+    for (source, destination), fill_value in [(pair, DESCRIPTOR_FILL) for pair in arguments.descriptor_table] + [(pair, CELL_CLASS_WEIGHT_FILL) for pair in arguments.cell_class_weights]:
+        if destination.exists() and not arguments.overwrite:
+            raise SystemExit(f"{destination} exists; pass --overwrite to replace it")
+        table = pd.read_parquet(source)
+        missing = set(source_nodes.node_id) - set(table.index)
+        if missing:
+            raise SystemExit(f"{source} has no row for {len(missing)} nodes of {arguments.graph_dir}")
+        extended = extend_table_for_drug_nodes(table, entry_node_ids, fill_value)
+        if set(nodes.node_id) - set(extended.index):
+            raise SystemExit(f"{destination} would still miss nodes of {output_directory}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        extended.to_parquet(destination)
+        written_tables[str(destination)] = {"source": str(source), "source_sha256": file_sha256(source), "sha256": file_sha256(destination), "fill_value": fill_value,
+                                            "written_by": "--tables-only"}
+        print(f"wrote {destination}: {len(extended):,} rows, {len(entry_node_ids)} entry nodes filled with {fill_value}")
+    summary_path = output_directory / SUMMARY_FILE
+    if summary_path.exists():
+        summary = json.loads(summary_path.read_text())
+        summary["per_node_tables"] = {**summary.get("per_node_tables", {}), **written_tables}
+        summary_path.write_text(json.dumps(summary, indent=1) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--graph-dir", type=Path, required=True)
@@ -93,8 +127,16 @@ def main() -> None:
     parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH)
     parser.add_argument("--descriptor-table", type=source_and_destination, action="append", default=[])
     parser.add_argument("--cell-class-weights", type=source_and_destination, action="append", default=[])
+    parser.add_argument("--neomorphic-alleles", default="none",
+                        help="curated neomorphic alleles (configs/neomorphic_alleles.csv, decision 9.54): one entry node per allele with its cited mechanism edges. "
+                             "none, the default, adds none")
+    parser.add_argument("--tables-only", action="store_true",
+                        help="extend --descriptor-table and --cell-class-weights for the entry nodes of the graph already in --output-dir, and write no graph file")
     parser.add_argument("--overwrite", action="store_true")
     arguments = parser.parse_args()
+    if arguments.tables_only:
+        extend_tables_for_entry_nodes(arguments)
+        return
 
     output_directory = arguments.output_dir or arguments.graph_dir.parent / f"{arguments.graph_dir.name}_drugs"
     if (output_directory / "nodes.parquet").exists() and not arguments.overwrite:
@@ -122,6 +164,11 @@ def main() -> None:
 
     new_nodes, new_edges, new_relations, entry_table, summary = add_drug_entry_nodes(
         nodes, edges, relation_types, drug_seeds, graph_compound_base_ids(arguments.drugs_acting_as_graph_compounds), carriers, carrier_nodes_of_gene, clearing_enzymes)
+    if str(arguments.neomorphic_alleles).lower() != "none":  # after the drugs, so the graph without alleles is this one with its last rows dropped
+        new_nodes, new_edges, new_relations, allele_entries, allele_summary = add_allele_entry_nodes(
+            new_nodes, new_edges, new_relations, read_neomorphic_alleles(Path(arguments.neomorphic_alleles)), protein_of_gene)
+        entry_table = pd.concat([entry_table, allele_entries], ignore_index=True)
+        summary.update(allele_summary, neomorphic_alleles=str(arguments.neomorphic_alleles), neomorphic_alleles_sha256=file_sha256(Path(arguments.neomorphic_alleles)))
     if not new_nodes.iloc[: len(nodes)].reset_index(drop=True).equals(nodes) or not new_edges.iloc[: len(edges)].reset_index(drop=True).equals(edges):
         raise SystemExit("an existing node or edge row changed; the variant must only append")
 
@@ -133,7 +180,7 @@ def main() -> None:
     new_edges.to_parquet(output_directory / "edges.parquet")
     (output_directory / "relation_types.json").write_text(json.dumps(new_relations, indent=1) + "\n")
     entry_table.to_parquet(output_directory / DRUG_ENTRY_FILE, index=False)
-    drug_node_ids = list(new_nodes.node_id[new_nodes.node_type == DRUG_NODE_TYPE])
+    drug_node_ids = list(new_nodes.node_id[new_nodes.node_type.isin(ENTRY_NODE_TYPES)])  # drugs and alleles
     written_tables = {}
     for (source, destination), fill_value in [(pair, DESCRIPTOR_FILL) for pair in arguments.descriptor_table] + [(pair, CELL_CLASS_WEIGHT_FILL) for pair in arguments.cell_class_weights]:
         if destination.exists() and not arguments.overwrite:

@@ -78,6 +78,18 @@ from mechanistic_pathway_learning.evidence.evidence_reports import (
     reports_to_dataframe,
     rubric_weights_for_table,
 )
+from mechanistic_pathway_learning.evidence.allele_mechanisms import (
+    DEFAULT_NEOMORPHIC_ALLELES_PATH,
+    HYPERMORPH,
+    NEOMORPH,
+    UNTYPED,
+    DiseaseMechanism,
+    allele_of,
+    disease_mechanisms,
+    gene_of_perturbation,
+    load_orphanet_omim_mappings,
+    read_neomorphic_alleles,
+)
 from mechanistic_pathway_learning.evidence.gene_disease_association_types import genes_with_gain_of_function_associations_only
 from mechanistic_pathway_learning.evidence.load_drug_label_events import NERVOUS_SYSTEM_ATC_PREFIXES, drug_label_reports, has_admitted_atc_code, load_sider_events, read_admitted_atc_prefixes
 from mechanistic_pathway_learning.evidence.load_monogenic_phenotype_annotations import (
@@ -160,14 +172,15 @@ class AssembledEvidence:
     reliability_fit: ReportReliabilityFit
     reports_dropped_unknown_provenance: int = 0  # genes_to_phenotype rows whose disease prefix is neither OMIM: nor ORPHA:
     genes_seeded_as_gain_of_function: tuple[str, ...] = ()  # genes seeded with sign +1 (seed_gain_of_function_genes_positive), sorted
+    allele_summary: dict | None = None  # allele_perturbations: the alleles by class and the basis of each mechanism (decision 9.54)
 
 
 def disease_cluster_ids_from_reports(reports: pd.DataFrame, max_genes_per_linking_entry: int | None = DEFAULT_DISEASE_CLUSTER_MAX_GENES) -> dict[str, str]:
     """disease_cluster_ids over the monogenic reports: every disease entry of a gene links it, positive and negative reports alike."""
     diseases_by_gene: dict[str, set[str]] = defaultdict(set)
     monogenic = reports[reports.evidence_class == "monogenic"] if len(reports) else reports
-    for gene_symbol, disease_id in zip(monogenic.perturbation_id, monogenic.source_record_id):
-        diseases_by_gene[gene_symbol].add(disease_id)
+    for perturbation_id, disease_id in zip(monogenic.perturbation_id, monogenic.source_record_id):
+        diseases_by_gene[gene_of_perturbation(perturbation_id)].add(disease_id)  # every allele of a gene links through the gene
     records = [EvidenceRecord(gene_symbol, "", "induces", "monogenic", disease_identifiers=sorted(disease_ids)) for gene_symbol, disease_ids in diseases_by_gene.items()]
     return disease_cluster_ids(records, max_genes_per_linking_entry)
 
@@ -341,8 +354,9 @@ def aggregate_reports_to_observations(
             all_disease_ids = sorted(set(monogenic_reports.source_record_id))
             denominators = graded.frequency_denominator.dropna()
             other_sources = sorted(set(pair_reports.loc[pair_reports.evidence_class != "monogenic", "source"]))
+            gene = gene_of_perturbation(perturbation_id)  # an allele's leakage group is its gene's (decision 9.54)
             row.update({
-                "group_id": perturbation_id, "disease_cluster_id": cluster_by_gene.get(perturbation_id, "cluster:" + perturbation_id),
+                "group_id": gene, "disease_cluster_id": cluster_by_gene.get(gene, "cluster:" + gene),
                 "label_frequency": record.max_annotation_frequency,
                 "source": ("HPO genes_to_phenotype; diseases=" + ";".join(all_disease_ids) if all_disease_ids else "")
                           + ("; " if all_disease_ids and other_sources else "") + ("; ".join(other_sources) if other_sources else ""),
@@ -365,10 +379,15 @@ def aggregate_reports_to_observations(
                 "omim_entry_count": None, "orpha_entry_count": None, "annotation_row_count": None, "annotation_patient_count": None, "disease_identifiers": None,
                 "distinct_reference_count": None, "distinct_pubmed_reference_count": None, "evidence_date": None, "evidence_date_source": None,
             })
+        if "allele_class" in pair_reports.columns:
+            classes = sorted({value for value in pair_reports.allele_class if isinstance(value, str) and value})
+            row["allele_class"] = ";".join(classes)
         rows.append(row)
     column_order = ["perturbation_id", "perturbation_type", "perturbation_label", "group_id", "disease_cluster_id", "symptom", "relation", "evidence_class", "grade", "weight",
                     "label_frequency", "source", "in_metabolic_layer", "omim_entry_count", "orpha_entry_count", "annotation_row_count", "annotation_patient_count", "disease_identifiers",
                     "distinct_reference_count", "distinct_pubmed_reference_count", "evidence_date", "evidence_date_source", "perturbation_nodes", "report_count", "positive_report_count", "negative_report_count"]
+    if "allele_class" in reports.columns:
+        column_order.append("allele_class")
     return pd.DataFrame(rows, columns=column_order)
 
 
@@ -561,6 +580,55 @@ def seed_monogenic_reports(monogenic_reports: list[EvidenceReport], node_by_symb
     return gain_of_function_genes
 
 
+def assign_alleles(monogenic_reports: list[EvidenceReport], mechanisms: dict[tuple[str, str], DiseaseMechanism], neomorphic_alleles: dict,
+                   node_by_symbol: dict[str, str]) -> dict[str, tuple[str, str, str]]:
+    """Move each monogenic report to the allele of its gene that its disease's mechanism names (decision 9.54,
+    allele_mechanisms.allele_of) and seed it: a loss of function or an untyped allele -1 on the gene, a hypermorphic
+    gain +1 on the gene, a neomorph on the targets its curated mechanism edges name (on a graph with entry nodes the
+    loader seeds the allele's own node instead). Returns report_id -> (gene, allele class, basis of the mechanism)."""
+    assigned: dict[str, tuple[str, str, str]] = {}
+    for report in monogenic_reports:
+        gene = report.perturbation_id
+        mechanism = mechanisms.get((gene, report.source_record_id), DiseaseMechanism(UNTYPED, "untyped"))
+        allele = allele_of(gene, mechanism, neomorphic_alleles)
+        report.perturbation_id, report.perturbation_label = allele.perturbation_id, allele.label
+        if allele.allele_class == NEOMORPH:
+            curated = neomorphic_alleles[gene]
+            seeds = [[node_by_symbol[edge.target_symbol], edge.sign, edge.magnitude] for edge in curated.edges if edge.target_symbol in node_by_symbol]
+            if not seeds:
+                raise ValueError(f"no mechanism target of {curated.allele_id} is a gene of this graph")
+            report.perturbation_nodes = json.dumps(seeds)
+            report.model_description = report.model_description.replace("human loss-of-function", f"human neomorphic allele, {curated.label}", 1)
+        else:
+            report.perturbation_nodes = json.dumps([[node_by_symbol[gene], allele.seed_sign, 1.0]])
+            if allele.allele_class == HYPERMORPH:
+                report.model_description = report.model_description.replace("human loss-of-function", "human gain-of-function", 1)
+        assigned[report.report_id] = (gene, allele.allele_class, mechanism.basis)
+    return assigned
+
+
+def summarise_alleles(assigned: dict[str, tuple[str, str, str]], reports: list[EvidenceReport]) -> dict:
+    """The alleles by class, the genes with more than one, and the basis behind each mechanism, over the reports."""
+    alleles_by_gene: dict[str, set[str]] = defaultdict(set)
+    class_of_allele: dict[str, str] = {}
+    basis_counts: dict[str, int] = defaultdict(int)
+    for report in reports:
+        if report.report_id not in assigned:
+            continue
+        gene, allele_class, basis = assigned[report.report_id]
+        alleles_by_gene[gene].add(report.perturbation_id)
+        class_of_allele[report.perturbation_id] = allele_class
+        basis_counts[basis.split(" ")[0] if not basis.startswith("conflict") else "conflict"] += 1
+    by_class: dict[str, int] = defaultdict(int)
+    for allele_class in class_of_allele.values():
+        by_class[allele_class] += 1
+    several = sorted(gene for gene, alleles in alleles_by_gene.items() if len(alleles) > 1)
+    return {"alleles_by_class": dict(sorted(by_class.items())), "genes": len(alleles_by_gene), "genes_with_several_alleles": len(several),
+            "genes_with_several_alleles_list": several, "reports_by_mechanism_basis": dict(sorted(basis_counts.items())),
+            "conflicting_pairs": sorted({f"{assigned[report.report_id][0]} {report.source_record_id}" for report in reports
+                                         if report.report_id in assigned and assigned[report.report_id][2].startswith("conflict")})}
+
+
 def drug_target_description(drug_targets) -> str:
     return ";".join(f"{target.target_chembl_id}:{target.action_type}" for target in sorted(drug_targets, key=lambda target: target.target_chembl_id))
 
@@ -589,13 +657,24 @@ def assemble(
     seed_gain_of_function_genes_positive: bool = False,
     admitted_atc_prefixes: tuple[str, ...] = NERVOUS_SYSTEM_ATC_PREFIXES,
     open_targets_scoped_rows_path: Path | None = None,
+    allele_perturbations: bool = False,
+    orphadata_product1_path: Path | None = None,
+    neomorphic_alleles_path: Path | None = DEFAULT_NEOMORPHIC_ALLELES_PATH,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
 
     seed_gain_of_function_genes_positive seeds a gene with sign +1 when every causal association behind its reports is
     Orphanet's gain-of-function type (genes_with_gain_of_function_associations_only); every other gene keeps sign -1,
     as all genes do by default. admitted_atc_prefixes is the list of ATC groups and substances a SIDER drug must fall
-    under, group N alone by default; the OnSIDES reports are built apart and take the same list there."""
+    under, group N alone by default; the OnSIDES reports are built apart and take the same list there.
+
+    allele_perturbations (decision 9.54) makes each gene's mechanism class its own perturbation instead: the reports of
+    a disease typed gain of function (by Orphanet, or carried from the same disease's Orphanet record through Orphadata
+    product 1, orphadata_product1_path) move to "<gene>|gain_of_function", seeded +1, or to the gene's curated neomorphic
+    allele (neomorphic_alleles_path); every other report stays with the gene, seeded -1. It replaces
+    seed_gain_of_function_genes_positive, and the two are not combined."""
+    if allele_perturbations and seed_gain_of_function_genes_positive:
+        raise ValueError("allele_perturbations replaces seed_gain_of_function_genes_positive; pass one of them")
     if weighting not in WEIGHTINGS:
         raise ValueError(f"unknown weighting {weighting!r}; choose from {WEIGHTINGS}")
     rubric_weight_defaults = rubric_weight_defaults or RubricWeightDefaults()
@@ -615,6 +694,7 @@ def assemble(
     publication_dates = load_reference_publication_dates(reference_publication_dates_path) if reference_publication_dates_path is not None and reference_publication_dates_path.exists() else None
     hpoa_rows_by_key = load_hpo_annotation_rows(phenotype_hpoa_path) if phenotype_hpoa_path is not None and phenotype_hpoa_path.exists() else None
     association_types = None
+    orphanet_types = None
     if genes_to_disease_path is not None and genes_to_disease_path.exists():
         from mechanistic_pathway_learning.evidence.gene_disease_association_types import association_type_for, load_omim_association_types, load_orphanet_association_types
 
@@ -624,7 +704,19 @@ def assemble(
     dropped_unknown_provenance: list[dict] = []
     report_list: list[EvidenceReport] = monogenic_evidence_reports(parse_genes_to_phenotype(hpo_annotations_path), symptom_to_hpo, parents, set(node_by_symbol), symptom_to_excluded,
                                                                    hpoa_rows_by_key, publication_dates, dropped_unknown_provenance, association_types=association_types)
-    gain_of_function_genes = seed_monogenic_reports(report_list, node_by_symbol, seed_gain_of_function_genes_positive)
+    allele_assignment: dict[str, tuple[str, str, str]] = {}
+    allele_summary = None
+    if allele_perturbations:
+        if orphanet_types is None or orphadata_product1_path is None or not Path(orphadata_product1_path).exists():
+            raise ValueError("allele_perturbations needs Orphadata product 6 (the typed associations) and product 1 (the OMIM mappings)")
+        mechanisms = disease_mechanisms(orphanet_types, load_orphanet_omim_mappings(Path(orphadata_product1_path)),
+                                        {(report.perturbation_id, report.source_record_id) for report in report_list})
+        neomorphic_alleles = read_neomorphic_alleles(Path(neomorphic_alleles_path)) if neomorphic_alleles_path is not None else {}
+        allele_assignment = assign_alleles(report_list, mechanisms, neomorphic_alleles, node_by_symbol)
+        allele_summary = summarise_alleles(allele_assignment, report_list)
+        gain_of_function_genes = {gene for gene, allele_class, _ in allele_assignment.values() if allele_class in (HYPERMORPH, NEOMORPH)}
+    else:
+        gain_of_function_genes = seed_monogenic_reports(report_list, node_by_symbol, seed_gain_of_function_genes_positive)
 
     drug_targets_by_perturbation: dict[str, str] = {}
     if sider_directory is not None and chembl_directory is not None and (chembl_directory / "targets.json").exists():
@@ -657,6 +749,9 @@ def assemble(
             report_list.extend(drug_label_reports(event, model_description, json.dumps(perturbation_nodes)))
 
     reports = reports_to_dataframe(report_list)
+    if allele_perturbations:
+        reports["allele_class"] = reports.report_id.map(lambda report_id: allele_assignment[report_id][1] if report_id in allele_assignment else "")
+        reports["allele_mechanism_basis"] = reports.report_id.map(lambda report_id: allele_assignment[report_id][2] if report_id in allele_assignment else "")
     reports["rubric_weight"] = rubric_weights_for_table(reports, rubric_weight_defaults)
     for extra_path in extra_report_paths or []:
         reports = append_external_reports(reports, extra_path, rubric_weight_defaults)
@@ -697,7 +792,7 @@ def assemble(
         if weighting == "reliability":
             observations["weight"] = reliability_weights(reliability_fit, observations, reliability_global_scale)
         observations["weighting"] = weighting
-    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance), tuple(sorted(gain_of_function_genes)))
+    return AssembledEvidence(observations, pd.DataFrame(unmapped), reports, reliability_fit, len(dropped_unknown_provenance), tuple(sorted(gain_of_function_genes)), allele_summary)
 
 
 def summarize_observations(observations: pd.DataFrame, unmapped: pd.DataFrame) -> dict:
@@ -785,6 +880,13 @@ def main() -> None:
     parser.add_argument("--drugs-acting-as-graph-compounds", type=Path, default=DRUGS_ACTING_AS_GRAPH_COMPOUNDS_PATH, help="drugs with no mechanism target that are themselves a graph metabolite")
     parser.add_argument("--seed-gain-of-function-genes-positive", action="store_true",
                         help="seed a gene with sign +1 when every causal association behind its reports is Orphanet's gain-of-function type; without it every gene has sign -1")
+    parser.add_argument("--allele-perturbations", action="store_true",
+                        help="decision 9.54: each gene's mechanism class is its own perturbation (loss of function or untyped: the gene, -1; gain of function: "
+                             "<gene>|gain_of_function, +1, or the gene's curated neomorphic allele); replaces --seed-gain-of-function-genes-positive")
+    parser.add_argument("--orphadata-product1", type=Path, default=Path("data/raw/orphadata/en_product1.xml"),
+                        help="Orphadata product 1: how each Orphanet disorder maps to OMIM, which carries a typed mechanism to the same disease's OMIM record")
+    parser.add_argument("--neomorphic-alleles", type=Path, default=DEFAULT_NEOMORPHIC_ALLELES_PATH,
+                        help="curated neomorphic alleles, one row per cited mechanism edge (--allele-perturbations)")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
                         help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to build_onsides_reports.py")
     parser.add_argument("--open-targets-scoped-rows", type=Path, default=None,
@@ -798,7 +900,9 @@ def main() -> None:
                          non_protein_targets_path=arguments.non_protein_targets, drugs_acting_as_graph_compounds_path=arguments.drugs_acting_as_graph_compounds,
                          seed_gain_of_function_genes_positive=arguments.seed_gain_of_function_genes_positive,
                          admitted_atc_prefixes=read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES,
-                         open_targets_scoped_rows_path=arguments.open_targets_scoped_rows)
+                         open_targets_scoped_rows_path=arguments.open_targets_scoped_rows,
+                         allele_perturbations=arguments.allele_perturbations, orphadata_product1_path=arguments.orphadata_product1,
+                         neomorphic_alleles_path=arguments.neomorphic_alleles)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
@@ -809,6 +913,8 @@ def main() -> None:
     summary["reliability_global_scale"] = arguments.reliability_global_scale
     if arguments.seed_gain_of_function_genes_positive:  # recorded only when set, so a table built without it has the summary it always had
         summary["genes_seeded_as_gain_of_function"] = list(assembled.genes_seeded_as_gain_of_function)
+    if assembled.allele_summary is not None:  # decision 9.54, recorded only when the alleles are perturbations
+        summary["alleles"] = {**assembled.allele_summary, "orphadata_product1": str(arguments.orphadata_product1), "neomorphic_alleles": str(arguments.neomorphic_alleles)}
     if arguments.admitted_atc_prefixes is not None:
         summary["admitted_atc_prefixes"] = {"file": str(arguments.admitted_atc_prefixes), "prefixes": list(read_admitted_atc_prefixes(arguments.admitted_atc_prefixes))}
     summary.update(summarize_reports(assembled.reports, assembled.reliability_fit, rubric_weight_defaults, assembled.observations, assembled.reports_dropped_unknown_provenance))
