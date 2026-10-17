@@ -507,3 +507,27 @@ def test_the_law_can_be_built_beside_the_reaction_edges():
     assert (into_the_potential[into_the_potential.relation_type == "changes_membrane_potential"].weight == 1.0).all()
     with pytest.raises(ValueError, match="membrane_potential_build must be one of"):
         run_import(membrane_potential_build="nernst")
+
+
+def test_vglut2_and_vglut3_load_glutamate_into_the_vesicle_lumen_that_release_draws_on():
+    """Decision 9.71: Reactome's glutamate loading is catalysed by an entity holding VGLUT1 alone. The curated loading by
+    VGLUT2 and VGLUT3 makes the lumen copy, and the release rule makes that copy a substrate of glutamate release."""
+    from experiments.build_neuronal_graph_variant import CURATED_REACTIONS, TRANSMITTER_BASES
+
+    loading = next(curated for curated in CURATED_REACTIONS if curated.reaction_id == "MAR_GLUTAMATE_LOADING_VGLUT2_3")
+    assert loading.catalysts == ("SLC17A6", "SLC17A8") and "SLC17A7" not in loading.catalysts, "VGLUT1 keeps Reactome's route alone"
+    assert loading.products == ("MAM01974v",) and "MAM01974" in TRANSMITTER_BASES
+    release = CuratedReaction("MAR_TEST_GLUTAMATE_RELEASE", "release of glutamate", ("MAM01736v",), ("MAM01974e",), ("SYT1",), "test", release="MAM01974")
+    nodes, edges, relation_types = base_graph()
+    nodes = pd.concat([nodes, pd.DataFrame([{"node_id": "MAM01974c", "node_type": "metabolite", "display_name": "glutamate", "compartment": "c",
+                                             "base_metabolite_id": "MAM01974", "is_currency": False, "in_metabolic_layer": True, "degree": 0},
+                                            {"node_id": "MAM01974e", "node_type": "metabolite", "display_name": "glutamate", "compartment": "e",
+                                             "base_metabolite_id": "MAM01974", "is_currency": False, "in_metabolic_layer": True, "degree": 0}]).reindex(columns=NODE_COLUMNS)],
+                      ignore_index=True)
+    node_table, edge_table, _, summary = run_import(nodes=nodes, edges=edges, curated_reactions=[loading, release], transmitter_bases={"MAM01736", "MAM01974"})
+    assert "MAM01974v" in set(node_table.node_id), "the loading reaction makes the lumen copy"
+    for gene in ("SLC17A6", "SLC17A8"):
+        assert ((edge_table.source_id == f"GENE:{gene}") & (edge_table.target_id == "MAR_GLUTAMATE_LOADING_VGLUT2_3") & (edge_table.relation_type == "catalyzed_by")).any()
+    assert ((edge_table.source_id == "MAM01974v") & (edge_table.target_id == "MAR_TEST_GLUTAMATE_RELEASE") & (edge_table.relation_type == "substrate_of")).any(), \
+        "release draws on the lumen copy the VGLUT2 and VGLUT3 loading makes"
+    assert summary["release_reactions"]["MAR_TEST_GLUTAMATE_RELEASE"] == ["MAM01974"]
