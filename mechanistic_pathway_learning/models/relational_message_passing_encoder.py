@@ -78,7 +78,7 @@ import torch
 from torch import Tensor, nn
 
 from mechanistic_pathway_learning.models.descriptor_treatments import check_descriptor_treatment, features_without_descriptors, seed_unit_mask
-from mechanistic_pathway_learning.models.edge_gates import EdgeGates, relation_adjacency_parts, sparse_layout, sparse_values_product
+from mechanistic_pathway_learning.models.edge_gates import EdgeGates, GateLayout, flip_effect_estimates, relation_adjacency_parts, sparse_layout, sparse_values_product
 
 PERTURBATION_FEATURE_DIM = 2  # (sign, magnitude)
 CONJUNCTION_AGGREGATIONS = ("mean", "minimum", "soft_minimum")
@@ -160,7 +160,10 @@ class RelationalMessagePassingEncoder(nn.Module):
         change_only_edge_relation: Tensor | None = None,
     ) -> None:
         super().__init__()
-        self.edge_gates: EdgeGates | None = None  # attach_edge_gates (decision 9.57); None is the registered model
+        self.edge_gates: GateLayout | None = None  # attach_edge_gates (decision 9.57); None is the registered model
+        # the binary pass of decision 9.62 collects each forward's gated values and reads their gradients afterwards
+        self.collect_flip_gradients = False
+        self.flip_collection: list[Tensor] = []
         if change_only_edge_relation is not None and change_only_relation_index is not None:
             raise ValueError("give the relation of the change-only edges once: one index for all of them, or one index per edge")
         if (change_only_edge_index is None) != (change_only_relation_index is None and change_only_edge_relation is None):
@@ -557,7 +560,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         self._compressed_adjacency_cache = None
         return stacked, present_index
 
-    def attach_edge_gates(self, edge_gates: EdgeGates, edge_index: Tensor, edge_relation_type: Tensor, relation_adjacencies: list[Tensor | None],
+    def attach_edge_gates(self, edge_gates: GateLayout, edge_index: Tensor, edge_relation_type: Tensor, relation_adjacencies: list[Tensor | None],
                           edge_sign: Tensor | None = None, edge_weight: Tensor | None = None) -> None:
         """Gate every edge of the stacked relations by its evidence prior (decision 9.57, models/edge_gates.py). The
         compressed adjacency's layout is read once from the static adjacencies; each propagate then rebuilds its values
@@ -577,7 +580,7 @@ class RelationalMessagePassingEncoder(nn.Module):
         self.gate_present_relations = [int(index) for index in present_index.tolist()]
         for relation_index in self.gate_present_relations:
             part = parts[relation_index]
-            for name in ("slot", "values", "edges"):
+            for name in ("slot", "values", "numerator", "destination", "edges"):
                 self.register_buffer(f"gate_part_{relation_index}_{name}", part[name].to(device), persistent=False)
             setattr(self, f"gate_part_{relation_index}_num_slots", part["num_slots"])
         self.register_buffer("gate_compressed_indices", static_compressed.indices().to(device), persistent=False)
@@ -608,13 +611,58 @@ class RelationalMessagePassingEncoder(nn.Module):
 
     def gated_compressed_values(self, edge_values: Tensor) -> Tensor:
         """The compressed adjacency's values in its stored order: per present relation, each coalesced entry's sum of its
-        edges' values times their gates."""
+        edges' sign x weight x gate over the gated in-degree, the sum of the gates of the relation's edges into the
+        destination (decision 9.62). With every gate at 1 that is the count, so the static values come back; with gates
+        of 0 and 1 it is the adjacency of the graph without the closed edges, as in the linear-response encoder, whose
+        divisor is the gated sum of its weights."""
         values = []
+        tiny = torch.finfo(edge_values.dtype).tiny
         for relation_index in self.gate_present_relations:
-            edge_value = getattr(self, f"gate_part_{relation_index}_values") * edge_values[getattr(self, f"gate_part_{relation_index}_edges")]
+            gate = edge_values[getattr(self, f"gate_part_{relation_index}_edges")]
+            destination = getattr(self, f"gate_part_{relation_index}_destination")
+            gated_in_degree = torch.zeros(self.num_graph_nodes, dtype=gate.dtype, device=gate.device).index_add(0, destination, gate)
+            edge_value = getattr(self, f"gate_part_{relation_index}_numerator") * gate / gated_in_degree[destination].clamp_min(tiny)
             slots = torch.zeros(getattr(self, f"gate_part_{relation_index}_num_slots"), dtype=edge_value.dtype, device=edge_value.device)
             values.append(slots.index_add(0, getattr(self, f"gate_part_{relation_index}_slot"), edge_value))
         return torch.cat(values) if values else torch.zeros(0, device=edge_values.device)
+
+    def gated_row_is_open(self, edge_values: Tensor) -> Tensor:
+        """[K] per compressed row (relation, target), whether any edge of it has a gate above 0: a row whose edges are all
+        closed is a relation that no longer feeds its target, so the bounded update does not count it."""
+        open_rows = []
+        for relation_index, start, end in self.gate_segments:
+            gate = edge_values[getattr(self, f"gate_part_{relation_index}_edges")]
+            destination = getattr(self, f"gate_part_{relation_index}_destination")
+            gated_in_degree = torch.zeros(self.num_graph_nodes, dtype=gate.dtype, device=gate.device).index_add(0, destination, gate)
+            open_rows.append(gated_in_degree[self.gate_row_target[start:end]] > 0)
+        return torch.cat(open_rows) if open_rows else torch.zeros(0, dtype=torch.bool, device=edge_values.device)
+
+    def reset_flip_collection(self) -> None:
+        self.flip_collection = []
+
+    def flip_effect_estimates(self) -> Tensor:
+        """[num_edges] the first-order change in the loss if each edge flipped from the gates' read-out (models/edge_gates.
+        flip_effect_estimates), from the gradients of the gated values every forward since reset_flip_collection kept.
+        A group is a relation's edges into one destination, and each edge counts 1 toward its divisor."""
+        if self.edge_gates is None or not hasattr(self.edge_gates, "open_edges"):
+            raise ValueError("flip estimates need hard edge gates (decision 9.62)")
+        gradients = [values.grad for values in self.flip_collection if values.grad is not None]
+        if not gradients:
+            raise ValueError("no gated values with a gradient were collected; set collect_flip_gradients and run a backward pass first")
+        slot_gradient = torch.stack(gradients).sum(dim=0)
+        groups, origins, numerators, entry_gradients, offset = [], [], [], [], 0
+        for relation_index in self.gate_present_relations:
+            slot = getattr(self, f"gate_part_{relation_index}_slot")
+            groups.append(relation_index * self.num_graph_nodes + getattr(self, f"gate_part_{relation_index}_destination"))
+            origins.append(getattr(self, f"gate_part_{relation_index}_edges"))
+            numerators.append(getattr(self, f"gate_part_{relation_index}_numerator"))
+            entry_gradients.append(slot_gradient[offset + slot])
+            offset += getattr(self, f"gate_part_{relation_index}_num_slots")
+        group = torch.cat(groups)
+        _, dense_group = torch.unique(group, return_inverse=True)
+        numerator = torch.cat(numerators)
+        return flip_effect_estimates(dense_group, torch.cat(origins), numerator, torch.ones_like(numerator), torch.cat(entry_gradients),
+                                     self.edge_gates.open_edges(), self.edge_gates.num_edges)
 
     def gated_compressed_adjacency(self) -> tuple[Tensor, Tensor, list[tuple[int, int, int]]]:
         """The compressed adjacency with the gated values, as a sparse tensor for reading; propagate multiplies through
@@ -725,9 +773,17 @@ class RelationalMessagePassingEncoder(nn.Module):
         """
         batch_size = node_state_field.shape[0]
         gated_values = None
+        gated_row_open = None
         if self.edge_gates is not None:  # rebuilt each call from the gates (decision 9.57); never cached by tensor identity
             self.check_gated_adjacencies(relation_adjacencies)
-            gated_values = self.gated_compressed_values(self.edge_gates.edge_values())
+            edge_values = self.edge_gates.edge_values()
+            gated_values = self.gated_compressed_values(edge_values)
+            if self.collect_flip_gradients and gated_values.requires_grad is False:
+                gated_values = gated_values.detach().requires_grad_(True)
+            if self.collect_flip_gradients:
+                gated_values.retain_grad()
+                self.flip_collection.append(gated_values)
+            gated_row_open = self.gated_row_is_open(edge_values) if self.bounds_the_update else None
             compressed_adjacency, row_target, segments = None, self.gate_row_target, self.gate_segments
         else:
             compressed_adjacency, row_target, segments = self.compressed_relation_adjacency(relation_adjacencies)
@@ -761,8 +817,10 @@ class RelationalMessagePassingEncoder(nn.Module):
                 transformed = torch.cat([self.relation_transform(relation_index, parameter_layer)(aggregated[start:end]) for relation_index, start, end in segments], dim=0)
                 relation_messages = torch.zeros_like(self_messages).index_add(0, row_target.to(flattened.device), transformed)
                 if self.bounds_the_update:  # the summed relations are a mean, so the aggregate is bounded by one transform
+                    row_counts = torch.ones(row_target.numel(), device=relation_messages.device) if gated_row_open is None \
+                        else gated_row_open.to(device=relation_messages.device, dtype=torch.float32)  # a relation whose gates are all closed no longer feeds
                     feeding = torch.zeros(self.num_graph_nodes, device=relation_messages.device).index_add(
-                        0, row_target.to(relation_messages.device), torch.ones(row_target.numel(), device=relation_messages.device))
+                        0, row_target.to(relation_messages.device), row_counts)
                     relation_messages = relation_messages / feeding.clamp_min(1.0)[:, None, None]
                 pre_activation = self_messages + relation_messages + self.layer_bias[parameter_layer]
             else:

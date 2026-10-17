@@ -115,8 +115,13 @@ def test_a_gated_message_passing_encoder_is_the_plain_one_on_the_gated_adjacenci
     assert not torch.allclose(field, plain.perturbation_difference_field(*PERTURBATION, adjacencies)), "gates away from 1 change the field"
     field.square().sum().backward()
     gradient = gated.edge_gates.logit.grad  # gated edges 0, 1, 2, 3, 5, 6, 7 in that order
-    assert torch.all(gradient[[0, 1, 3, 4]] != 0), "a gate on a stacked relation whose source the perturbations move gets a gradient"
-    assert float(gradient[2]) == 0.0, "node 2 moves only at the last layer's output, so edge 2 sends the same message with and without the perturbation"
+    assert torch.all(gradient[[0, 1]] != 0), "a gate that shares its target's divisor with other gated edges gets a gradient"
+    # since 16 October 2026 (decision 9.62) the divisor is the gated in-degree, so a gate is a share of its target's
+    # input; edges 3 and 5 are each the only edge of their relation into their target, their share is 1 at every gate
+    # above 0, and the local slope is 0 there. The binary pass reads their flips through flip_effect_estimates instead.
+    assert torch.all(gradient[[3, 4]].abs() < 1e-7), "a sole input's share does not move with its gate"
+    assert float(gradient[2]) != 0.0, ("node 2 moves only at the last layer's output, so edge 2's own message is the same with and without the "
+                                       "perturbation, but its gate sets node 1's divisor, and so the shares of edges 0 and 1, which carry it")
     assert torch.all(gradient[5:] == 0), "the conjunction relation's members take a minimum, not a weighted mean, and are not gated"
     assert gated.edge_gates.summary()["gated_edges_the_encoder_reads"] == 5
 

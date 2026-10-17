@@ -99,7 +99,7 @@ import math
 import torch
 from torch import Tensor, nn
 
-from mechanistic_pathway_learning.models.edge_gates import EdgeGates, sparse_layout, sparse_values_product
+from mechanistic_pathway_learning.models.edge_gates import EdgeGates, GateLayout, flip_effect_estimates, sparse_layout, sparse_values_product
 from mechanistic_pathway_learning.models.descriptor_treatments import (
     check_descriptor_treatment,
     features_without_descriptors,
@@ -490,7 +490,7 @@ class LinearResponseEncoder(nn.Module):
         entry_relation_names: tuple[str, ...] = (),
         edge_weight: Tensor | None = None,
         propagate_edge_weight: bool = True,
-        edge_gates: EdgeGates | None = None,
+        edge_gates: GateLayout | None = None,
     ) -> None:
         """edge_gates (decision 9.57, models/edge_gates.py): a learnable presence gate per graph edge pulled toward its
         evidence prior; with it the adjacency's values are recomputed each forward from the edges' weights times their
@@ -596,6 +596,9 @@ class LinearResponseEncoder(nn.Module):
         self.relation_names = relation_names
         self.register_buffer("stacked_adjacency", stacked_adjacency, persistent=False)
         self.edge_gates = edge_gates
+        # the binary pass of decision 9.62 collects each forward's gated values and reads their gradients afterwards
+        self.collect_flip_gradients = False
+        self.flip_collection: list[Tensor] = []
         if edge_gates is not None:
             if normalisation == "spectral":
                 raise ValueError("edge gates recompute the adjacency each step; the spectral normalisation's power iteration is not repeated per step, so use total_in_degree or in_degree")
@@ -641,6 +644,16 @@ class LinearResponseEncoder(nn.Module):
         # play no part in it
         self.register_buffer("bottleneck_edge_source", coalesced.indices()[1], persistent=False)
         self.register_buffer("bottleneck_edge_target", coalesced.indices()[0] % num_graph_nodes, persistent=False)
+        # with hard gates (decision 9.62) the bottleneck walks only the open edges, so it needs each of its entries' slot
+        # among the gated values; both are the coalesced entries of one stacked adjacency, in its order
+        self.register_buffer("bottleneck_entry_slot", None, persistent=False)
+        if edge_gates is not None:
+            gate_keys = self.gate_slot_indices[0] * num_graph_nodes + self.gate_slot_indices[1]
+            bottleneck_keys = coalesced.indices()[0] * num_graph_nodes + coalesced.indices()[1]
+            position = torch.searchsorted(gate_keys, bottleneck_keys).clamp_max(max(len(gate_keys) - 1, 0))
+            if len(gate_keys) and not torch.equal(gate_keys[position], bottleneck_keys):
+                raise ValueError("the bottleneck walks an adjacency entry the gated layout does not hold")
+            self.bottleneck_entry_slot = position
         self.register_buffer("bottleneck_edge_relation", torch.div(coalesced.indices()[0], num_graph_nodes, rounding_mode="floor"),
                              persistent=False)  # which relation each entry came from, so a stated coefficient can be found
         # how many copies of the source a step consumes, which is that participant's stoichiometry. The graph does not
@@ -981,6 +994,10 @@ class LinearResponseEncoder(nn.Module):
             bottleneck = self.share_bottleneck_at_the_pool(torch.where(seeded, node_limit, torch.zeros_like(node_limit)))
             source, target = self.bottleneck_edge_source, self.bottleneck_edge_target
             demand = None if self.bottleneck_edge_demand is None else self.bottleneck_edge_demand[:, None]
+            open_entries = self.bottleneck_open_entries()  # hard gates read out: a closed edge carries no route (decision 9.62)
+            if open_entries is not None:
+                source, target = source[open_entries], target[open_entries]
+                demand = None if demand is None else demand[open_entries]
             flat_width = batch_size * num_classes
             flat_limit = node_limit.reshape(self.num_graph_nodes, flat_width)
             flat = bottleneck.reshape(self.num_graph_nodes, flat_width)
@@ -1016,6 +1033,10 @@ class LinearResponseEncoder(nn.Module):
         seeds, all fixed while a model trains, so every epoch after the first reads it from here. Memory: one [N, K]
         float tensor per distinct set of seeds, on the device of the weights. The cache is emptied when the module moves
         device or dtype and when the demands change."""
+        version = None if self.edge_gates is None else self.edge_gates.binary_state_version()
+        if version != getattr(self, "class_bottleneck_cache_version", None):  # the open edges changed: every route may have
+            self.class_bottleneck_cache.clear()
+            self.class_bottleneck_cache_version = version
         keys = [tuple(sorted({int(node) for node in row.tolist() if node >= 0})) for row in perturbation_node_index]
         missing = [key for key in dict.fromkeys(keys) if key not in self.class_bottleneck_cache]
         if missing:
@@ -1107,6 +1128,11 @@ class LinearResponseEncoder(nn.Module):
         num_relations = gain.shape[0]
         # the gated values are computed once per call and read by every round (decision 9.57); the registered model reads the buffers
         gated_values = self.gated_slot_values() if self.edge_gates is not None else None
+        if gated_values is not None and self.collect_flip_gradients:  # the binary pass reads dL/dv of every entry afterwards
+            if not gated_values.requires_grad:
+                gated_values = gated_values.detach().requires_grad_(True)
+            gated_values.retain_grad()
+            self.flip_collection.append(gated_values)
         node_major_input = sustained.permute(1, 0, 2).contiguous()  # [N, B, C]
         # the product rule weights the input and the messages inside the loop; the limiting-step rule leaves the loop
         # unweighted and multiplies the settled state by the bottleneck once, below. See CLASS_WEIGHT_RULES.
@@ -1190,6 +1216,36 @@ class LinearResponseEncoder(nn.Module):
                    "weight": self.gate_entry_weight, "relation_names": self.relation_names}
         values = self.normalised_adjacency_values(entries, self.num_graph_nodes, self.gate_normalisation, self.gate_divide_by_relations_feeding, weight=weight)
         return torch.zeros(self.gate_slot_indices.shape[1], dtype=values.dtype, device=values.device).index_add(0, self.gate_entry_slot, values)
+
+    def reset_flip_collection(self) -> None:
+        self.flip_collection = []
+
+    def flip_effect_estimates(self) -> Tensor:
+        """[num_edges] the first-order change in the loss if each edge flipped from the gates' read-out (models/edge_gates.
+        flip_effect_estimates), from the gradients of the gated values every forward since reset_flip_collection kept.
+        Under total_in_degree a group is a target node and each entry brings its weight to the divisor; the in-degree
+        normalisation's cross-relation divisor is not supported here."""
+        if self.edge_gates is None or not hasattr(self.edge_gates, "open_edges"):
+            raise ValueError("flip estimates need hard edge gates (decision 9.62)")
+        if self.gate_normalisation != "total_in_degree":
+            raise ValueError("flip estimates are written for the registered total_in_degree normalisation")
+        gradients = [values.grad for values in self.flip_collection if values.grad is not None]
+        if not gradients:
+            raise ValueError("no gated values with a gradient were collected; set collect_flip_gradients and run a backward pass first")
+        slot_gradient = torch.stack(gradients).sum(dim=0)
+        return flip_effect_estimates(self.gate_entry_target, self.gate_entry_origin, self.gate_entry_sign * self.gate_entry_weight, self.gate_entry_weight,
+                                     slot_gradient[self.gate_entry_slot], self.edge_gates.open_edges(), self.edge_gates.num_edges)
+
+    def bottleneck_open_entries(self) -> Tensor | None:
+        """[bottleneck entries] bool: whether any graph edge behind each entry is open at the gates' read-out, while the
+        gates are binary; None otherwise (a stochastic sample is read, or there are no hard gates), when every entry is
+        walked. Before hard gates every entry was always walked, and soft gates never close."""
+        if self.edge_gates is None or self.bottleneck_entry_slot is None or self.edge_gates.binary_state_version() is None:
+            return None
+        open_edge = self.edge_gates.open_edges().to(self.gate_entry_origin.device)
+        slot_open = torch.zeros(self.gate_slot_indices.shape[1], dtype=torch.float32, device=open_edge.device).index_add(
+            0, self.gate_entry_slot, open_edge[self.gate_entry_origin].to(torch.float32)) > 0
+        return slot_open[self.bottleneck_entry_slot]
 
     def gated_adjacencies(self) -> tuple[Tensor, Tensor]:
         """(stacked [R * N, N], compressed [K, N]) as sparse tensors with the gated values, for reading; the propagation
