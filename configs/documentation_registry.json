@@ -13,6 +13,11 @@
    "reviewed": "2026-10-15",
    "as_of_commit": "6c6f4a3"
   },
+  "docs/README.md": {
+   "class": "generated",
+   "generator": "experiments/generate_docs_index.py",
+   "what": "the landing page of docs/: where to start, and every registered document by topic with its class"
+  },
   "docs/allele_perturbations.md": {
    "class": "record",
    "recorded": "2026-10-16",
@@ -100,6 +105,10 @@
   "docs/clinical_trial_arm_evidence.md": {
    "class": "generated",
    "generator": "experiments/fetch_clinicaltrials_adverse_events.py"
+  },
+  "docs/clinical_trial_outcome_evidence.md": {
+   "class": "generated",
+   "generator": "experiments/fetch_clinicaltrials_outcomes.py"
   },
   "docs/combined_perturbations.md": {
    "class": "generated",
@@ -283,6 +292,10 @@
    "reviewed": "2026-10-16",
    "as_of_commit": "08bdffd"
   },
+  "docs/fine_symptom_constructs.md": {
+   "class": "generated",
+   "generator": "experiments/build_fine_symptom_crosswalk.py"
+  },
   "docs/fold_mechanism_sharing.md": {
    "class": "generated",
    "generator": "experiments/measure_fold_mechanism_sharing.py"
@@ -315,13 +328,13 @@
    "recorded": "2026-10-07",
    "append_only": false
   },
-  "docs/graph_summary.md": {
-   "class": "generated",
-   "generator": "experiments/summarise_graph.py"
-  },
   "docs/graph_reliance.md": {
    "class": "generated",
    "generator": "experiments/evaluate_on_rewired_graph.py"
+  },
+  "docs/graph_summary.md": {
+   "class": "generated",
+   "generator": "experiments/summarise_graph.py"
   },
   "docs/gtopdb_leakage_cost.md": {
    "class": "generated",
@@ -746,14 +759,6 @@
   "docs/twin_comparisons.md": {
    "class": "generated",
    "generator": "experiments/compare_twin_runs.py"
-  },
-  "docs/fine_symptom_constructs.md": {
-   "class": "generated",
-   "generator": "experiments/build_fine_symptom_crosswalk.py"
-  },
-  "docs/clinical_trial_outcome_evidence.md": {
-   "class": "generated",
-   "generator": "experiments/fetch_clinicaltrials_outcomes.py"
   }
  }
 }

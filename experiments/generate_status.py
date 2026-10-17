@@ -1,7 +1,9 @@
 """Generate docs/status.md, the one page that says what is current, from things that cannot be stale by construction:
 the release manifests, configs/registered_rules.json, the git history of the decision log, the document register and
 the git log (docs/documentation_process.md). It also renders the release counts into the block README.md carries
-between `<!-- generated:release_counts -->` markers, so the README restates no number by hand.
+between `<!-- generated:release_counts -->` markers, so the README restates no number by hand, and writes docs/README.md,
+the landing page of the docs directory (experiments/generate_docs_index.py), so a document added or retitled reaches the
+landing page in the same step.
 
 What goes in and what stays out. In: the data releases and their counts, the registered rules and their amendments,
 the decisions open and closed, the state of the documents (which are generated and when, which living documents are
@@ -25,6 +27,8 @@ from datetime import date
 from pathlib import Path
 
 from experiments.generate_decision_history import read_history, sort_key
+from experiments.generate_docs_index import INDEX_PATH as DOCS_INDEX_PATH
+from experiments.generate_docs_index import index_is_current, rendered_index
 from mechanistic_pathway_learning.documentation import (
     REPOSITORY_ROOT,
     STAMP_POLICY_DATE,
@@ -288,18 +292,22 @@ def main() -> int:
                       summaries, registered_rules(), decisions(), documents(today), today)
     readme_text = README_PATH.read_text(encoding="utf-8")
     readme_rendered = readme_with_block(readme_text, render_release_counts(summaries))
+    docs_index = rendered_index()
     if arguments.check:
         stale = []
         if not arguments.output.exists() or not only_pending_decisions_dated(arguments.output.read_text(encoding="utf-8"), rendered):
             stale.append(str(arguments.output))
         if readme_rendered != readme_text:
             stale.append("README.md release_counts block")
+        if not DOCS_INDEX_PATH.exists() or not index_is_current(DOCS_INDEX_PATH.read_text(encoding="utf-8"), docs_index):
+            stale.append("docs/README.md")
         if stale:
             print("out of date: " + ", ".join(stale) + "; run experiments/generate_status.py")
             return 1
-        print("docs/status.md and the README block are current")
+        print("docs/status.md, the README block and docs/README.md are current")
         return 0
     arguments.output.write_text(rendered, encoding="utf-8")
+    DOCS_INDEX_PATH.write_text(docs_index, encoding="utf-8")
     if readme_rendered != readme_text:
         README_PATH.write_text(readme_rendered, encoding="utf-8")
         print("updated the README release_counts block")

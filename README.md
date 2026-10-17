@@ -7,7 +7,7 @@ one or more sparse pathway modules combined through a noisy-OR, with no diagnosi
 anywhere in the inputs or targets.
 
 The full experiment design, including the assumptions it argues against, is in
-docs/experiment_design.md. Read that first.
+docs/experiment_design.md. Read that first. [docs/README.md](docs/README.md) is the map of every document, by topic.
 
 ## Status
 
