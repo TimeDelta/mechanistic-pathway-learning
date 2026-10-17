@@ -28,9 +28,20 @@ BTNT, it is broader. A typed mechanism is carried, for the same gene,
     juvenile Huntington disease, ORPHA:248111 NTBT OMIM:143100),
 
 and never through a BTNT mapping: a broader Orphanet code is a group (ORPHA:528084, non-specific syndromic
-intellectual disability, maps BTNT to 113 OMIM entries) and says nothing about any one member's mechanism. A pair
-Orphanet types itself keeps its own type; when two inherited mechanisms disagree on a pair, it stays untyped and is
-marked as a conflict.
+intellectual disability, maps BTNT to 108 OMIM entries in the release of 23 June 2026) and says nothing about any one
+member's mechanism. A pair Orphanet types itself keeps its own type; when two inherited mechanisms disagree on a pair,
+it stays untyped and is marked as a conflict.
+
+The second source. Where Orphanet leaves a pair untyped, Gene2Phenotype's curated molecular mechanism is read (G2P,
+all panels, CC BY 4.0; the owner, 15 October 2026: "Always try to find a second reputable source when one fails").
+A G2P record speaks for an OMIM disease; it reaches an Orphanet disorder through the same E and NTBT mappings as
+above. Only records whose gene-disease confidence is definitive, strong or moderate type a pair (the levels G2P's
+curators name as used in clinical reporting; limited, disputed and refuted do not). "Loss of function" and "dominant
+negative" give a loss of function, because a dominant-negative product lowers the activity of the wild-type one and
+so the gene's net activity falls, which is what the seed -1 states; "gain of function" gives a gain; "undetermined"
+and "undetermined non-loss-of-function" type nothing and are written into the basis. G2P records that disagree on one
+pair leave it untyped as a conflict. The second source fills an absence and does not overrule the first: where both
+type a pair and disagree, Orphanet's type stands and the disagreement is written into the basis for the owner to see.
 """
 from __future__ import annotations
 
@@ -54,6 +65,11 @@ EXACT, NARROWER, BROADER = "E", "NTBT", "BTNT"  # product 1's DisorderMappingRel
 GAIN_OF_FUNCTION_SUFFIX = "|" + GAIN_OF_FUNCTION
 DEFAULT_NEOMORPHIC_ALLELES_PATH = Path("configs/neomorphic_alleles.csv")
 SIGN_OF_EFFECT = {"increases": 1.0, "decreases": -1.0}
+DEFAULT_GENE2PHENOTYPE_PATH = Path("data/raw/gene2phenotype/G2P_all_panels.csv")
+GENE2PHENOTYPE_MECHANISM = {"loss of function": LOSS_OF_FUNCTION, "dominant negative": LOSS_OF_FUNCTION, "gain of function": GAIN_OF_FUNCTION}
+GENE2PHENOTYPE_UNTYPED_MECHANISMS = ("undetermined", "undetermined non-loss-of-function")
+GENE2PHENOTYPE_CONFIDENCES = ("definitive", "strong", "moderate")
+GENE2PHENOTYPE_COLUMNS = ("g2p id", "gene symbol", "previous gene symbols", "disease mim", "confidence", "molecular mechanism", "allelic requirement")
 
 
 def load_orphanet_omim_mappings(product1_path: Path) -> dict[str, list[tuple[str, str]]]:
@@ -116,6 +132,102 @@ def disease_mechanisms(association_types: Mapping[tuple[str, str], str], mapping
             result[pair] = DiseaseMechanism(UNTYPED, "conflict: " + "; ".join(f"{mechanism} ({basis})" for mechanism, basis in sorted(found.items())))
         else:
             result[pair] = DiseaseMechanism(UNTYPED, "untyped")
+    return result
+
+
+@dataclass(frozen=True)
+class Gene2PhenotypeRecord:
+    g2p_id: str
+    gene: str
+    previous_symbols: tuple[str, ...]
+    disease: str  # "OMIM:<number>"
+    confidence: str
+    mechanism: str  # G2P's own words, "loss of function", "dominant negative", ...
+    allelic_requirement: str
+
+
+def load_gene2phenotype(path: Path) -> tuple[list[Gene2PhenotypeRecord], dict]:
+    """The records of G2P's all-panel download (www.ebi.ac.uk/gene2phenotype/api/panel/all/download) that name an
+    OMIM disease, and a count of those that name none (a G2P disease with only a Mondo id cannot meet an HPO report)."""
+    records: list[Gene2PhenotypeRecord] = []
+    without_omim = 0
+    with open(path, newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        missing = [column for column in GENE2PHENOTYPE_COLUMNS if column not in (reader.fieldnames or [])]
+        if missing:
+            raise ValueError(f"{path} lacks the G2P columns {missing}; the download format may have changed")
+        for row in reader:
+            disease_mim = row["disease mim"].strip()
+            if not disease_mim:
+                without_omim += 1
+                continue
+            previous = tuple(symbol.strip() for symbol in row["previous gene symbols"].split(";") if symbol.strip())
+            records.append(Gene2PhenotypeRecord(row["g2p id"].strip(), row["gene symbol"].strip(), previous, f"OMIM:{disease_mim}", row["confidence"].strip().lower(),
+                                                row["molecular mechanism"].strip().lower(), row["allelic requirement"].strip()))
+    return records, {"records_with_an_omim_disease": len(records), "records_without_an_omim_disease": without_omim}
+
+
+def gene2phenotype_mechanisms(records: Iterable[Gene2PhenotypeRecord], mappings: Mapping[str, list[tuple[str, str]]],
+                              pairs: Iterable[tuple[str, str]]) -> dict[tuple[str, str], DiseaseMechanism]:
+    """The mechanism G2P states for each (gene, disease) pair it covers, by the rules of the module docstring. A pair G2P
+    does not cover is absent from the result. A gene is matched by its current symbol, and by a previous symbol that is
+    no G2P gene's current symbol."""
+    usable = [record for record in records if record.confidence in GENE2PHENOTYPE_CONFIDENCES]
+    current_symbols = {record.gene for record in usable}
+    by_gene_and_disease: dict[tuple[str, str], list[Gene2PhenotypeRecord]] = defaultdict(list)
+    for record in usable:
+        by_gene_and_disease[(record.gene, record.disease)].append(record)
+        for symbol in record.previous_symbols:
+            if symbol not in current_symbols:
+                by_gene_and_disease[(symbol, record.disease)].append(record)
+    result: dict[tuple[str, str], DiseaseMechanism] = {}
+    for gene, disease in set(pairs):
+        if disease.startswith("OMIM:"):
+            routes = [(disease, "")]
+        elif disease.startswith("ORPHA:"):
+            routes = [(omim, f", for {omim}, the same disease" if relation == EXACT else f", for {omim}, of which {disease} is a narrower form")
+                      for omim, relation in mappings.get(disease, []) if relation in (EXACT, NARROWER)]
+        else:
+            routes = []
+        found = [(record, route) for omim, route in routes for record in by_gene_and_disease.get((gene, omim), [])]
+        if not found:
+            continue
+        typed: dict[str, list[str]] = defaultdict(list)
+        undetermined = []
+        for record, route in found:
+            description = f"gene2phenotype {record.g2p_id} ({record.mechanism}, {record.confidence}){route}"
+            if record.mechanism in GENE2PHENOTYPE_MECHANISM:
+                typed[GENE2PHENOTYPE_MECHANISM[record.mechanism]].append(description)
+            else:
+                undetermined.append(description)
+        if len(typed) == 1:
+            (mechanism, descriptions), = typed.items()
+            result[(gene, disease)] = DiseaseMechanism(mechanism, "; ".join(sorted(set(descriptions))))
+        elif len(typed) > 1:
+            result[(gene, disease)] = DiseaseMechanism(UNTYPED, "conflict: " + "; ".join(sorted({description for descriptions in typed.values() for description in descriptions})))
+        else:
+            result[(gene, disease)] = DiseaseMechanism(UNTYPED, "untyped; " + "; ".join(sorted(set(undetermined))))
+    return result
+
+
+def first_source_unless_absent(first: Mapping[tuple[str, str], DiseaseMechanism], second: Mapping[tuple[str, str], DiseaseMechanism],
+                               pairs: Iterable[tuple[str, str]]) -> dict[tuple[str, str], DiseaseMechanism]:
+    """The first source's mechanism, with the second filling a pair the first leaves untyped. Where both type a pair
+    and disagree the first stands and the basis says who disputes it; a conflict within the first is not settled by
+    the second, whose view is added to the basis."""
+    result: dict[tuple[str, str], DiseaseMechanism] = {}
+    for pair in set(pairs):
+        primary = first.get(pair, DiseaseMechanism(UNTYPED, "untyped"))
+        secondary = second.get(pair)
+        if secondary is None:
+            result[pair] = primary
+        elif primary.mechanism != UNTYPED:
+            disputed = secondary.mechanism not in (UNTYPED, primary.mechanism)
+            result[pair] = DiseaseMechanism(primary.mechanism, f"{primary.basis}; disputed by {secondary.basis}") if disputed else primary
+        elif primary.basis.startswith("conflict"):
+            result[pair] = DiseaseMechanism(UNTYPED, f"{primary.basis}; {secondary.basis}")
+        else:
+            result[pair] = secondary
     return result
 
 

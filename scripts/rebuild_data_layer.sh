@@ -218,7 +218,6 @@ if [ "$stage" = "descriptors" ]; then
       --descriptor-table "$descriptors/full_neuronal_split_descriptors_brain_expression.parquet:$descriptors/full_neuronal_split_drugs_v4_descriptors_brain_expression.parquet" \
       --cell-class-weights "$weights/full_neuronal_split_cell_class_weights.parquet:$weights/full_neuronal_split_drugs_v4_cell_class_weights.parquet"
 fi
-echo "done: $stage"
 
 # --- evidence tables v5: the fine symptom constructs (decision 9.58, 16 October 2026) ---------------------------------
 # docs/symptom_crosswalk_fine.csv is derived from the coarse crosswalk by experiments/build_fine_symptom_crosswalk.py
@@ -275,3 +274,4 @@ if [ "$stage" = "fine" ]; then
   step "$processed/clinical_trial_outcomes/clinical_trial_outcome_reports.parquet" "trial outcome measures on crosswalked scales" \
     python experiments/fetch_clinicaltrials_outcomes.py --evidence-dir "$processed/evidence_full_v4"
 fi
+echo "done: $stage"

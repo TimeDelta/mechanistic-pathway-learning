@@ -100,6 +100,12 @@ fetch "$raw_directory/orphadata/en_product6.xml" "https://www.orphadata.com/data
 # Orphadata product 1, the disorders with their OMIM mappings (E, NTBT, BTNT): carries a typed mechanism to the same
 # disease's OMIM record (decision 9.54, evidence/allele_mechanisms.py). CC BY 4.0, stated in the file's own header.
 fetch "$raw_directory/orphadata/en_product1.xml" "https://www.orphadata.com/data/xml/en_product1.xml" df8d562a0c6011af36a74eb4000ce81ca7d723e8031010819fb71727c0962bbb
+# Gene2Phenotype, all panels: the second source of a disease's mechanism where Orphanet types none (decision 9.54).
+# The endpoint is the one G2P's Data Download page gives ("curl -L -o AllG2P.csv
+# https://www.ebi.ac.uk/gene2phenotype/api/panel/all/download"); its robots file admitted it on 17 October 2026, while
+# the static release directory on ftp.ebi.ac.uk is closed to automated readers and is not used. The download is made
+# on the fly, so a later fetch reports DRIFT against the recorded hash. CC BY 4.0, read on G2P's responsible-handover page.
+fetch "$raw_directory/gene2phenotype/G2P_all_panels.csv" "https://www.ebi.ac.uk/gene2phenotype/api/panel/all/download" 6c93384ddec85532a6d0881756d31a45077fe2bda61a9d259a800a5c6125f5d9
 
 # OnSIDES v3.1.1 release asset (84,862,297 bytes recorded in docs/alternative_sources.md). The builds read parquet
 # tables under data/raw/onsides/v3.1.1/parquet; scripts/convert_onsides_to_parquet.py makes them from this archive.

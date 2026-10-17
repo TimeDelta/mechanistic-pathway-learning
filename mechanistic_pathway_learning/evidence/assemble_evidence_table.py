@@ -40,6 +40,7 @@ graph are written to a separate unmapped table so the gap is visible rather than
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from collections import defaultdict
@@ -79,6 +80,7 @@ from mechanistic_pathway_learning.evidence.evidence_reports import (
     rubric_weights_for_table,
 )
 from mechanistic_pathway_learning.evidence.allele_mechanisms import (
+    DEFAULT_GENE2PHENOTYPE_PATH,
     DEFAULT_NEOMORPHIC_ALLELES_PATH,
     HYPERMORPH,
     NEOMORPH,
@@ -86,7 +88,10 @@ from mechanistic_pathway_learning.evidence.allele_mechanisms import (
     DiseaseMechanism,
     allele_of,
     disease_mechanisms,
+    first_source_unless_absent,
+    gene2phenotype_mechanisms,
     gene_of_perturbation,
+    load_gene2phenotype,
     load_orphanet_omim_mappings,
     read_neomorphic_alleles,
 )
@@ -618,7 +623,7 @@ def summarise_alleles(assigned: dict[str, tuple[str, str, str]], reports: list[E
         gene, allele_class, basis = assigned[report.report_id]
         alleles_by_gene[gene].add(report.perturbation_id)
         class_of_allele[report.perturbation_id] = allele_class
-        basis_counts[basis.split(" ")[0] if not basis.startswith("conflict") else "conflict"] += 1
+        basis_counts[basis.split(" ")[0].rstrip(";") if not basis.startswith("conflict") else "conflict"] += 1
     by_class: dict[str, int] = defaultdict(int)
     for allele_class in class_of_allele.values():
         by_class[allele_class] += 1
@@ -626,7 +631,11 @@ def summarise_alleles(assigned: dict[str, tuple[str, str, str]], reports: list[E
     return {"alleles_by_class": dict(sorted(by_class.items())), "genes": len(alleles_by_gene), "genes_with_several_alleles": len(several),
             "genes_with_several_alleles_list": several, "reports_by_mechanism_basis": dict(sorted(basis_counts.items())),
             "conflicting_pairs": sorted({f"{assigned[report.report_id][0]} {report.source_record_id}" for report in reports
-                                         if report.report_id in assigned and assigned[report.report_id][2].startswith("conflict")})}
+                                         if report.report_id in assigned and assigned[report.report_id][2].startswith("conflict")}),
+            "pairs_typed_by_the_second_source_only": len({(assigned[report.report_id][0], report.source_record_id) for report in reports
+                                                          if report.report_id in assigned and assigned[report.report_id][2].startswith("gene2phenotype")}),
+            "pairs_disputed_by_the_second_source": sorted({f"{assigned[report.report_id][0]} {report.source_record_id}: {assigned[report.report_id][2]}" for report in reports
+                                                          if report.report_id in assigned and "; disputed by " in assigned[report.report_id][2]})}
 
 
 def drug_target_description(drug_targets) -> str:
@@ -660,6 +669,7 @@ def assemble(
     allele_perturbations: bool = False,
     orphadata_product1_path: Path | None = None,
     neomorphic_alleles_path: Path | None = DEFAULT_NEOMORPHIC_ALLELES_PATH,
+    gene2phenotype_path: Path | None = DEFAULT_GENE2PHENOTYPE_PATH,
 ) -> AssembledEvidence:
     """Build the report table, aggregate it to observations, fit the report-level reliability model and weight the observations.
 
@@ -671,8 +681,9 @@ def assemble(
     allele_perturbations (decision 9.54) makes each gene's mechanism class its own perturbation instead: the reports of
     a disease typed gain of function (by Orphanet, or carried from the same disease's Orphanet record through Orphadata
     product 1, orphadata_product1_path) move to "<gene>|gain_of_function", seeded +1, or to the gene's curated neomorphic
-    allele (neomorphic_alleles_path); every other report stays with the gene, seeded -1. It replaces
-    seed_gain_of_function_genes_positive, and the two are not combined."""
+    allele (neomorphic_alleles_path); every other report stays with the gene, seeded -1. Where Orphanet leaves a pair
+    untyped, Gene2Phenotype's curated mechanism is the second source (gene2phenotype_path; None builds without it, which
+    is recorded). It replaces seed_gain_of_function_genes_positive, and the two are not combined."""
     if allele_perturbations and seed_gain_of_function_genes_positive:
         raise ValueError("allele_perturbations replaces seed_gain_of_function_genes_positive; pass one of them")
     if weighting not in WEIGHTINGS:
@@ -709,11 +720,19 @@ def assemble(
     if allele_perturbations:
         if orphanet_types is None or orphadata_product1_path is None or not Path(orphadata_product1_path).exists():
             raise ValueError("allele_perturbations needs Orphadata product 6 (the typed associations) and product 1 (the OMIM mappings)")
-        mechanisms = disease_mechanisms(orphanet_types, load_orphanet_omim_mappings(Path(orphadata_product1_path)),
-                                        {(report.perturbation_id, report.source_record_id) for report in report_list})
+        mappings = load_orphanet_omim_mappings(Path(orphadata_product1_path))
+        pairs = {(report.perturbation_id, report.source_record_id) for report in report_list}
+        mechanisms = disease_mechanisms(orphanet_types, mappings, pairs)
+        second_source_summary: dict = {"gene2phenotype": None}
+        if gene2phenotype_path is not None:
+            if not Path(gene2phenotype_path).exists():
+                raise ValueError(f"{gene2phenotype_path} is missing: fetch it (scripts/fetch_raw_sources.sh) or pass gene2phenotype_path=None to build without the second source")
+            gene2phenotype_records, record_counts = load_gene2phenotype(Path(gene2phenotype_path))
+            mechanisms = first_source_unless_absent(mechanisms, gene2phenotype_mechanisms(gene2phenotype_records, mappings, pairs), pairs)
+            second_source_summary = {"gene2phenotype": str(gene2phenotype_path), "gene2phenotype_sha256": hashlib.sha256(Path(gene2phenotype_path).read_bytes()).hexdigest(), **record_counts}
         neomorphic_alleles = read_neomorphic_alleles(Path(neomorphic_alleles_path)) if neomorphic_alleles_path is not None else {}
         allele_assignment = assign_alleles(report_list, mechanisms, neomorphic_alleles, node_by_symbol)
-        allele_summary = summarise_alleles(allele_assignment, report_list)
+        allele_summary = {**summarise_alleles(allele_assignment, report_list), **second_source_summary}
         gain_of_function_genes = {gene for gene, allele_class, _ in allele_assignment.values() if allele_class in (HYPERMORPH, NEOMORPH)}
     else:
         gain_of_function_genes = seed_monogenic_reports(report_list, node_by_symbol, seed_gain_of_function_genes_positive)
@@ -887,6 +906,8 @@ def main() -> None:
                         help="Orphadata product 1: how each Orphanet disorder maps to OMIM, which carries a typed mechanism to the same disease's OMIM record")
     parser.add_argument("--neomorphic-alleles", type=Path, default=DEFAULT_NEOMORPHIC_ALLELES_PATH,
                         help="curated neomorphic alleles, one row per cited mechanism edge (--allele-perturbations)")
+    parser.add_argument("--gene2phenotype", default=str(DEFAULT_GENE2PHENOTYPE_PATH),
+                        help="Gene2Phenotype's all-panel download, the second source of a disease's mechanism where Orphanet types none (--allele-perturbations); none builds without it")
     parser.add_argument("--admitted-atc-prefixes", type=Path, default=None,
                         help="written list of the ATC groups and substances admitted in place of group N alone (atc_prefix column); pass the same file to build_onsides_reports.py")
     parser.add_argument("--open-targets-scoped-rows", type=Path, default=None,
@@ -902,7 +923,8 @@ def main() -> None:
                          admitted_atc_prefixes=read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES,
                          open_targets_scoped_rows_path=arguments.open_targets_scoped_rows,
                          allele_perturbations=arguments.allele_perturbations, orphadata_product1_path=arguments.orphadata_product1,
-                         neomorphic_alleles_path=arguments.neomorphic_alleles)
+                         neomorphic_alleles_path=arguments.neomorphic_alleles,
+                         gene2phenotype_path=None if str(arguments.gene2phenotype).lower() == "none" else Path(arguments.gene2phenotype))
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)
