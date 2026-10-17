@@ -87,6 +87,13 @@ done
 fetch "$raw_directory/omnipath/omnipath_interactions.tsv" "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=sources,references,type,curation_effort&organisms=9606&format=tsv"
 fetch "$raw_directory/omnipath/collectri_interactions.tsv" "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=sources,references&organisms=9606&format=tsv"
 fetch "$raw_directory/omnipath/small_molecule_protein.tsv" "https://omnipathdb.org/interactions?types=small_molecule_protein&genesymbols=1&fields=sources,references,type&organisms=9606&format=tsv"
+# The same signalling and regulon datasets with the evidences field (decision 9.70): per interaction, the support for
+# its positive sign, its negative sign, its direction and its occurrence apart, and CollecTRI's sign_decision ("PMID",
+# "default activation", "regulon"), none of which the TSV downloads above carry. graph/sign_evidence.py reads them for
+# the sign columns of the edge evidence table. The first downloads (17 October 2026, 126,125 and 64,516 interactions)
+# have their SHA-256 in docs/data_sources.md; the service is live, so a new download is checked by its counts.
+fetch "$raw_directory/omnipath/omnipath_interactions_evidences.json" "https://omnipathdb.org/interactions?datasets=omnipath,pathwayextra,ligrecextra&genesymbols=1&fields=evidences&organisms=9606&format=json"
+fetch "$raw_directory/omnipath/collectri_interactions_evidences.json" "https://omnipathdb.org/interactions?datasets=collectri&genesymbols=1&fields=evidences&organisms=9606&format=json"
 
 # GTEx v10 median gene TPM (8,846,936 bytes recorded in docs/alternative_sources.md).
 fetch "$raw_directory/gtex/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz" "https://storage.googleapis.com/adult-gtex/bulk-gex/v10/rna-seq/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz"

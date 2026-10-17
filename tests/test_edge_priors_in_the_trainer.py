@@ -64,8 +64,10 @@ def test_the_edge_prior_is_off_by_default_and_registered_as_absent_before_it_exi
     assert EDGE_PRIOR_SETTINGS == {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate",
                                    "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
                                    "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks", "edge_gate_binary_learning_rate_decay",
-                                   "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records"}
+                                   "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records",
+                                   "curated_label_minimum_sign_records"}
     assert arguments.curated_edge_labels is True and arguments.curated_label_minimum_records == 2 and arguments.curated_label_minimum_human_records == 1
+    assert arguments.curated_label_minimum_sign_records is None, "the sign-evidence rule of decision 9.70 is off unless the owner turns it on"
     assert arguments.edge_gate_closure_evidence == 20, "the exact evidence for the 20 closures against the strongest priors; every closure gets the estimate"
     assert "edge_prior_strength" in ARGUMENTS_RECORDED_ONLY_WHEN_SET
     for name in ("v4_linear_response_edge_priors", "v4_linear_response_edge_priors_permuted", "v4_message_passing_edge_priors", "v4_message_passing_edge_priors_permuted"):

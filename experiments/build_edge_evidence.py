@@ -5,7 +5,9 @@ IntAct's curated non-interacting pairs and the graph's edges; writes <graph-dir>
 edges.parquet row for row (family, kind, records, contested, the PubMed ids the record count counts and the resources
 that state the edge, the edge's own source_id, target_id and relation_type, which the trainer checks against the graph
 before it reads a row, and, with the species cache of experiments/fetch_icite_species.py, how many of its records iCite
-scored, how many are human evidence and how many record animals and no human) and edge_evidence_summary.json, which
+scored, how many are human evidence and how many record animals and no human, and, with the OmniPath evidences
+downloads, the PubMed ids behind each signed edge's sign and how CollecTRI decided a regulation's sign:
+graph/sign_evidence.py, decision 9.70) and edge_evidence_summary.json, which
 records the SHA-256 of the edges.parquet it was built from and how many curated edges the label rule of decision 9.63
 (b) takes as known. The graph files themselves are not touched, so no graph hash moves. The priors are computed from
 this table by experiments/run_main_model.py under --edge-prior-strength.
@@ -37,6 +39,13 @@ from mechanistic_pathway_learning.graph.edge_evidence import (
     transcription_references,
 )
 from mechanistic_pathway_learning.graph.edge_negatives import read_human_negative_pairs
+from mechanistic_pathway_learning.graph.sign_evidence import (
+    DEFAULT_SIGNALLING_EVIDENCES,
+    DEFAULT_TRANSCRIPTION_EVIDENCES,
+    read_evidences,
+    sign_evidence_columns,
+    sign_reference_table,
+)
 
 
 DEFAULT_SPECIES = Path("data/raw/icite/icite_species.parquet")
@@ -58,7 +67,9 @@ def label_summary(evidence: pd.DataFrame, species: pd.DataFrame) -> dict:
             "curated_edges_with_an_animal_only_record": int((curated & (evidence["animal_only_records"] > 0)).sum()),
             "stricter_readings": {
                 "two_human_records": int(curated_edge_labels(evidence, minimum_human_records=2).sum()),
-                "a_record_with_human_score_above_one_half": int(curated_edge_labels(evidence.assign(human_records=stricter["human_records"])).sum())}}
+                "a_record_with_human_score_above_one_half": int(curated_edge_labels(evidence.assign(human_records=stricter["human_records"])).sum()),
+                **({f"sign_with_{minimum}_or_more_records": int(curated_edge_labels(evidence, minimum_sign_records=minimum).sum()) for minimum in (1, 2)}
+                   if "sign_basis" in evidence.columns else {})}}
 
 
 def main() -> int:
@@ -68,6 +79,10 @@ def main() -> int:
     parser.add_argument("--collectri", type=Path, default=Path("data/raw/omnipath/collectri_interactions.tsv"))
     parser.add_argument("--intact-negative", type=Path, default=Path("data/raw/intact/intact_negative.txt"))
     parser.add_argument("--tiers", type=Path, default=DEFAULT_TIERS_PATH)
+    parser.add_argument("--signalling-evidences", type=Path, default=DEFAULT_SIGNALLING_EVIDENCES,
+                        help="OmniPath's interactions with fields=evidences (scripts/fetch_raw_sources.sh); without it and the next the table has no sign columns")
+    parser.add_argument("--transcription-evidences", type=Path, default=DEFAULT_TRANSCRIPTION_EVIDENCES,
+                        help="the same for the CollecTRI dataset, which carries CollecTRI's sign_decision")
     parser.add_argument("--species", type=Path, default=DEFAULT_SPECIES,
                         help="iCite's species scores per PubMed id (experiments/fetch_icite_species.py); without it the table has no species columns and "
                              "the trainer cannot take curated edges as labels (decision 9.63)")
@@ -79,6 +94,19 @@ def main() -> int:
     edges = pd.read_parquet(arguments.graph_dir / "edges.parquet")
     evidence = edge_evidence_table(edges, references, negative_pairs)
     evidence = evidence.assign(source_id=edges.source_id.to_numpy(), target_id=edges.target_id.to_numpy(), relation_type=edges.relation_type.to_numpy())
+    sign_summary = None
+    if arguments.signalling_evidences.is_file() and arguments.transcription_evidences.is_file():
+        sign_tables = pd.concat([sign_reference_table(read_evidences(arguments.signalling_evidences), "signalling"),
+                                 sign_reference_table(read_evidences(arguments.transcription_evidences), "transcription")], ignore_index=True)
+        evidence = pd.concat([evidence, sign_evidence_columns(edges, evidence["family"], sign_tables)], axis=1)
+        signed = ~evidence["sign_basis"].fillna("").astype(str).isin(["", "unsigned"])
+        sign_summary = {"signalling_evidences": {"path": str(arguments.signalling_evidences), "sha256": hashlib.sha256(arguments.signalling_evidences.read_bytes()).hexdigest()},
+                        "transcription_evidences": {"path": str(arguments.transcription_evidences),
+                                                    "sha256": hashlib.sha256(arguments.transcription_evidences.read_bytes()).hexdigest()},
+                        "signed_edges": int(signed.sum()), "sign_basis": evidence.loc[signed, "sign_basis"].value_counts().head(12).to_dict(),
+                        "signed_edges_with_no_pubmed_id_behind_the_sign": int((signed & (evidence["sign_records"] == 0)).sum())}
+    else:
+        print("no OmniPath evidences downloads: the table has no sign columns (decision 9.70)", file=sys.stderr)
     species_summary, labels = None, None
     if arguments.species.is_file():
         species = read_species(arguments.species)
@@ -93,7 +121,7 @@ def main() -> int:
     gated, probability, strength = edge_priors(evidence, read_edge_tiers(arguments.tiers))
     edges_sha256 = hashlib.sha256((arguments.graph_dir / "edges.parquet").read_bytes()).hexdigest()
     summary = {"graph_dir": str(arguments.graph_dir), "edges_sha256": edges_sha256, "tiers": str(arguments.tiers), **summarise(evidence, gated, probability, strength),
-               "species": species_summary, "curated_edge_labels": labels}
+               "species": species_summary, "curated_edge_labels": labels, "sign_evidence": sign_summary}
     (arguments.graph_dir / "edge_evidence_summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {arguments.graph_dir / 'edge_evidence.parquet'}: {summary['gated']:,} of {summary['edges']:,} edges gated, {summary['contested']} contested"
           + ("" if labels is None else f"; {labels['labels']:,} curated edges are labels under decision 9.63 (b)"))
