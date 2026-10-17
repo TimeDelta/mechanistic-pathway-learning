@@ -65,7 +65,7 @@ def transport_connectivity(nodes: pd.DataFrame, edges: pd.DataFrame) -> tuple[di
     and through the Reactome entities those are members of, to MEMBERSHIP_DEPTH levels, since a Reactome transport
     reaction is catalysed by an entity rather than by a gene. Until 17 October 2026 only a gene node's own catalysis
     counted, which on a split graph, where catalysis leaves the protein, found no transporter connected at all."""
-    is_transport = dict(zip(nodes.node_id, nodes.is_transport.fillna(False).astype(bool)))
+    is_transport = dict(zip(nodes.node_id, nodes.is_transport.astype("boolean").fillna(False).astype(bool)))
     display = dict(zip(nodes.node_id, nodes.display_name))
     reaction_metabolites: dict[str, set[str]] = defaultdict(set)
     proteins_of_gene: dict[str, list[str]] = defaultdict(list)
