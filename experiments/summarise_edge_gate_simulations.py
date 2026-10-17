@@ -58,7 +58,8 @@ KEPT_KEYS = ("world", "fit", "fit_by_tier", "held_out_loss", "closures_by_eviden
 # compare the trainer's defaults with what was tested; a run made before a setting existed lacks it
 SETTING_KEYS = ("world_seed", "nodes", "mean_in_degree", "perturbations", "symptoms", "nodes_per_symptom", "held_out_share", "label_bias", "truth_real_probability",
                 "label_sensitivity", "ungated_tiers", "joint", "joint_start", "joint_readout", "beta", "batch_size", "gate_learning_rate", "learning_rate",
-                "stochastic_epochs", "binary_epochs", "binary_learning_rate", "binary_full_batch", "surrogate_width", "flip_checks", "closure_evidence",
+                "stochastic_epochs", "binary_epochs", "binary_learning_rate", "binary_learning_rate_decay", "binary_full_batch", "surrogate_width", "flip_checks",
+                "closure_evidence",
                 "estimator_diagnostic", "stability_refits", "stability_scheme", "weight_decay", "patience", "joint_validation_share")
 
 

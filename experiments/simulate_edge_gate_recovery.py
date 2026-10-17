@@ -241,6 +241,8 @@ def fit(world: World, train_rows: np.ndarray, arguments, seed: int) -> dict:
             for rows in batches_of(train_rows, arguments.batch_size, generator):
                 flipped += binary_pass_step(encoder, gates, data_loss, rows, penalty_denominator, binary_optimizer, arguments.surrogate_width)["flipped"]
         history.append({"phase": "binary", "epoch": epoch, "flips": flipped, "closed_at_read_out": int((gates.read_out() < 0.5).sum())})
+        for group in binary_optimizer.param_groups:  # 1 keeps the rate; below 1 anneals it, so gates near the threshold stop crossing it
+            group["lr"] *= arguments.binary_learning_rate_decay
     diagnostic = None
     if arguments.estimator_diagnostic:  # the first-order estimate against the exact change, on random edges
         diagnostic = estimator_quality(encoder, gates, data_loss, batches_of(train_rows, arguments.batch_size), penalty_denominator,
@@ -330,6 +332,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gate-learning-rate", type=float, default=0.05)
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument("--binary-learning-rate", type=float, default=0.1)
+    parser.add_argument("--binary-learning-rate-decay", type=float, default=1.0,
+                        help="the binary pass's learning rate is multiplied by this after each epoch (1 keeps it; the batch of 16 October used 1)")
     parser.add_argument("--surrogate-width", type=float, default=DEFAULT_SURROGATE_WIDTH)
     parser.add_argument("--stochastic-epochs", type=int, default=20)
     parser.add_argument("--binary-epochs", type=int, default=8)

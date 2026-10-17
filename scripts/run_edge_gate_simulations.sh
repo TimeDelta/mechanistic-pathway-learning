@@ -27,6 +27,11 @@ RUN[b2_realratio]="--world-seed 0 $binary --nodes 2000 --symptoms 20 --label-bia
 for seed in 0 1 2 3 4; do
   RUN[b3_s${seed}_curated_fixed]="--world-seed $seed $binary --ungated-tiers curated $detail"
 done
+# batch 4 (17 October 2026): does the binary pass settle with more epochs, or with its learning rate annealed?
+for seed in 0 1 2 3 4; do
+  RUN[b4_s${seed}_epochs32]="--world-seed $seed $binary --binary-epochs 32 $detail"
+  RUN[b4_s${seed}_epochs32_decay08]="--world-seed $seed $binary --binary-epochs 32 --binary-learning-rate-decay 0.8 $detail"
+done
 RUN[b2_s0_nochecks]="--world-seed 0 --binary-full-batch --flip-checks 0 --closure-evidence"
 for width in 0.25 0.5 1; do
   RUN[b2_s0_width${width/./}]="--world-seed 0 $binary --closure-evidence --surrogate-width $width"
