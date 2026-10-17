@@ -280,8 +280,8 @@
   },
   "docs/figures.md": {
    "class": "living",
-   "reviewed": "2026-10-09",
-   "as_of_commit": "821cef5"
+   "reviewed": "2026-10-16",
+   "as_of_commit": "08bdffd"
   },
   "docs/fold_mechanism_sharing.md": {
    "class": "generated",

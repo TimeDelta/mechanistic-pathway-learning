@@ -1,54 +1,62 @@
-# Explanatory figures (updated 9 October 2026)
+# Explanatory figures (updated 16 October 2026)
 
 Drawn by experiments/make_explanatory_figures.py from the repository's own outputs (graph tables, summaries and run
-results), so each figure can be regenerated after the inputs change. Every result shown is from the monogenic slice,
-which is a pilot (docs/preregistration.md, amendment of 7 October); no full-graph model has been scored. No figure
-reads a second-family (confirmatory_v2) development score or a lockbox output.
+results), so each figure can be regenerated after the inputs change; a figure whose inputs are absent is skipped with a
+message and keeps its last drawing. Figures 1 to 3 and 7 to 12 read the v5 tables and the graph the registered model
+reads with them, `graph_full_neuronal_split_binders_drugs_v5`. Figures 5 and 6 are the monogenic slice pilot's, drawn
+from its runs of 8 October 2026, and are unchanged since. No figure reads a lockbox output, and no full-graph model has
+been scored.
 
 ## 1. The model
 
 ![model pipeline](figures/model_pipeline.png)
 
-The two tested models of the second family (docs/confirmatory_runbook.md): the noisy-OR head on each of the two
-encoders. The user dropped the sigmoid head on 8 October 2026; it remains in the slice comparisons only. A perturbation
-(a gene's loss or gain of function, or a drug's signed effect at its targets) enters as a sustained input at its nodes
-in graph_full_neuronal_split_binders, the graph that separates genes from proteins (figure 7) and carries the plasma
-carriage edges (figure 8), which is what the two tested configurations read (docs/preregistration.md, amendments of
-9 October 2026, first and fourth). The message-passing encoder runs 3 layers of typed messages from node states built
-from the structural features and descriptors, one more than on a merged graph because a perturbed gene node reaches its
-protein one hop later. The linear-response encoder propagates the input for 8 steps over the signed,
-normalised adjacency of each relation, with a learned gain per relation and channel and one channel per cell class
-(11 classes and all cells); extracellular pools are shared across classes. Both read the difference field (perturbed
-minus unperturbed). A sum over nodes feeds a noisy-OR over pathway modules whose leaks start at their loss-optimal
-constants. Labels follow better_v2 (figure 3), folds are grouped by disease cluster and drug targets, lockbox_v2 is held
-out, the early-stopping validation set rotates with the seed and each model is refitted on training and validation
-together. Node and edge counts are computed from the graph tables when the figure is drawn.
+The registered model (the v4 flags of `experiments/run_main_model_batch.py`, which the trainer's defaults equal; the
+owner, 13 October 2026: "all of the v4 stuff should be ON by default") with a noisy-OR head on each of the two
+encoders, on the v5 tables. A perturbation is an allele of a gene or a drug. Since decision 9.54 a gene's loss of
+function and its gains are separate perturbations: a loss of function or an untyped allele seeds -1 at the gene, a
+hypermorphic gain +1, and HTT's CAG expansion is a node of its own with four cited edges (figure 11). A drug is a node
+of its own, joined to its targets by its ChEMBL mechanism edges, with an ablation arm that seeds the targets instead
+(the user, 10 October 2026). The message-passing encoder runs 3 layers of typed messages with the relations shared
+through a rank-2 factorisation. The linear-response encoder propagates to a fixed point (tolerance 0.001, at most 60
+rounds) over the signed adjacency of each relation normalised by total in-degree, with a learned gain per relation,
+positive input weights, cofactor relations, reversible reactions and compartment pH; each cell class reads the settled
+state scaled by its limiting step (figure 2). Both read the difference field. The node descriptors are read under the
+registered seed masking, so a perturbation's own nodes, their encodes partners and a drug node's targets read only
+their structural and expression columns. Labels are better_v2 on the 38 fine constructs (figure 3); trial arms, FAERS
+and IMPC knockouts enter the reliability fit as soft classes and never as labels (decision 9.48). Folds are grouped by
+disease cluster and drug targets; the held-out set on v5 is drawn on the owner's go-ahead (decision 1.1). The edge
+priors of decision 9.57 are built and off in the registered model; the hard gates of decision 9.62 are being built
+(figure 12). Every count is read from the graph and the summaries when the figure is drawn.
 
 ## 2. Cell-class channels
 
 ![cell-class channels](figures/cell_class_channels.png)
 
-How cell types enter propagation without copying the graph. Each class has its own channel over the same edges, and
-in class k every node's response is multiplied by the node's weight in that class at each step. On a six-node chain
-with equal gains, class B does not express reaction R1, so a loss of function at gene G stays at G in class B's
-channel. Marking product P as a shared extracellular pool makes P hold the mean of the two classes, and the change
-made in class A then reaches R2 and Q in class B at half its size. The values are computed by LinearResponseEncoder
-itself, untrained. The weights are a node's expression relative to its highest class, x_k / (max_j x_j + 1 nCPM)
-(mechanistic_pathway_learning/graph/brain_expression_weights.py). Both linear-response configurations of each family
-use these channels with extracellular coupling (--cell-class-weights, --extracellular-coupling); the first family's
-fold-0 development pilots ran with them.
+How cell types enter without copying the graph, under the two rules the encoder has. On a six-node chain with equal
+gains, class B does not express reaction R1, and R2 and Q are at half their highest class in both classes. Under the
+product rule, which every run before 13 October 2026 used, a node's weight multiplies what arrives at it on every
+round, so a route is charged the product of its weights and Q, behind R2 at 0.5 and itself at 0.5, is cut by both
+(-0.0018). Under the limiting step, the registered rule (the owner, 13 October 2026: "min along the path makes WAY more
+sense to me. do that so it aligns with the physiology"), the propagation runs unweighted to its fixed point and each
+node's state is scaled once by b, the weakest weight on its widest route from the seed, so Q is limited by 0.5 once
+(-0.0039). Class B, which lacks R1, gets nothing past it under either rule. Marking P as a shared extracellular pool
+makes b at P the largest over the pooled classes, so class B's R2 and Q receive what class A makes. The values are
+computed by LinearResponseEncoder itself, untrained. The weights are a node's expression relative to its highest
+class, x_k / (max_j x_j + 1 nCPM) (mechanistic_pathway_learning/graph/brain_expression_weights.py).
 
 ## 3. Better (not more) training examples
 
 ![label selection](figures/label_selection.png)
 
-The better_v2 selection of the tested models, on evidence_full_v2. Gene pairs are kept at HPO frequency 0.30 or more;
-drug pairs at label frequency 1 percent or more or when both SIDER and OnSIDES list them. 2,211 of 4,439 positive pairs
-are kept. A pair set aside is masked out of the loss and every metric; it is not a negative. better_v2 keeps
-better_v1's positive rows and also masks the pairs whose only evidence is grade C (a human association): 777 in the
-whole evidence table, 172 of them in the data the trainer loads (preregistration, amendment of 8 October). Before,
-those pairs were negatives in scoring and weak negatives in training. Catatonia keeps no pair and psychomotor
-retardation keeps 1, so both leave the macro average (5 positives are needed).
+The better_v2 selection on the v5 tables: 38 fine constructs (decision 9.58) and the allele perturbations (decision
+9.54). Gene pairs are kept at HPO frequency 0.30 or more; drug pairs at label frequency 1 percent or more or when both
+SIDER and OnSIDES list them. 4,448 of 8,123 positive pairs are kept. A pair set aside is masked out of the loss and
+every metric; it is not a negative. Also masked are the pairs whose only evidence is grade C (a human association) and
+the kept drug pairs never more frequent on the drug than on placebo in a label that gives both arms (70 on v5).
+Intellectual disability is the largest construct by far, 1,243 kept pairs (decision 9.61 is about it). Anhedonia,
+abulia, pill-rolling tremor, bulimia, catatonia and psychomotor retardation keep fewer than the 5 positives the macro
+average needs.
 
 ## 4. The dopaminergic class
 
@@ -99,13 +107,6 @@ Knockouts seed gene nodes, drugs seed protein nodes and transcription edges end 
 expression columns and protein nodes the protein descriptors. Counts are read from split_summary.json when the figure
 is drawn.
 
-## How they are drawn
-
-Every figure is saved at 240 dpi (150 until 9 October 2026, which left the dense pipeline figure soft). Figure 1 is
-laid out in inches: each box is sized from its own measured title and body, the two rows share one left and right
-edge with the slack spread into the gaps, and the step from the encoder to the node properties is routed through the
-gutter between the rows. It was one diagonal across the whole figure until 9 October 2026, which read as an error.
-
 ## 8. Plasma carriage
 
 ![plasma carriage](figures/plasma_carriage.png)
@@ -121,3 +122,54 @@ in the graph; the right panel counts the edges of each binder and names its carg
 edge each, progesterone, and not because the rest was missed: its cargo is basic drugs, which this graph has no node
 for, so it enters through the fraction unbound of stage 2 (docs/plasma_protein_binding.md) rather than through these
 edges.
+
+## 9. The cell state the model carries
+
+![cell state](figures/cell_state.png)
+
+What a node's state is and which parts of it travel: the response propagates along edges to a fixed point, while the
+cell-class expression, the limiting step and the compartment pH cap throughput and do not propagate. The right panel
+counts, on the v5 graph, the reaction edges at the nodes of each piece of cell state whose effect is computed and not
+passed on (the currency copies) against those whose effect propagates. `docs/cell_state_representation.md` carries
+the argument.
+
+## 10. The graph
+
+![graph composition](figures/graph_composition.png)
+
+`graph_full_neuronal_split_binders_drugs_v5`: 49,797 nodes in eight types and 268,958 edges in 22 relations, by sign,
+and the same edges by the source layer they come from (OmniPath signalling, Human-GEM metabolism, CollecTRI
+transcription, the gene-to-protein split, Reactome complexes and sets, BRENDA enzyme regulation, the drug mechanism and
+sequestration edges, the electrical edges, the curated neuronal and redox edges, plasma carriage and the allele's
+edges). `docs/graph_summary.md` gives the same counts as tables.
+
+## 11. Alleles as perturbations
+
+![allele perturbations](figures/allele_perturbations.png)
+
+Decision 9.54 (d), built 16 October 2026 (`docs/allele_perturbations.md`). Left: HTT's recessive allele (OMIM:617435)
+is the perturbation HTT, seeded -1 at the gene; Huntington disease is the perturbation of the CAG expansion, seeded on
+its own node, whose four edges each carry a PubMed id and a quote; both are in one leakage group. Right: the 4,537
+(gene, disease) pairs behind the monogenic reports, by the step that typed each one's mechanism, in order: Orphanet's
+own type, the same disease's other record, a narrower Orphanet form, Gene2Phenotype, an adjudication from the primary
+paper; 3 pairs whose sources disagree and 2,760 that no source types stay untyped and keep -1.
+
+## 12. Edge priors and hard gates
+
+![edge priors](figures/edge_priors.png)
+
+Left: the 163,276 gated edges of the v5 graph by evidence tier, with the prior that each is real in the form decided on
+16 October 2026, sigmoid(n logit p), and the cost of closing it, n logit p nats (decision 9.62). Only the 15 edges an
+IntAct absence lowered below one half are cheaper closed. Right: a hard concrete gate (Louizos et al. 2018) started at
+its prior is mostly fractional, and the paper's test-time gate reads a 0.9 edge as 0.67; that is why the decided build
+ends with a binary pass, which trains the gates alone with the read-out (open when P(open) is at least one half) in the
+forward pass and a surrogate gradient in the backward pass.
+
+## How they are drawn
+
+Every figure is saved at 240 dpi (150 until 9 October 2026, which left the dense pipeline figure soft). Figure 1 is
+laid out in inches: each box is sized from its own measured title and body, the two rows share one left and right
+edge with the slack spread into the gaps, and the step from the encoder to the node properties is routed through the
+gutter between the rows. It was one diagonal across the whole figure until 9 October 2026, which read as an error.
+Figure 2's toy and its numbers are computed by the encoder each time the figure is drawn, so a change to the encoder
+shows in the figure.
