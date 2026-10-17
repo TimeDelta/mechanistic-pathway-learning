@@ -63,7 +63,7 @@ def test_the_edge_prior_is_off_by_default_and_registered_as_absent_before_it_exi
     assert VALUES_BEFORE_THE_V4_DEFAULTS["edge_prior_strength"] == 0.0 and VALUES_BEFORE_THE_V4_DEFAULTS["permute_edge_priors"] is False
     assert EDGE_PRIOR_SETTINGS == {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate",
                                    "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
-                                   "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks",
+                                   "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks", "edge_gate_binary_learning_rate_decay",
                                    "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records"}
     assert arguments.curated_edge_labels is True and arguments.curated_label_minimum_records == 2 and arguments.curated_label_minimum_human_records == 1
     assert arguments.edge_gate_closure_evidence == 20, "the exact evidence for the 20 closures against the strongest priors; every closure gets the estimate"
@@ -302,6 +302,21 @@ def test_end_to_end_hard_gates_train_run_the_binary_pass_and_save_the_scored_rea
         evaluation = evaluate_fold(run["directory"], swaps_per_edge=2, rewiring_seed=0, data_cache={})
         assert evaluation["reproduced"], (encoder, evaluation["reproduction_max_abs_difference"])
 
+
+
+def test_the_binary_pass_anneals_its_learning_rate_when_asked_and_keeps_it_by_default(tmp_path):
+    """--edge-gate-binary-learning-rate-decay multiplies the binary pass's rate after each epoch, as the simulations'
+    --binary-learning-rate-decay does (batch 4 of docs/edge_gate_simulation.md: 0.8 settled the pass in every world);
+    the default 1 keeps the rate the trainer has always used."""
+    paths = write_toy_dataset(tmp_path)
+    write_edge_evidence(paths["graph"])
+    common = ("--encoder", "linear_response", "--edge-prior-strength", "1.0", "--edge-gate-learning-rate", "0.05", "--edge-gate-binary-epochs", "3",
+              "--edge-gate-flip-checks", "0", "--edge-gate-closure-evidence", "0", "--edge-gate-binary-learning-rate", "0.1")
+    annealed = run_trainer(paths, tmp_path / "annealed", *common, "--edge-gate-binary-learning-rate-decay", "0.5")["results"]["edge_priors"]["binary_pass"]
+    assert annealed["learning_rate_decay"] == 0.5
+    assert [round(epoch["learning_rate"], 6) for epoch in annealed["history"]] == [0.1, 0.05, 0.025]
+    kept = run_trainer(paths, tmp_path / "kept", *common)["results"]["edge_priors"]["binary_pass"]
+    assert kept["learning_rate_decay"] == 1.0 and [round(epoch["learning_rate"], 6) for epoch in kept["history"]] == [0.1, 0.1, 0.1]
 
 
 def test_the_timing_mode_runs_with_hard_gates(tmp_path):

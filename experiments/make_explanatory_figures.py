@@ -1259,6 +1259,8 @@ CONDITION_ROWS = (  # (label, runs pooled)
     ("calibrated priors, true parameters\n(5 worlds pooled)", CALIBRATED_WORLDS),
     ("calibrated priors, true parameters\n(world 0 alone)", ("b3_s0",)),
     ("without the binary pass and the\nflip checks (5 worlds pooled)", tuple(f"b3_s{seed}_nobinary" for seed in range(5))),
+    ("32 binary epochs at a constant\nrate (5 worlds pooled; batch 4)", tuple(f"b4_s{seed}_epochs32" for seed in range(5))),
+    ("32 binary epochs, rate x 0.8 each\n(5 worlds pooled; batch 4)", tuple(f"b4_s{seed}_epochs32_decay08" for seed in range(5))),
     ("curated edges taken as known, no\ngate (5 worlds pooled; 9.63)", tuple(f"b3_s{seed}_curated_fixed" for seed in range(5))),
     ("3,000 perturbations (world 0)", ("b3_s0_p3000",)),
     ("priors too optimistic: fewer edges\nreal than π says (world 0)", ("b3_s0_optimistic_priors",)),

@@ -223,7 +223,9 @@ against 6.5 percent and a held-out share of +0.87 against −1.20. Priors that o
 most closures wrong (precision 0.30; 33 of 47 closed a real edge). The joint fits, which learn the encoder and the
 readout with the gates, closed 9 to 35 edges and predicted the held-out labels worse than leaving every edge open.
 Taking curated edges as known (decision 9.63) removed the 11 curated closures and changed nothing measurable in the
-other tiers. At v5's ratio of positive labels to gated edges (0.05, an upper bound for one fold) the read-out closed
+other tiers. Two rows from batch 4 run the binary pass for 32 epochs, at a constant rate and with the rate times 0.8 an
+epoch: the annealed pass stops flipping in every world, and neither row recovers more than the 8-epoch pass (pooled
+precision 0.641, 0.641 and 0.647). At v5's ratio of positive labels to gated edges (0.05, an upper bound for one fold) the read-out closed
 0.2 percent of the edges, and its 5 closures with at least 1 nat of evidence were 4 false edges and 1 real one.
 
 ## How they are drawn

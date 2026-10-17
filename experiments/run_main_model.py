@@ -495,7 +495,7 @@ SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_c
 # recorded whatever the strength, so a run without edge priors resumed under them reported changes that were not
 EDGE_PRIOR_SETTINGS = {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate",
                        "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
-                       "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks",
+                       "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks", "edge_gate_binary_learning_rate_decay",
                        "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records"}
 EDGE_EVIDENCE_FILE = "edge_evidence.parquet"  # experiments/build_edge_evidence.py writes it beside the graph's edges.parquet
 EDGE_GATED_ENCODERS: tuple[str, ...] = ("linear_response", "message_passing")
@@ -802,6 +802,7 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
     started = time.time()
     closed_before = int((gates.read_out() < 0.5).sum())
     optimizer = torch.optim.Adam([gates.log_alpha], lr=arguments.edge_gate_binary_learning_rate)
+    learning_rate_decay = float(getattr(arguments, "edge_gate_binary_learning_rate_decay", 1.0))  # absent from a run recorded before 17 October 2026
     history = []
     try:
         for epoch in range(arguments.edge_gate_binary_epochs):
@@ -811,8 +812,11 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
             else:
                 for batch in batches:
                     flips += binary_pass_step(encoder, gates, data_loss, batch, edge_penalty_denominator, optimizer, arguments.edge_gate_surrogate_width)["flipped"]
-            history.append({"epoch": epoch, "flips": flips, "closed_at_read_out": int((gates.read_out() < 0.5).sum()), "elapsed_seconds": time.time() - started})
+            history.append({"epoch": epoch, "flips": flips, "closed_at_read_out": int((gates.read_out() < 0.5).sum()), "elapsed_seconds": time.time() - started,
+                            "learning_rate": optimizer.param_groups[0]["lr"]})
             print(f"edge-gate binary pass epoch {epoch}: {flips} flips, {history[-1]['closed_at_read_out']} closed", flush=True)
+            for group in optimizer.param_groups:  # 1 keeps the rate; below 1 anneals it, so gates near the threshold stop crossing it
+                group["lr"] *= learning_rate_decay
         checks = None
         if arguments.edge_gate_flip_checks > 0:
             checks = exact_flip_checks(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_flip_checks, arguments.edge_gate_surrogate_width)
@@ -829,7 +833,7 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
         for parameter in frozen:
             parameter.requires_grad_(True)
     return {"fit_rows": int(len(fit_rows)), "epochs": arguments.edge_gate_binary_epochs, "learning_rate": arguments.edge_gate_binary_learning_rate,
-            "surrogate_width": arguments.edge_gate_surrogate_width, "full_batch": bool(arguments.edge_gate_binary_full_batch),
+            "learning_rate_decay": learning_rate_decay, "surrogate_width": arguments.edge_gate_surrogate_width, "full_batch": bool(arguments.edge_gate_binary_full_batch),
             "closed_before": closed_before, "closed_after": int((gates.read_out() < 0.5).sum()), "history": history, "flip_checks": checks,
             "closure_evidence": evidence, "closed_edges": closed_edges, "seconds": time.time() - started}
 
@@ -1812,8 +1816,15 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--edge-gate-binary-epochs", type=int, default=8,
                         help="hard gates: epochs of the binary pass after the fit, over the gates alone, with the read-out in the forward pass and the flips' "
                              "estimated effect as the proxy gradient (models/edge_gate_passes.py); 8 is the setting the simulations of "
-                             "docs/edge_gate_simulation.md tested (the pass had not settled by then: 2 to 5 flips in its last epoch); 0 skips it")
+                             "docs/edge_gate_simulation.md tested (the pass had not settled by then: 2 to 5 flips in its last epoch, and 32 epochs at a "
+                             "constant rate did not settle it either); 0 skips it")
     parser.add_argument("--edge-gate-binary-learning-rate", type=float, default=0.1, help="hard gates: the binary pass's learning rate on the gates' logits")
+    parser.add_argument("--edge-gate-binary-learning-rate-decay", type=float, default=1.0,
+                        help="hard gates: the binary pass's learning rate is multiplied by this after each epoch; 1 keeps it, the setting the trainer has "
+                             "always had. In the simulations (docs/edge_gate_simulation.md, batch 4 of 17 October 2026) 0.8 over 32 epochs settled the "
+                             "pass to no flips in all five worlds, while a constant rate left 2 to 9 flips an epoch; the closures' mean precision (0.637, "
+                             "against 0.636 at a constant rate and 0.633 at 8 epochs) and the held-out loss (within 0.0006 nats in every world) barely "
+                             "moved. A settled pass makes the closed set independent of the epoch it stops at")
     parser.add_argument("--edge-gate-surrogate-width", type=float, default=DEFAULT_SURROGATE_WIDTH,
                         help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
     parser.add_argument("--edge-gate-binary-full-batch", action=argparse.BooleanOptionalAction, default=True,

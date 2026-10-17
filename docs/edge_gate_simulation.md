@@ -204,3 +204,44 @@ is the same for a run that gates every edge; cf57d4b moved the closure evidence 
 with the same output). The `b3_s*_curated_fixed` runs were made at commits 684b6c2, which added `--ungated-tiers`,
 and cf57d4b. The runs named `b2_` are from commit f6d7b0d; `b2_s0_width05` gave the same read-out and held-out losses
 as `b3_s0`.
+
+## Addition, 17 October 2026: batch 4, whether the binary pass settles
+
+Section 6 lists "a binary pass that had not settled" among the limits: at 8 epochs and a constant learning rate the
+pass still flipped 2 to 5 gates in its last epoch (1 to 8 over its last four), so the closed set depended on the epoch
+it stopped at. Batch 4
+repeated the five calibrated worlds of section 3 with 32 binary epochs, once at the constant rate of 0.1 and once with
+the rate multiplied by 0.8 after each epoch (`--binary-learning-rate-decay 0.8`), everything else as in `b3_s*`.
+
+| world | flips in the last four epochs: 8, constant (`b3`) | 32, constant | 32, x 0.8 | precision after the checks: 8, constant | 32, constant | 32, x 0.8 | held-out loss of the fitted graph: 8, constant | 32, x 0.8 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 3, 1, 8, 5 | 2, 5, 6, 3 | 0, 0, 0, 0 | 0.585 | 0.596 | 0.604 | 0.55071 | 0.55073 |
+| 1 | 2, 2, 6, 3 | 4, 4, 3, 5 | 0, 0, 0, 0 | 0.694 | 0.667 | 0.686 | 0.56256 | 0.56316 |
+| 2 | 3, 4, 3, 3 | 3, 5, 4, 8 | 0, 0, 0, 0 | 0.628 | 0.628 | 0.628 | 0.56170 | 0.56170 |
+| 3 | 5, 4, 6, 3 | 7, 8, 7, 9 | 0, 0, 0, 0 | 0.689 | 0.683 | 0.698 | 0.56796 | 0.56788 |
+| 4 | 4, 4, 2, 2 | 6, 3, 3, 4 | 1, 0, 0, 0 | 0.571 | 0.607 | 0.571 | 0.54311 | 0.54311 |
+
+What it shows.
+
+- **More epochs alone do not settle the pass; the annealed rate does.** At a constant rate the 32-epoch pass flipped 2
+  to 9 gates in each of its last four epochs in every world; with the rate times 0.8 an epoch it flipped none in the
+  last three epochs of every world. That is what a step-size effect would give: gates near the threshold cross it back
+  and forth while the step stays the same size.
+- **Settling did not change what is recovered.** Pooled over the five worlds the closures' precision was 0.641 at 8
+  epochs (150 of 234 closed edges false), 0.641 at 32 constant (152 of 237) and 0.647 annealed (154 of 238); the
+  closures with at least 1 nat of exact evidence 0.91, 0.90 and 0.91; and the held-out loss of the fitted graph moved
+  by at most 0.0006 nats in any world (world 1, annealed against 8 epochs). Figure 16 has both conditions as rows.
+- **A settled pass is not a local optimum under single flips.** After the annealed pass the exact flip checks still
+  accepted 2 to 6 of 16 to 30 candidate flips per world (6 of 27 in world 0). The pass follows the first-order
+  estimate, whose correlation with the exact change is weak among the largest promised changes (section 3), so where
+  it stops is where the estimate stops promising improvement, not where the objective does.
+
+For the trainer. `run_main_model.py` takes the option as `--edge-gate-binary-learning-rate-decay`, default 1 (the
+rate it has always kept); its help text gives these results. Put to the owner (decision 9.62): 0.8 over 32 epochs
+as the default, which makes the closed set independent of the epoch the pass stops at at no measured cost to
+recovery, against the present 8 epochs at a constant rate. The pass's cost scales with its epochs: on v5 each binary
+epoch costs about a training epoch with the limiting-step cache rebuilt (`docs/data_layer_rebuild.md`).
+
+Reproduction. The `b4_` runs were made on 17 October 2026 between 04:05 and 04:30 UTC at commit a1af139, which added
+the decay option, and 2e5d7de, which added a function to `models/edge_gate_passes.py` that the simulation does not
+call. `bash scripts/run_edge_gate_simulations.sh --list` gives their commands.

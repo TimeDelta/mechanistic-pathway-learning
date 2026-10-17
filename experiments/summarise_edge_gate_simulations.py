@@ -52,6 +52,9 @@ RUNS = {
     "b2_s0_nochecks": ("no_flip_checks", "world 0 with the binary pass but without the flip checks (batch 2)"),
     **{f"b2_s0_width{label}": ("surrogate_width", f"world 0 with the binary pass's surrogate width {width} (batch 2)")
        for label, width in (("025", "0.25"), ("05", "0.5"), ("1", "1"))},
+    **{f"b4_s{seed}_epochs32": ("binary_epochs_32", f"world {seed} with 32 binary epochs at a constant rate (batch 4)") for seed in range(5)},
+    **{f"b4_s{seed}_epochs32_decay08": ("binary_epochs_32_annealed", f"world {seed} with 32 binary epochs, the rate times 0.8 after each (batch 4)")
+       for seed in range(5)},
 }
 KEPT_KEYS = ("world", "fit", "fit_by_tier", "held_out_loss", "closures_by_evidence", "flip_checks", "stability", "seconds")
 # the settings kept per run: enough to rebuild its command line (tests/test_edge_gate_simulation.py checks the runner against them) and to

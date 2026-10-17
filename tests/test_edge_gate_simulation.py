@@ -130,6 +130,7 @@ def test_the_trainer_takes_the_settings_the_simulations_tested():
     trainer = build_trainer_parser().parse_args([])
     assert trainer.edge_gate_binary_epochs == tested["binary_epochs"]
     assert trainer.edge_gate_binary_learning_rate == tested["binary_learning_rate"]
+    assert trainer.edge_gate_binary_learning_rate_decay == tested.get("binary_learning_rate_decay", 1.0), "a run before the option kept the rate"
     assert trainer.edge_gate_surrogate_width == tested["surrogate_width"]
     assert trainer.edge_gate_binary_full_batch == tested["binary_full_batch"]
     assert trainer.edge_gate_beta == pytest.approx(tested["beta"])
