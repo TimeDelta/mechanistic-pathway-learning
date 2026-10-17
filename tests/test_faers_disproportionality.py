@@ -8,11 +8,14 @@ import math
 import pandas as pd
 import pytest
 
+from mechanistic_pathway_learning.evidence.comparison_statistics import STATISTIC_COLUMNS
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
+from mechanistic_pathway_learning.evidence.faers_disproportionality import COMPARISON_COLUMNS as FAERS_COMPARISON_COLUMNS
 from mechanistic_pathway_learning.evidence.faers_disproportionality import (
     EVIDENCE_CODE,
     SOURCE_NAME,
     Disproportionality,
+    build_comparisons,
     build_reports,
     disproportionalities,
     indicated_symptoms_by_drug,
@@ -88,7 +91,27 @@ def test_reports_carry_signals_and_absences_and_set_aside_the_indications():
     assert "PRR" in row["model_description"] and "400 of 10000 reports" in row["model_description"]
     assert row["rubric_log_sample_size"] == pytest.approx(math.log1p(10_000)) and row["evidence_date"] == "2026-10-16"
     assert "no exposure denominator" in row["limitations"] and "co-medication" in row["limitations"]
-    assert set(row) == set(REPORT_COLUMNS)
+    assert set(row) == set(REPORT_COLUMNS) | set(STATISTIC_COLUMNS)
+    # the comparison's own statistic beside the verdict (decision 9.48, option 3): 400 observed against 100 expected
+    assert row["statistic_name"] == "log_shrunk_observed_to_expected" and row["statistic_estimate"] == pytest.approx(math.log(400.5 / 100.5))
+    assert row["statistic_probability_of_excess"] > 0.999 and row["statistic_censored"] == ""
+
+
+def test_every_comparison_is_kept_with_its_statistic_and_an_unlisted_count_only_when_its_bound_says_something():
+    """build_comparisons (decision 9.48, option 3): the neither rows build_reports drops are kept with their statistic;
+    an indication is still set aside; an unlisted reaction enters, censored, only when its bound is below the count
+    expected, since a bound above it says nothing about the drug."""
+    reactions = {"INSOMNIA": 100}
+    background = {"INSOMNIA": 20_000, "SOMNOLENCE": 30_000, "DEPRESSION": 40_000}
+    rows = build_comparisons("examplone", PERTURBATION, reactions, 10_000, background, 2_000_000, TERMS, {"depressed_mood"}, unlisted_upper_bound=50)
+    by_symptom = {row["symptom"]: row for row in rows}
+    assert set(by_symptom) == {"insomnia", "somnolence_or_hypersomnia"}, "depression is the indication; nothing else is in the crosswalk"
+    assert by_symptom["insomnia"]["verdict"] is None and by_symptom["insomnia"]["expected"] == pytest.approx(100.0)
+    assert set(by_symptom["insomnia"]) == set(FAERS_COMPARISON_COLUMNS)
+    censored = by_symptom["somnolence_or_hypersomnia"]  # at most 50 against 150 expected
+    assert censored["statistic_censored"] == "upper_bound" and censored["statistic_upper_95"] < 0
+    above = build_comparisons("examplone", PERTURBATION, reactions, 10_000, background, 2_000_000, TERMS, set(), unlisted_upper_bound=500)
+    assert {row["symptom"] for row in above} == {"insomnia"}, "a bound of 500 against 150 and 200 expected says nothing"
 
 
 def test_a_reaction_that_is_neither_signal_nor_absence_is_counted_and_not_reported():

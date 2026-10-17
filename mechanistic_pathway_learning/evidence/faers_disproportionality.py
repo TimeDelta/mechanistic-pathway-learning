@@ -24,6 +24,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from mechanistic_pathway_learning.evidence.comparison_statistics import STATISTIC_COLUMNS, expected_count, shrunk_observed_to_expected
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 
 SOURCE_NAME = "FAERS-disproportionality"
@@ -86,6 +87,16 @@ class Disproportionality:
         if min(row1, row2, col1, col2) <= 0:
             return 0.0
         return n * (abs(a * d - b * c) - n / 2) ** 2 / (row1 * row2 * col1 * col2)
+
+    @property
+    def expected(self) -> float:
+        """Reports expected to carry the drug and the reaction together if the two were independent."""
+        return expected_count(self.drug_total, self.reaction_total, self.all_reports)
+
+    def statistic(self) -> dict:
+        """The comparison's own statistic (decision 9.48, option 3; evidence/comparison_statistics.py): the shrunk
+        observed-to-expected ratio, censored when the count is only an upper bound."""
+        return shrunk_observed_to_expected(self.with_drug, self.expected, censored=self.bounded)
 
     def classify(self, signal_prr: float = DEFAULT_SIGNAL_PRR, signal_chi_square: float = DEFAULT_SIGNAL_CHI_SQUARE,
                  signal_minimum_reports: int = DEFAULT_SIGNAL_MINIMUM_REPORTS,
@@ -166,8 +177,38 @@ def build_reports(drug_label: str, perturbation: dict, reaction_counts: dict[str
                             + ("; the reaction is not among the drug's listed top reactions, so its count is an upper bound" if item.bounded else "")),
             "perturbation_nodes": perturbation.get("perturbation_nodes", ""),
         })
+        row.update(item.statistic())
         rows.append(row)
     return rows, counts
+
+
+COMPARISON_COLUMNS = ("perturbation_id", "perturbation_type", "perturbation_label", "symptom", "relation", "evidence_class", "source", "source_record_id",
+                      "source_term_label", "observed", "expected", "drug_total", "reaction_total", "all_reports", "verdict", *STATISTIC_COLUMNS)
+
+
+def build_comparisons(drug_label: str, perturbation: dict, reaction_counts: dict[str, int], drug_total: int, background_counts: dict[str, int],
+                      all_reports: int, preferred_term_to_symptom: dict[str, str], indicated_symptoms: set[str], thresholds: dict | None = None,
+                      unlisted_upper_bound: int | None = None) -> list[dict]:
+    """Every comparison of one drug on a target symptom, whatever its verdict (COMPARISON_COLUMNS): the counts, the verdict
+    of the rule in use (1 a signal, 0 an absence, None neither) and the comparison's own statistic. A reaction the drug
+    is indicated for is left out, as build_reports leaves it out; a reaction known only as an unlisted upper bound
+    whose bound is not below the expected count says nothing about the drug and is left out too, since its statistic
+    would be an upper bound above every value of interest (decision 9.48: the statistic, not the verdict, is what the
+    calibrated reliability reads)."""
+    thresholds = thresholds or {}
+    rows = []
+    for item in disproportionalities(reaction_counts, drug_total, background_counts, all_reports, unlisted_upper_bound):
+        symptom = preferred_term_to_symptom.get(item.reaction.strip().lower())
+        if symptom is None or symptom in indicated_symptoms:
+            continue
+        if item.bounded and item.with_drug >= item.expected:
+            continue
+        rows.append({"perturbation_id": perturbation["perturbation_id"], "perturbation_type": "drug", "perturbation_label": perturbation["perturbation_label"],
+                     "symptom": symptom, "relation": "induces", "evidence_class": EVIDENCE_CLASS, "source": SOURCE_NAME,
+                     "source_record_id": f"openFDA:{drug_label}", "source_term_label": item.reaction, "observed": item.with_drug,
+                     "expected": item.expected, "drug_total": item.drug_total, "reaction_total": item.reaction_total, "all_reports": item.all_reports,
+                     "verdict": item.classify(**thresholds), **item.statistic()})
+    return rows
 
 
 def indicated_symptoms_by_drug(reports_path: Path) -> dict[str, set[str]]:

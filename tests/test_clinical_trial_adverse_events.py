@@ -10,11 +10,14 @@ import math
 import pandas as pd
 import pytest
 
+from mechanistic_pathway_learning.evidence.comparison_statistics import STATISTIC_COLUMNS
 from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import (
     ARM_COLUMNS,
     EVIDENCE_CODE,
     SOURCE_NAME,
+    build_comparisons,
     build_reports,
+    comparisons_to_dataframe,
     name_pattern,
     perturbations_from_reports,
     read_lowest_level_to_preferred_term,
@@ -25,6 +28,7 @@ from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import 
     symptom_of_term,
     term_comparisons,
 )
+from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import COMPARISON_COLUMNS as TRIAL_COMPARISON_COLUMNS
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 
 PERTURBATION = {"perturbation_id": "CID100000001", "perturbation_label": "examplone", "perturbation_nodes": "[[\"GENE:HTR2A\", -1.0, 1.0]]", "targets": "CHEMBL1:ANTAGONIST"}
@@ -153,11 +157,29 @@ def test_rows_become_a_table_with_the_report_schema_and_dtypes():
     trial = study("NCT8", [("EG0", "Examplone"), ("EG1", "Placebo")], [event("Insomnia", {"EG0": (10, 200), "EG1": (4, 200)})])
     rows, _ = build_reports([trial], "examplone", PERTURBATION, TERMS, {})
     table = rows_to_dataframe(rows)
-    assert list(table.columns) == [*REPORT_COLUMNS, *ARM_COLUMNS]
+    assert list(table.columns) == [*REPORT_COLUMNS, *ARM_COLUMNS, *STATISTIC_COLUMNS]
     assert str(table.report_value.dtype) == "int64" and str(table.frequency_denominator.dtype) == "Int64" and table.placebo_flag.dtype == bool
     assert str(table.drug_at_risk.dtype) == "Int64" and str(table.risk_difference_lower_95.dtype) == "float64"
     assert table.drug_affected.tolist() == [10] and table.placebo_at_risk.tolist() == [200] and table.risk_difference.iloc[0] == pytest.approx(0.03)
-    assert rows_to_dataframe([]).empty and list(rows_to_dataframe([]).columns) == [*REPORT_COLUMNS, *ARM_COLUMNS]
+    # each comparison's own statistic beside its verdict (decision 9.48, option 3): the log risk ratio, 10/200 against 4/200
+    assert table.statistic_name.tolist() == ["log_risk_ratio"] and table.statistic_estimate.iloc[0] == pytest.approx(math.log(2.5))
+    assert str(table.statistic_information.dtype) == "float64" and table.statistic_censored.tolist() == [""]
+    assert rows_to_dataframe([]).empty and list(rows_to_dataframe([]).columns) == [*REPORT_COLUMNS, *ARM_COLUMNS, *STATISTIC_COLUMNS]
+
+
+def test_every_arm_comparison_is_kept_with_its_statistic_and_the_verdict_of_the_rule_in_use():
+    """build_comparisons keeps what build_reports leaves out for lack of exposure (decision 9.48, option 3): the
+    calibrated reliability reads the statistic, not the verdict."""
+    trial = study("NCT8c", [("EG0", "Examplone"), ("EG1", "Placebo")],
+                  [event("Insomnia", {"EG0": (10, 200), "EG1": (4, 200)}), event("Somnolence", {"EG0": (1, 60), "EG1": (2, 60)})])
+    rows, counts = build_reports([trial], "examplone", PERTURBATION, TERMS, {})
+    comparisons = comparisons_to_dataframe(build_comparisons([trial], "examplone", PERTURBATION, TERMS, {}), TRIAL_COMPARISON_COLUMNS)
+    assert len(rows) == 1 and counts["non_excess_below_exposure_floor"] == 1, "the report table keeps the verdict rule"
+    assert len(comparisons) == 2 and list(comparisons.columns) == list(TRIAL_COMPARISON_COLUMNS)
+    by_symptom = comparisons.set_index("symptom")
+    assert by_symptom.loc["insomnia", "verdict"] == 1 and pd.isna(by_symptom.loc["somnolence_or_hypersomnia", "verdict"])
+    assert by_symptom.loc["somnolence_or_hypersomnia", "statistic_estimate"] == pytest.approx(math.log(0.5))
+    assert 0 < by_symptom.loc["somnolence_or_hypersomnia", "statistic_probability_of_excess"] < 0.5
 
 
 def test_the_newcombe_interval_has_width_at_zero_events_and_excludes_zero_for_a_clear_excess():

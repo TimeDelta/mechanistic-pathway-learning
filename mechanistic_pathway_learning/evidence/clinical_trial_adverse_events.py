@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from mechanistic_pathway_learning.evidence.comparison_statistics import STATISTIC_COLUMNS, empty_statistic, log_risk_ratio
 from mechanistic_pathway_learning.evidence.evidence_reports import REPORT_COLUMNS
 
 SOURCE_NAME = "ClinicalTrials-arms"
@@ -284,8 +285,59 @@ def build_reports(studies: Iterable[dict], drug_name: str, perturbation: dict, p
             interval = comparison.risk_difference_interval
             if interval is not None:
                 row["risk_difference"], row["risk_difference_lower_95"], row["risk_difference_upper_95"] = interval
+            row.update(comparison_statistic(comparison))
             rows.append(row)
     return rows, counts
+
+
+def comparison_statistic(comparison: TermComparison) -> dict:
+    """The arm comparison's own statistic (decision 9.48, option 3): the log risk ratio, or empty when it is undefined."""
+    return log_risk_ratio(comparison.drug_affected, comparison.drug_at_risk, comparison.placebo_affected, comparison.placebo_at_risk) or empty_statistic()
+
+
+COMPARISON_COLUMNS = ("perturbation_id", "perturbation_type", "perturbation_label", "symptom", "relation", "evidence_class", "source", "source_record_id",
+                      "source_term_label", "seriousness", "drug_affected", "drug_at_risk", "placebo_affected", "placebo_at_risk", "verdict", *STATISTIC_COLUMNS)
+
+
+def build_comparisons(studies: Iterable[dict], drug_name: str, perturbation: dict, preferred_term_to_symptom: dict[str, str],
+                      lowest_to_preferred: dict[str, str], minimum_exposure_for_absence: int = DEFAULT_MINIMUM_EXPOSURE_FOR_ABSENCE,
+                      other_study_drugs: Iterable[str] = ()) -> list[dict]:
+    """Every arm comparison of one drug on a target symptom (COMPARISON_COLUMNS), the ones build_reports leaves out for
+    lack of exposure included: the counts, the verdict of the rule in use (1 an excess, 0 an absence at the exposure
+    floor, None a non-excess below it) and the comparison's own statistic (decision 9.48, option 3)."""
+    other_study_drugs = tuple(other_study_drugs)
+    rows = []
+    for study in studies:
+        selection = select_arms(study, drug_name, other_study_drugs)
+        if not selection.usable:
+            continue
+        for comparison in term_comparisons(study, selection):
+            symptom = symptom_of_term(comparison.term, preferred_term_to_symptom, lowest_to_preferred)
+            if symptom is None:
+                continue
+            excess = comparison.drug_rate > comparison.placebo_rate
+            verdict = 1 if excess else (0 if comparison.drug_at_risk >= minimum_exposure_for_absence else None)
+            rows.append({"perturbation_id": perturbation["perturbation_id"], "perturbation_type": "drug", "perturbation_label": perturbation["perturbation_label"],
+                         "symptom": symptom, "relation": "induces", "evidence_class": EVIDENCE_CLASS, "source": SOURCE_NAME, "source_record_id": comparison.nct_id,
+                         "source_term_label": comparison.term, "seriousness": comparison.seriousness, "drug_affected": comparison.drug_affected,
+                         "drug_at_risk": comparison.drug_at_risk, "placebo_affected": comparison.placebo_affected, "placebo_at_risk": comparison.placebo_at_risk,
+                         "verdict": verdict, **comparison_statistic(comparison)})
+    return rows
+
+
+def comparisons_to_dataframe(rows: list[dict], columns: tuple[str, ...]):
+    """Comparison rows as a table with the given columns, the statistic columns as floats and the verdict as a nullable
+    integer, empty-safe."""
+    import pandas as pd
+
+    table = pd.DataFrame(rows, columns=list(columns))
+    table["verdict"] = pd.array([None if value is None or (isinstance(value, float) and math.isnan(value)) else int(value) for value in table.verdict], dtype="Int64")
+    for column in STATISTIC_COLUMNS:
+        if column in ("statistic_name", "statistic_censored"):
+            table[column] = table[column].fillna("").astype(str)
+        else:
+            table[column] = pd.to_numeric(table[column], errors="coerce").astype("float64")
+    return table
 
 
 def perturbations_from_reports(reports_path: Path) -> dict[str, dict]:
@@ -306,8 +358,13 @@ def rows_to_dataframe(rows: list[dict]):
     """Report rows as a table with the columns of REPORT_COLUMNS and the dtypes of evidence_reports.parquet, empty-safe."""
     import pandas as pd
 
-    table = pd.DataFrame(rows, columns=[*REPORT_COLUMNS, *ARM_COLUMNS])
+    table = pd.DataFrame(rows, columns=[*REPORT_COLUMNS, *ARM_COLUMNS, *STATISTIC_COLUMNS])
     table["report_value"] = pd.to_numeric(table.report_value, errors="coerce").fillna(0).astype("int64")
+    for column in STATISTIC_COLUMNS:  # each comparison's own statistic (decision 9.48, option 3); empty for a row that states none
+        if column in ("statistic_name", "statistic_censored"):
+            table[column] = table[column].fillna("").astype(str)
+        else:
+            table[column] = pd.to_numeric(table[column], errors="coerce").astype("float64")
     for column in ARM_COLUMNS[:4]:
         table[column] = pd.array([None if value in ("", None) or (isinstance(value, float) and math.isnan(value)) else int(value) for value in table[column]], dtype="Int64")
     for column in ARM_COLUMNS[4:]:
