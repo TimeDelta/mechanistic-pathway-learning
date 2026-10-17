@@ -332,8 +332,9 @@ DEFAULT_BINDING_SITES_PATH = Path("configs/binding_sites.csv")
 
 def sign_of_rows(signs: list[float]) -> float:
     """One subunit's sign from its rows: a row that states no direction (0, "Binding") gives way to rows that state
-    one; rows of one direction give the value most of them state, a tie going to the smaller magnitude (dexmedetomidine
-    at ADRA2A: "Agonist" and "Partial agonist"); rows of opposite directions give MIXED_SIGNS."""
+    one; rows of one direction give the value most of them state; rows of opposite directions give MIXED_SIGNS. Rows
+    of one direction that tie between two magnitudes give NaN, which the narrowing settles with the ChEMBL target's own
+    sign (dexmedetomidine at ADRA2A: one "Agonist" row and one "Partial agonist" row, and ChEMBL's AGONIST)."""
     directed = [sign for sign in signs if sign != 0]
     if not directed:
         return 0.0
@@ -342,7 +343,9 @@ def sign_of_rows(signs: list[float]) -> float:
     counts: dict[float, int] = {}
     for sign in directed:
         counts[sign] = counts.get(sign, 0) + 1
-    return max(counts, key=lambda sign: (counts[sign], -abs(sign)))
+    most = max(counts.values())
+    leaders = [sign for sign, count in counts.items() if count == most]
+    return leaders[0] if len(leaders) == 1 else float("nan")
 
 
 def one_row_per_subunit(rows: pd.DataFrame, species: tuple[str, ...] = DEFAULT_NARROWING_SPECIES) -> pd.DataFrame:
@@ -455,7 +458,7 @@ class ComplexTargetNarrowing:
                 narrowed_targets.append(target)
                 continue
             one_row = pd.DataFrame([{"gene_symbols": "|".join(target.gene_symbols), "sign": target.sign}])
-            sign_of_gene, reason_of_gene = replace_complex_rows(one_row, usable, sites=sites)
+            sign_of_gene, reason_of_gene = replace_complex_rows(one_row, usable.assign(sign=usable.sign.astype(float).fillna(target.sign)), sites=sites)
             kept = [gene for gene in target.gene_symbols if reason_of_gene.get(gene) in (NARROWING_REASON, OBLIGATE_PARTNER_REASON)]
             if not kept:
                 forming = [gene for gene in target.gene_symbols if gene in site_subunits]

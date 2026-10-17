@@ -234,7 +234,19 @@ def test_a_cid_shared_with_a_radiolabelled_form_goes_to_the_parent_ligand():
 def test_rows_of_one_direction_give_the_sign_most_of_them_state():
     from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import MIXED_SIGNS, sign_of_rows
 
+    import math
+
     assert sign_of_rows([1.0, 0.5, 1.0]) == 1.0
-    assert sign_of_rows([1.0, 0.5]) == 0.5, "dexmedetomidine at ADRA2A: Agonist and Partial agonist, a tie goes to the smaller magnitude"
+    assert math.isnan(sign_of_rows([1.0, 0.5])), "a tie between magnitudes of one direction is left for the ChEMBL sign to settle"
     assert sign_of_rows([0.0, -1.0]) == -1.0, "a Binding row gives way to a row that states a direction"
     assert sign_of_rows([1.0, -1.0]) == MIXED_SIGNS == 0.0 and sign_of_rows([]) == 0.0
+
+
+def test_a_tie_between_a_subunit_s_rows_takes_the_chembl_target_s_sign(tmp_path):
+    rows = [interaction(21, "ADRA2A", "Agonist"), interaction(21, "ADRA2A", "Partial agonist"), interaction(21, "ADRA2C", "Agonist")]
+    directory = write_gtopdb(tmp_path / "gtopdb", rows, [{"Ligand id": 21, "Name": "dexmedetomidine", "PubChem CID": "5311068"}])
+    narrowing = ComplexTargetNarrowing.from_gtopdb(directory, binding_sites_path=None)
+    alpha2 = ["ADRA2A", "ADRA2B", "ADRA2C"]
+    agonist, _ = narrowing.narrow([DrugTarget("CHEMBL2095158", "AGONIST", alpha2)], pubchem_cid=5311068)
+    partial, _ = narrowing.narrow([DrugTarget("CHEMBL2095158", "PARTIAL AGONIST", alpha2)], pubchem_cid=5311068)
+    assert agonist[0].gene_signs == {"ADRA2A": 1.0, "ADRA2C": 1.0} and partial[0].gene_signs == {"ADRA2A": 0.5, "ADRA2C": 1.0}
