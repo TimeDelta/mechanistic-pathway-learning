@@ -307,3 +307,12 @@ array, 49,797 x 12 x 4 bytes = 2.4 MB, so the 1,702 training perturbations alone
 validation perturbations more, against the 7 GB this container has before the model's own memory; a full run of the
 registered linear-response model on v5 may not fit here. The message-passing runs were killed with no Python error, which on this container has
 been the memory limit (the table above for 6 and 9 layers).
+
+## Addition, 17 October 2026, later: the cost after the drug-bottleneck fix
+
+The table of the previous addition was measured before commit 600abc7, which added a drug's 1,062 mechanism edges to
+the limiting-step bottleneck (decision 9.66). Repeated after it and after the currency fix of 4642a07 (decision 9.67),
+with the same flags, on the same container and with no other job running, the registered linear-response model without
+edge priors takes 28.5 s a training step (first step 28.9 s), 3.1 s a prediction batch with its bottleneck cached (first
+batch 3.4 s) and an estimated 51.7 minutes an epoch. The fix did not raise the cost. The two runs were not made under
+the same load, so the difference from the 33.9 s recorded above is not read as a speed-up.

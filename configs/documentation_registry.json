@@ -770,6 +770,12 @@
   "docs/twin_comparisons.md": {
    "class": "generated",
    "generator": "experiments/compare_twin_runs.py"
+  },
+  "docs/knowledge_graph_practices_review.md": {
+   "class": "record",
+   "recorded": "2026-10-17",
+   "append_only": true,
+   "what": "published practice for building a signed causal knowledge graph read against this build, with measurements on v5 and ten ranked changes; decision 9.70"
   }
  }
 }
