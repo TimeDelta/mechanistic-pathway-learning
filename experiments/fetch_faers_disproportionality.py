@@ -10,8 +10,9 @@ openFDA allows 40 requests a minute and 1,000 a day without a key, and refuses a
 --pause keeps under the first, and a reaction outside a drug's 100 most reported enters at the smallest listed count
 as an upper bound. A connection the egress proxy drops is retried, since every request is idempotent.
 
-Outputs (default --output-dir data/processed/faers): faers_reports.parquet, faers_summary.json, and the generated
-docs/faers_disproportionality_evidence.md.
+Outputs (default --output-dir data/processed/faers): faers_reports.parquet, faers_comparisons.parquet (every
+comparison of a drug on a target symptom, whatever its verdict, with its own statistic: decision 9.48, option 3),
+faers_summary.json, and the generated docs/faers_disproportionality_evidence.md.
 
 Usage:
   python experiments/fetch_faers_disproportionality.py --evidence-dir data/processed/evidence_full_v4
@@ -29,13 +30,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mechanistic_pathway_learning.documentation import provenance_stamp
-from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import perturbations_from_reports, rows_to_dataframe
+from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import comparisons_to_dataframe, perturbations_from_reports, rows_to_dataframe
 from mechanistic_pathway_learning.evidence.faers_disproportionality import (
+    COMPARISON_COLUMNS,
     DEFAULT_NEGATIVE_MINIMUM_DRUG_REPORTS,
     DEFAULT_SIGNAL_CHI_SQUARE,
     DEFAULT_SIGNAL_MINIMUM_REPORTS,
     DEFAULT_SIGNAL_PRR,
     SOURCE_NAME,
+    build_comparisons,
     build_reports,
     indicated_symptoms_by_drug,
     write_summary,
@@ -130,7 +133,7 @@ def main() -> int:
         background_counts["requested_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         background_path.write_text(json.dumps(background_counts, indent=1), encoding="utf-8")
 
-    rows, per_drug = [], {}
+    rows, comparisons, per_drug = [], [], {}
     labels = sorted(perturbations)
     if arguments.limit_drugs:
         labels = labels[: arguments.limit_drugs]
@@ -155,6 +158,9 @@ def main() -> int:
         drug_rows, counts = build_reports(label, perturbations[label], reaction_counts, cached["drug_total"], background_counts["reaction_totals"],
                                           background_counts["all_reports"], preferred_term_to_symptom, indicated.get(perturbations[label]["perturbation_id"], set()),
                                           cached.get("requested_at", ""), thresholds, unlisted_upper_bound=unlisted_bound)
+        comparisons.extend(build_comparisons(label, perturbations[label], reaction_counts, cached["drug_total"], background_counts["reaction_totals"],
+                                             background_counts["all_reports"], preferred_term_to_symptom,
+                                             indicated.get(perturbations[label]["perturbation_id"], set()), thresholds, unlisted_upper_bound=unlisted_bound))
         counts["drug_total"] = int(cached["drug_total"])
         counts["matched_by"] = cached.get("field") or ""
         rows.extend(drug_rows)
@@ -164,6 +170,7 @@ def main() -> int:
 
     table = rows_to_dataframe(rows)
     table.to_parquet(arguments.output_dir / "faers_reports.parquet", index=False)
+    comparisons_to_dataframe(comparisons, COMPARISON_COLUMNS).to_parquet(arguments.output_dir / "faers_comparisons.parquet", index=False)
     write_summary(arguments.output_dir / "faers_summary.json", per_drug, {"all_reports": background_counts["all_reports"]}, thresholds)
     signals = int((table.report_value == 1).sum()) if len(table) else 0
     absences = int((table.report_value == 0).sum()) if len(table) else 0

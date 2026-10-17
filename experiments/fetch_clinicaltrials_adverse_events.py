@@ -8,6 +8,8 @@ retried, since every request is idempotent.
 
 Outputs (default --output-dir data/processed/clinical_trials):
   clinical_trial_reports.parquet   report rows in the evidence_reports schema, for --extra-reports of the assembler
+  clinical_trial_comparisons.parquet   every arm comparison on a target symptom, whatever its verdict, with its own
+                                   statistic (decision 9.48, option 3)
   clinical_trial_summary.json      counts per drug and in total
   docs/clinical_trial_arm_evidence.md (--markdown-output)   the generated summary, stamped
 
@@ -28,9 +30,12 @@ from pathlib import Path
 
 from mechanistic_pathway_learning.documentation import provenance_stamp
 from mechanistic_pathway_learning.evidence.clinical_trial_adverse_events import (
+    COMPARISON_COLUMNS,
     DEFAULT_MINIMUM_EXPOSURE_FOR_ABSENCE,
     SOURCE_NAME,
+    build_comparisons,
     build_reports,
+    comparisons_to_dataframe,
     perturbations_from_reports,
     read_lowest_level_to_preferred_term,
     rows_to_dataframe,
@@ -100,7 +105,7 @@ def main() -> int:
     arguments.cache_dir.mkdir(parents=True, exist_ok=True)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
 
-    rows, per_drug = [], {}
+    rows, comparisons, per_drug = [], [], {}
     labels = sorted(perturbations)
     if arguments.limit_drugs:
         labels = labels[: arguments.limit_drugs]
@@ -119,6 +124,8 @@ def main() -> int:
                                               "addresses": addresses, "studies": studies}, indent=1), encoding="utf-8")
         drug_rows, counts = build_reports(studies, label, perturbations[label], preferred_term_to_symptom, lowest_to_preferred,
                                           arguments.minimum_exposure_for_absence, other_study_drugs=set(perturbations) - {label})
+        comparisons.extend(build_comparisons(studies, label, perturbations[label], preferred_term_to_symptom, lowest_to_preferred,
+                                             arguments.minimum_exposure_for_absence, other_study_drugs=set(perturbations) - {label}))
         rows.extend(drug_rows)
         per_drug[label] = counts
         if index % 20 == 0:
@@ -126,6 +133,8 @@ def main() -> int:
 
     table = rows_to_dataframe(rows)
     table.to_parquet(arguments.output_dir / "clinical_trial_reports.parquet", index=False)
+    # every arm comparison, whatever its verdict, with its own statistic (decision 9.48, option 3)
+    comparisons_to_dataframe(comparisons, COMPARISON_COLUMNS).to_parquet(arguments.output_dir / "clinical_trial_comparisons.parquet", index=False)
     write_summary(arguments.output_dir / "clinical_trial_summary.json", per_drug, arguments.minimum_exposure_for_absence)
 
     totals: dict[str, int] = {}

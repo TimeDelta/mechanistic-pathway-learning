@@ -103,3 +103,17 @@ def test_the_prediction_is_read_at_the_median_popularity():
     assert not np.allclose(at_median, raw)
     median_cells = cells.log_popularity.to_numpy() == fitted.median_log_popularity
     assert np.allclose(at_median[median_cells], raw[median_cells])
+
+
+def test_the_statistic_enters_as_three_features_only_when_a_pair_carries_one():
+    pairs = pairs_frame([("D1", "anxiety", "human_association", "positive", 2, 0.7, 0.5, "FAERS-disproportionality"),
+                         ("D2", "anxiety", "human_association", "negative", 1, 0.0, 0.3, "ClinicalTrials-arms"),
+                         ("G1", "anxiety", "animal", "negative", 1, 0.0, 0.3, "IMPC-knockout")])
+    plain = feature_frame(pairs, {"D1": "drug", "D2": "drug", "G1": "gene"}, {})
+    assert not [column for column in plain.columns if column.startswith("statistic:")], "tables without statistics fit the model they fitted before"
+    with_statistic = pairs.assign(statistic_probability_of_excess=[0.9, 1.0, np.nan], statistic_information=[20.0, 3.0, np.nan])
+    frame = feature_frame(with_statistic, {"D1": "drug", "D2": "drug", "G1": "gene"}, {})
+    assert frame["statistic:logit_excess"].tolist() == pytest.approx([np.log(9.0) / 10.0, 1.0, 0.0]), "clipped at the logit bound and scaled to [-1, 1]; absent is 0"
+    assert frame["statistic:logit_excess_squared"].tolist() == pytest.approx([(np.log(9.0) / 10.0) ** 2, 1.0, 0.0]), "a label rate need not rise monotonically"
+    assert frame["statistic:log_information"].tolist() == pytest.approx([np.log1p(20.0), np.log1p(3.0), 0.0])
+    assert frame["statistic:present"].tolist() == [1.0, 1.0, 0.0]

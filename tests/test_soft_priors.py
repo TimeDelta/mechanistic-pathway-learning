@@ -266,3 +266,39 @@ def test_trial_arm_rows_enter_only_where_their_interval_supports_them():
     counts = {}
     evidence = soft_evidence_from_reports(without_interval, "induces", counts)
     assert len(evidence) == 3 and counts == {"trial_arm_rows_without_an_interval": 4}, "a table without the interval passes as it is and says so"
+
+
+def test_reports_pass_on_the_statistic_of_their_most_informative_comparison():
+    """Decision 9.48, option 3: the statistic travels with the evidence; comparisons of one pair share reports or
+    patients, so the most informative one is kept rather than their information added."""
+    rows = [report("D", "anxiety", "human_association", "FAERS-disproportionality", 1, record="openFDA:d|AGITATION"),
+            report("D", "anxiety", "human_association", "FAERS-disproportionality", 1, record="openFDA:d|ANXIETY"),
+            report("D", "insomnia", "human_association", "FAERS-disproportionality", 0, record="openFDA:d|INSOMNIA")]
+    statistics = [(0.99, 40.0), (0.999, 120.0), (0.01, 15.0)]
+    reports = pd.DataFrame([{**row, "statistic_probability_of_excess": probability, "statistic_information": information}
+                            for row, (probability, information) in zip(rows, statistics)])
+    evidence = soft_evidence_from_reports(reports, relation="induces").set_index(["symptom", "direction"])
+    assert evidence.loc[("anxiety", "positive")].statistic_probability_of_excess == pytest.approx(0.999)
+    assert evidence.loc[("anxiety", "positive")].statistic_information == pytest.approx(120.0), "the most informative comparison, not the sum"
+    assert evidence.loc[("anxiety", "positive")].statistic_comparisons == 2 and evidence.loc[("anxiety", "positive")].n_distinct == 2
+    assert evidence.loc[("insomnia", "negative")].statistic_probability_of_excess == pytest.approx(0.01)
+    plain = soft_evidence_from_reports(pd.DataFrame(rows), relation="induces")
+    assert plain.statistic_probability_of_excess.isna().all() and (plain.statistic_comparisons == 0).all(), "a table built before the statistics carries none"
+
+
+def test_resolution_carries_the_deciding_class_statistic():
+    evidence = pd.DataFrame([
+        {"perturbation_id": "D", "symptom": "anxiety", "evidence_class": "literature", "direction": "positive", "n_distinct": 3, "sources": "PubTator3-cause"},
+        {"perturbation_id": "D", "symptom": "anxiety", "evidence_class": "human_association", "direction": "positive", "n_distinct": 1, "sources": "FAERS-disproportionality",
+         "statistic_probability_of_excess": 0.98, "statistic_information": 30.0, "statistic_comparisons": 1},
+        {"perturbation_id": "D", "symptom": "anxiety", "evidence_class": "human_association", "direction": "positive", "n_distinct": 1, "sources": "ClinicalTrials-arms",
+         "statistic_probability_of_excess": 0.80, "statistic_information": 2.0, "statistic_comparisons": 3},
+        {"perturbation_id": "G", "symptom": "anxiety", "evidence_class": "animal", "direction": "negative", "n_distinct": 1, "sources": "IMPC"},
+    ])
+    resolved = resolve_pairs(evidence, TIERS, tempering_exponent=0.5, count_cap=2)
+    pairs = {(row.perturbation_id, row.symptom): row for row in resolved.pairs.itertuples(index=False)}
+    deciding = pairs[("D", "anxiety")]
+    assert deciding.evidence_class == "human_association" and deciding.n_distinct == 2
+    assert deciding.statistic_probability_of_excess == pytest.approx(0.98) and deciding.statistic_information == pytest.approx(30.0)
+    assert deciding.statistic_comparisons == 4, "the comparisons behind the deciding class, from both tables"
+    assert np.isnan(pairs[("G", "anxiety")].statistic_probability_of_excess) and pairs[("G", "anxiety")].statistic_comparisons == 0

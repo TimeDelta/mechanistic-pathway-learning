@@ -55,6 +55,14 @@ LITERATURE_SOURCES_ADMITTED = ("PubTator3-cause", "PubTator3-stimulate", "PubTat
 # and an absence only when the upper bound is below this margin: the drug adds at most five in a hundred.
 TRIAL_ARM_SOURCE = "ClinicalTrials-arms"
 ABSENCE_RISK_DIFFERENCE_MARGIN = 0.05
+# Decision 9.48, option 3 (the owner, 16 October 2026: "Carrying stat to calibrated proper is the way"): a report that
+# carries its comparison's own statistic (evidence/comparison_statistics.py) passes it on, so the calibrated reliability
+# (evidence/calibrated_reliability.py) reads the statistic and not only the verdict cut from it. Per pair and class the
+# statistic of the most informative comparison is kept, with the number of comparisons behind it: the comparisons of
+# one pair (several MedDRA terms of one symptom in one source, several arms of one trial) share reports or patients,
+# so their information is not added.
+STATISTIC_EVIDENCE_COLUMNS = ("statistic_probability_of_excess", "statistic_information", "statistic_comparisons")
+EVIDENCE_KEYS = ["perturbation_id", "symptom", "evidence_class", "direction"]
 
 
 @dataclass(frozen=True)
@@ -136,21 +144,40 @@ def soft_evidence_from_reports(reports: pd.DataFrame, relation: str = "induces",
     indication, not an adverse event) are the builders' business and are not re-filtered here. `counts`, when given,
     receives the admission counts.
     """
+    empty = pd.DataFrame(columns=[*EVIDENCE_KEYS, "n_distinct", "sources", *STATISTIC_EVIDENCE_COLUMNS])
     if reports.empty:
-        return pd.DataFrame(columns=["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "sources"])
+        return empty
     table = reports[reports.relation == relation]
     if "evidence_class" in table.columns:
         is_literature = table.evidence_class == "literature"
         table = table[~is_literature | table.source.isin(LITERATURE_SOURCES_ADMITTED)]
     table = admit_trial_arm_reports(table, counts)
     if table.empty:
-        return pd.DataFrame(columns=["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "sources"])
+        return empty
+    has_statistic = "statistic_probability_of_excess" in table.columns and "statistic_information" in table.columns
     rows = []
     for row in table.itertuples(index=False):
-        rows.append((str(row.perturbation_id), str(row.symptom), str(row.evidence_class), "positive" if int(row.report_value) == 1 else "negative", record_key(row), str(row.source)))
-    keyed = pd.DataFrame(rows, columns=["perturbation_id", "symptom", "evidence_class", "direction", "record", "source"])
-    grouped = keyed.groupby(["perturbation_id", "symptom", "evidence_class", "direction"], sort=True)
-    return grouped.agg(n_distinct=("record", "nunique"), sources=("source", lambda values: ";".join(sorted(set(values))))).reset_index()
+        probability = float(row.statistic_probability_of_excess) if has_statistic and not pd.isna(row.statistic_probability_of_excess) else np.nan
+        information = float(row.statistic_information) if has_statistic and not pd.isna(row.statistic_information) else np.nan
+        rows.append((str(row.perturbation_id), str(row.symptom), str(row.evidence_class), "positive" if int(row.report_value) == 1 else "negative", record_key(row),
+                     str(row.source), probability, information))
+    keyed = pd.DataFrame(rows, columns=[*EVIDENCE_KEYS, "record", "source", "statistic_probability_of_excess", "statistic_information"])
+    grouped = keyed.groupby(EVIDENCE_KEYS, sort=True)
+    evidence = grouped.agg(n_distinct=("record", "nunique"), sources=("source", lambda values: ";".join(sorted(set(values)))),
+                           statistic_comparisons=("statistic_information", "count")).reset_index()
+    return with_most_informative_statistic(evidence, keyed)
+
+
+def with_most_informative_statistic(evidence: pd.DataFrame, rows: pd.DataFrame) -> pd.DataFrame:
+    """evidence (one row per pair, class and direction) with the probability of excess and the information of the most
+    informative comparison among rows of the same keys; NaN where none carries a statistic."""
+    columns = ["statistic_probability_of_excess", "statistic_information"]
+    evidence = evidence.drop(columns=[column for column in columns if column in evidence.columns])
+    carrying = rows.dropna(subset=["statistic_information"]) if "statistic_information" in rows.columns else rows.iloc[0:0]
+    if carrying.empty:
+        return evidence.assign(statistic_probability_of_excess=np.nan, statistic_information=np.nan)[[*evidence.columns, *columns]]
+    best = carrying.sort_values("statistic_information", ascending=False, kind="stable").drop_duplicates(EVIDENCE_KEYS)[[*EVIDENCE_KEYS, *columns]]
+    return evidence.merge(best, on=EVIDENCE_KEYS, how="left")
 
 
 def soft_evidence_from_records(records: pd.DataFrame, grades=DEFAULT_RECORD_GRADES, relation: str = "induces") -> pd.DataFrame:
@@ -192,11 +219,17 @@ def resolve_pairs(evidence: pd.DataFrame, tiers: dict[tuple[str, str], Tier], te
     an IMPC hit (animal, positive) is contested rather than resolved by rank: the two kinds of evidence do not share a
     species, and the rule for that disagreement is a decision, not a sort order.
     """
-    columns = ["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "prior_probability", "strength", "sources"]
+    columns = ["perturbation_id", "symptom", "evidence_class", "direction", "n_distinct", "prior_probability", "strength", "sources", *STATISTIC_EVIDENCE_COLUMNS]
     if evidence.empty:
         return ResolvedPriors(pd.DataFrame(columns=columns), pd.DataFrame(columns=["perturbation_id", "symptom", "classes", "directions"]), {})
-    evidence = evidence.groupby(["perturbation_id", "symptom", "evidence_class", "direction"], sort=True).agg(
-        n_distinct=("n_distinct", "sum"), sources=("sources", lambda values: ";".join(sorted(set(";".join(values).split(";")))))).reset_index()
+    for column in STATISTIC_EVIDENCE_COLUMNS:  # tables built before 9.48 (3), and grade-C records, carry no statistic
+        if column not in evidence.columns:
+            evidence = evidence.assign(**{column: 0 if column == "statistic_comparisons" else np.nan})
+    statistics = evidence[[*EVIDENCE_KEYS, "statistic_probability_of_excess", "statistic_information"]]
+    evidence = evidence.groupby(EVIDENCE_KEYS, sort=True).agg(
+        n_distinct=("n_distinct", "sum"), sources=("sources", lambda values: ";".join(sorted(set(";".join(values).split(";"))))),
+        statistic_comparisons=("statistic_comparisons", lambda values: int(pd.to_numeric(values, errors="coerce").fillna(0).sum()))).reset_index()
+    evidence = with_most_informative_statistic(evidence, statistics)
     has_tier = [(row.evidence_class, row.direction) in tiers for row in evidence.itertuples(index=False)]
     without_a_tier = evidence[[not value for value in has_tier]].groupby("evidence_class").size().to_dict()
     tiered = evidence[has_tier]
@@ -210,7 +243,8 @@ def resolve_pairs(evidence: pd.DataFrame, tiers: dict[tuple[str, str], Tier], te
         first = pair.loc[ranks.idxmin()]
         tier = tiers[(first.evidence_class, first.direction)]
         strength = float(tier.unit_strength * tempered_count(first.n_distinct, count_cap, tempering_exponent))
-        resolved.append((perturbation_id, symptom, first.evidence_class, first.direction, int(first.n_distinct), tier.prior_probability, strength, first.sources))
+        resolved.append((perturbation_id, symptom, first.evidence_class, first.direction, int(first.n_distinct), tier.prior_probability, strength, first.sources,
+                         first.statistic_probability_of_excess, first.statistic_information, int(first.statistic_comparisons)))
     return ResolvedPriors(pd.DataFrame(resolved, columns=columns), pd.DataFrame(contested, columns=["perturbation_id", "symptom", "classes", "directions"]),
                           {str(key): int(value) for key, value in without_a_tier.items()})
 
@@ -330,4 +364,5 @@ def summarise(resolved: ResolvedPriors, probability: np.ndarray, strength: np.nd
     placed = int(((strength > 0)).sum())
     return {"resolved_pairs": int(len(pairs)), "pairs_in_the_perturbation_universe": placed, "pairs_on_eligible_cells": int(((strength > 0) & eligible).sum()),
             "pairs_on_labelled_or_set_aside_cells": int(((strength > 0) & ~eligible).sum()), "contested_pairs": int(len(resolved.contested)),
-            "contested_examples": resolved.contested.head(10).to_dict("records"), "classes_without_a_tier": resolved.without_a_tier, "by_class_and_direction": by_class}
+            "contested_examples": resolved.contested.head(10).to_dict("records"), "classes_without_a_tier": resolved.without_a_tier, "by_class_and_direction": by_class,
+            "pairs_with_a_statistic": int(pd.to_numeric(pairs.get("statistic_information", pd.Series(dtype=float)), errors="coerce").notna().sum())}
