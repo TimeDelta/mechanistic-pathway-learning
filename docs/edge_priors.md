@@ -217,3 +217,33 @@ PubMed ids, the resources that state it and each paper's species scores, which t
 (decision 9.63 (c)). The species is the paper's, not the interaction's, and a transcription edge's ids can include
 ids of the ExTRI text-mining layer, since CollecTRI attributes most of its ids to itself; both are put to the owner in
 `docs/open_decisions.md`, 9.63.
+
+## 12. Addition, 17 October 2026: the evidence behind a sign, apart from the pair's (decision 9.70)
+
+Section 11's rule counts the papers behind a pair of nodes. OmniPath records the support for an interaction's positive
+sign, its negative sign and its direction apart (`fields=evidences`), and CollecTRI states for each regulation how it
+decided the sign: from a paper ("PMID"), by a default when no paper stated one ("default activation") or from the
+factor's role across its regulon ("regulon"). `graph/sign_evidence.py` reads the two evidences downloads
+(`scripts/fetch_raw_sources.sh`; SHA-256 in `docs/data_sources.md`) and gives each signed signalling and transcription
+edge the PubMed ids behind its stored sign (`sign_pubmed_ids`, `sign_records`; the text-mining layers left out as in
+section 2) and, for a regulation, CollecTRI's decision (`sign_basis`). `experiments/build_edge_evidence.py` adds the
+three columns when the files are present. The label rule reads them only when asked:
+`--curated-label-minimum-sign-records N` (off by default) keeps a signed signalling label only with N ids behind its
+sign, and a regulation label only when CollecTRI decided its sign from a paper and N of CollecTRI's ids stand behind
+it. A binding has no sign and the rule does not concern it; a signed edge the downloads do not hold fails the rule.
+
+On v5, 40,847 of the 129,040 signed signalling and transcription edges have no PubMed id behind their sign. Of the
+14,680 signed signalling labels, 3,942 have none, 6,124 have one and 4,614 have two or more. Of the 15,076 regulation
+labels, CollecTRI decided the sign from a paper for 10,573, by default for 3,673 and from the regulon for 617, and 213
+carry more than one decision. With a minimum of one record the rule keeps 29,551 of the 38,435 labels (19,417
+signalling, 8,679 of them bindings, and 10,134 transcription); with two it keeps 20,007 (13,293 and 6,714).
+
+Two limits. The rule counts the ids a source puts behind a sign and cannot tell whether a paper states that sign:
+CollecTRI2 cites Shiio et al. 1992 behind TP53 activating RB1, and the paper's abstract reads "This study shows that
+wild-type p53 suppresses transcription of the retinoblastoma (Rb) gene" (decision 9.72). And for a regulation the rule
+reads only CollecTRI's 2023 release, the one entry that states a sign decision. OmniPath also holds a later release,
+CollecTRI2, which states none; the two state opposite signs for 3,795 of the 41,638 regulation edges, and one of them
+states both signs for 92 more. The sign the graph stores for those is OmniPath's consensus, which follows CollecTRI2 in
+2,445 of the 3,795 (decision 9.72). The table marks the 3,887 (`sign_disputed`), and
+`--curated-label-exclude-disputed-signs` (off by default) leaves them gated: 2,019 of the 38,435 labels are among
+them, and with a sign minimum of one record the rule keeps 29,306 labels instead of 29,551.
