@@ -948,6 +948,10 @@ def main() -> None:
                              "names for it, with the binding site's obligate subunits restored; GtoPdb targets outside every ChEMBL row are not added. "
                              "Pass the same choice to build_onsides_reports.py")
     parser.add_argument("--gtopdb-dir", type=Path, default=GTOPDB_DIRECTORY, help="the Guide to PHARMACOLOGY release the narrowing reads")
+    parser.add_argument("--narrow-by-site-structure", action=argparse.BooleanOptionalAction, default=True,
+                        help="with the narrowing: a drug configs/binding_sites.csv places at the benzodiazepine site, where GtoPdb names fewer than two "
+                             "of the complex's subunits, is narrowed to the subunits that form the site (alpha1, 2, 3 or 5 with gamma2); an extension "
+                             "of decision 8.11 for the owner to accept or refuse")
     parser.add_argument("--binding-sites", type=Path, default=DEFAULT_BINDING_SITES_PATH, help="the drugs' binding sites, which name the obligate subunits")
     parser.add_argument("--open-targets-scoped-rows", type=Path, default=None,
                         help="data/processed/off_target_scoping/open_targets_symptom_rows.parquet (amendment item 12d, decision 8.5): the curated target-safety statements enter the Dawid-Skene reliability fit and reach no grade and no label. Omit the flag to assemble without the class")
@@ -965,7 +969,7 @@ def main() -> None:
                          neomorphic_alleles_path=arguments.neomorphic_alleles,
                          gene2phenotype_path=None if str(arguments.gene2phenotype).lower() == "none" else Path(arguments.gene2phenotype),
                          mechanism_adjudications_path=None if str(arguments.mechanism_adjudications).lower() == "none" else Path(arguments.mechanism_adjudications),
-                         complex_target_narrowing=ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites) if arguments.narrow_complex_targets else None)
+                         complex_target_narrowing=ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites, narrow_by_site_structure=arguments.narrow_by_site_structure) if arguments.narrow_complex_targets else None)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     for name, table in (("evidence_records.parquet", assembled.observations), ("unmapped_records.parquet", assembled.unmapped), ("evidence_reports.parquet", assembled.reports)):  # atomic replace for concurrent readers
         table.to_parquet(arguments.output_dir / (name + ".tmp"), index=False)

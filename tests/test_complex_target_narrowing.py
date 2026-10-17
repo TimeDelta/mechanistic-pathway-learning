@@ -138,8 +138,80 @@ def test_both_label_routes_offer_the_narrowing_and_take_it_by_default():
                     [sys.executable, "experiments/build_onsides_reports.py", "--help"]):
         help_text = subprocess.run(command, capture_output=True, text=True, check=True, cwd=repository_root, env=environment).stdout
         assert "--narrow-complex-targets" in help_text and "--no-narrow-complex-targets" in help_text and "--gtopdb-dir" in help_text, command[-2]
+        assert "--no-narrow-by-site-structure" in help_text, command[-2]
     from mechanistic_pathway_learning.evidence import assemble_evidence_table
     import inspect
 
     for source in (inspect.getsource(assemble_evidence_table.main), (repository_root / "experiments/build_onsides_reports.py").read_text(encoding="utf-8")):
         assert '"--narrow-complex-targets", action=argparse.BooleanOptionalAction, default=True' in source, "the two routes must make the same choice"
+        assert '"--narrow-by-site-structure", action=argparse.BooleanOptionalAction, default=True' in source
+
+
+def test_human_rows_decide_by_default_and_rat_and_mouse_rows_can_be_asked_for(tmp_path):
+    """GtoPdb's human rows for nifedipine name CACNA1D and CACNA1F and its CaV1.2 row is the rat one: narrowing on
+    human rows alone takes nifedipine off CACNA1C, and adding rat and mouse rows keeps it. Human rows are the default,
+    because on the study's drugs the rat and mouse rows narrow lidocaine and lacosamide for the worse (module comment)."""
+    rows = [interaction(44, "CACNA1D", "Antagonist"), interaction(44, "CACNA1F", "Antagonist"),
+            interaction(44, "Cacna1c", "Antagonist", species="Rat"), interaction(44, "Cacna1s", "Antagonist", species="Guinea pig"),
+            interaction(55, "CACNA1C", "Antagonist"), interaction(55, "Cacna1c", "Agonist", species="Rat"), interaction(55, "CACNA1D", "Antagonist"),
+            interaction(66, "CACNA1C", "Antagonist"), interaction(66, "CACNA1C", "Agonist"), interaction(66, "CACNA1D", "Antagonist")]
+    mapping = [{"Ligand id": 44, "Name": "nifedipine", "PubChem CID": "4485"}, {"Ligand id": 55, "Name": "drug b", "PubChem CID": "55"},
+               {"Ligand id": 66, "Name": "drug c", "PubChem CID": "66"}]
+    directory = write_gtopdb(tmp_path / "gtopdb", rows, mapping)
+    l_type = DrugTarget("CHEMBL2095229", "BLOCKER", ["CACNA1C", "CACNA1D", "CACNA1F", "CACNA1S"], "PROTEIN COMPLEX GROUP")
+    narrowing = ComplexTargetNarrowing.from_gtopdb(directory, binding_sites_path=None, species=("Human", "Rat", "Mouse"))
+    targets, record = narrowing.narrow([l_type], pubchem_cid=4485, drug_name="nifedipine")
+    assert targets[0].gene_symbols == ["CACNA1C", "CACNA1D", "CACNA1F"], "the rat row keeps CACNA1C; a guinea pig row is not among the species"
+    assert record["narrowed"]["CHEMBL2095229"]["species"] == {"CACNA1C": "Rat", "CACNA1D": "Human", "CACNA1F": "Human"}
+    human_only = ComplexTargetNarrowing.from_gtopdb(directory, binding_sites_path=None)
+    assert human_only.narrow([l_type], pubchem_cid=4485, drug_name="nifedipine")[0][0].gene_symbols == ["CACNA1D", "CACNA1F"]
+    assert human_only.provenance["species"] == ["Human"]
+    assert narrowing.narrow([l_type], pubchem_cid=55)[0][0].gene_signs["CACNA1C"] == -1.0, "a human row decides the sign over a rat row"
+    assert narrowing.narrow([l_type], pubchem_cid=66)[0][0].gene_signs["CACNA1C"] == 0.0, "human rows stating both directions read as mixed"
+    assert narrowing.provenance["species"] == ["Human", "Rat", "Mouse"]
+
+
+def test_a_drug_gtopdb_calls_non_selective_at_a_site_keeps_every_subunit_that_forms_it(tmp_path):
+    """GtoPdb names GABRA1 to GABRA3 for diazepam, as non-selective, and has no GABRA5 row; benzodiazepines act
+    through receptors with any of alpha1, 2, 3 or 5. A drug whose rows are selective, or not determined, keeps the
+    subunits its rows name."""
+    def row(ligand, gene, selectivity):
+        return {**interaction(ligand, gene, "Positive"), "Selectivity": selectivity}
+
+    rows = [row(11, gene, "Non-selective") for gene in ("GABRA1", "GABRA2", "GABRA3")]
+    rows += [row(77, "GABRA1", "Selective"), row(77, "GABRA2", "Not Determined")]
+    mapping = [{"Ligand id": 11, "Name": "diazepam", "PubChem CID": "3016"}, {"Ligand id": 77, "Name": "an alpha1-preferring drug", "PubChem CID": "77"}]
+    directory = write_gtopdb(tmp_path / "gtopdb", rows, mapping)
+    sites = tmp_path / "binding_sites.csv"
+    pd.DataFrame([{"drug": name, "gene": "GABRA1", "site": "benzodiazepine site", "source": "ChEMBL", "evidence": "", "site_id": ""}
+                  for name in ("diazepam", "an alpha1-preferring drug")]).to_csv(sites, index=False)
+    narrowing = ComplexTargetNarrowing.from_gtopdb(directory, sites)
+    diazepam, record = narrowing.narrow([gaba_a_complex()], pubchem_cid=3016, drug_name="diazepam")
+    assert diazepam[0].gene_symbols == ["GABRA1", "GABRA2", "GABRA3", "GABRG2"]
+    assert "GABRA5" not in GABA_A_SUBUNITS, "the fixture's complex has no GABRA5, so nothing is invented"
+    with_alpha5 = DrugTarget("CHEMBL2093872", "POSITIVE ALLOSTERIC MODULATOR", GABA_A_SUBUNITS + ["GABRA5"])
+    diazepam, record = narrowing.narrow([with_alpha5], pubchem_cid=3016, drug_name="diazepam")
+    assert diazepam[0].gene_symbols == ["GABRA1", "GABRA2", "GABRA3", "GABRG2", "GABRA5"]
+    assert record["narrowed"]["CHEMBL2093872"]["site_subunits_restored"] == ["GABRA5"] and diazepam[0].gene_signs["GABRA5"] == 0.5
+    selective, record = narrowing.narrow([with_alpha5], pubchem_cid=77, drug_name="an alpha1-preferring drug")
+    assert selective[0].gene_symbols == ["GABRA1", "GABRA2", "GABRG2"] and record["narrowed"]["CHEMBL2093872"]["site_subunits_restored"] == []
+
+
+def test_a_benzodiazepine_site_drug_gtopdb_leaves_unnamed_is_narrowed_by_its_site(tmp_path):
+    """Lorazepam, midazolam, oxazepam and eight more are placed at the benzodiazepine site by configs/binding_sites.csv
+    and have no usable GtoPdb rows; the site, alpha1, 2, 3 or 5 with gamma2, says which subunits they act through. A
+    barbiturate-site drug is left whole, since its site is on every beta subunit."""
+    unrelated = [interaction(99, "DRD2", "Antagonist")]  # lorazepam has no row; another ligand gives the table its columns
+    directory = write_gtopdb(tmp_path / "gtopdb", unrelated, [{"Ligand id": 88, "Name": "lorazepam", "PubChem CID": "3958"}])
+    sites = tmp_path / "binding_sites.csv"
+    pd.DataFrame([{"drug": "lorazepam", "gene": "GABRA1", "site": "benzodiazepine site", "source": "ChEMBL", "evidence": "", "site_id": ""},
+                  {"drug": "pentobarbital", "gene": "GABRB2", "site": "barbiturate site", "source": "ChEMBL", "evidence": "", "site_id": ""}]).to_csv(sites, index=False)
+    complex_with_alpha5 = DrugTarget("CHEMBL2093872", "POSITIVE ALLOSTERIC MODULATOR", GABA_A_SUBUNITS + ["GABRA5"])
+    narrowing = ComplexTargetNarrowing.from_gtopdb(directory, sites)
+    targets, record = narrowing.narrow([complex_with_alpha5], pubchem_cid=3958, drug_name="lorazepam")
+    assert targets[0].gene_symbols == ["GABRA1", "GABRA2", "GABRA3", "GABRG2", "GABRA5"] and set(targets[0].gene_signs.values()) == {0.5}
+    assert record["narrowed"]["CHEMBL2093872"]["by_site_structure"] == ["benzodiazepine site"]
+    barbiturate, record = narrowing.narrow([complex_with_alpha5], pubchem_cid=None, drug_name="pentobarbital")
+    assert barbiturate[0].gene_symbols == complex_with_alpha5.gene_symbols and record["kept_whole"] == {"CHEMBL2093872": "no GtoPdb ligand"}
+    rows_only = ComplexTargetNarrowing.from_gtopdb(directory, sites, narrow_by_site_structure=False)
+    assert rows_only.narrow([complex_with_alpha5], pubchem_cid=3958, drug_name="lorazepam")[0][0].gene_symbols == complex_with_alpha5.gene_symbols

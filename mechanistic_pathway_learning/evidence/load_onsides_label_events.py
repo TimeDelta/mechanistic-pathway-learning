@@ -235,7 +235,7 @@ def onsides_reports(
         qualification = qualifications.get(bridge.ingredient_id) or qualify_ingredient(bridge, mechanisms_by_molecule, targets, compounds_by_chembl_id, max_drug_targets, admitted_atc_prefixes)
         qualifications[bridge.ingredient_id] = qualification
         drug_targets = qualification.drug_targets
-        if complex_target_narrowing is not None:
+        if complex_target_narrowing is not None and qualification.qualifies:  # only an ingredient that can enter is narrowed and recorded
             if bridge.ingredient_id not in narrowed_targets:
                 pubchem_cid = bridge.sider_pubchem_cid if bridge.sider_pubchem_cid is not None else pubchem_cid_from_perturbation_id(bridge.perturbation_id)
                 narrowed, record = complex_target_narrowing.narrow(qualification.drug_targets, pubchem_cid, bridge.sider_drug_name or bridge.ingredient_name)

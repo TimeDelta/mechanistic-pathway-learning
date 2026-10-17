@@ -122,6 +122,10 @@ def main() -> None:
                         help="decision 8.11: narrow an ingredient's ChEMBL complex targets to the subunits the Guide to PHARMACOLOGY names, as the "
                              "evidence assembly does for SIDER drugs; pass it the same choice")
     parser.add_argument("--gtopdb-dir", type=Path, default=GTOPDB_DIRECTORY)
+    parser.add_argument("--narrow-by-site-structure", action=argparse.BooleanOptionalAction, default=True,
+                        help="with the narrowing: a drug configs/binding_sites.csv places at the benzodiazepine site, where GtoPdb names fewer than two "
+                             "of the complex's subunits, is narrowed to the subunits that form the site (alpha1, 2, 3 or 5 with gamma2); an extension "
+                             "of decision 8.11 for the owner to accept or refuse")
     parser.add_argument("--binding-sites", type=Path, default=DEFAULT_BINDING_SITES_PATH)
     parser.add_argument("--markdown-output", type=Path, default=Path("docs/onsides_label_slice.md"))
     arguments = parser.parse_args()
@@ -137,7 +141,7 @@ def main() -> None:
     _, compounds_by_chembl_id = load_drugs_acting_as_graph_compounds(arguments.drugs_acting_as_graph_compounds)
     check_graph_compounds_have_no_mechanism(compounds_by_chembl_id, mechanisms_by_molecule)
     admitted_atc_prefixes = read_admitted_atc_prefixes(arguments.admitted_atc_prefixes) if arguments.admitted_atc_prefixes is not None else NERVOUS_SYSTEM_ATC_PREFIXES
-    narrowing = ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites) if arguments.narrow_complex_targets else None
+    narrowing = ComplexTargetNarrowing.from_gtopdb(arguments.gtopdb_dir, arguments.binding_sites, narrow_by_site_structure=arguments.narrow_by_site_structure) if arguments.narrow_complex_targets else None
     reports, counts = onsides_reports(statements, bridges, mechanisms_by_molecule, targets, node_lookup, compounds_by_chembl_id, arguments.max_drug_targets or None, admitted_atc_prefixes,
                                       complex_target_narrowing=narrowing)
 
