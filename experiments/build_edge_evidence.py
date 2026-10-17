@@ -71,6 +71,8 @@ def label_summary(evidence: pd.DataFrame, species: pd.DataFrame) -> dict:
                 "a_record_with_human_score_above_one_half": int(curated_edge_labels(evidence.assign(human_records=stricter["human_records"])).sum()),
                 **({f"sign_with_{minimum}_or_more_records": int(curated_edge_labels(evidence, minimum_sign_records=minimum).sum()) for minimum in (1, 2)}
                    if "sign_basis" in evidence.columns else {}),
+                "bulk_papers_as_one_record": int(curated_edge_labels(evidence, bulk_papers="one").sum()),
+                "bulk_papers_not_counted": int(curated_edge_labels(evidence, bulk_papers="none").sum()),
                 **({"sign_undisputed": int(curated_edge_labels(evidence, exclude_disputed_signs=True).sum()),
                     "sign_with_1_or_more_records_and_undisputed": int(curated_edge_labels(evidence, minimum_sign_records=1, exclude_disputed_signs=True).sum())}
                    if DISPUTE_COLUMN in evidence.columns else {})}}

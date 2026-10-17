@@ -206,3 +206,25 @@ def test_curated_edges_with_two_records_one_of_them_human_become_labels():
     assert curated_edge_labels(evidence, minimum_human_records=2).tolist() == [False, False, False, False, False, False, False, False, False]
     with pytest.raises(ValueError, match="human_records"):
         curated_edge_labels(evidence.drop(columns="human_records"))
+
+
+def test_a_bulk_paper_can_count_once_or_not_at_all_toward_a_label():
+    """Decision 9.70 (3): a PubMed id behind more than 100 signalling or transcription edges is a bulk paper."""
+    from mechanistic_pathway_learning.graph.edge_evidence import BULK_PAPER_EDGES, bulk_paper_ids, records_with_bulk_papers
+
+    filler = pd.DataFrame({"family": ["signalling"] * (BULK_PAPER_EDGES + 1), "kind": ["curated"] * (BULK_PAPER_EDGES + 1),
+                           "records": [2] * (BULK_PAPER_EDGES + 1), "pubmed_ids": ["900;901"] * (BULK_PAPER_EDGES + 1),
+                           "human_records": [0] * (BULK_PAPER_EDGES + 1), "contested": [False] * (BULK_PAPER_EDGES + 1)})
+    edges = pd.DataFrame({"family": ["signalling", "signalling", "transcription", "enzyme_regulation"], "kind": ["curated"] * 4,
+                          "records": [2, 2, 3, 2], "pubmed_ids": ["900;901", "900;55", "900;56;57", "900;901"], "human_records": [1] * 4,
+                          "contested": [False] * 4})
+    evidence = pd.concat([edges, filler], ignore_index=True)
+    assert bulk_paper_ids(evidence) == {"900", "901"}, "each is behind 101 signalling edges and more; the enzyme regulation row is not counted"
+    assert records_with_bulk_papers(evidence, "count")[:4].tolist() == [2, 2, 3, 2]
+    assert records_with_bulk_papers(evidence, "one")[:4].tolist() == [1, 2, 3, 2], "two bulk papers count as one; an enzyme regulation row keeps its records"
+    assert records_with_bulk_papers(evidence, "none")[:4].tolist() == [0, 1, 2, 2]
+    assert curated_edge_labels(evidence)[:3].tolist() == [True, True, True]
+    assert curated_edge_labels(evidence, bulk_papers="one")[:3].tolist() == [False, True, True]
+    assert curated_edge_labels(evidence, bulk_papers="none")[:3].tolist() == [False, False, True]
+    with pytest.raises(ValueError, match="bulk paper mode"):
+        records_with_bulk_papers(evidence, "half")
