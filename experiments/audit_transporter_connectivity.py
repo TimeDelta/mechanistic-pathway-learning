@@ -10,7 +10,7 @@ this project (neurotransmitter, metal, glucose, lactate, amino acid and creatine
 the metabolites they move, so their substrates can be checked against what the protein carries. Transport reactions
 without any catalysing gene are counted too: they move metabolites, but no gene perturbation reaches them.
 
-Usage:
+Usage (the default graphs are the merged full graph and the v5 graph the registered models read):
   python experiments/audit_transporter_connectivity.py --markdown-output docs/transporter_connectivity_audit.md
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from mechanistic_pathway_learning.documentation import provenance_stamp
 from mechanistic_pathway_learning.graph.protein_descriptors import read_go_ancestors
 
 TRANSMEMBRANE_TRANSPORTER_ACTIVITY = "GO:0022857"
@@ -52,32 +53,55 @@ def transporter_genes(uniprot_table: pd.DataFrame, gaf_path: Path, go_ancestors:
     return genes
 
 
+MEMBERSHIP_DEPTH = 3  # a protein -> its Reactome entities -> the entities those are part of
+CATALYSIS_RELATIONS = ("catalyzed_by", "catalyzes_reverse_transport")
+
+
 def transport_connectivity(nodes: pd.DataFrame, edges: pd.DataFrame) -> tuple[dict[str, dict], int, int]:
     """gene symbol -> {transport_reactions, metabolites moved, other_edges}; plus the number of transport reactions and
-    of those without a catalysing gene."""
+    of those without a catalysing gene.
+
+    A gene acts through its protein nodes in a split graph (encodes edges) and through its own node in a merged one,
+    and through the Reactome entities those are members of, to MEMBERSHIP_DEPTH levels, since a Reactome transport
+    reaction is catalysed by an entity rather than by a gene. Until 17 October 2026 only a gene node's own catalysis
+    counted, which on a split graph, where catalysis leaves the protein, found no transporter connected at all."""
     is_transport = dict(zip(nodes.node_id, nodes.is_transport.fillna(False).astype(bool)))
     display = dict(zip(nodes.node_id, nodes.display_name))
     reaction_metabolites: dict[str, set[str]] = defaultdict(set)
+    proteins_of_gene: dict[str, list[str]] = defaultdict(list)
+    out_edges: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    touching: dict[str, int] = defaultdict(int)
     for source, target, relation in zip(edges.source_id, edges.target_id, edges.relation_type):
+        source, target, relation = str(source), str(target), str(relation)
         if relation == "substrate_of" and is_transport.get(target):
             reaction_metabolites[target].add(str(display.get(source, source)))
         elif relation == "product_of" and is_transport.get(source):
             reaction_metabolites[source].add(str(display.get(target, target)))
+        if relation == "encodes":
+            proteins_of_gene[source].append(target)
+            continue
+        out_edges[source].append((target, relation))
+        if relation not in CATALYSIS_RELATIONS:
+            touching[source] += 1
+            touching[target] += 1
     catalysts: dict[str, set[str]] = defaultdict(set)
-    connectivity: dict[str, dict] = defaultdict(lambda: {"transport_reactions": set(), "metabolites": set(), "other_edges": 0})
-    for source, target, relation in zip(edges.source_id, edges.target_id, edges.relation_type):
-        for gene_node, other in ((source, target), (target, source)):
-            if not str(gene_node).startswith("GENE:"):
-                continue
-            entry = connectivity[gene_node[5:]]
-            if relation == "catalyzed_by" and is_transport.get(other):
-                entry["transport_reactions"].add(other)
-                entry["metabolites"] |= reaction_metabolites.get(other, set())
-                catalysts[other].add(gene_node)
-            elif relation != "catalyzed_by":
-                entry["other_edges"] += 1
+    connectivity: dict[str, dict] = {}
+    for gene_node in (str(node) for node in nodes.node_id if str(node).startswith("GENE:")):
+        actors = proteins_of_gene.get(gene_node) or [gene_node]
+        acting, frontier = set(actors), list(actors)
+        for _ in range(MEMBERSHIP_DEPTH):
+            frontier = [target for node in frontier for target, relation in out_edges.get(node, []) if relation == "member_of" and target not in acting]
+            acting.update(frontier)
+        entry = {"transport_reactions": set(), "metabolites": set(), "other_edges": sum(touching.get(actor, 0) for actor in actors)}
+        for node in acting:
+            for target, relation in out_edges.get(node, []):
+                if relation in CATALYSIS_RELATIONS and is_transport.get(target):
+                    entry["transport_reactions"].add(target)
+                    entry["metabolites"] |= reaction_metabolites.get(target, set())
+                    catalysts[target].add(gene_node)
+        connectivity[gene_node[5:]] = entry
     transport_reactions = [node for node, flag in is_transport.items() if flag]
-    return dict(connectivity), len(transport_reactions), sum(1 for reaction in transport_reactions if not catalysts.get(reaction))
+    return connectivity, len(transport_reactions), sum(1 for reaction in transport_reactions if not catalysts.get(reaction))
 
 
 def main() -> None:
@@ -85,13 +109,15 @@ def main() -> None:
     parser.add_argument("--uniprot-table", type=Path, default=Path("data/raw/uniprot/uniprot_human_reviewed.tsv.gz"))
     parser.add_argument("--gaf", type=Path, default=Path("data/raw/gene_ontology/goa_human.gaf.gz"))
     parser.add_argument("--go-obo", type=Path, default=Path("data/raw/gene_ontology/go-basic.obo"))
-    parser.add_argument("--graphs", nargs="+", default=["data/processed/graph", "data/processed/graph_full"])
+    parser.add_argument("--graphs", nargs="+", default=["data/processed/graph_full", "data/processed/graph_full_neuronal_split_binders_drugs_v5"])
     parser.add_argument("--markdown-output", type=Path, default=None)
     arguments = parser.parse_args()
     transporters = transporter_genes(pd.read_csv(arguments.uniprot_table, sep="\t"), arguments.gaf, read_go_ancestors(arguments.go_obo))
-    lines = ["# Transporter connectivity audit (generated by experiments/audit_transporter_connectivity.py)", "",
+    stamp = provenance_stamp("experiments/audit_transporter_connectivity.py", [*arguments.graphs, str(arguments.uniprot_table), str(arguments.gaf), str(arguments.go_obo)])
+    lines = ["# Transporter connectivity audit (generated by experiments/audit_transporter_connectivity.py)", "", stamp, "",
              f"{len(transporters):,} reviewed human proteins carry transmembrane transporter activity (GO:0022857, propagated). "
-             "'Connected down' means the gene catalyses at least one Human-GEM transport reaction, which moves a metabolite between compartment copies.", ""]
+             "'Connected down' means the gene catalyses at least one transport reaction, which moves a metabolite between compartment copies: "
+             "through its protein node in a split graph, its own node in a merged one, or a Reactome entity it is a member of.", ""]
     per_graph = {}
     for graph in arguments.graphs:
         nodes, edges = pd.read_parquet(Path(graph) / "nodes.parquet"), pd.read_parquet(Path(graph) / "edges.parquet")
