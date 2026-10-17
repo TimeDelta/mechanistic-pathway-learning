@@ -15,8 +15,9 @@ Licence: the NIH Open Citation Collection that iCite serves is described by its 
 domain citation graph for biomedical research made freely available to the community" (Hutchins et al. 2019, PLoS
 Biol 17(10):e3000385, PMC6786512, read 17 October 2026); the scores are NIH's derivation from NLM's MeSH indexing.
 
-The API: https://icite.od.nih.gov/api/pubs?pmids=...&fl=... with up to 1,000 ids per request, no key and no e-mail;
-the requests are paced (PAUSE_SECONDS) and cached under data/raw/icite, so a rerun asks only for what is missing.
+The API: https://icite.od.nih.gov/api/pubs?pmids=...&fl=..., no key and no e-mail; batches of BATCH_SIZE ids, since a
+request naming 1,000 was refused as too large (HTTP 413); the requests are paced (PAUSE_SECONDS) and cached under
+data/raw/icite, so a rerun asks only for what is missing.
 
 Usage:
   PYTHONPATH=. python experiments/fetch_icite_species.py
@@ -39,7 +40,7 @@ from mechanistic_pathway_learning.graph.edge_evidence import TEXT_MINED_REFERENC
 
 API = "https://icite.od.nih.gov/api/pubs"
 FIELDS = ("pmid", "human", "animal", "molecular_cellular", "year", "is_research_article")
-BATCH_SIZE = 1000
+BATCH_SIZE = 200  # the API takes up to 1,000 ids, but a GET of 1,000 was refused with HTTP 413 (17 October 2026)
 PAUSE_SECONDS = 2.0
 USER_AGENT = "perturbation-symptom-modules (research; https://github.com/TimeDelta/perturbation-symptom-modules)"
 DEFAULT_CACHE = Path("data/raw/icite/icite_species.parquet")
