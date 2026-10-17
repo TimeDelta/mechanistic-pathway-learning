@@ -534,6 +534,11 @@
    "class": "generated",
    "generator": "experiments/write_descriptor_column_doc.py"
   },
+  "docs/nosology_discovery_options.md": {
+   "class": "draft",
+   "recorded": "2026-10-17",
+   "what": "options for deriving a nosology from the fitted model after the experiment, with what auto-psych-nosology can and cannot contribute; decision 9.64"
+  },
   "docs/occupancy_coverage_and_shift_transfer.md": {
    "class": "generated",
    "generator": "experiments/label_review/occupancy_coverage_and_shift_transfer.py"
