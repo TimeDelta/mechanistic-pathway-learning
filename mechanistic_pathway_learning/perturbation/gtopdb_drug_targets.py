@@ -30,6 +30,11 @@ So a drug can only gain specificity within a complex GtoPdb describes, never los
 this rule cocaine goes from 10 targets to 11 - its sodium-channel complex untouched, because GtoPdb names none of its
 subunits, and HTR3A added - rather than to 1.
 
+**Where it runs.** Until 17 October 2026 only measurement scripts called this module, and the evidence build kept
+seeding every subunit of a ChEMBL complex (decision 8.11). ComplexTargetNarrowing, at the end of the module, is the
+rule wired into both label routes: the SIDER route of evidence/assemble_evidence_table.py and the OnSIDES route of
+evidence/load_onsides_label_events.py, behind --narrow-complex-targets (on by default) in each of their scripts.
+
 **What this does not fix, and is not for.** Cocaine's sodium-channel rows are themselves the wrong pharmacology for
 this study: ChEMBL curates mechanism by approved indication, cocaine is approved as a topical anaesthetic, and its
 monoamine transport sits in the off-target table at 300 times the occupancy of its mechanism targets. That is a
@@ -42,6 +47,8 @@ Attribution-ShareAlike 4.0 International License" (guidetopharmacology.org/about
 """
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import re
 from pathlib import Path
 
@@ -105,6 +112,24 @@ def read_ligand_mapping(gtopdb_directory: Path = GTOPDB_DIRECTORY) -> pd.DataFra
     return pd.read_csv(gtopdb_directory / LIGAND_MAPPING_FILE, low_memory=False, skiprows=VERSION_HEADER_ROWS)
 
 
+# A radiolabelled or fluorescent form of a ligand, which GtoPdb lists as a ligand of its own and often under the parent's
+# PubChem CID: [<sup>3</sup>H]flunitrazepam shares 3380 with flunitrazepam, and its binding rows say "Full agonist" at
+# GABRA2, GABRA3 and GABRA5 where the parent's say "Positive".
+LABELLED_LIGAND_PATTERN = re.compile(r"<sup>|\[(?:3H|125I|11C|18F|14C|35S|32P|99mTc)\]|alexa fluor|fluorescein|bodipy|cy[35]", re.IGNORECASE)
+
+
+def ligand_of_pubchem_cid_table(mapping: pd.DataFrame) -> dict[int, int]:
+    """PubChem CID -> one GtoPdb ligand id. A CID several ligands carry goes to the unlabelled ligand (the lowest id
+    among the unlabelled ones, so the choice does not depend on the file's row order), and a CID of 0 or less, which
+    GtoPdb writes for a ligand PubChem does not hold, goes to none."""
+    candidates: dict[int, list[tuple[bool, int]]] = {}
+    for cid, ligand, name in zip(pd.to_numeric(mapping["PubChem CID"], errors="coerce"), mapping["Ligand id"], mapping["Name"]):
+        if pd.isna(cid) or int(cid) <= 0:
+            continue
+        candidates.setdefault(int(cid), []).append((bool(LABELLED_LIGAND_PATTERN.search(str(name))), int(ligand)))
+    return {cid: min(choices)[1] for cid, choices in candidates.items()}
+
+
 def ligand_id_of_drug(pubchem_cid_of_drug: dict[str, int], name_of_drug: dict[str, str],
                       gtopdb_directory: Path = GTOPDB_DIRECTORY) -> tuple[dict[str, int], dict[str, str]]:
     """perturbation id -> GtoPdb ligand id, and perturbation id -> how it was matched.
@@ -113,8 +138,7 @@ def ligand_id_of_drug(pubchem_cid_of_drug: dict[str, int], name_of_drug: dict[st
     carries approved names for drugs whose CID it does not record. Matching by name alone reaches more of the study's
     drugs than by CID alone, so both are used and which one matched is reported, never guessed at."""
     mapping = read_ligand_mapping(gtopdb_directory)
-    cid_column = pd.to_numeric(mapping["PubChem CID"], errors="coerce")
-    ligand_of_cid = {int(cid): int(ligand) for cid, ligand in zip(cid_column, mapping["Ligand id"]) if pd.notna(cid)}
+    ligand_of_cid = ligand_of_pubchem_cid_table(mapping)
     ligand_of_name: dict[str, int] = {}
     for name, ligand in zip(mapping["Name"], mapping["Ligand id"]):
         key = str(name).strip().lower()
@@ -262,3 +286,213 @@ def pubchem_cid_from_perturbation_id(perturbation_id: str) -> int | None:
     """The PubChem CID of a STITCH flat identifier CID1xxxxxxxx, or None for an identifier of another kind."""
     match = re.fullmatch(r"CID1(\d{8})", str(perturbation_id))
     return int(match.group(1)) if match else None
+
+
+# The species whose rows decide which subunits of a complex a drug acts on; within them a human row is preferred
+# wherever one exists. Human rows alone by default, measured both ways on the drugs of the v5 graph and the OnSIDES
+# ingredients (17 October 2026): adding the rat and mouse rows changes three of the study drugs' complex targets, and
+# two of the three for the worse, lidocaine and lacosamide narrowing to the sodium channel subtypes rat assays named and
+# losing SCN1A and SCN8A, brain subtypes GtoPdb holds no row of either drug for; what it repairs is outside the study, GtoPdb holding nifedipine's and
+# nimodipine's CaV1.2 rows for the rat only, so that on human rows nifedipine narrows to CACNA1D and CACNA1F. Either way
+# a narrowing follows the subunits GtoPdb's rows happen to name, which is assay coverage as much as selectivity.
+DEFAULT_NARROWING_SPECIES: tuple[str, ...] = ("Human",)
+MIXED_SIGNS = 0.0  # rows stating opposite directions at one subunit, read as GtoPdb's own "Mixed"
+NON_SELECTIVE = "Non-selective"  # GtoPdb's Selectivity value for a ligand that does not distinguish the subtypes it names
+
+# Subunits any one of which forms a site, beside the obligate ones of OBLIGATE_SUBUNITS_OF_A_SITE. A drug whose GtoPdb
+# rows at the complex all say "Non-selective" acts through every one of them, whichever its affinity rows happen to name:
+# GtoPdb names GABRA1 to GABRA3 for diazepam and clonazepam and no GABRA5 row at all, and "Benzodiazepines - which
+# non-selectively target GABA(A) receptors containing the α1, α2, α3 or α5 subunits - have been in clinical use for
+# decades" (Rudolph and Knoflach, Nat Rev Drug Discov 2011;10:685, doi:10.1038/nrd3502, read through PubMed). A drug
+# GtoPdb calls selective, or whose selectivity it has not determined, keeps only the subunits its rows name.
+ALTERNATIVE_SUBUNITS_OF_A_SITE: dict[str, tuple[str, ...]] = {
+    "benzodiazepine site": ("GABRA1", "GABRA2", "GABRA3", "GABRA5"),
+}
+NON_SELECTIVE_SITE_REASON = "a subunit that forms the site, at which GtoPdb calls the drug non-selective"
+SITE_STRUCTURE_REASON = "a subunit that forms the drug's binding site, where GtoPdb names too few of the complex's subunits"
+
+
+def subunits_that_form(sites) -> set[str]:
+    """For the sites ALTERNATIVE_SUBUNITS_OF_A_SITE describes, every subunit that forms one: the alternatives and the
+    obligate ones. A site with no alternatives listed (the barbiturate site, on any beta subunit) gives none, since
+    seeding its obligate subunits alone would drop the rest of every receptor that carries it."""
+    subunits: set[str] = set()
+    for site in sites:
+        site = str(site).strip()
+        if site in ALTERNATIVE_SUBUNITS_OF_A_SITE:
+            subunits.update(ALTERNATIVE_SUBUNITS_OF_A_SITE[site])
+            subunits.update(OBLIGATE_SUBUNITS_OF_A_SITE.get(site, ()))
+    return subunits
+
+# The two reasons replace_complex_rows gives a subunit it keeps from a complex row it narrows.
+NARROWING_REASON = "gtopdb, narrowing a chembl complex"
+OBLIGATE_PARTNER_REASON = "obligate partner of the site, which the narrowing would drop"
+DEFAULT_BINDING_SITES_PATH = Path("configs/binding_sites.csv")
+
+
+def sign_of_rows(signs: list[float]) -> float:
+    """One subunit's sign from its rows: a row that states no direction (0, "Binding") gives way to rows that state
+    one; rows of one direction give the value most of them state; rows of opposite directions give MIXED_SIGNS. Rows
+    of one direction that tie between two magnitudes give NaN, which the narrowing settles with the ChEMBL target's own
+    sign (dexmedetomidine at ADRA2A: one "Agonist" row and one "Partial agonist" row, and ChEMBL's AGONIST)."""
+    directed = [sign for sign in signs if sign != 0]
+    if not directed:
+        return 0.0
+    if any(sign > 0 for sign in directed) and any(sign < 0 for sign in directed):
+        return MIXED_SIGNS
+    counts: dict[float, int] = {}
+    for sign in directed:
+        counts[sign] = counts.get(sign, 0) + 1
+    most = max(counts.values())
+    leaders = [sign for sign, count in counts.items() if count == most]
+    return leaders[0] if len(leaders) == 1 else float("nan")
+
+
+def one_row_per_subunit(rows: pd.DataFrame, species: tuple[str, ...] = DEFAULT_NARROWING_SPECIES) -> pd.DataFrame:
+    """One row per subunit for one ligand: gene_symbol (upper case, so a rat or mouse symbol names its human
+    orthologue's gene), sign and the species that stated it. A subunit's human rows decide its sign when it has any, the
+    other listed species' rows otherwise, as sign_of_rows reads them. Rows of other species, rows naming no
+    single gene and rows whose action has no sign are left out, as one_gene_per_row leaves them."""
+    kept = rows[rows["Target Species"].astype(str).str.strip().isin(species)].copy()
+    if kept.empty:
+        return pd.DataFrame(columns=["gene_symbol", "sign", "species", "selectivity"])
+    kept["gene_symbol"] = kept["Target Gene Symbol"].astype(str).str.strip().str.upper()
+    kept["sign"] = [sign_of_action(action) for action in kept["Action"]]
+    usable = one_gene_per_row(kept)
+    records = []
+    for gene, group in usable.groupby("gene_symbol"):
+        human = group[group["Target Species"].astype(str).str.strip() == HUMAN_SPECIES]
+        stating = human if len(human) else group
+        selectivity = stating["Selectivity"].astype(str).str.strip() if "Selectivity" in stating.columns else pd.Series([""] * len(stating))
+        records.append({"gene_symbol": gene, "sign": sign_of_rows(stating.sign.astype(float).tolist()),
+                        "species": ";".join(sorted(set(stating["Target Species"].astype(str).str.strip()))),
+                        "selectivity": ";".join(sorted(set(selectivity) - {"", "nan"}))})
+    return pd.DataFrame(records, columns=["gene_symbol", "sign", "species", "selectivity"])
+
+
+def binding_sites_by_drug_name(site_table_path: Path | None = DEFAULT_BINDING_SITES_PATH) -> dict[str, tuple[str, ...]]:
+    """drug name, lowercased -> the binding sites configs/binding_sites.csv names for it, which decide the obligate
+    subunits a narrowing restores (OBLIGATE_SUBUNITS_OF_A_SITE)."""
+    if site_table_path is None or not Path(site_table_path).exists():
+        return {}
+    table = pd.read_csv(site_table_path)
+    return {str(drug).strip().lower(): tuple(sorted(set(group.site.astype(str)))) for drug, group in table.groupby("drug")}
+
+
+@dataclasses.dataclass
+class ComplexTargetNarrowing:
+    """A drug's ChEMBL complex targets narrowed to the subunits the Guide to PHARMACOLOGY names for that drug, with the
+    binding site's obligate subunits restored, and nothing else changed (decision 8.11; the owner, 13 October 2026:
+    "agreed on both 1 and 2", the unit a ChEMBL row after "cocaine should NOT narrow to a single target", and "ya
+    absolutely add back obligate partners").
+
+    The unit is one ChEMBL target, as replace_complex_rows has it: a single-gene target is kept whatever GtoPdb says, a
+    complex target is narrowed only where GtoPdb names at least SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX of its
+    subunits, and the target keeps its ChEMBL identifier and its one unit of magnitude, now spread over the subunits
+    kept, each with the sign its own GtoPdb row states (an obligate subunit takes the ChEMBL target's sign). A GtoPdb
+    target outside every ChEMBL row of the drug is not added: measured on 13 October the narrowing cost nothing in
+    leakage and the additions took the largest leakage block from 114 drugs to 200 (docs/gtopdb_leakage_cost.md), and
+    whether they enter is the owner's to decide."""
+
+    ligand_of_pubchem_cid: dict[int, int]
+    ligand_of_name: dict[str, int]
+    rows_of_ligand: dict[int, pd.DataFrame]
+    sites_of_drug_name: dict[str, tuple[str, ...]]
+    provenance: dict
+    narrow_by_site_structure: bool = True
+
+    @classmethod
+    def from_gtopdb(cls, gtopdb_directory: Path = GTOPDB_DIRECTORY, binding_sites_path: Path | None = DEFAULT_BINDING_SITES_PATH,
+                    species: tuple[str, ...] = DEFAULT_NARROWING_SPECIES, narrow_by_site_structure: bool = True) -> "ComplexTargetNarrowing":
+        gtopdb_directory = Path(gtopdb_directory)
+        for name in (INTERACTIONS_FILE, LIGAND_MAPPING_FILE):
+            if not (gtopdb_directory / name).is_file():
+                raise FileNotFoundError(f"{gtopdb_directory / name} is missing: fetch the Guide to PHARMACOLOGY (scripts/fetch_raw_sources.sh), or build "
+                                        "without the narrowing of complex targets (--no-narrow-complex-targets)")
+        mapping = read_ligand_mapping(gtopdb_directory)
+        ligand_of_pubchem_cid = ligand_of_pubchem_cid_table(mapping)
+        ligand_of_name: dict[str, int] = {}
+        for name, ligand in zip(mapping["Name"], mapping["Ligand id"]):
+            key = str(name).strip().lower()
+            if key:
+                ligand_of_name.setdefault(key, int(ligand))
+        interactions = read_interactions(gtopdb_directory, human_only=False)
+        ligand_column = pd.to_numeric(interactions["Ligand ID"], errors="coerce")
+        rows_of_ligand: dict[int, pd.DataFrame] = {}
+        for ligand, rows in interactions.groupby(ligand_column):
+            usable = one_row_per_subunit(rows, species)
+            if not usable.empty:
+                rows_of_ligand[int(ligand)] = usable
+        provenance = {"gtopdb_directory": str(gtopdb_directory),
+                      **{f"{name}_sha256": hashlib.sha256((gtopdb_directory / name).read_bytes()).hexdigest() for name in (INTERACTIONS_FILE, LIGAND_MAPPING_FILE)},
+                      "binding_sites": str(binding_sites_path) if binding_sites_path is not None else None,
+                      "subunits_gtopdb_must_name": SUBUNITS_GTOPDB_MUST_NAME_TO_NARROW_A_COMPLEX, "gtopdb_additions": "not added",
+                      "species": list(species), "narrow_by_site_structure": narrow_by_site_structure}
+        return cls(ligand_of_pubchem_cid, ligand_of_name, rows_of_ligand, binding_sites_by_drug_name(binding_sites_path), provenance,
+                   narrow_by_site_structure)
+
+    def ligand_of(self, pubchem_cid: int | None, drug_name: str | None) -> tuple[int | None, str]:
+        """The drug's GtoPdb ligand, by PubChem CID first and by its name second, and which matched."""
+        if pubchem_cid is not None and int(pubchem_cid) in self.ligand_of_pubchem_cid:
+            return self.ligand_of_pubchem_cid[int(pubchem_cid)], "pubchem_cid"
+        name = str(drug_name or "").strip().lower()
+        if name in self.ligand_of_name:
+            return self.ligand_of_name[name], "name"
+        return None, ""
+
+    def narrow(self, drug_targets: list, pubchem_cid: int | None = None, drug_name: str | None = None) -> tuple[list, dict]:
+        """(the drug's targets with each complex target narrowed where the rule allows, a record of what changed)."""
+        ligand, matched_by = self.ligand_of(pubchem_cid, drug_name)
+        record: dict = {"ligand": ligand, "matched_by": matched_by, "narrowed": {}, "kept_whole": {}}
+        complex_targets = [target for target in drug_targets if len(target.gene_symbols) > 1]
+        if not complex_targets:
+            return list(drug_targets), record
+        usable = self.rows_of_ligand.get(ligand) if ligand is not None else None
+        if usable is None:
+            usable = pd.DataFrame(columns=["gene_symbol", "sign", "species", "selectivity"])
+        sites = self.sites_of_drug_name.get(str(drug_name or "").strip().lower(), ())
+        site_subunits = subunits_that_form(sites) if self.narrow_by_site_structure else set()
+        narrowed_targets = []
+        for target in drug_targets:
+            if len(target.gene_symbols) <= 1:
+                narrowed_targets.append(target)
+                continue
+            one_row = pd.DataFrame([{"gene_symbols": "|".join(target.gene_symbols), "sign": target.sign}])
+            sign_of_gene, reason_of_gene = replace_complex_rows(one_row, usable.assign(sign=usable.sign.astype(float).fillna(target.sign)), sites=sites)
+            kept = [gene for gene in target.gene_symbols if reason_of_gene.get(gene) in (NARROWING_REASON, OBLIGATE_PARTNER_REASON)]
+            if not kept:
+                forming = [gene for gene in target.gene_symbols if gene in site_subunits]
+                if forming and len(forming) < len(target.gene_symbols):
+                    # GtoPdb names too few of the complex's subunits, and the drug's site says which ones it acts through
+                    narrowed_targets.append(dataclasses.replace(target, gene_symbols=forming, gene_signs={gene: target.sign for gene in forming}))
+                    record["narrowed"][target.target_chembl_id] = {"before": list(target.gene_symbols), "after": forming, "obligate_partners": [],
+                                                                   "site_subunits_restored": [], "by_site_structure": list(sites),
+                                                                   "signs": {gene: target.sign for gene in forming}, "species": {}}
+                    continue
+                narrowed_targets.append(target)
+                if ligand is None:
+                    record["kept_whole"][target.target_chembl_id] = "no GtoPdb ligand"
+                elif usable.empty:
+                    record["kept_whole"][target.target_chembl_id] = "no GtoPdb row names one gene with a sign"
+                else:
+                    record["kept_whole"][target.target_chembl_id] = reason_of_gene.get(target.gene_symbols[0], "")
+                continue
+            named = [gene for gene in kept if reason_of_gene[gene] == NARROWING_REASON]
+            selectivity_of_gene = dict(zip(usable.gene_symbol, usable.selectivity))
+            if named and all(selectivity_of_gene.get(gene, "") == NON_SELECTIVE for gene in named):
+                named_signs = {float(sign_of_gene[gene]) for gene in named}
+                common_sign = next(iter(named_signs)) if len(named_signs) == 1 else target.sign
+                for site in sites:
+                    for gene in ALTERNATIVE_SUBUNITS_OF_A_SITE.get(site, ()):
+                        if gene in target.gene_symbols and gene not in kept:
+                            kept.append(gene)
+                            sign_of_gene[gene], reason_of_gene[gene] = common_sign, NON_SELECTIVE_SITE_REASON
+                kept = [gene for gene in target.gene_symbols if gene in kept]
+            narrowed_targets.append(dataclasses.replace(target, gene_symbols=kept, gene_signs={gene: float(sign_of_gene[gene]) for gene in kept}))
+            species_of_gene = dict(zip(usable.gene_symbol, usable.species))
+            record["narrowed"][target.target_chembl_id] = {"before": list(target.gene_symbols), "after": kept,
+                                                           "obligate_partners": [gene for gene in kept if reason_of_gene[gene] == OBLIGATE_PARTNER_REASON],
+                                                           "site_subunits_restored": [gene for gene in kept if reason_of_gene[gene] == NON_SELECTIVE_SITE_REASON],
+                                                           "signs": {gene: float(sign_of_gene[gene]) for gene in kept},
+                                                           "species": {gene: species_of_gene.get(gene, "") for gene in kept}}
+        return narrowed_targets, record

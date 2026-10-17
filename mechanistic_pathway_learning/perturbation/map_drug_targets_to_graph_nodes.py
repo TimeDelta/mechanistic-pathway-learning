@@ -18,6 +18,9 @@ Every ChEMBL target type is placed where the graph has a node for it
   single-target rule like any drug with protein targets (check_graph_compounds_have_no_mechanism enforces this). GABA is
   not listed: the only label rows under its PubChem id (SIDER CID 119) are an immune globulin's.
 Targets in another organism stay out (human_only), and DNA, RNA, antibodies and unnamed classes have no node.
+A complex target's magnitude 1 is spread over its subunits' nodes; the evidence build first narrows a complex to the
+subunits the Guide to PHARMACOLOGY names for the drug, each with its own sign (DrugTarget.gene_signs;
+perturbation/gtopdb_drug_targets.ComplexTargetNarrowing, decision 8.11).
 
 Inputs are the caches written by experiments/fetch_chembl_drug_targets.py.
 """
@@ -73,10 +76,16 @@ class DrugTarget:
     target_type: str | None = None
     pref_name: str | None = None
     accessions: list[str] = field(default_factory=list)  # UniProt accessions, or the Ensembl gene id of a nucleic-acid target
+    # a sign per subunit, where a complex target was narrowed to the subunits the Guide to PHARMACOLOGY names and its
+    # rows state their own action (perturbation/gtopdb_drug_targets.py, decision 8.11); empty, every subunit takes sign
+    gene_signs: dict[str, float] = field(default_factory=dict)
 
     @property
     def sign(self) -> float:
         return ACTION_TYPE_SIGN.get((self.action_type or "OTHER").upper(), 0.0)
+
+    def sign_of(self, gene_symbol: str) -> float:
+        return float(self.gene_signs.get(gene_symbol, self.sign))
 
 
 @dataclass
@@ -234,9 +243,12 @@ class GraphNodeLookup:
         return [node_id for base_id in base_ids for node_id in self.metabolite_nodes_by_base_id.get(base_id, [])]
 
     def perturbation_nodes(self, drug_targets: list[DrugTarget]) -> list[list]:
-        """[node id, sign, magnitude] triples; magnitude is 1 / number of graph nodes under each target."""
+        """[node id, sign, magnitude] triples; magnitude is 1 / number of graph nodes under each target. A gene node takes
+        its subunit's own sign when the target carries one (DrugTarget.gene_signs), the target's sign otherwise."""
         triples: list[list] = []
         for target in drug_targets:
             mapped = self.nodes_of_target(target)
-            triples.extend([node_id, target.sign, 1.0 / len(mapped)] for node_id in mapped)
+            symbol_of_node = {self.node_by_symbol[symbol]: symbol for symbol in target.gene_symbols if symbol in self.node_by_symbol}
+            triples.extend([node_id, target.sign_of(symbol_of_node[node_id]) if node_id in symbol_of_node else target.sign, 1.0 / len(mapped)]
+                           for node_id in mapped)
         return triples
