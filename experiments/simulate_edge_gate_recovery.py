@@ -52,6 +52,7 @@ from mechanistic_pathway_learning.models.linear_response_encoder import LinearRe
 RELATIONS = ["activates", "inhibits"]
 # (name, p, n, share of the gated edges): the v5 graph's tiers grouped by their values (docs/figures.md, figure 12)
 TIERS = (("curated", 0.9, 1.0, 0.68), ("unreferenced", 0.7, 0.5, 0.20), ("text_mined_only", 0.55, 0.5, 0.12))
+TIER_P = {name: p for name, p, _, _ in TIERS}
 
 
 @dataclass
@@ -146,7 +147,10 @@ def fit(world: World, train_rows: np.ndarray, arguments, seed: int) -> dict:
     the readout is learned on every node (--joint-readout dense) or only on the nodes each symptom reads in the truth
     (support), which bounds how far a learned readout can make up for a false edge."""
     num_nodes = int(world.readout.shape[1])
-    gates = HardConcreteEdgeGates(np.ones(len(world.edges), dtype=bool), world.prior_p, world.prior_n, beta=arguments.beta)
+    gated = np.ones(len(world.edges), dtype=bool)
+    for name in getattr(arguments, "ungated_tiers", None) or []:  # a tier taken as known: its edges are always open, as an edge label would be
+        gated &= world.prior_p != TIER_P[name]
+    gates = HardConcreteEdgeGates(gated, world.prior_p, world.prior_n, beta=arguments.beta)
     encoder = make_encoder(num_nodes, world.edges, gates=gates, seed=arguments.world_seed)
     joint = bool(arguments.joint)
     random_start = joint and getattr(arguments, "joint_start", "oracle") == "random"
@@ -250,7 +254,7 @@ def fit(world: World, train_rows: np.ndarray, arguments, seed: int) -> dict:
     evidence = None
     if arguments.closure_evidence:  # per closed edge, the exact log-likelihood ratio for keeping it closed, in nats
         evidence = closure_evidence(encoder, gates, data_loss, batches_of(train_rows, arguments.batch_size), penalty_denominator, arguments.surrogate_width)
-    return {"closed": (gates.read_out() < 0.5).cpu().numpy(), "open_probability": gates.open_probability().detach().cpu().numpy(), "closure_evidence": evidence,
+    return {"closed": (~gates.open_edges()).cpu().numpy(), "open_probability": np.nan_to_num(gates.values_per_edge(), nan=1.0), "closure_evidence": evidence,
             "history": history, "checks": checks, "diagnostic": diagnostic, "encoder": encoder, "readout": readout.detach(), "bias": bias.detach()}
 
 
@@ -354,6 +358,8 @@ def main() -> None:
     parser.add_argument("--truth-real-probability", nargs="*", default=[], metavar="TIER=P",
                         help="the truth's rate of real edges in a tier, in place of its prior pi (miscalibrated priors)")
     parser.add_argument("--label-sensitivity", type=float, default=1.0, help="each true positive is observed as positive with this probability")
+    parser.add_argument("--ungated-tiers", nargs="*", default=[], choices=[name for name, *_ in TIERS],
+                        help="tiers whose edges carry no gate: taken as known and always open, as edge labels would be (the owner's question of 16 October)")
     parser.add_argument("--stability-scheme", choices=("halves", "complementary"), default="halves",
                         help="independent random halves (Meinshausen and Buhlmann 2010) or complementary pairs (Shah and Samworth 2013)")
     parser.add_argument("--stability-refits", type=int, default=0)
