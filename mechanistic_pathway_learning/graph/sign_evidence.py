@@ -16,6 +16,12 @@ as known, with a sign no gate can flip. This module reads the two evidences down
 and gives each graph edge the ids behind its stored sign (`sign_pubmed_ids`, `sign_records`) and, for a regulation,
 how its sign was decided (`sign_basis`). Nothing here changes a label by itself: curated_edge_labels reads the columns
 only when asked for a minimum (`minimum_sign_records`).
+
+The CollecTRI download holds two releases of each regulation it covers (decision 9.72): the 2023 release's own entry
+(resource CollecTRI, the one with a sign decision) and a later release's (resource CollecTRI2, dataset collectri2,
+with no sign decision). They state opposite signs for 3,795 regulation edges of the v5 graph, and the sign the graph
+stores is OmniPath's consensus between them. `sign_disputed` marks a regulation whose two releases state opposite
+signs, or one of which states both; curated_edge_labels reads it only when asked (`exclude_disputed_signs`).
 """
 from __future__ import annotations
 
@@ -30,8 +36,10 @@ from mechanistic_pathway_learning.graph.edge_evidence import accession_of, famil
 TEXT_MINING_RESOURCES = frozenset({"ProtMapper", "REACH", "Sparser", "ExTRI", "ExTRI2", "ExTRI_CollecTRI", "ExTRI2_CollecTRI2"})
 SIGNALLING_DATASETS = frozenset({"omnipath", "pathwayextra", "ligrecextra"})
 TRANSCRIPTION_RESOURCE = "CollecTRI"  # its own entry carries the sign decision; the resources it aggregates carry none
+LATER_TRANSCRIPTION_RELEASE = "CollecTRI2"  # a later CollecTRI release in the same download, with no sign decision (9.72)
 SIGN_DECISION_FROM_A_PAPER = "PMID"
 SIGN_COLUMNS = ("sign_records", "sign_pubmed_ids", "sign_basis")
+DISPUTE_COLUMN = "sign_disputed"
 DEFAULT_SIGNALLING_EVIDENCES = Path("data/raw/omnipath/omnipath_interactions_evidences.json")
 DEFAULT_TRANSCRIPTION_EVIDENCES = Path("data/raw/omnipath/collectri_interactions_evidences.json")
 
@@ -73,22 +81,47 @@ def sign_decisions_of(entries) -> set[str]:
     return decisions
 
 
+def signs_stated_by(evidences: dict, resource: str) -> set[int]:
+    """The signs a resource's own entries (via none) state for one interaction: +1 for an entry among the positive
+    evidence, -1 for one among the negative, both when the resource states both."""
+    stated = set()
+    for kind, sign in (("positive", 1), ("negative", -1)):
+        if any(entry.get("resource") == resource and entry.get("via") is None for entry in evidences.get(kind) or []):
+            stated.add(sign)
+    return stated
+
+
+def joined_signs(signs: set[int]) -> str:
+    return ";".join(str(sign) for sign in sorted(signs))
+
+
+def releases_dispute_the_sign(release_2023_signs: set[int], later_release_signs: set[int]) -> bool:
+    """Decision 9.72: True when the two CollecTRI releases state opposite signs for a regulation, or either release
+    states both. A release that is silent disputes nothing."""
+    if len(release_2023_signs) > 1 or len(later_release_signs) > 1:
+        return True
+    return bool(release_2023_signs and later_release_signs and release_2023_signs != later_release_signs)
+
+
 def sign_reference_table(rows: list[dict], family: str) -> pd.DataFrame:
-    """(source symbol, target symbol) -> positive and negative PubMed ids (and, for transcription, the sign decisions),
-    complexes expanded to their members, keyed by gene symbols and UniProt accessions as edge_evidence.py keys them."""
+    """(source symbol, target symbol) -> positive and negative PubMed ids (and, for transcription, the sign decisions
+    and the signs each CollecTRI release states), complexes expanded to their members, keyed by gene symbols and
+    UniProt accessions as edge_evidence.py keys them."""
     if family not in ("signalling", "transcription"):
         raise ValueError("family must be signalling or transcription")
     datasets = SIGNALLING_DATASETS if family == "signalling" else None
     resource = TRANSCRIPTION_RESOURCE if family == "transcription" else None
-    table: dict[tuple[str, str], tuple[set[str], set[str], set[str]]] = {}
+    table: dict[tuple[str, str], tuple[set[str], set[str], set[str], set[int], set[int]]] = {}
     for row in rows:
         evidences = row.get("evidences") or {}
         positive = references_of(evidences.get("positive"), datasets, resource)
         negative = references_of(evidences.get("negative"), datasets, resource)
-        decisions = set()
+        decisions, release_2023_signs, later_release_signs = set(), set(), set()
         if family == "transcription":
             for kind in ("positive", "negative", "directed", "undirected"):
                 decisions |= sign_decisions_of(evidences.get(kind))
+            release_2023_signs = signs_stated_by(evidences, TRANSCRIPTION_RESOURCE)
+            later_release_signs = signs_stated_by(evidences, LATER_TRANSCRIPTION_RELEASE)
         key_sets = [(members(row.get("source_genesymbol", "")), members(row.get("target_genesymbol", "")))]
         if row.get("source") and row.get("target"):
             key_sets.append((members(row["source"]), members(row["target"])))
@@ -97,14 +130,19 @@ def sign_reference_table(rows: list[dict], family: str) -> pd.DataFrame:
                 for target in targets:
                     if source == target:
                         continue
-                    kept_positive, kept_negative, kept_decisions = table.setdefault((source, target), (set(), set(), set()))
-                    kept_positive |= positive
-                    kept_negative |= negative
-                    kept_decisions |= decisions
+                    kept = table.setdefault((source, target), (set(), set(), set(), set(), set()))
+                    for kept_set, found in zip(kept, (positive, negative, decisions, release_2023_signs, later_release_signs)):
+                        kept_set |= found
     return pd.DataFrame([{"family": family, "source_symbol": source, "target_symbol": target, "positive_pubmed_ids": joined_pubmed_ids(positive),
-                          "negative_pubmed_ids": joined_pubmed_ids(negative), "sign_decisions": "+".join(sorted(decisions))}
-                         for (source, target), (positive, negative, decisions) in sorted(table.items())],
-                        columns=["family", "source_symbol", "target_symbol", "positive_pubmed_ids", "negative_pubmed_ids", "sign_decisions"])
+                          "negative_pubmed_ids": joined_pubmed_ids(negative), "sign_decisions": "+".join(sorted(decisions)),
+                          "release_2023_signs": joined_signs(release_2023_signs), "later_release_signs": joined_signs(later_release_signs)}
+                         for (source, target), (positive, negative, decisions, release_2023_signs, later_release_signs) in sorted(table.items())],
+                        columns=["family", "source_symbol", "target_symbol", "positive_pubmed_ids", "negative_pubmed_ids", "sign_decisions",
+                                 "release_2023_signs", "later_release_signs"])
+
+
+def split_signs(cell) -> set[int]:
+    return {int(value) for value in str(cell or "").split(";") if value.strip()}
 
 
 BASIS_UNSIGNED = "unsigned"
@@ -117,9 +155,10 @@ def sign_evidence_columns(edges: pd.DataFrame, families: pd.Series, sign_tables:
     either). sign_basis is empty outside the signalling and transcription families, BASIS_UNSIGNED for an edge of sign
     0 (a binding), BASIS_NOT_FOUND for a signed edge the downloads do not hold (records NaN: unknown, not zero),
     "references" or "no reference" for a signalling edge found there, and CollecTRI's sign decisions joined by "+" for
-    a regulation."""
+    a regulation. sign_disputed is True only for a regulation whose two CollecTRI releases dispute its sign
+    (releases_dispute_the_sign)."""
     by_key = {(row.family, row.source_symbol, row.target_symbol): row for row in sign_tables.itertuples(index=False)} if len(sign_tables) else {}
-    records, identifiers, bases = [], [], []
+    records, identifiers, bases, disputed = [], [], [], []
     signs = edges["sign"].fillna(0.0).to_numpy(dtype=float) if "sign" in edges.columns else np.zeros(len(edges))
     for position, edge in enumerate(edges.itertuples(index=False)):
         family = families.iloc[position]
@@ -127,12 +166,14 @@ def sign_evidence_columns(edges: pd.DataFrame, families: pd.Series, sign_tables:
             records.append(np.nan)
             identifiers.append("")
             bases.append("")
+            disputed.append(False)
             continue
         sign = signs[position]
         if sign == 0:
             records.append(np.nan)
             identifiers.append("")
             bases.append(BASIS_UNSIGNED)
+            disputed.append(False)
             continue
         source, target = symbol_of(edge.source_id), symbol_of(edge.target_id)
         row = by_key.get((family, source, target)) or by_key.get((family, accession_of(edge.source_id) or source, accession_of(edge.target_id) or target))
@@ -140,15 +181,19 @@ def sign_evidence_columns(edges: pd.DataFrame, families: pd.Series, sign_tables:
             records.append(np.nan)
             identifiers.append("")
             bases.append(BASIS_NOT_FOUND)
+            disputed.append(False)
             continue
         behind_the_sign = split_pubmed_ids(row.positive_pubmed_ids if sign > 0 else row.negative_pubmed_ids)
         records.append(float(len(behind_the_sign)))
         identifiers.append(joined_pubmed_ids(behind_the_sign))
         if family == "transcription":
             bases.append(str(row.sign_decisions or "none stated"))
+            disputed.append(releases_dispute_the_sign(split_signs(getattr(row, "release_2023_signs", "")),
+                                                      split_signs(getattr(row, "later_release_signs", ""))))
         else:
             bases.append("references" if behind_the_sign else "no reference")
-    return pd.DataFrame({"sign_records": records, "sign_pubmed_ids": identifiers, "sign_basis": bases}, index=edges.index)
+            disputed.append(False)
+    return pd.DataFrame({"sign_records": records, "sign_pubmed_ids": identifiers, "sign_basis": bases, DISPUTE_COLUMN: disputed}, index=edges.index)
 
 
 def sign_is_evidenced(evidence: pd.DataFrame, minimum_sign_records: int) -> np.ndarray:
@@ -166,3 +211,11 @@ def sign_is_evidenced(evidence: pd.DataFrame, minimum_sign_records: int) -> np.n
     is_regulation = evidence["family"].eq("transcription").to_numpy()
     from_a_paper = basis.str.split("+").map(lambda decisions: SIGN_DECISION_FROM_A_PAPER in decisions).to_numpy()
     return np.where(concerned, enough & (~is_regulation | from_a_paper), True)
+
+
+def sign_is_undisputed(evidence: pd.DataFrame) -> np.ndarray:
+    """True for every edge except a regulation whose two CollecTRI releases dispute its sign (decision 9.72)."""
+    if DISPUTE_COLUMN not in evidence.columns:
+        raise ValueError(f"the edge evidence table has no {DISPUTE_COLUMN} column; rebuild it with experiments/build_edge_evidence.py and the CollecTRI "
+                         "evidences download (scripts/fetch_raw_sources.sh)")
+    return ~evidence[DISPUTE_COLUMN].fillna(False).astype(bool).to_numpy()

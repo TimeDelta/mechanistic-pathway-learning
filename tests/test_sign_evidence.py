@@ -110,3 +110,83 @@ def test_read_evidences_needs_a_list(tmp_path):
     assert len(read_evidences(good)) == 3
     with pytest.raises(ValueError, match="not an OmniPath interactions list"):
         read_evidences(bad)
+
+
+# decision 9.72: the two CollecTRI releases in one download, and the regulations whose sign they dispute
+from mechanistic_pathway_learning.graph.sign_evidence import (DISPUTE_COLUMN, LATER_TRANSCRIPTION_RELEASE, releases_dispute_the_sign,  # noqa: E402
+                                                              sign_is_undisputed, signs_stated_by)
+
+RELEASE_ROWS = [
+    {"source": "Q1", "target": "Q2", "source_genesymbol": "TP53", "target_genesymbol": "RB1",
+     "evidences": {"positive": [entry(LATER_TRANSCRIPTION_RELEASE, ["1608930", "9233768"], dataset="collectri2"),
+                                entry("TRRUST", [], dataset="collectri2", via=LATER_TRANSCRIPTION_RELEASE)],
+                   "negative": [entry("CollecTRI", ["1608930"], dataset="collectri", decision="PMID")], "directed": [], "undirected": []}},
+    {"source": "Q1", "target": "Q3", "source_genesymbol": "TP53", "target_genesymbol": "CDKN1A",
+     "evidences": {"positive": [entry("CollecTRI", ["81", "82"], dataset="collectri", decision="PMID"), entry(LATER_TRANSCRIPTION_RELEASE, ["81"], dataset="collectri2")],
+                   "negative": [], "directed": [], "undirected": []}},
+    {"source": "Q4", "target": "Q5", "source_genesymbol": "GATA4", "target_genesymbol": "GATA6",
+     "evidences": {"positive": [entry(LATER_TRANSCRIPTION_RELEASE, ["91"], dataset="collectri2")],
+                   "negative": [entry(LATER_TRANSCRIPTION_RELEASE, ["91"], dataset="collectri2")], "directed": [], "undirected": []}},
+    {"source": "Q6", "target": "Q7", "source_genesymbol": "SP1", "target_genesymbol": "PRKCA",
+     "evidences": {"positive": [entry("CollecTRI", ["95"], dataset="collectri", decision="default activation")], "negative": [],
+                   "directed": [], "undirected": []}},
+]
+
+
+def test_a_release_states_a_sign_only_through_its_own_entries():
+    evidences = RELEASE_ROWS[0]["evidences"]
+    assert signs_stated_by(evidences, "CollecTRI") == {-1}
+    assert signs_stated_by(evidences, LATER_TRANSCRIPTION_RELEASE) == {1}
+    assert signs_stated_by(evidences, "TRRUST") == set(), "TRRUST's entry came through CollecTRI2 (via), so TRRUST stated nothing itself"
+    assert signs_stated_by(RELEASE_ROWS[2]["evidences"], LATER_TRANSCRIPTION_RELEASE) == {1, -1}
+
+
+def test_the_releases_dispute_a_sign_when_they_oppose_or_one_states_both():
+    assert releases_dispute_the_sign({-1}, {1}) is True
+    assert releases_dispute_the_sign({1}, {1}) is False
+    assert releases_dispute_the_sign({1}, set()) is False, "a silent release disputes nothing"
+    assert releases_dispute_the_sign(set(), {1, -1}) is True, "a release stating both signs is a dispute by itself"
+    assert releases_dispute_the_sign(set(), set()) is False
+
+
+def disputed_graph():
+    edges = pd.DataFrame({"source_id": ["GENE:TP53", "GENE:TP53", "GENE:GATA4", "GENE:SP1", "PROTEIN:A", "MAM1c"],
+                          "target_id": ["GENE:RB1", "GENE:CDKN1A", "GENE:GATA6", "GENE:PRKCA", "PROTEIN:B", "R1"],
+                          "relation_type": ["regulates_transcription_of"] * 4 + ["activates", "substrate_of"],
+                          "sign": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]})
+    families = pd.Series(["transcription"] * 4 + ["signalling", "metabolic"])
+    tables = pd.concat([sign_reference_table(RELEASE_ROWS, "transcription"), sign_reference_table(SIGNALLING_ROWS, "signalling")], ignore_index=True)
+    return edges, families, tables
+
+
+def test_the_reference_table_keeps_each_release_s_signs():
+    _, _, tables = disputed_graph()
+    regulation = tables[tables.family == "transcription"].set_index(["source_symbol", "target_symbol"])
+    assert regulation.loc[("TP53", "RB1"), "release_2023_signs"] == "-1" and regulation.loc[("TP53", "RB1"), "later_release_signs"] == "1"
+    assert regulation.loc[("Q1", "Q2"), "later_release_signs"] == "1", "keyed by accession too"
+    assert regulation.loc[("GATA4", "GATA6"), "release_2023_signs"] == "" and regulation.loc[("GATA4", "GATA6"), "later_release_signs"] == "-1;1"
+    signalling = tables[tables.family == "signalling"]
+    assert (signalling.release_2023_signs == "").all() and (signalling.later_release_signs == "").all()
+
+
+def test_each_regulation_is_marked_when_its_releases_dispute_the_sign():
+    edges, families, tables = disputed_graph()
+    columns = sign_evidence_columns(edges, families, tables)
+    assert columns[DISPUTE_COLUMN].tolist() == [True, False, True, False, False, False]
+    assert columns.loc[0, "sign_records"] == 0, "the stored +1 has none of the 2023 release's papers behind it, only CollecTRI2's"
+    assert columns.loc[1, "sign_records"] == 2 and columns.loc[3, "sign_basis"] == "default activation"
+
+
+def test_the_label_rule_drops_a_disputed_regulation_only_when_asked():
+    edges, families, tables = disputed_graph()
+    columns = sign_evidence_columns(edges, families, tables)
+    evidence = pd.concat([pd.DataFrame({"family": families, "kind": ["curated"] * 6, "records": [3] * 6, "contested": [False] * 6,
+                                        "human_records": [2] * 6}), columns], axis=1)
+    evidence.loc[5, "family"] = "curated"
+    assert curated_edge_labels(evidence).all()
+    assert curated_edge_labels(evidence, exclude_disputed_signs=True).tolist() == [False, True, False, True, True, True]
+    both = curated_edge_labels(evidence, minimum_sign_records=1, exclude_disputed_signs=True)
+    assert both.tolist() == [False, True, False, False, True, True], "the default-activation regulation fails the sign rule, not the dispute rule"
+    assert sign_is_undisputed(evidence).tolist() == [False, True, False, True, True, True]
+    with pytest.raises(ValueError, match=DISPUTE_COLUMN):
+        sign_is_undisputed(evidence.drop(columns=DISPUTE_COLUMN))

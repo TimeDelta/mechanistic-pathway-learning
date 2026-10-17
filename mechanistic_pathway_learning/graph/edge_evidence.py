@@ -285,14 +285,18 @@ def species_of_records(pubmed_ids: pd.Series, species: pd.DataFrame, human_share
 
 
 def curated_edge_labels(evidence: pd.DataFrame, minimum_records: int = DEFAULT_LABEL_MINIMUM_RECORDS,
-                        minimum_human_records: int = DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS, minimum_sign_records: int | None = None) -> np.ndarray:
+                        minimum_human_records: int = DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS, minimum_sign_records: int | None = None,
+                        exclude_disputed_signs: bool = False) -> np.ndarray:
     """Decision 9.63 (b) with the owner's human-evidence rule: True for an edge of a curated kind (LABEL_FAMILIES), not
     contested by an IntAct absence, with at least minimum_records independent records of which at least
     minimum_human_records are human evidence. Such an edge is an edge label: taken as known, with no gate.
 
     minimum_sign_records (decision 9.70, off by default): when given, a signed signalling or transcription edge is a
     label only if its sign itself rests on that many PubMed ids and, for a regulation, CollecTRI decided the sign from
-    a paper (graph/sign_evidence.py), since a label's sign is one no gate can flip."""
+    a paper (graph/sign_evidence.py), since a label's sign is one no gate can flip.
+
+    exclude_disputed_signs (decision 9.72, off by default): a regulation whose two CollecTRI releases state opposite
+    signs, or one of which states both, is not a label (graph/sign_evidence.py, sign_disputed)."""
     if "human_records" not in evidence.columns:
         raise ValueError("the edge evidence table has no human_records column; rebuild it with experiments/build_edge_evidence.py, which reads the species "
                          "experiments/fetch_icite_species.py caches")
@@ -302,6 +306,10 @@ def curated_edge_labels(evidence: pd.DataFrame, minimum_records: int = DEFAULT_L
         from mechanistic_pathway_learning.graph.sign_evidence import sign_is_evidenced
 
         labels &= sign_is_evidenced(evidence, minimum_sign_records)
+    if exclude_disputed_signs:
+        from mechanistic_pathway_learning.graph.sign_evidence import sign_is_undisputed
+
+        labels &= sign_is_undisputed(evidence)
     return labels
 
 

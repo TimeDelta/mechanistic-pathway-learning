@@ -6,8 +6,8 @@ edges.parquet row for row (family, kind, records, contested, the PubMed ids the 
 that state the edge, the edge's own source_id, target_id and relation_type, which the trainer checks against the graph
 before it reads a row, and, with the species cache of experiments/fetch_icite_species.py, how many of its records iCite
 scored, how many are human evidence and how many record animals and no human, and, with the OmniPath evidences
-downloads, the PubMed ids behind each signed edge's sign and how CollecTRI decided a regulation's sign:
-graph/sign_evidence.py, decision 9.70) and edge_evidence_summary.json, which
+downloads, the PubMed ids behind each signed edge's sign, how CollecTRI decided a regulation's sign and whether its
+two CollecTRI releases dispute it: graph/sign_evidence.py, decisions 9.70 and 9.72) and edge_evidence_summary.json, which
 records the SHA-256 of the edges.parquet it was built from and how many curated edges the label rule of decision 9.63
 (b) takes as known. The graph files themselves are not touched, so no graph hash moves. The priors are computed from
 this table by experiments/run_main_model.py under --edge-prior-strength.
@@ -42,6 +42,7 @@ from mechanistic_pathway_learning.graph.edge_negatives import read_human_negativ
 from mechanistic_pathway_learning.graph.sign_evidence import (
     DEFAULT_SIGNALLING_EVIDENCES,
     DEFAULT_TRANSCRIPTION_EVIDENCES,
+    DISPUTE_COLUMN,
     read_evidences,
     sign_evidence_columns,
     sign_reference_table,
@@ -69,7 +70,10 @@ def label_summary(evidence: pd.DataFrame, species: pd.DataFrame) -> dict:
                 "two_human_records": int(curated_edge_labels(evidence, minimum_human_records=2).sum()),
                 "a_record_with_human_score_above_one_half": int(curated_edge_labels(evidence.assign(human_records=stricter["human_records"])).sum()),
                 **({f"sign_with_{minimum}_or_more_records": int(curated_edge_labels(evidence, minimum_sign_records=minimum).sum()) for minimum in (1, 2)}
-                   if "sign_basis" in evidence.columns else {})}}
+                   if "sign_basis" in evidence.columns else {}),
+                **({"sign_undisputed": int(curated_edge_labels(evidence, exclude_disputed_signs=True).sum()),
+                    "sign_with_1_or_more_records_and_undisputed": int(curated_edge_labels(evidence, minimum_sign_records=1, exclude_disputed_signs=True).sum())}
+                   if DISPUTE_COLUMN in evidence.columns else {})}}
 
 
 def main() -> int:
@@ -104,7 +108,8 @@ def main() -> int:
                         "transcription_evidences": {"path": str(arguments.transcription_evidences),
                                                     "sha256": hashlib.sha256(arguments.transcription_evidences.read_bytes()).hexdigest()},
                         "signed_edges": int(signed.sum()), "sign_basis": evidence.loc[signed, "sign_basis"].value_counts().head(12).to_dict(),
-                        "signed_edges_with_no_pubmed_id_behind_the_sign": int((signed & (evidence["sign_records"] == 0)).sum())}
+                        "signed_edges_with_no_pubmed_id_behind_the_sign": int((signed & (evidence["sign_records"] == 0)).sum()),
+                        "regulations_whose_collectri_releases_dispute_the_sign": int(evidence[DISPUTE_COLUMN].sum())}
     else:
         print("no OmniPath evidences downloads: the table has no sign columns (decision 9.70)", file=sys.stderr)
     species_summary, labels = None, None

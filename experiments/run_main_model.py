@@ -496,7 +496,8 @@ SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_c
 EDGE_PRIOR_SETTINGS = {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate",
                        "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
                        "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks", "edge_gate_binary_learning_rate_decay",
-                       "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records", "curated_label_minimum_sign_records"}
+                       "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records", "curated_label_minimum_sign_records",
+                       "curated_label_exclude_disputed_signs"}
 EDGE_EVIDENCE_FILE = "edge_evidence.parquet"  # experiments/build_edge_evidence.py writes it beside the graph's edges.parquet
 EDGE_GATED_ENCODERS: tuple[str, ...] = ("linear_response", "message_passing")
 
@@ -1215,14 +1216,15 @@ def build_edge_priors(data, arguments) -> dict | None:
         minimum_records = getattr(arguments, "curated_label_minimum_records", DEFAULT_LABEL_MINIMUM_RECORDS)
         minimum_human_records = getattr(arguments, "curated_label_minimum_human_records", DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS)
         minimum_sign_records = getattr(arguments, "curated_label_minimum_sign_records", None)  # absent from a run recorded before 17 October 2026
+        exclude_disputed_signs = bool(getattr(arguments, "curated_label_exclude_disputed_signs", False))  # likewise
         try:
             labels = curated_edge_labels(evidence, minimum_records=minimum_records, minimum_human_records=minimum_human_records,
-                                         minimum_sign_records=minimum_sign_records)
+                                         minimum_sign_records=minimum_sign_records, exclude_disputed_signs=exclude_disputed_signs)
         except ValueError as error:
             raise ValueError(f"{path}: {error} (or run with --no-curated-edge-labels)") from None
         labels_summary = {"edges": int(labels.sum()), "were_gated": int((labels & gated).sum()), "minimum_records": minimum_records,
                           "minimum_human_records": minimum_human_records, "human_evidence": "NIH iCite human score above 0 (experiments/fetch_icite_species.py)",
-                          "minimum_sign_records": minimum_sign_records}
+                          "minimum_sign_records": minimum_sign_records, "exclude_disputed_signs": exclude_disputed_signs}
         gated, probability, pseudo_count = gated & ~labels, np.where(labels, np.nan, probability), np.where(labels, 0.0, pseudo_count)
     summary = {"path": str(path), "sha256": file_sha256(path), "tiers": str(arguments.edge_prior_tiers), "tiers_sha256": file_sha256(arguments.edge_prior_tiers),
                "strength": strength, "tempering": arguments.edge_prior_tempering, "count_cap": arguments.edge_prior_count_cap,
@@ -1851,6 +1853,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="decision 9.70, off unless given: a signed signalling or transcription edge is taken as known only if its sign itself rests on this "
                              "many PubMed ids and, for a regulation, CollecTRI decided the sign from a paper rather than by default (graph/sign_evidence.py; "
                              "the edge evidence table needs its sign columns, from the OmniPath evidences downloads)")
+    parser.add_argument("--curated-label-exclude-disputed-signs", action="store_true",
+                        help="decision 9.72, off unless given: a regulation whose two CollecTRI releases (the 2023 release and CollecTRI2) state opposite "
+                             "signs, or one of which states both, is not taken as known; it stays gated at its prior (graph/sign_evidence.py, sign_disputed)")
     parser.add_argument("--edge-gate-flip-checks", type=int, default=0,
                         help="hard gates: after the binary pass, flip this many of the most promising edges one at a time and keep a flip only when the exact "
                              "objective falls; each check is one pass over the fit rows")

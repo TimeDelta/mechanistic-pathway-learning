@@ -65,9 +65,10 @@ def test_the_edge_prior_is_off_by_default_and_registered_as_absent_before_it_exi
                                    "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
                                    "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks", "edge_gate_binary_learning_rate_decay",
                                    "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records",
-                                   "curated_label_minimum_sign_records"}
+                                   "curated_label_minimum_sign_records", "curated_label_exclude_disputed_signs"}
     assert arguments.curated_edge_labels is True and arguments.curated_label_minimum_records == 2 and arguments.curated_label_minimum_human_records == 1
     assert arguments.curated_label_minimum_sign_records is None, "the sign-evidence rule of decision 9.70 is off unless the owner turns it on"
+    assert arguments.curated_label_exclude_disputed_signs is False, "the disputed-sign rule of decision 9.72 is off unless the owner turns it on"
     assert arguments.edge_gate_closure_evidence == 20, "the exact evidence for the 20 closures against the strongest priors; every closure gets the estimate"
     assert "edge_prior_strength" in ARGUMENTS_RECORDED_ONLY_WHEN_SET
     for name in ("v4_linear_response_edge_priors", "v4_linear_response_edge_priors_permuted", "v4_message_passing_edge_priors", "v4_message_passing_edge_priors_permuted"):
@@ -168,6 +169,25 @@ def test_curated_edges_with_human_evidence_are_taken_as_known_and_the_permutatio
     with pytest.raises(ValueError, match="no-curated-edge-labels"):
         build_edge_priors(data, priors_arguments(paths, curated_edge_labels=True))
     assert build_edge_priors(data, priors_arguments(paths))["curated_edge_labels"] is None, "without the flag an old table still serves"
+
+
+def test_a_label_whose_sign_the_collectri_releases_dispute_is_gated_only_when_asked(tmp_path):
+    paths = write_toy_dataset(tmp_path, num_genes=12)
+    table = write_edge_evidence(paths["graph"])
+    labels = curated_edge_labels(table)
+    disputed = np.zeros(len(table), dtype=bool)
+    disputed[np.flatnonzero(labels)[::2]] = True
+    table.assign(sign_disputed=disputed).to_parquet(paths["graph"] / EDGE_EVIDENCE_FILE, index=False)
+    data = load_experiment_data(paths["graph"], paths["evidence"])
+    label_arguments = dict(curated_edge_labels=True, curated_label_minimum_records=2, curated_label_minimum_human_records=1)
+    plain = build_edge_priors(data, priors_arguments(paths, **label_arguments))
+    assert plain["curated_edge_labels"]["edges"] == int(labels.sum()) and plain["curated_edge_labels"]["exclude_disputed_signs"] is False
+    excluded = build_edge_priors(data, priors_arguments(paths, **label_arguments, curated_label_exclude_disputed_signs=True))
+    assert excluded["curated_edge_labels"]["edges"] == int((labels & ~disputed).sum()) and excluded["curated_edge_labels"]["exclude_disputed_signs"] is True
+    assert data.edge_prior_gated[labels & disputed].all(), "a disputed regulation goes back under its gate, at its tier's prior"
+    table.to_parquet(paths["graph"] / EDGE_EVIDENCE_FILE, index=False)
+    with pytest.raises(ValueError, match="sign_disputed"):
+        build_edge_priors(data, priors_arguments(paths, **label_arguments, curated_label_exclude_disputed_signs=True))
 
 
 def test_the_review_list_holds_every_closure_with_its_evidence(tmp_path):
