@@ -158,6 +158,21 @@ CURATED_REACTIONS = [
                     activators=("CACNA2D1", "CACNA2D2", "CACNA2D3", "CACNA2D4", "CACNB1", "CACNB2", "CACNB3", "CACNB4")),
     CuratedReaction("MAR_CAV3_CALCIUM", "calcium entry through T-type voltage-gated calcium channels (CaV3)", ("MAM01413e",), ("NEURON_MAM01413c",),
                     ("CACNA1G", "CACNA1H", "CACNA1I"), "T-type voltage-gated calcium channel, CaV3 (PMID 21746798; PMID 12506128)"),
+    # Store-operated calcium entry (decision 9.71): "the identification of the STIM proteins as ER Ca(2+) sensors and the
+    # Orai proteins as store-operated channels"; "Depletion of Ca(2+) from the ER causes STIM to accumulate at
+    # ER-plasma membrane (PM) junctions where it traps and activates Orai channels" (Prakriya and Lewis 2015, PMID
+    # 26400989). ORAI1 to ORAI3 are the pores and STIM1 and STIM2 their activators; ORAI is not voltage-gated, so the
+    # reaction carries no gating edge, and its calcium entry depolarises and raises the neuronal pool.
+    CuratedReaction("MAR_ORAI_CALCIUM", "store-operated calcium entry through ORAI channels", ("MAM01413e",), ("NEURON_MAM01413c",),
+                    ("ORAI1", "ORAI2", "ORAI3"), "store-operated calcium channel, ORAI with STIM (PMID 26400989)", activators=("STIM1", "STIM2")),
+    # P2X receptors (decision 9.71): "membrane ion channels that open in response to the binding of extracellular ATP",
+    # and "All P2X receptors are permeable to small monovalent cations; some have significant calcium or anion
+    # permeability" (North 2002, PMID 12270951). Written as the sodium entry every subtype carries, which depolarises and
+    # raises the neuronal sodium pool, as the Nav and HCN families are; the calcium permeability of some subtypes is
+    # left out, as HCN's potassium is. The ATP that opens them is a currency metabolite in the graph (it sends nothing),
+    # so its gating cannot enter as an edge; a P2X gene's perturbation reaches the current through catalysis.
+    CuratedReaction("MAR_P2X_CATION_ENTRY", "cation entry through ATP-gated P2X receptors", ("MAM02519e",), ("NEURON_MAM02519c",),
+                    ("P2RX1", "P2RX2", "P2RX3", "P2RX4", "P2RX5", "P2RX6", "P2RX7"), "ATP-gated cation channel, P2X (PMID 12270951)"),
     # HCN: mixed sodium and potassium current; its net sign at rest is set explicitly (see CuratedReaction).
     CuratedReaction("MAR_HCN_CURRENT", "mixed sodium and potassium current through HCN channels", ("MAM02519e", "NEURON_MAM02200c"),
                     ("NEURON_MAM02519c", "NEURON_MAM02200e"), ("HCN1", "HCN2", "HCN3", "HCN4"),

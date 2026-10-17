@@ -554,3 +554,22 @@ def test_every_calcium_channel_pore_gene_has_one_route_in_the_curated_set():
     pore_genes = [gene for curated in CURATED_REACTIONS for gene in curated.catalysts if gene.startswith("CACNA1")]
     assert sorted(pore_genes) == ["CACNA1C", "CACNA1D", "CACNA1F", "CACNA1G", "CACNA1H", "CACNA1I", "CACNA1S"]
     assert all(voltage_gating_sign({gene}) == 1.0 for gene in pore_genes)
+
+
+def test_store_operated_and_atp_gated_entry_depolarise_without_voltage_gating():
+    """Decision 9.71: ORAI channels (with STIM as activators) carry calcium in and the P2X receptors sodium; neither family
+    is voltage-gated, so neither reaction gets a gating edge, and both depolarise."""
+    from experiments.build_neuronal_graph_variant import CURATED_REACTIONS
+
+    families = [curated for curated in CURATED_REACTIONS if curated.reaction_id in ("MAR_ORAI_CALCIUM", "MAR_P2X_CATION_ENTRY")]
+    assert len(families) == 2
+    _, edges, _, _ = run_import(curated_reactions=families)
+    assert ((edges.source_id == "MAR_ORAI_CALCIUM") & (edges.target_id == neuronal_pool_id(CALCIUM, "c")) & (edges.relation_type == "product_of")).any()
+    assert ((edges.source_id == "MAR_P2X_CATION_ENTRY") & (edges.target_id == neuronal_pool_id(SODIUM, "c")) & (edges.relation_type == "product_of")).any()
+    assert not ((edges.relation_type == "voltage_gates") & edges.target_id.isin(["MAR_ORAI_CALCIUM", "MAR_P2X_CATION_ENTRY"])).any()
+    depolarising = edges[edges.relation_type == "changes_membrane_potential"].set_index("source_id").sign
+    assert depolarising["MAR_ORAI_CALCIUM"] == 1.0 and depolarising["MAR_P2X_CATION_ENTRY"] == 1.0
+    stim = edges[(edges.relation_type == "activates") & (edges.target_id == "MAR_ORAI_CALCIUM")]
+    assert set(stim.source_id) == {"GENE:STIM1", "GENE:STIM2"}
+    catalysts = edges[(edges.relation_type == "catalyzed_by") & (edges.target_id == "MAR_P2X_CATION_ENTRY")]
+    assert len(catalysts) == 7
