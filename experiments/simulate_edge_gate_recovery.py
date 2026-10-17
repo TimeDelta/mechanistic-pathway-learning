@@ -300,7 +300,10 @@ def estimator_quality(encoder, gates, data_loss, batches, penalty_denominator, s
     return {"edges": int(len(chosen)), "correlation": float(np.corrcoef(estimates, exact)[0, 1]),
             "data_part_correlation": float(np.corrcoef(data_part_estimates, data_part_exact)[0, 1]),
             "sign_agreement": float(np.mean(np.sign(estimates) == np.sign(exact))),
-            "median_absolute_error_over_median_absolute_exact": float(np.median(np.abs(estimates - exact)) / max(np.median(np.abs(exact)), 1e-12))}
+            "median_absolute_error_over_median_absolute_exact": float(np.median(np.abs(estimates - exact)) / max(np.median(np.abs(exact)), 1e-12)),
+            # per edge, in nats over the training labels (times W): the data part of the estimate and of the exact change
+            "per_edge_data_part_nats": [[int(gates.gated_edges[int(index)]), float(estimate * penalty_denominator), float(exact_change * penalty_denominator)]
+                                        for index, estimate, exact_change in zip(chosen, data_part_estimates, data_part_exact)]}
 
 
 def closure_scores(closed: np.ndarray, real: np.ndarray) -> dict:
@@ -340,6 +343,7 @@ def main() -> None:
     parser.add_argument("--binary-full-batch", action="store_true", help="one binary-pass step per epoch on the estimate over all training batches")
     parser.add_argument("--estimator-diagnostic", type=int, default=0, help="compare the flip estimate with the exact change on this many random edges")
     parser.add_argument("--closure-evidence", action="store_true", help="for each closed edge, the exact log-likelihood ratio for keeping it closed, and precision by it")
+    parser.add_argument("--per-edge-detail", action="store_true", help="write each closed edge (tier, prior, truth, evidence) and each stability frequency above 0")
     parser.add_argument("--joint", action="store_true", help="learn the encoder's parameters, the readout and the bias with the gates (see fit)")
     parser.add_argument("--joint-start", choices=("oracle", "random"), default="oracle")
     parser.add_argument("--joint-readout", choices=("dense", "support"), default="dense")
@@ -409,6 +413,15 @@ def main() -> None:
             stable = frequency >= threshold
             bound = average_selected ** 2 / ((2 * threshold - 1) * len(world.edges)) if threshold > 0.5 else None
             summary["stability"]["thresholds"][str(threshold)] = {**closure_scores(stable, world.real), "expected_false_closures_bound": bound}
+    if arguments.per_edge_detail:  # what the figures and the record read edge by edge
+        tier_name = {p: name for name, p, _, _ in TIERS}
+        evidence = result["closure_evidence"] or {}
+        summary["closed_edges"] = [{"edge": int(edge), "tier": tier_name[float(world.prior_p[edge])], "prior": float(world.prior[edge]), "real": bool(world.real[edge]),
+                                    "evidence_nats": evidence.get(int(edge)), "open_probability": float(result["open_probability"][edge])}
+                                   for edge in np.flatnonzero(result["closed"])]
+        if arguments.stability_refits:
+            summary["stability_frequencies"] = [{"edge": int(edge), "tier": tier_name[float(world.prior_p[edge])], "real": bool(world.real[edge]), "frequency": float(frequency[edge])}
+                                                for edge in np.flatnonzero(frequency > 0)]
     summary["seconds"] = round(time.time() - started, 1)
     text = json.dumps(summary, indent=1, default=float)
     if arguments.output is not None:
