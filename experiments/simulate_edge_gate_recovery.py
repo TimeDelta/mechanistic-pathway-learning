@@ -179,8 +179,30 @@ def fit(world: World, train_rows: np.ndarray, arguments, seed: int) -> dict:
         checks.pop("records")
     gates.set_phase("binary")
     encoder.eval()
-    return {"closed": (gates.read_out() < 0.5).cpu().numpy(), "open_probability": gates.open_probability().detach().cpu().numpy(),
+    evidence = None
+    if arguments.closure_evidence:  # per closed edge, the exact log-likelihood ratio for keeping it closed, in nats
+        evidence = closure_evidence(encoder, gates, data_loss, batches_of(train_rows, arguments.batch_size), penalty_denominator, arguments.surrogate_width)
+    return {"closed": (gates.read_out() < 0.5).cpu().numpy(), "open_probability": gates.open_probability().detach().cpu().numpy(), "closure_evidence": evidence,
             "history": history, "checks": checks, "diagnostic": diagnostic, "encoder": encoder, "readout": readout.detach(), "bias": bias.detach()}
+
+
+def closure_evidence(encoder, gates, data_loss, batches, penalty_denominator, surrogate_width) -> dict:
+    """{edge index: nats}: for each closed gate, how much the data part of the objective, times W (so in nats of
+    log-likelihood over the training labels), rises when that edge alone is reopened; positive supports the closure.
+    Keyed by the edge's index in the graph (gates.gated_edges), so it can be compared with the truth directly."""
+    def data_objective() -> float:
+        with torch.no_grad():
+            return sum(float(data_loss(batch)) for batch in batches) / len(batches)
+
+    base = data_objective()
+    evidence = {}
+    for gate_index in torch.nonzero(gates.read_out() < 0.5).flatten().tolist():
+        previous = float(gates.log_alpha[gate_index])
+        set_gate_state(gates, gate_index, True, 4.0 * surrogate_width)
+        evidence[int(gates.gated_edges[gate_index])] = (data_objective() - base) * penalty_denominator
+        with torch.no_grad():
+            gates.log_alpha[gate_index] = previous
+    return evidence
 
 
 def estimator_quality(encoder, gates, data_loss, batches, penalty_denominator, sample_size, surrogate_width, seed) -> dict:
@@ -249,6 +271,7 @@ def main() -> None:
     parser.add_argument("--flip-checks", type=int, default=40)
     parser.add_argument("--binary-full-batch", action="store_true", help="one binary-pass step per epoch on the estimate over all training batches")
     parser.add_argument("--estimator-diagnostic", type=int, default=0, help="compare the flip estimate with the exact change on this many random edges")
+    parser.add_argument("--closure-evidence", action="store_true", help="for each closed edge, the exact log-likelihood ratio for keeping it closed, and precision by it")
     parser.add_argument("--joint", action="store_true", help="learn the encoder's parameters and the readout with the gates, from the oracle's start")
     parser.add_argument("--stability-refits", type=int, default=0)
     parser.add_argument("--stability-thresholds", type=float, nargs="*", default=[0.6, 0.7, 0.8, 0.9])
@@ -272,6 +295,10 @@ def main() -> None:
         "fit": closure_scores(result["closed"], world.real),
         "fit_by_tier": {name: closure_scores(result["closed"][world.prior_p == p], world.real[world.prior_p == p]) for name, p, _, _ in TIERS},
         "history": result["history"], "flip_checks": result["checks"], "estimator_diagnostic": result["diagnostic"],
+        "closures_by_evidence": None if result["closure_evidence"] is None else {
+            f"at least {threshold} nats": closure_scores(np.isin(np.arange(len(world.edges)), [index for index, nats in result["closure_evidence"].items() if nats >= threshold]),
+                                                       world.real)
+            for threshold in (0.0, 0.5, 1.0, 2.0, 3.0)},
     }
     encoder_parameters = result["encoder"].state_dict()
     summary["held_out_loss"] = {
