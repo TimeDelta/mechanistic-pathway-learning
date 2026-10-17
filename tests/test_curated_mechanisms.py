@@ -102,7 +102,7 @@ def test_the_table_has_every_column_and_each_row_is_consistent():
     for row in table.itertuples():
         assert row.relation_type in SIGN_OF_RELATION
         assert float(row.sign) == SIGN_OF_RELATION[row.relation_type]
-        assert row.decision == "9.68"
+        assert row.decision in {"9.68", "9.71"}
         pmids = pubmed_ids_of(row.pmids)
         assert pmids, f"{row.source_id} -> {row.target_id} cites no paper"
         for identifier in pmids:
@@ -131,3 +131,23 @@ def test_the_lysosomal_cobalamin_release_is_a_curated_reaction_catalysed_by_both
     assert set(release.catalysts) == {"LMBRD1", "ABCD4"}
     assert "PMID 28572511" in release.evidence
     assert release.release is None and release.membrane_potential_sign is None
+
+
+def test_a_subunit_joins_an_entity_through_member_of():
+    nodes, edges, relations = small_graph()
+    nodes = pd.concat([nodes, pd.DataFrame({"node_id": ["RCTE_1"], "node_type": ["protein_entity"], "degree": [0]})], ignore_index=True)
+    table = table_of({"source_id": "GENE:B", "target_id": "RCTE_1", "relation_type": "member_of"})
+    with pytest.raises(ValueError, match="not among the graph's relation types"):
+        add_curated_mechanisms(nodes, edges, relations, table)
+    _, new_edges, _, summary = add_curated_mechanisms(nodes, edges, relations + ["member_of"], table)
+    assert summary["by_relation"] == {"member_of": 1}
+    assert tuple(new_edges.iloc[-1][["source_id", "target_id", "relation_type"]]) == ("GENE:B", "RCTE_1", "member_of")
+    with pytest.raises(ValueError, match="target MAR1 is a reaction node"):
+        add_curated_mechanisms(nodes, edges, relations + ["member_of"], table_of({"source_id": "GENE:B", "target_id": "MAR1", "relation_type": "member_of"}))
+
+
+def test_the_delta_subunit_joins_the_gaba_bound_receptor_that_conducts_chloride():
+    table = read_curated_mechanisms(TABLE_PATH)
+    rows = table[(table.source_id == "GENE:GABRD")]
+    assert rows[["target_id", "relation_type", "decision"]].values.tolist() == [["RCTE_975268", "member_of", "9.71"]]
+    assert not (table.source_id == "GENE:GABRE").any(), "no source was read for the epsilon subunit"

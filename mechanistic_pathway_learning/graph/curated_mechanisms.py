@@ -5,7 +5,10 @@ Decision 9.68 measured 186 gene perturbations whose protein has no edge out, so 
 through the gene's and the protein's own states. For a few of them the mechanism is established and sits inside layers
 the graph already has: a co-chaperone that keeps the aromatic amino acid hydroxylases stable and active (DNAJC12), a
 processing enzyme for a reaction Human-GEM leaves without a catalyst (MMACHC), and a cofactor the enzyme-regulation
-source does not name (adenosylcobalamin for methylmalonyl-CoA mutase). Each row of docs/curated_dead_end_mechanisms.csv
+source does not name (adenosylcobalamin for methylmalonyl-CoA mutase). Decision 9.71 found the same for a subunit:
+GABRD belongs to no Reactome GABA-A receptor entity, so no delta-containing receptor conducted chloride, and its row
+makes it a member of the GABA-bound heteropentamer entity that catalyses chloride entry. Each row of
+docs/curated_dead_end_mechanisms.csv
 names one edge with the papers behind it; the lysosomal release of cobalamin, a transport with no reaction to attach a
 catalyst to, is a curated reaction in experiments/build_neuronal_graph_variant.py instead.
 
@@ -22,9 +25,9 @@ import pandas as pd
 DEFAULT_CURATED_MECHANISMS_PATH = Path("docs/curated_dead_end_mechanisms.csv")
 REQUIRED_COLUMNS = ("source_id", "target_id", "relation_type", "sign", "decision", "pmids", "quotes", "reading")
 # the sign each relation carries, and the node types its two ends must have before the split
-SIGN_OF_RELATION = {"activates": 1.0, "inhibits": -1.0, "catalyzed_by": 1.0, "cofactor_of": 1.0}
+SIGN_OF_RELATION = {"activates": 1.0, "inhibits": -1.0, "catalyzed_by": 1.0, "cofactor_of": 1.0, "member_of": 1.0}
 NODE_TYPES_OF_RELATION = {"activates": ("gene", "gene"), "inhibits": ("gene", "gene"), "catalyzed_by": ("gene", "reaction"),
-                          "cofactor_of": ("metabolite", "gene")}
+                          "cofactor_of": ("metabolite", "gene"), "member_of": ("gene", "protein_entity")}
 EVIDENCE_PREFIX = "curated dead-end mechanism"
 
 
