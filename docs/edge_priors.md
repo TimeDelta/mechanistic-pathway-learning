@@ -203,3 +203,17 @@ false). Third, taking the curated tier as known (decision 9.63) changed nothing 
 tier values are therefore a first-order input to what the gates close, which decision 9.63 (d), tier values estimated
 from data as a control, addresses; until then every value in `configs/edge_prior_tiers.csv` stays provisional, as
 section 3 says.
+
+## 11. Addition, 17 October 2026: curated edges taken as known (decision 9.63 (b))
+
+With edge priors on, the trainer now takes as known, with no gate, every edge of a curated kind that has at least two
+independent records (distinct PubMed ids), at least one of them human evidence, and no IntAct absence
+(`curated_edge_labels` in `graph/edge_evidence.py`; `--curated-edge-labels`, on by default). A paper is human evidence
+when NIH iCite's human score, the fraction of its MeSH terms in the human category, is above 0
+(`experiments/fetch_icite_species.py`). Such an edge carries no prior and no pseudo-count, as an ungated family does
+(section 3), and the permutation control of section 5 leaves it in place. On the v5 graph 38,435 edges qualify, 23,359
+signalling and 15,076 transcription, and 124,841 edges stay gated. `edge_evidence.parquet` now also holds each edge's
+PubMed ids, the resources that state it and each paper's species scores, which the review list of the closures reads
+(decision 9.63 (c)). The species is the paper's, not the interaction's, and a transcription edge's ids can include
+ids of the ExTRI text-mining layer, since CollecTRI attributes most of its ids to itself; both are put to the owner in
+`docs/open_decisions.md`, 9.63.

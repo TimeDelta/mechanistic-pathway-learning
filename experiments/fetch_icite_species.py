@@ -9,11 +9,21 @@ Molecular/Cellular the cell, microbe and chemical or cell-physiology branches (s
 and Molecular/Cellular Scores", read 17 October 2026; Weber 2013, J Transl Med 11:126; Hutchins et al. 2019, PLoS
 Biol 17(10):e3000416). A paper is human evidence when its human score is above 0. The scores are per paper, not per
 interaction: a paper that shows an interaction in mice and mentions a human cohort counts as human evidence, which is
-the coarseness of the route the owner accepted on 16 October 2026 (docs/open_decisions.md, 9.63).
+the coarseness of the route put to the owner on 16 October 2026 (docs/open_decisions.md, 9.63), who let this fetch run
+("I didn't stop that. Please continue").
 
-Licence: the NIH Open Citation Collection that iCite serves is described by its makers as "a comprehensive, public
-domain citation graph for biomedical research made freely available to the community" (Hutchins et al. 2019, PLoS
-Biol 17(10):e3000385, PMC6786512, read 17 October 2026); the scores are NIH's derivation from NLM's MeSH indexing.
+Which ids. OmniPath's references outside the text-mined resource, CollecTRI's references, and the PubMed ids that this
+project's curated rows name in the evidence_source of every built graph under data/processed (graph/edge_evidence.py
+counts those as the records of a curated edge too).
+
+Licence, verified 17 October 2026: NIH's own snapshots of the iCite database on the NIH Figshare Archive are released
+under CC0. The record of the snapshot of August 2023 (api.figshare.com/v2/articles/24100917, read with
+experiments/read_public_page.py; saved as data/raw/public_pages/4abd108e944759df.txt) gives "license": "CC0"
+(creativecommons.org/publicdomain/zero/1.0) and defines the fields read here, among them "human: Fraction of MeSH terms
+that are in the Human category (out of this article's MeSH terms that fall into the Human, Animal, or Molecular/
+Cellular Biology categories)". The citation graph is described by its makers as "a comprehensive, public domain
+citation graph for biomedical research made freely available to the community" (Hutchins et al. 2019, PLoS Biol
+17(10):e3000385, PMC6786512). The live API serves the same fields; a terms page of its own was not found.
 
 The API: https://icite.od.nih.gov/api/pubs?pmids=...&fl=..., no key and no e-mail; batches of BATCH_SIZE ids, since a
 request naming 1,000 was refused as too large (HTTP 413); the requests are paced (PAUSE_SECONDS) and cached under
@@ -36,7 +46,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from mechanistic_pathway_learning.graph.edge_evidence import TEXT_MINED_REFERENCE_RESOURCES, pmids_of
+from mechanistic_pathway_learning.graph.edge_evidence import CURATED_PMID, TEXT_MINED_REFERENCE_RESOURCES, family_of, pmids_of
 
 API = "https://icite.od.nih.gov/api/pubs"
 FIELDS = ("pmid", "human", "animal", "molecular_cellular", "year", "is_research_article")
@@ -46,6 +56,18 @@ USER_AGENT = "perturbation-symptom-modules (research; https://github.com/TimeDel
 DEFAULT_CACHE = Path("data/raw/icite/icite_species.parquet")
 DEFAULT_OMNIPATH = Path("data/raw/omnipath/omnipath_interactions.tsv")
 DEFAULT_COLLECTRI = Path("data/raw/omnipath/collectri_interactions.tsv")
+DEFAULT_PROCESSED = Path("data/processed")
+
+
+def project_curated_pubmed_ids(processed_directory: Path = DEFAULT_PROCESSED) -> set[str]:
+    """The PubMed ids this project's curated rows name ('curated ... (PMID 14585973)') in any built graph's edges."""
+    pmids: set[str] = set()
+    for edges_path in sorted(processed_directory.glob("*/edges.parquet")):
+        sources = pd.read_parquet(edges_path, columns=["evidence_source"]).evidence_source.dropna().astype(str).unique()
+        for source in sources:
+            if family_of(source) == "curated":
+                pmids |= set(CURATED_PMID.findall(source))
+    return pmids
 
 
 def curated_pubmed_ids(omnipath_path: Path, collectri_path: Path) -> list[str]:
@@ -73,11 +95,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--omnipath", type=Path, default=DEFAULT_OMNIPATH)
     parser.add_argument("--collectri", type=Path, default=DEFAULT_COLLECTRI)
+    parser.add_argument("--processed", type=Path, default=DEFAULT_PROCESSED, help="where the built graphs are, for the ids of this project's curated rows")
     parser.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--limit", type=int, default=None, help="ask for at most this many missing ids")
     parser.add_argument("--pause", type=float, default=PAUSE_SECONDS)
     arguments = parser.parse_args()
-    wanted = curated_pubmed_ids(arguments.omnipath, arguments.collectri)
+    wanted = sorted(set(curated_pubmed_ids(arguments.omnipath, arguments.collectri)) | project_curated_pubmed_ids(arguments.processed), key=int)
     cached = pd.read_parquet(arguments.cache) if arguments.cache.exists() else pd.DataFrame(columns=[*FIELDS, "found", "retrieved_at"])
     have = set(cached.pmid.astype(str)) if len(cached) else set()
     missing = [pmid for pmid in wanted if pmid not in have]
@@ -85,7 +108,7 @@ def main() -> int:
         missing = missing[: arguments.limit]
     print(f"{len(wanted):,} PubMed ids behind curated edges; {len(have):,} cached; asking for {len(missing):,}", flush=True)
     arguments.cache.parent.mkdir(parents=True, exist_ok=True)
-    rows = []
+    rows, skipped = [], 0
     for start in range(0, len(missing), BATCH_SIZE):
         batch = missing[start : start + BATCH_SIZE]
         retrieved_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -97,6 +120,7 @@ def main() -> int:
                 print(f"batch at {start}: {error}; attempt {attempt + 1}", file=sys.stderr, flush=True)
                 time.sleep(10 * (attempt + 1))
         else:
+            skipped += len(batch)
             continue
         found = {str(item.get("pmid")): item for item in returned}
         for pmid in batch:
@@ -113,6 +137,9 @@ def main() -> int:
             table.to_parquet(arguments.cache, index=False)
             print(f"{start + len(batch):,}/{len(missing):,} asked; {int(table.found.sum()):,} found in all", flush=True)
         time.sleep(arguments.pause)
+    if skipped:  # the cache keeps what was read; a rerun asks only for these
+        print(f"{skipped:,} ids were not read after three attempts; run again to ask for them", file=sys.stderr, flush=True)
+        return 1
     return 0
 
 

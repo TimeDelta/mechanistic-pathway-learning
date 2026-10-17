@@ -2,10 +2,13 @@
 
 Reads the raw OmniPath and CollecTRI tables (their references and sources, which the graph build fetches and drops),
 IntAct's curated non-interacting pairs and the graph's edges; writes <graph-dir>/edge_evidence.parquet aligned to
-edges.parquet row for row (family, kind, records, contested, and the edge's own source_id, target_id and relation_type,
-which the trainer checks against the graph before it reads a row) and edge_evidence_summary.json, which records the
-SHA-256 of the edges.parquet it was built from. The graph files themselves are not touched, so no graph hash moves. The
-priors are computed from this table by experiments/run_main_model.py under --edge-prior-strength.
+edges.parquet row for row (family, kind, records, contested, the PubMed ids the record count counts and the resources
+that state the edge, the edge's own source_id, target_id and relation_type, which the trainer checks against the graph
+before it reads a row, and, with the species cache of experiments/fetch_icite_species.py, how many of its records iCite
+scored, how many are human evidence and how many record animals and no human) and edge_evidence_summary.json, which
+records the SHA-256 of the edges.parquet it was built from and how many curated edges the label rule of decision 9.63
+(b) takes as known. The graph files themselves are not touched, so no graph hash moves. The priors are computed from
+this table by experiments/run_main_model.py under --edge-prior-strength.
 
 Usage:
   python experiments/build_edge_evidence.py --graph-dir data/processed/graph_full_neuronal_split_binders_drugs_v4
@@ -22,14 +25,40 @@ import pandas as pd
 
 from mechanistic_pathway_learning.graph.edge_evidence import (
     DEFAULT_TIERS_PATH,
+    curated_edge_labels,
     edge_evidence_table,
     edge_priors,
     read_edge_tiers,
+    read_species,
     signalling_references,
+    species_of_records,
+    split_pubmed_ids,
     summarise,
     transcription_references,
 )
 from mechanistic_pathway_learning.graph.edge_negatives import read_human_negative_pairs
+
+
+DEFAULT_SPECIES = Path("data/raw/icite/icite_species.parquet")
+
+
+def label_summary(evidence: pd.DataFrame, species: pd.DataFrame) -> dict:
+    """How many curated edges the label rule of decision 9.63 (b) takes as known, by family, beside what stricter
+    readings of "evidence from humans" would take (for the owner, not used by the trainer)."""
+    curated = evidence["kind"] == "curated"
+    labels = curated_edge_labels(evidence)
+    stricter = species_of_records(evidence["pubmed_ids"], species, human_share_above=0.5)
+    by_family = {}
+    for family, group in evidence[curated].groupby("family"):
+        by_family[family] = {"curated_edges": int(len(group)), "not_contested_two_or_more_records": int(((group.records >= 2) & ~group.contested).sum()),
+                             "labels": int(labels[group.index].sum()) if len(group) else 0}
+    return {"rule": "curated kind, not contested, at least 2 records (distinct PubMed ids), at least 1 with iCite human score above 0",
+            "labels": int(labels.sum()), "by_family": by_family,
+            "curated_edges_with_an_unscored_record": int((curated & (evidence["species_known_records"] < evidence["records"])).sum()),
+            "curated_edges_with_an_animal_only_record": int((curated & (evidence["animal_only_records"] > 0)).sum()),
+            "stricter_readings": {
+                "two_human_records": int(curated_edge_labels(evidence, minimum_human_records=2).sum()),
+                "a_record_with_human_score_above_one_half": int(curated_edge_labels(evidence.assign(human_records=stricter["human_records"])).sum())}}
 
 
 def main() -> int:
@@ -39,6 +68,9 @@ def main() -> int:
     parser.add_argument("--collectri", type=Path, default=Path("data/raw/omnipath/collectri_interactions.tsv"))
     parser.add_argument("--intact-negative", type=Path, default=Path("data/raw/intact/intact_negative.txt"))
     parser.add_argument("--tiers", type=Path, default=DEFAULT_TIERS_PATH)
+    parser.add_argument("--species", type=Path, default=DEFAULT_SPECIES,
+                        help="iCite's species scores per PubMed id (experiments/fetch_icite_species.py); without it the table has no species columns and "
+                             "the trainer cannot take curated edges as labels (decision 9.63)")
     arguments = parser.parse_args()
     columns = ["source", "target", "source_genesymbol", "target_genesymbol", "sources", "references"]
     references = pd.concat([signalling_references(pd.read_csv(arguments.omnipath, sep="\t", usecols=columns)),
@@ -47,12 +79,24 @@ def main() -> int:
     edges = pd.read_parquet(arguments.graph_dir / "edges.parquet")
     evidence = edge_evidence_table(edges, references, negative_pairs)
     evidence = evidence.assign(source_id=edges.source_id.to_numpy(), target_id=edges.target_id.to_numpy(), relation_type=edges.relation_type.to_numpy())
+    species_summary, labels = None, None
+    if arguments.species.is_file():
+        species = read_species(arguments.species)
+        evidence = pd.concat([evidence, species_of_records(evidence["pubmed_ids"], species)], axis=1)
+        curated_ids = {identifier for cell in evidence.loc[evidence["kind"] == "curated", "pubmed_ids"] for identifier in split_pubmed_ids(cell)}
+        species_summary = {"path": str(arguments.species), "sha256": hashlib.sha256(arguments.species.read_bytes()).hexdigest(),
+                           "curated_pubmed_ids": len(curated_ids), "curated_pubmed_ids_unscored": len(curated_ids - set(species.index))}
+        labels = label_summary(evidence, species)
+    else:
+        print(f"no species cache at {arguments.species}: run experiments/fetch_icite_species.py first, or no curated edge can be taken as a label", file=sys.stderr)
     evidence.to_parquet(arguments.graph_dir / "edge_evidence.parquet", index=False)
     gated, probability, strength = edge_priors(evidence, read_edge_tiers(arguments.tiers))
     edges_sha256 = hashlib.sha256((arguments.graph_dir / "edges.parquet").read_bytes()).hexdigest()
-    summary = {"graph_dir": str(arguments.graph_dir), "edges_sha256": edges_sha256, "tiers": str(arguments.tiers), **summarise(evidence, gated, probability, strength)}
+    summary = {"graph_dir": str(arguments.graph_dir), "edges_sha256": edges_sha256, "tiers": str(arguments.tiers), **summarise(evidence, gated, probability, strength),
+               "species": species_summary, "curated_edge_labels": labels}
     (arguments.graph_dir / "edge_evidence_summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
-    print(f"wrote {arguments.graph_dir / 'edge_evidence.parquet'}: {summary['gated']:,} of {summary['edges']:,} edges gated, {summary['contested']} contested")
+    print(f"wrote {arguments.graph_dir / 'edge_evidence.parquet'}: {summary['gated']:,} of {summary['edges']:,} edges gated, {summary['contested']} contested"
+          + ("" if labels is None else f"; {labels['labels']:,} curated edges are labels under decision 9.63 (b)"))
     for key, value in summary["by_family_and_kind"].items():
         print(f"  {key:34s} {value['edges']:7,} edges, mean prior {value['mean_prior'] if value['mean_prior'] is None else round(value['mean_prior'], 3)}, mean strength {value['mean_strength']:.3f}")
     return 0

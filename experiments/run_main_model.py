@@ -112,8 +112,11 @@ from mechanistic_pathway_learning.graph.compartment_ph import compartment_ph_inp
 from mechanistic_pathway_learning.graph.drug_entry_nodes import CHANGE_CARRYING_RELATIONS, ENTRY_RELATIONS, SEQUESTERS_RELATION
 from mechanistic_pathway_learning.graph.edge_evidence import (
     DEFAULT_COUNT_CAP as DEFAULT_EDGE_COUNT_CAP,
+    DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS,
+    DEFAULT_LABEL_MINIMUM_RECORDS,
     DEFAULT_TEMPERING as DEFAULT_EDGE_TEMPERING,
     DEFAULT_TIERS_PATH as DEFAULT_EDGE_TIERS_PATH,
+    curated_edge_labels,
     edge_priors,
     permute_edge_priors,
     read_edge_tiers,
@@ -481,8 +484,13 @@ ARGUMENTS_RECORDED_ONLY_WHEN_SET = {"start_at_weighted_optimum", "rewire_encodes
 # the settings of the soft prior mean nothing while its strength is 0, so they enter the fingerprint only when it is on
 SOFT_PRIOR_SETTINGS = {"soft_prior_tiers", "soft_prior_tempering", "soft_prior_count_cap", "soft_prior_record_grades", "soft_prior_reports", "permute_soft_priors",
                        "soft_prior_probability", "soft_prior_calibration_minimum_cases"}
-# and the edge priors' settings mean nothing while their strength is 0 (decision 9.57)
-EDGE_PRIOR_SETTINGS = {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate"}
+# and the edge priors' settings mean nothing while their strength is 0 (decision 9.57), nor do those of the gates they
+# make (9.62) and of the curated edges taken as known (9.63); until 17 October 2026 the gates' settings of 9.62 were
+# recorded whatever the strength, so a run without edge priors resumed under them reported changes that were not
+EDGE_PRIOR_SETTINGS = {"edge_prior_tiers", "edge_prior_tempering", "edge_prior_count_cap", "permute_edge_priors", "edge_gate_learning_rate",
+                       "edge_gate_kind", "edge_gate_beta", "edge_gate_binary_epochs", "edge_gate_binary_learning_rate", "edge_gate_surrogate_width",
+                       "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks",
+                       "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records"}
 EDGE_EVIDENCE_FILE = "edge_evidence.parquet"  # experiments/build_edge_evidence.py writes it beside the graph's edges.parquet
 EDGE_GATED_ENCODERS: tuple[str, ...] = ("linear_response", "message_passing")
 
@@ -803,31 +811,55 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
         if arguments.edge_gate_flip_checks > 0:
             checks = exact_flip_checks(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_flip_checks, arguments.edge_gate_surrogate_width)
         evidence = None
-        if getattr(arguments, "edge_gate_closure_evidence", 0) > 0:
-            evidence = closure_evidence(encoder, gates, data_loss, batches, edge_penalty_denominator, arguments.edge_gate_closure_evidence,
+        budget = int(getattr(arguments, "edge_gate_closure_evidence", 0))
+        if budget != 0:  # -1: every closed edge (decision 9.63 (c)); N: the N against the strongest priors
+            evidence = closure_evidence(encoder, gates, data_loss, batches, edge_penalty_denominator, None if budget < 0 else budget,
                                         arguments.edge_gate_surrogate_width)
+        closed_gates = torch.nonzero((gates.read_out() < 0.5) & gates.read_by_encoder).flatten()
+        closed_edges = [{"edge": int(gates.gated_edges[index]), "prior": float(gates.prior_open[index])} for index in closed_gates]
     finally:
         for parameter in frozen:
             parameter.requires_grad_(True)
     return {"fit_rows": int(len(fit_rows)), "epochs": arguments.edge_gate_binary_epochs, "learning_rate": arguments.edge_gate_binary_learning_rate,
             "surrogate_width": arguments.edge_gate_surrogate_width, "full_batch": bool(arguments.edge_gate_binary_full_batch),
             "closed_before": closed_before, "closed_after": int((gates.read_out() < 0.5).sum()), "history": history, "flip_checks": checks,
-            "closure_evidence": evidence, "seconds": time.time() - started}
+            "closure_evidence": evidence, "closed_edges": closed_edges, "seconds": time.time() - started}
 
 
-def write_closure_evidence(evidence: dict, data, directory: Path) -> dict:
-    """Writes edge_gate_closures.csv (one row per closed edge measured: its graph edge with source, target and relation,
-    its prior, its evidence in nats and P(false)) and returns the summary results.json keeps in place of the rows."""
-    rows = [{"edge": record["edge"], "source_id": str(data.node_ids[int(data.edge_source[record["edge"]])]),
-             "target_id": str(data.node_ids[int(data.edge_target[record["edge"]])]),
-             "relation": str(data.relation_types[int(data.edge_relation[record["edge"]])]), "prior": record["prior"],
-             "evidence_nats": record["evidence_nats"], "posterior_false": record["posterior_false"]} for record in evidence["records"]]
-    pd.DataFrame(rows, columns=["edge", "source_id", "target_id", "relation", "prior", "evidence_nats", "posterior_false"]).to_csv(
-        directory / "edge_gate_closures.csv", index=False)
-    evidences = np.array([row["evidence_nats"] for row in rows], dtype=float)
-    posteriors = np.array([row["posterior_false"] for row in rows], dtype=float)
-    return {"closed": evidence["closed"], "evaluated": evidence["evaluated"], "file": "edge_gate_closures.csv",
-            "evidence_at_least_1_nat": int((evidences >= 1.0).sum()), "posterior_false_at_least_0_9": int((posteriors >= 0.9).sum())}
+CLOSURE_REVIEW_COLUMNS = ["edge", "source_id", "target_id", "relation", "prior", "evidence_nats", "posterior_false", "family", "kind", "records", "contested",
+                          "species_known_records", "human_records", "animal_only_records", "pubmed_ids", "pubmed_species", "resources"]
+
+
+def write_closure_review(binary_pass: dict, data, directory: Path) -> dict:
+    """The review list of decision 9.63 (c): every edge the fit closed ("Fit decides": it stays closed), each with what
+    the build knows of it, written to edge_gate_closures.csv, against the strongest priors first. Per edge: its graph
+    edge (source, target, relation), its prior, its exact closure evidence in nats and P(false) where measured (empty
+    where --edge-gate-closure-evidence left it out), its family and kind, its independent records with their PubMed ids,
+    how many iCite scored, how many are human evidence and how many animal-only, each paper's species scores, and the
+    resources that state the edge. Returns the summary results.json keeps in place of the rows."""
+    measured = {record["edge"]: record for record in (binary_pass.get("closure_evidence") or {}).get("records", [])}
+    evidence_table = getattr(data, "edge_evidence", None)
+    rows = []
+    for closed in sorted(binary_pass["closed_edges"], key=lambda entry: (-entry["prior"], entry["edge"])):
+        edge = closed["edge"]
+        record = measured.get(edge, {})
+        row = {"edge": edge, "source_id": str(data.node_ids[int(data.edge_source[edge])]), "target_id": str(data.node_ids[int(data.edge_target[edge])]),
+               "relation": str(data.relation_types[int(data.edge_relation[edge])]), "prior": closed["prior"],
+               "evidence_nats": record.get("evidence_nats"), "posterior_false": record.get("posterior_false")}
+        if evidence_table is not None:
+            for column in CLOSURE_REVIEW_COLUMNS[7:]:
+                if column in evidence_table.columns:
+                    value = evidence_table[column].iat[edge]
+                    row[column] = value.item() if hasattr(value, "item") else value
+        rows.append(row)
+    table = pd.DataFrame(rows, columns=CLOSURE_REVIEW_COLUMNS)
+    table.to_csv(directory / "edge_gate_closures.csv", index=False)
+    evidences = pd.to_numeric(table.evidence_nats, errors="coerce")
+    posteriors = pd.to_numeric(table.posterior_false, errors="coerce")
+    return {"closed": len(rows), "evaluated": int(evidences.notna().sum()), "file": "edge_gate_closures.csv",
+            "evidence_at_least_1_nat": int((evidences >= 1.0).sum()), "posterior_false_at_least_0_9": int((posteriors >= 0.9).sum()),
+            "by_kind": ({f"{family}:{kind}": int(count) for (family, kind), count in table.groupby(["family", "kind"]).size().items()}
+                        if evidence_table is not None and len(table) else {})}
 
 
 def optimizer_parameter_groups(encoder, head, arguments, extra_parameters=()) -> list[dict]:
@@ -1124,8 +1156,15 @@ def build_edge_priors(data, arguments) -> dict | None:
     The table is <graph-dir>/edge_evidence.parquet (experiments/build_edge_evidence.py), one row per row of the graph's
     edges.parquet with each edge's source_id, target_id and relation_type. It is refused unless those are the graph's,
     and read through the loader's edge rows (ExperimentData.edge_row), which skip what drug_entry "targets" dropped. Read
-    before any rewiring, which then keeps each prior at its edge position as it keeps the signs (main)."""
+    before any rewiring, which then keeps each prior at its edge position as it keeps the signs (main).
+
+    With --curated-edge-labels (decision 9.63 (b), the default with edge priors) a curated edge with enough independent
+    records, enough of them human evidence, and no IntAct absence is taken as known: ungated, so always open, as the
+    simulation's --ungated-tiers did. The permutation control then shuffles the priors of the edges still gated; the
+    labels stay on their edges. data.edge_evidence keeps the table's rows for the loaded edges, which the review list of
+    the closures reads (9.63 (c))."""
     data.edge_prior_gated = data.edge_prior_probability = data.edge_prior_strength = None
+    data.edge_evidence = None
     strength = float(getattr(arguments, "edge_prior_strength", 0.0) or 0.0)
     if strength == 0.0:
         return None
@@ -1155,13 +1194,25 @@ def build_edge_priors(data, arguments) -> dict | None:
     evidence = evidence.iloc[rows].reset_index(drop=True)
     gated, probability, pseudo_count = edge_priors(evidence, read_edge_tiers(arguments.edge_prior_tiers), global_strength=strength,
                                                    tempering=arguments.edge_prior_tempering, count_cap=arguments.edge_prior_count_cap)
+    labels_summary = None
+    if getattr(arguments, "curated_edge_labels", False):
+        minimum_records = getattr(arguments, "curated_label_minimum_records", DEFAULT_LABEL_MINIMUM_RECORDS)
+        minimum_human_records = getattr(arguments, "curated_label_minimum_human_records", DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS)
+        try:
+            labels = curated_edge_labels(evidence, minimum_records=minimum_records, minimum_human_records=minimum_human_records)
+        except ValueError as error:
+            raise ValueError(f"{path}: {error} (or run with --no-curated-edge-labels)") from None
+        labels_summary = {"edges": int(labels.sum()), "were_gated": int((labels & gated).sum()), "minimum_records": minimum_records,
+                          "minimum_human_records": minimum_human_records, "human_evidence": "NIH iCite human score above 0 (experiments/fetch_icite_species.py)"}
+        gated, probability, pseudo_count = gated & ~labels, np.where(labels, np.nan, probability), np.where(labels, 0.0, pseudo_count)
     summary = {"path": str(path), "sha256": file_sha256(path), "tiers": str(arguments.edge_prior_tiers), "tiers_sha256": file_sha256(arguments.edge_prior_tiers),
                "strength": strength, "tempering": arguments.edge_prior_tempering, "count_cap": arguments.edge_prior_count_cap,
-               **summarise_edge_priors(evidence, gated, probability, pseudo_count), "permutation": None}
+               **summarise_edge_priors(evidence, gated, probability, pseudo_count), "curated_edge_labels": labels_summary, "permutation": None}
     if getattr(arguments, "permute_edge_priors", False):
         probability, pseudo_count = permute_edge_priors(gated, probability, pseudo_count, np.asarray(data.edge_relation), random_seed=arguments.seed)
         summary["permutation"] = {"seed": arguments.seed, "within": "relation", "priors_sha256": array_sha256(np.nan_to_num(probability, nan=-1.0))}
     data.edge_prior_gated, data.edge_prior_probability, data.edge_prior_strength = gated, probability, pseudo_count
+    data.edge_evidence = evidence
     return summary
 
 
@@ -1747,10 +1798,20 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
     parser.add_argument("--edge-gate-binary-full-batch", action=argparse.BooleanOptionalAction, default=True,
                         help="hard gates: one binary-pass step per epoch on the flips' effect averaged over every fit batch (no minibatch noise), or one per batch")
-    parser.add_argument("--edge-gate-closure-evidence", type=int, default=0,
-                        help="hard gates: after the binary pass and the checks, measure for up to this many closed edges (strongest priors first) the exact "
-                             "evidence for the closure, the rise in the data loss times W when the edge alone is reopened, and P(false) = sigmoid(evidence - "
-                             "logit prior), written to edge_gate_closures.csv; each edge is one pass over the fit rows; 0 skips it")
+    parser.add_argument("--edge-gate-closure-evidence", type=int, default=-1,
+                        help="hard gates: after the binary pass and the checks, measure for each closed edge the exact evidence for the closure, the rise in "
+                             "the data loss times W when the edge alone is reopened, and P(false) = sigmoid(evidence - logit prior); -1 (the default) every "
+                             "closed edge, as decision 9.63 (c) lists every closure with everything known of it; N the N against the strongest priors; 0 none. "
+                             "Each edge is one pass over the fit rows. Every closed edge is listed in edge_gate_closures.csv whatever this is")
+    parser.add_argument("--curated-edge-labels", action=argparse.BooleanOptionalAction, default=True,
+                        help="with edge priors: a curated edge with at least --curated-label-minimum-records independent records, at least "
+                             "--curated-label-minimum-human-records of them human evidence (NIH iCite human score above 0) and no IntAct absence is taken as "
+                             "known, with no gate (decision 9.63 (b), the owner, 16 October 2026: \"Curated edges for other species should not be considered "
+                             "labels unless there's corroborating evidence from humans\"); --no-curated-edge-labels gates it at its prior, as 9.57 did")
+    parser.add_argument("--curated-label-minimum-records", type=int, default=DEFAULT_LABEL_MINIMUM_RECORDS,
+                        help="decision 9.63 (b): the independent records (distinct PubMed ids) a curated edge needs to be taken as known")
+    parser.add_argument("--curated-label-minimum-human-records", type=int, default=DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS,
+                        help="decision 9.63 (b): how many of those records must be human evidence")
     parser.add_argument("--edge-gate-flip-checks", type=int, default=0,
                         help="hard gates: after the binary pass, flip this many of the most promising edges one at a time and keep a flip only when the exact "
                              "objective falls; each check is one pass over the fit rows")
@@ -2274,12 +2335,13 @@ def main() -> None:
     edge_gate_binary_pass = None
     final_gates = getattr(encoder, "edge_gates", None)
     if isinstance(final_gates, HardConcreteEdgeGates) and (arguments.edge_gate_binary_epochs > 0 or arguments.edge_gate_flip_checks > 0
-                                                           or arguments.edge_gate_closure_evidence > 0):
+                                                           or arguments.edge_gate_closure_evidence != 0):
         final_fit_rows = np.sort(refit_indices) if arguments.refit_on_validation else np.sort(train_indices)
         edge_gate_binary_pass = run_edge_gate_binary_pass(encoder, head, final_gates, final_fit_rows, fitted, data, adjacencies, arguments, device, edge_penalty_denominator)
         print(f"edge gates after the binary pass: {final_gates.summary()}")
-        if edge_gate_binary_pass["closure_evidence"] is not None:  # the table goes beside the read-out; results.json keeps its summary
-            edge_gate_binary_pass["closure_evidence"] = write_closure_evidence(edge_gate_binary_pass["closure_evidence"], data, split_directory)
+        # every closure, with its evidence, goes beside the read-out for review (decision 9.63 (c)); results.json keeps the summary
+        edge_gate_binary_pass["closure_evidence"] = write_closure_review(edge_gate_binary_pass, data, split_directory)
+        edge_gate_binary_pass.pop("closed_edges")
         # the scored model is the one after the pass, so it is what the saved state holds (experiments/evaluate_on_rewired_graph.py rebuilds from it)
         if arguments.refit_on_validation:
             save_refit_checkpoint()

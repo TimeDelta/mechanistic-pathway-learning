@@ -30,6 +30,17 @@ records, as on the label side (evidence/soft_priors.py: Cusick et al. 2009 suppo
 publication to two, and little beyond). An IntAct absence is a Beta update: the prior's pseudo-counts are
 alpha = p * n and beta = (1 - p) * n, the absence adds INTACT_ABSENCE_PSEUDO_COUNT to beta, and the edge's prior
 becomes alpha / (alpha + beta) at strength alpha + beta.
+
+Curated edges as edge labels (decision 9.63 (b), the owner, 16 October 2026). Each edge also carries the PubMed ids its
+record count counts and the resources that state it, so that a paper's species can be read: experiments/
+fetch_icite_species.py caches NIH iCite's human, animal and molecular/cellular scores per PubMed id, and an edge's
+human records are its ids whose human score is above 0. An edge of a curated kind, not contested by an IntAct absence,
+with at least two independent records (distinct PubMed ids) of which at least one is human evidence is an edge label:
+taken as known, with no gate (curated_edge_labels). The owner: "Curated edges for other species should not be
+considered labels unless there's corroborating evidence from humans". The species is the paper's, not the
+interaction's: a paper that shows an interaction in mice and names a human cohort is human evidence. A transcription
+edge's ids are CollecTRI's, which attributes most of them to itself rather than to the resource behind them, so they
+can include ids of the ExTRI text-mining layer, as the record count of 9.57 always could.
 """
 from __future__ import annotations
 
@@ -54,6 +65,11 @@ BRENDA_REFERENCES = re.compile(r"\((\d+) references?")
 CURATED_PMID = re.compile(r"PMID[ :]?(\d{4,9})")
 FAMILY_OF_EVIDENCE_SOURCE = (("OmniPath small_molecule_protein", "small_molecule"), ("OmniPath", "signalling"), ("CollecTRI", "transcription"),
                              ("BRENDA", "enzyme_regulation"), ("curated", "curated"))
+LABEL_FAMILIES = ("signalling", "transcription", "curated")  # the families whose curated kind can become an edge label (decision 9.63)
+DEFAULT_LABEL_MINIMUM_RECORDS = 2  # "two or more independent records" (decision 9.63 (b))
+DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS = 1  # "corroborating evidence from humans" (the owner, 16 October 2026)
+DEFAULT_HUMAN_SHARE_ABOVE = 0.0  # a paper is human evidence when iCite's human score is above this
+SPECIES_COLUMNS = ("human", "animal", "molecular_cellular")
 
 
 @dataclass(frozen=True)
@@ -127,6 +143,21 @@ def pmids_of(references: str, excluded_resources: tuple[str, ...] = ()) -> tuple
     return kept, excluded
 
 
+def resources_of(sources) -> set[str]:
+    """The resources of a 'SIGNOR;HPRD;...' cell."""
+    return {source.strip() for source in str(sources).split(";") if source.strip()} if isinstance(sources, str) else set()
+
+
+def joined_pubmed_ids(pubmed_ids) -> str:
+    """PubMed ids as one ';'-joined cell in numeric order ('' for none), the form edge_evidence.parquet stores."""
+    return ";".join(sorted({str(identifier) for identifier in pubmed_ids}, key=int))
+
+
+def split_pubmed_ids(cell) -> list[str]:
+    """The PubMed ids of a ';'-joined cell; anything that is not an id is dropped."""
+    return [identifier for identifier in cell.split(";") if PMID.match(identifier)] if isinstance(cell, str) and cell else []
+
+
 def members(identifier: str) -> list[str]:
     """A complex 'A_B_C' (or 'COMPLEX:A_B_C') as its members; a single protein as itself; isoform suffixes dropped."""
     text = str(identifier)
@@ -138,22 +169,27 @@ def members(identifier: str) -> list[str]:
 def signalling_references(omnipath: pd.DataFrame) -> pd.DataFrame:
     """(source, target) -> curated and text-mined PubMed id sets, over OmniPath rows expanded to members, keyed by gene
     symbols and, where the table has them, by UniProt accessions too (a protein node named by accession matches there)."""
-    records: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
+    records: dict[tuple[str, str], tuple[set[str], set[str], set[str]]] = {}
     has_accessions = "source" in omnipath.columns and "target" in omnipath.columns
+    has_resources = "sources" in omnipath.columns
     for row in omnipath.itertuples(index=False):
         curated, text_mined = pmids_of(row.references, TEXT_MINED_REFERENCE_RESOURCES)
+        resources = resources_of(row.sources) if has_resources else set()
         key_sets = [(members(row.source_genesymbol), members(row.target_genesymbol))]
         if has_accessions:
             key_sets.append((members(row.source), members(row.target)))
         for sources, targets in key_sets:
             for source in sources:
                 for target in targets:
-                    kept, mined = records.setdefault((source, target), (set(), set()))
+                    kept, mined, stated_by = records.setdefault((source, target), (set(), set(), set()))
                     kept |= curated
                     mined |= text_mined
+                    stated_by |= resources
     return pd.DataFrame([{"family": "signalling", "source_symbol": source, "target_symbol": target, "curated_pmids": len(kept),
-                          "text_mined_pmids": len(mined - kept), "text_mined_only": not kept and bool(mined)}
-                         for (source, target), (kept, mined) in sorted(records.items())])
+                          "text_mined_pmids": len(mined - kept), "text_mined_only": not kept and bool(mined),
+                          "curated_pubmed_ids": joined_pubmed_ids(kept), "text_mined_pubmed_ids": joined_pubmed_ids(mined - kept),
+                          "resources": ";".join(sorted(stated_by))}
+                         for (source, target), (kept, mined, stated_by) in sorted(records.items())])
 
 
 def transcription_references(collectri: pd.DataFrame) -> pd.DataFrame:
@@ -161,14 +197,15 @@ def transcription_references(collectri: pd.DataFrame) -> pd.DataFrame:
     records: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
     for row in collectri.itertuples(index=False):
         pmids, _ = pmids_of(row.references)
-        sources = {source.strip() for source in str(row.sources).split(";") if source.strip()} - set(AGGREGATOR_SOURCES)
+        sources = resources_of(row.sources) - set(AGGREGATOR_SOURCES)
         for source in members(row.source_genesymbol):
             for target in members(row.target_genesymbol):
                 kept, supporting = records.setdefault((source, target), (set(), set()))
                 kept |= pmids
                 supporting |= sources
     return pd.DataFrame([{"family": "transcription", "source_symbol": source, "target_symbol": target, "curated_pmids": len(pmids),
-                          "text_mined_pmids": 0, "text_mined_only": bool(supporting) and supporting <= set(TEXT_MINED_TRANSCRIPTION_SOURCES)}
+                          "text_mined_pmids": 0, "text_mined_only": bool(supporting) and supporting <= set(TEXT_MINED_TRANSCRIPTION_SOURCES),
+                          "curated_pubmed_ids": joined_pubmed_ids(pmids), "text_mined_pubmed_ids": "", "resources": ";".join(sorted(supporting))}
                          for (source, target), (pmids, supporting) in sorted(records.items())])
 
 
@@ -179,11 +216,11 @@ def tempered(count, cap: int = DEFAULT_COUNT_CAP, exponent: float = DEFAULT_TEMP
 def edge_evidence_table(edges: pd.DataFrame, references: pd.DataFrame, negative_pairs: set[frozenset[str]]) -> pd.DataFrame:
     """One row per graph edge, in edge order: family, kind, records (distinct PubMed ids or references), contested."""
     by_key = {(row.family, row.source_symbol, row.target_symbol): row for row in references.itertuples(index=False)} if len(references) else {}
-    families, kinds, records, contested = [], [], [], []
+    families, kinds, records, contested, pubmed, resources = [], [], [], [], [], []
     for edge in edges.itertuples(index=False):
         family = family_of(edge.evidence_source)
         source, target = symbol_of(edge.source_id), symbol_of(edge.target_id)
-        kind, count = "none", 0
+        kind, count, identifiers, stated_by = "none", 0, "", ""
         if family in ("signalling", "transcription"):
             undirected = str(edge.relation_type) in UNDIRECTED_RELATIONS  # a binding is one claim whichever way the build stored it
             row = None
@@ -193,22 +230,70 @@ def edge_evidence_table(edges: pd.DataFrame, references: pd.DataFrame, negative_
                     break
             if row is None:
                 kind = "unmatched"
-            elif row.text_mined_only:  # first: an ExTRI-only transcription edge carries PubMed ids that came from text mining
-                kind, count = "text_mined_only", int(row.text_mined_pmids or row.curated_pmids)
-            elif row.curated_pmids > 0:
-                kind, count = "curated", int(row.curated_pmids)
             else:
-                kind = "unreferenced"
+                stated_by = str(getattr(row, "resources", "") or "")
+                if row.text_mined_only:  # first: an ExTRI-only transcription edge carries PubMed ids that came from text mining
+                    kind, count = "text_mined_only", int(row.text_mined_pmids or row.curated_pmids)
+                    identifiers = str((getattr(row, "text_mined_pubmed_ids", "") if row.text_mined_pmids else getattr(row, "curated_pubmed_ids", "")) or "")
+                elif row.curated_pmids > 0:
+                    kind, count = "curated", int(row.curated_pmids)
+                    identifiers = str(getattr(row, "curated_pubmed_ids", "") or "")
+                else:
+                    kind = "unreferenced"
         elif family == "enzyme_regulation":
             match = BRENDA_REFERENCES.search(str(edge.evidence_source))
-            kind, count = "in_vitro", int(match.group(1)) if match else 0
+            kind, count, stated_by = "in_vitro", int(match.group(1)) if match else 0, "BRENDA"
         elif family == "curated":
-            kind, count = "curated", len(set(CURATED_PMID.findall(str(edge.evidence_source))))
+            found = set(CURATED_PMID.findall(str(edge.evidence_source)))
+            kind, count, identifiers, stated_by = "curated", len(found), joined_pubmed_ids(found), str(edge.evidence_source)
         families.append(family)
         kinds.append(kind)
         records.append(count)
         contested.append(source != target and frozenset((source, target)) in negative_pairs)
-    return pd.DataFrame({"family": families, "kind": kinds, "records": records, "contested": contested}, index=edges.index)
+        pubmed.append(identifiers)
+        resources.append(stated_by)
+    return pd.DataFrame({"family": families, "kind": kinds, "records": records, "contested": contested, "pubmed_ids": pubmed, "resources": resources},
+                        index=edges.index)
+
+
+def read_species(path: Path) -> pd.DataFrame:
+    """The species scores experiments/fetch_icite_species.py cached, indexed by PubMed id (str): human, animal and
+    molecular_cellular for each id iCite found."""
+    table = pd.read_parquet(path)
+    if "found" in table.columns:
+        table = table[table["found"].astype(bool)]
+    return table.assign(pmid=table["pmid"].astype(str)).drop_duplicates("pmid").set_index("pmid")[list(SPECIES_COLUMNS)]
+
+
+def species_of_records(pubmed_ids: pd.Series, species: pd.DataFrame, human_share_above: float = DEFAULT_HUMAN_SHARE_ABOVE) -> pd.DataFrame:
+    """Per edge, over its PubMed ids: how many iCite scored (species_known_records), how many are human evidence (human
+    score above human_share_above: human_records), how many record animals and no human (animal_only_records), and each
+    scored id with its human, animal and molecular/cellular scores ('11:0.20/0.00/0.80;...', pubmed_species), so that a
+    reviewer of a closure sees the species paper by paper (decision 9.63 (c))."""
+    known, human, animal_only, listed = [], [], [], []
+    human_score, animal_score, cellular_score = species["human"].to_dict(), species["animal"].to_dict(), species["molecular_cellular"].to_dict()
+    for cell in pubmed_ids:
+        identifiers = [identifier for identifier in split_pubmed_ids(cell) if identifier in human_score]
+        is_human = [float(human_score[identifier]) > human_share_above for identifier in identifiers]
+        known.append(len(identifiers))
+        human.append(int(sum(is_human)))
+        animal_only.append(int(sum(1 for identifier, flag in zip(identifiers, is_human) if not flag and float(animal_score[identifier]) > 0.0)))
+        listed.append(";".join(f"{identifier}:{float(human_score[identifier]):.2f}/{float(animal_score[identifier]):.2f}/{float(cellular_score[identifier]):.2f}"
+                               for identifier in identifiers))
+    return pd.DataFrame({"species_known_records": known, "human_records": human, "animal_only_records": animal_only, "pubmed_species": listed},
+                        index=pubmed_ids.index)
+
+
+def curated_edge_labels(evidence: pd.DataFrame, minimum_records: int = DEFAULT_LABEL_MINIMUM_RECORDS,
+                        minimum_human_records: int = DEFAULT_LABEL_MINIMUM_HUMAN_RECORDS) -> np.ndarray:
+    """Decision 9.63 (b) with the owner's human-evidence rule: True for an edge of a curated kind (LABEL_FAMILIES), not
+    contested by an IntAct absence, with at least minimum_records independent records of which at least
+    minimum_human_records are human evidence. Such an edge is an edge label: taken as known, with no gate."""
+    if "human_records" not in evidence.columns:
+        raise ValueError("the edge evidence table has no human_records column; rebuild it with experiments/build_edge_evidence.py, which reads the species "
+                         "experiments/fetch_icite_species.py caches")
+    return ((evidence["kind"] == "curated") & evidence["family"].isin(LABEL_FAMILIES) & ~evidence["contested"].astype(bool)
+            & (evidence["records"] >= minimum_records) & (evidence["human_records"] >= minimum_human_records)).to_numpy()
 
 
 def edge_priors(evidence: pd.DataFrame, tiers: dict[tuple[str, str], EdgeTier], global_strength: float = 1.0, tempering: float = DEFAULT_TEMPERING,

@@ -9,14 +9,19 @@ from mechanistic_pathway_learning.graph.edge_evidence import (
     INTACT_ABSENCE_PSEUDO_COUNT,
     EdgeTier,
     accession_of,
+    curated_edge_labels,
     edge_evidence_table,
     edge_priors,
     family_of,
+    joined_pubmed_ids,
     members,
     permute_edge_priors,
     pmids_of,
     read_edge_tiers,
+    read_species,
     signalling_references,
+    species_of_records,
+    split_pubmed_ids,
     summarise,
     symbol_of,
     tempered,
@@ -133,3 +138,71 @@ def test_the_committed_tier_table_is_valid_and_ordered_by_evidence_type():
     assert tiers[("transcription", "curated")].prior_probability > tiers[("transcription", "text_mined_only")].prior_probability
     assert all(0.0 < tier.prior_probability < 1.0 for tier in tiers.values())
     assert ("other", "none") not in tiers and ("signalling", "unmatched") not in tiers, "ungated families have no row"
+
+
+def test_pubmed_id_cells_are_numeric_order_and_read_back():
+    assert joined_pubmed_ids({"12", "9", "101"}) == "9;12;101" and joined_pubmed_ids(set()) == ""
+    assert split_pubmed_ids("9;12;x;101") == ["9", "12", "101"] and split_pubmed_ids("") == [] and split_pubmed_ids(float("nan")) == []
+
+
+def test_reference_tables_keep_the_pubmed_ids_they_count_and_the_resources():
+    signalling = signalling_references(omnipath_rows()).set_index(["source_symbol", "target_symbol"])
+    assert signalling.loc[("A", "B")].curated_pubmed_ids == "11;12" and signalling.loc[("A", "B")].resources == "SIGNOR"
+    assert signalling.loc[("C", "D")].curated_pubmed_ids == "" and signalling.loc[("C", "D")].text_mined_pubmed_ids == "21"
+    assert signalling.loc[("G", "I")].resources == "ProtMapper;SIGNOR"
+    transcription = transcription_references(collectri_rows()).set_index(["source_symbol", "target_symbol"])
+    assert transcription.loc[("TF1", "T1")].curated_pubmed_ids == "41;42"
+    assert transcription.loc[("TF1", "T1")].resources == "ExTRI_CollecTRI;TRRUST_CollecTRI", "the aggregators are not resources behind the edge"
+
+
+def test_the_edge_table_carries_the_pubmed_ids_its_record_count_counts():
+    references = pd.concat([signalling_references(omnipath_rows()), transcription_references(collectri_rows())], ignore_index=True)
+    evidence = edge_evidence_table(graph_edges(), references, {frozenset(("A", "B"))})
+    for row in evidence.itertuples(index=False):
+        if row.family in ("signalling", "transcription", "curated"):
+            assert len(split_pubmed_ids(row.pubmed_ids)) == row.records, row
+    rows = list(evidence.itertuples(index=False))
+    assert rows[0].pubmed_ids == "11;12" and rows[0].resources == "SIGNOR"
+    assert rows[2].pubmed_ids == "21", "a text-mined-only edge lists its text-mined ids"
+    assert rows[3].pubmed_ids == "" and rows[4].pubmed_ids == "" and rows[4].resources == "", "unreferenced and unmatched edges list none"
+    assert rows[6].pubmed_ids == "51" and rows[6].kind == "text_mined_only"
+    assert (rows[7].pubmed_ids, rows[7].resources) == ("", "BRENDA"), "BRENDA states a reference count, not the ids"
+    assert rows[8].pubmed_ids == "14585973" and rows[8].resources.startswith("curated oxidative modification")
+
+
+def species_table():
+    return pd.DataFrame({"human": [0.2, 0.0, 0.0, 0.5], "animal": [0.0, 0.5, 0.0, 0.0], "molecular_cellular": [0.8, 0.5, 1.0, 0.5]},
+                        index=pd.Index(["11", "12", "41", "42"], name="pmid"))
+
+
+def test_species_of_records_counts_human_and_animal_only_papers():
+    pubmed_ids = pd.Series(["11;12", "41;42;99", ""], index=[5, 6, 7])
+    counts = species_of_records(pubmed_ids, species_table())
+    assert list(counts.index) == [5, 6, 7]
+    assert counts.species_known_records.tolist() == [2, 2, 0], "an id iCite did not score is not counted as known"
+    assert counts.human_records.tolist() == [1, 1, 0]
+    assert counts.animal_only_records.tolist() == [1, 0, 0], "a paper with animal terms and no human ones"
+    assert counts.pubmed_species.tolist() == ["11:0.20/0.00/0.80;12:0.00/0.50/0.50", "41:0.00/0.00/1.00;42:0.50/0.00/0.50", ""]
+    stricter = species_of_records(pubmed_ids, species_table(), human_share_above=0.3)
+    assert stricter.human_records.tolist() == [0, 1, 0]
+
+
+def test_read_species_keeps_found_ids_once(tmp_path):
+    path = tmp_path / "species.parquet"
+    pd.DataFrame({"pmid": [11, 12, 12, 13], "human": [0.2, 0.0, 0.0, 0.0], "animal": [0.0, 0.5, 0.5, 0.0], "molecular_cellular": [0.8, 0.5, 0.5, 0.0],
+                  "found": [True, True, True, False]}).to_parquet(path)
+    species = read_species(path)
+    assert list(species.index) == ["11", "12"] and list(species.columns) == ["human", "animal", "molecular_cellular"]
+
+
+def test_curated_edges_with_two_records_one_of_them_human_become_labels():
+    evidence = pd.DataFrame({
+        "family": ["signalling", "signalling", "signalling", "signalling", "transcription", "curated", "enzyme_regulation", "signalling", "signalling"],
+        "kind": ["curated", "curated", "curated", "curated", "curated", "curated", "in_vitro", "text_mined_only", "unreferenced"],
+        "records": [2, 1, 3, 2, 2, 2, 5, 3, 0], "human_records": [1, 1, 0, 2, 1, 1, 5, 3, 0],
+        "contested": [False, False, False, True, False, False, False, False, False]})
+    assert curated_edge_labels(evidence).tolist() == [True, False, False, False, True, True, False, False, False]
+    assert curated_edge_labels(evidence, minimum_records=3).tolist() == [False] * 9
+    assert curated_edge_labels(evidence, minimum_human_records=2).tolist() == [False, False, False, False, False, False, False, False, False]
+    with pytest.raises(ValueError, match="human_records"):
+        curated_edge_labels(evidence.drop(columns="human_records"))
