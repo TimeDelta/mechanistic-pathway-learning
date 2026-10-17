@@ -145,7 +145,11 @@ class CuratedReaction:
     weigh apart from ordinary catalysis. Gains are learned per relation, so a transporter that this set gives a
     reaction in each direction has one shared gain over both unless the reverse direction carries a relation of its
     own, and the model then cannot weigh efflux differently from uptake. Only the catalysis edge is separated: the
-    substrate and product edges of an efflux reaction carry the same mass action as any other transport."""
+    substrate and product edges of an efflux reaction carry the same mass action as any other transport.
+    activators names genes whose product raises the reaction's rate without catalysing it, each fed to the reaction by an
+    activates edge (+1), as Reactome's positive regulators are: an auxiliary channel subunit that increases the number of
+    functional channels at the membrane is one. Activators take no part in the voltage gating rule, which reads the
+    catalysts (the pores) alone."""
     reaction_id: str
     display_name: str
     substrates: tuple[str, ...]
@@ -155,6 +159,7 @@ class CuratedReaction:
     release: str | None = None
     membrane_potential_sign: float | None = None
     catalysis_relation: str = "catalyzed_by"
+    activators: tuple[str, ...] = ()
 
 
 def compartment_letter(name: str) -> str:
@@ -432,6 +437,11 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
         for gene in curated.catalysts:
             add_node(f"GENE:{gene}", node_type="gene", display_name=gene, gene_symbol=gene, in_metabolic_layer=False)
             add_edge(f"GENE:{gene}", curated.reaction_id, curated.catalysis_relation, 1.0, curated.evidence)
+        for gene in curated.activators:
+            if gene in curated.catalysts:
+                raise ValueError(f"{curated.reaction_id}: {gene} is listed as a catalyst and as an activator")
+            add_node(f"GENE:{gene}", node_type="gene", display_name=gene, gene_symbol=gene, in_metabolic_layer=False)
+            add_edge(f"GENE:{gene}", curated.reaction_id, "activates", 1.0, curated.evidence)
         participants = [("in", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.substrates]
         participants += [("out", base_of_node.get(node), letter_of_node.get(node), 1.0) for node in curated.products]
         reaction_records[curated.reaction_id] = (participants, set(curated.catalysts), list(curated.substrates), list(curated.products), "curated")
