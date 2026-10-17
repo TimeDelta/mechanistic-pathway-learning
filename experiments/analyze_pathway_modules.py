@@ -39,6 +39,7 @@ from mechanistic_pathway_learning.evaluation.equifinality_independence_and_conve
     jaccard_index,
 )
 from mechanistic_pathway_learning.evaluation.experiment_data import load_experiment_data
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags
 from mechanistic_pathway_learning.evaluation.module_behaviour import (
     behaviour_label,
     hops_into_support,
@@ -247,7 +248,7 @@ def main() -> None:
     nodes = pd.read_parquet(arguments.graph_dir / "nodes.parquet")
     edges = pd.read_parquet(arguments.graph_dir / "edges.parquet")
     node_ids = list(nodes.node_id)
-    currency = set(nodes.loc[nodes.is_currency.fillna(False).astype(bool), "node_id"])
+    currency = set(nodes.loc[currency_flags(nodes), "node_id"])  # metabolites only (the fourth currency defect)
     adjacency = directed_adjacency(edges, currency)
     curated_symbols = read_curated_modules(arguments.curated_modules)
     curated = {module: {f"GENE:{symbol}" for symbol in symbols} for module, symbols in curated_symbols.items()}

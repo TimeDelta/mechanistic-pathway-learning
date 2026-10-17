@@ -47,6 +47,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags
+
 SUBSTRATE_RELATION = "substrate_of"
 PRODUCT_RELATION = "product_of"
 DEPLETES_SUBSTRATE_RELATION = "depletes_substrate"
@@ -75,7 +77,7 @@ def effective_edges(nodes: pd.DataFrame, stored_edges: pd.DataFrame) -> tuple[pd
     themselves dropped.
     """
     position_of_node = {node_id: index for index, node_id in enumerate(nodes.node_id)}
-    is_currency_node = nodes.is_currency.fillna(False).to_numpy().astype(bool)
+    is_currency_node = currency_flags(nodes)  # metabolites only (the fourth currency defect)
     is_reversible_reaction = nodes.reversible.fillna(False).to_numpy().astype(bool)
 
     source_position = stored_edges.source_id.map(position_of_node).to_numpy()
@@ -422,7 +424,7 @@ def main() -> None:
     for relation, count in dead_in_divisor_rows.relation.value_counts().items():
         print(f"    {relation:<30} {count:>7,}")
 
-    is_currency_node = nodes.is_currency.fillna(False).to_numpy().astype(bool)
+    is_currency_node = currency_flags(nodes)  # metabolites only (the fourth currency defect)
     print(f"\ndivisor mass at the {int(is_currency_node.sum())} currency metabolites: "
           f"{int(divisor_total[is_currency_node].sum()):,} of {int(divisor_total.sum()):,} "
           f"({divisor_total[is_currency_node].sum() / divisor_total.sum():.1%}); "
@@ -527,7 +529,7 @@ def main() -> None:
         group_target = group.target.to_numpy()
         live = int(forward_cone[group_source].sum())
         into_unreachable = int((~forward_cone[group_target]).sum())
-        into_currency = int(nodes.is_currency.fillna(False).to_numpy().astype(bool)[group_target].sum())
+        into_currency = int(currency_flags(nodes)[group_target].sum())
         into_entry_node = int((node_type[group_target] == DRUG_NODE_TYPE).sum())
         signed = int((group.sign.to_numpy() != 0).sum())
         relation_summary.append({"relation": relation, "edges": len(group), "live_edges": live,

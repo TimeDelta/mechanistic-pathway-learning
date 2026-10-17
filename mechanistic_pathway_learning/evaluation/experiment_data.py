@@ -32,6 +32,7 @@ from mechanistic_pathway_learning.graph.drug_entry_nodes import (
     DRUG_MECHANISM_RELATION,
     ENTRY_NODE_TYPES,
 )
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags, currency_tags_on_other_node_types
 
 DRUG_ENTRY_MODES: tuple[str, ...] = ("targets", "nodes")
 EDGE_ROW_COLUMN = "_edge_row"  # the loader's own column: an edge's row in edges.parquet (ExperimentData.edge_row)
@@ -612,6 +613,10 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         entry_node_mask = nodes.node_type.isin(ENTRY_NODE_TYPES).to_numpy()
     elif weight_in_the_graph is not None and not np.all(weight_in_the_graph == 1.0):
         edge_weight = weight_in_the_graph
+    wrongly_tagged = currency_tags_on_other_node_types(nodes)
+    if wrongly_tagged:  # the fourth currency defect (graph/tag_currency_metabolites.py): a gene whose symbol spells a listed name
+        warnings.warn(f"{graph_directory} tags {len(wrongly_tagged)} node(s) that are not metabolites as currency ({', '.join(wrongly_tagged[:5])}); "
+                      f"only a metabolite can be currency, so they are read as untagged and propagate")
     group_ids = [groups[p] for p in perturbation_ids]
     if group_by == "disease_cluster_and_targets":
         group_ids = merge_drugs_with_their_targets(perturbation_ids, [types[p] for p in perturbation_ids], group_ids, [group_seeds[p] for p in perturbation_ids], node_ids,
@@ -620,7 +625,7 @@ def load_experiment_data(graph_directory: Path, evidence_directory: Path, relati
         node_ids=node_ids,
         node_index=node_index,
         node_types=nodes.node_type.to_numpy(),
-        is_currency=nodes.is_currency.fillna(False).to_numpy().astype(bool),
+        is_currency=currency_flags(nodes),
         is_reversible_reaction=(nodes.reversible.astype("boolean").fillna(False).to_numpy().astype(bool)
                                 if "reversible" in nodes.columns else np.zeros(len(nodes), dtype=bool)),
         node_degree=nodes.degree.to_numpy().astype(float),

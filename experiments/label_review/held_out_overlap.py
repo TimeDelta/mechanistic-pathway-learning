@@ -51,6 +51,7 @@ from mechanistic_pathway_learning.evaluation.experiment_data import (
     load_experiment_data,
     merge_drugs_with_their_targets,
 )
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags
 
 STATEMENT_ROWS = Path("data/processed/off_target_scoping/open_targets_symptom_rows.parquet")
 
@@ -229,7 +230,7 @@ def main() -> int:
     boundaries = np.searchsorted(starts_of_edges[order], np.arange(len(nodes) + 1))
     ends_in_start_order = ends_of_edges[order]
     neighbours = [ends_in_start_order[boundaries[index]: boundaries[index + 1]] for index in range(len(nodes))]
-    blocked = nodes.is_currency.astype("boolean").fillna(False).to_numpy(dtype=bool)
+    blocked = currency_flags(nodes)  # metabolites only (the fourth currency defect)
     proteins_of_gene: dict[str, list[str]] = defaultdict(list)
     for row in pd.read_parquet(arguments.distance_graph / "gene_to_protein.parquet").itertuples(index=False):
         proteins_of_gene[row.gene_node_id].append(row.protein_node_id)

@@ -544,7 +544,7 @@ def import_reactome_layer(sbml_texts: list[str], nodes: pd.DataFrame, edges: pd.
     # name rule is re-applied over the completed table, which also keeps the neuronal pools this module creates out of
     # the currency set whatever their degree, since the membrane potential reads them.
     before = set(node_table.loc[node_table.is_currency.fillna(False).astype(bool), "node_id"])
-    after = retag_currency_by_name(list(node_table.node_id), list(node_table.display_name), before)
+    after = retag_currency_by_name(list(node_table.node_id), list(node_table.display_name), before, node_types=list(node_table.node_type))
     node_table = node_table.copy()
     node_table["is_currency"] = node_table.node_id.isin(after)
     summary["currency_added_by_the_name_rule"] = sorted(after - before)

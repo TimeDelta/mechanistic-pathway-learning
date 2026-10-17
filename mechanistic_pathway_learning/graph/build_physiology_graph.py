@@ -456,7 +456,8 @@ def restrict_transcription_edges_to_brain_expressed(nodes: pd.DataFrame, edges: 
 
 
 def tag_currency(nodes: pd.DataFrame, degree_quantile_threshold: float) -> pd.DataFrame:
-    """The degree rule over the metabolites, then the name rule over every node.
+    """The degree rule over the metabolites, then the name rule over every metabolite (never a gene whose symbol spells
+    a listed name: the fourth defect of tag_currency_metabolites).
 
     The second pass is what keeps a species' copies agreeing: a node added after this runs would otherwise carry
     whatever is_currency its adder wrote, which gave thirteen species copies that disagreed (defect 3 of
@@ -467,7 +468,7 @@ def tag_currency(nodes: pd.DataFrame, degree_quantile_threshold: float) -> pd.Da
         dict(zip(metabolites.node_id, metabolites.degree)),
         degree_quantile_threshold=degree_quantile_threshold,
     )
-    tagged = retag_currency_by_name(list(nodes.node_id), list(nodes.display_name), tagged)
+    tagged = retag_currency_by_name(list(nodes.node_id), list(nodes.display_name), tagged, node_types=list(nodes.node_type))
     nodes = nodes.copy()
     nodes["is_currency"] = nodes.node_id.isin(tagged)
     return nodes

@@ -54,3 +54,26 @@ def test_label_grades_filter_keeps_grade_b_drug_rows(tmp_path: Path) -> None:
     pd.DataFrame([evidence_row("A", "psychosis", 1.0, grade="A"), evidence_row("B", "psychosis", 0.6, grade="B"), evidence_row("B", "anxiety", 0.0, grade="C")]).to_parquet(evidence_directory / "evidence_records.parquet", index=False)
     data = load_experiment_data(tmp_path / "graph", evidence_directory)
     assert data.symptoms == ["psychosis"] and data.outcomes.tolist() == [[1.0], [1.0]] and data.weights.tolist() == [[1.0], [0.6]]
+
+
+def test_the_loader_reads_a_currency_tag_on_a_gene_as_untagged_and_says_so(tmp_path: Path) -> None:
+    """The fourth currency defect (graph/tag_currency_metabolites.py, 17 October 2026): the v4 and v5 graphs tag
+    GENE:CA2 because its symbol spells the name list's calcium. Only a metabolite can be currency, so the loader reads
+    the gene as untagged, which lets it propagate in the linear-response encoder, and warns with the node's id."""
+    import warnings
+
+    write_toy_graph(tmp_path / "graph")
+    nodes = pd.read_parquet(tmp_path / "graph" / "nodes.parquet")
+    nodes = pd.concat([nodes, pd.DataFrame({"node_id": ["MAM01413c"], "node_type": ["metabolite"], "gene_symbol": [None],
+                                            "is_currency": [True], "degree": [1.0]})], ignore_index=True)
+    nodes.loc[nodes.node_id == "GENE:A", "is_currency"] = True
+    nodes.to_parquet(tmp_path / "graph" / "nodes.parquet", index=False)
+    evidence_directory = tmp_path / "evidence"
+    evidence_directory.mkdir()
+    pd.DataFrame([evidence_row("A", "psychosis", 1.0), evidence_row("B", "psychosis", 0.0)]).to_parquet(evidence_directory / "evidence_records.parquet", index=False)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        data = load_experiment_data(tmp_path / "graph", evidence_directory)
+    flags = dict(zip(data.node_ids, data.is_currency.tolist()))
+    assert flags == {"GENE:A": False, "GENE:B": False, "R1": False, "MAM01413c": True}
+    assert any("GENE:A" in str(warning.message) and "only a metabolite can be currency" in str(warning.message) for warning in caught)

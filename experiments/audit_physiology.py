@@ -31,6 +31,7 @@ from pathlib import Path
 import pandas as pd
 
 from mechanistic_pathway_learning.documentation import provenance_stamp
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_tags_on_other_node_types
 
 DEFAULT_VALIDATION_SET = Path("configs/physiology_validation_set.csv")
 EXPECTED_SIGN = {"antagonist": -1.0, "inhibitor": -1.0, "loss_of_function": -1.0, "negative_allosteric_modulator": -1.0,
@@ -65,6 +66,9 @@ def graph_integrity(nodes: pd.DataFrame, edges: pd.DataFrame) -> dict:
     names = dict(zip(nodes.node_id, nodes.display_name)) if "display_name" in nodes.columns else {}
     for node_id, count in degree.head(15).items():
         top.append({"node": str(node_id), "name": str(names.get(node_id, "")), "degree": int(count), "is_currency": bool(currency.get(node_id, False))})
+    # only a metabolite can be currency; a gene whose symbol spells a listed name (CA2, the fourth defect of
+    # graph/tag_currency_metabolites.py) was tagged on the v4 and v5 graphs and sent nothing in the linear encoder
+    currency_on_other_node_types = currency_tags_on_other_node_types(nodes) if "node_type" in nodes.columns else []
     stoichiometry = {"column_present": "stoichiometric_coefficient" in edges.columns}
     if stoichiometry["column_present"]:
         metabolic = edges[edges.relation_type.isin(["substrate_of", "product_of"])]
@@ -77,7 +81,7 @@ def graph_integrity(nodes: pd.DataFrame, edges: pd.DataFrame) -> dict:
             "contradictory_sign_pairs": int(len(contradictory)),
             "contradictory_examples": [{"source_id": s, "target_id": t, "relation_type": r} for (s, t, r) in list(contradictory.index[:10])],
             "unsigned_fraction_by_relation": unsigned, "self_loops": self_loops, "dangling_endpoint_edges": dangling, "isolated_nodes": isolated,
-            "top_degree_nodes": top, "stoichiometry": stoichiometry}
+            "top_degree_nodes": top, "stoichiometry": stoichiometry, "currency_tags_on_other_node_types": currency_on_other_node_types}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -354,6 +358,8 @@ def render(stamp: str, sections: dict, graph_dir: Path, evidence_dir: Path) -> s
              f"- stoichiometric coefficients in the graph the model reads: **{'present' if integrity['stoichiometry']['column_present'] else 'ABSENT'}**"
              + (f", {integrity['stoichiometry']['edges_with_coefficient_other_than_one']:,} of {integrity['stoichiometry']['metabolic_edges']:,} metabolic edges with a coefficient other than 1"
                 if integrity["stoichiometry"]["column_present"] else " (every reaction edge counts as one copy; item 20's conserved-currency arithmetic cannot hold)"),
+             f"- nodes tagged currency that are not metabolites (read as untagged by the loader): **{len(integrity.get('currency_tags_on_other_node_types', []))}**"
+             + (f" ({', '.join(integrity['currency_tags_on_other_node_types'][:10])})" if integrity.get("currency_tags_on_other_node_types") else ""),
              "", "Highest-degree nodes (a currency metabolite should be tagged; an untagged hub is a short cut through the graph):", "",
              "| node | name | degree | currency |", "| --- | --- | --- | --- |"]
     for node in integrity["top_degree_nodes"]:

@@ -57,6 +57,14 @@ def test_stoichiometry_is_reported_when_the_column_is_present():
     assert result == {"column_present": True, "metabolic_edges": 4, "edges_with_coefficient_other_than_one": 1}
 
 
+def test_a_currency_tag_on_a_node_that_is_not_a_metabolite_is_reported():
+    """The fourth currency defect: GENE:CA2 was tagged because its symbol spells the name list's calcium."""
+    nodes, edges = graph()
+    assert graph_integrity(nodes, edges)["currency_tags_on_other_node_types"] == []
+    nodes.loc[nodes.node_id == "GENE:A", "is_currency"] = True
+    assert graph_integrity(nodes, edges)["currency_tags_on_other_node_types"] == ["GENE:A"]
+
+
 def test_a_reaction_spanning_compartments_without_the_transport_flag_is_found():
     nodes, edges = graph()
     result = compartment_consistency(nodes, edges)

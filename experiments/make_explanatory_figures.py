@@ -46,6 +46,7 @@ from matplotlib.colors import TwoSlopeNorm  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 from matplotlib.path import Path as MatplotlibPath  # noqa: E402
 
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags  # noqa: E402
 from mechanistic_pathway_learning.models.linear_response_encoder import LinearResponseEncoder  # noqa: E402
 
 OUTPUT_DIRECTORY = Path("docs/figures")
@@ -653,7 +654,7 @@ def figure_plasma_carriage() -> None:
 def currency_state_counts(graph_directory: Path) -> dict:
     """Per group of currency species, the copies and the total degree: what the graph computes and does not pass on."""
     nodes = pd.read_parquet(graph_directory / "nodes.parquet")
-    nodes = nodes.assign(currency=nodes.is_currency.fillna(False).astype(bool),
+    nodes = nodes.assign(currency=currency_flags(nodes),
                          species=nodes.display_name.astype(str).str.strip())
     counts = {}
     for group, species_names in CELL_STATE_GROUPS.items():

@@ -22,6 +22,7 @@ import pandas as pd
 
 from mechanistic_pathway_learning.documentation import provenance_stamp
 from mechanistic_pathway_learning.graph.edge_evidence import edge_priors, read_edge_tiers
+from mechanistic_pathway_learning.graph.tag_currency_metabolites import currency_flags
 
 DEFAULT_GRAPHS = ["data/processed/graph_full_neuronal_split_binders_drugs_v4", "data/processed/graph_full_neuronal_split_binders_drugs_v4_enzymes"]
 DEFAULT_EVIDENCE = ["data/processed/evidence_full_v4", "data/processed/evidence_full_v5"]
@@ -62,7 +63,9 @@ def node_section(nodes: pd.DataFrame, edges: pd.DataFrame) -> list[str]:
                           ("is_transport", "transport reactions"), ("reversible", "reversible reactions"),
                           ("brain_expressed", "genes and proteins expressed in at least one brain tissue (GTEx)"),
                           ("in_metabolic_layer", "nodes of the metabolic layer")):
-        if column in nodes.columns:
+        if column == "is_currency" and column in nodes.columns:  # metabolites only, as the loader reads it (the fourth currency defect)
+            flags.append(f"{count(int(currency_flags(nodes).sum()))} {label}")
+        elif column in nodes.columns:
             flags.append(f"{count((nodes[column] == True).sum())} {label}")  # noqa: E712 - the columns hold NaN
     lines += ["", "Of these: " + "; ".join(flags) + "."]
     if "compartment" in nodes.columns:

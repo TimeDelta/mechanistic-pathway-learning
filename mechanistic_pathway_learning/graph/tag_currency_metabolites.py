@@ -32,6 +32,13 @@ A graph built before this date carries them; the v4 rebuild is what clears them.
    the name rule to every metabolite once the graph is complete, which a build calls last. The degree rule is not
    re-applied, because a degree is only meaningful against the whole graph's distribution and the base graph's is the
    one the threshold was chosen on.
+
+A fourth, found on 17 October 2026 by experiments/measure_perturbation_reach.py: the fix of defect 3 matched the name
+list against every node, not only metabolites, so the gene of carbonic anhydrase 2, displayed "CA2", matched the list's
+calcium ("ca2") and GENE:CA2 was tagged on the v4 and v5 graphs. A currency node does not propagate in the
+linear-response encoder, so the CA2 perturbation reached no node past its gene and its transcriptional regulators did
+not reach its protein. The name rule now tags a node only when node_types names it a metabolite, and removes a tag any
+other node carries; load_experiment_data reads a graph built before this the same way (currency_flags).
 """
 from __future__ import annotations
 
@@ -126,16 +133,49 @@ def normalised_names(value: str) -> set[str]:
     return {without_compartment, CHARGE_SUFFIX_PATTERN.sub("", without_compartment)}
 
 
-def retag_currency_by_name(node_identifiers, display_names, already_tagged,
+CURRENCY_NODE_TYPE = "metabolite"  # only a metabolite can be currency (the fourth defect above)
+
+
+def currency_flags(nodes) -> "np.ndarray":
+    """A node table's is_currency, read for metabolites only, as a boolean array in the table's order.
+
+    A graph built before 17 October 2026 tags GENE:CA2 (the fourth defect above); reading it through this drops that
+    tag, so a model and an analysis of an older graph see what a rebuilt one carries. An absent column or value is
+    False."""
+    import numpy as np
+
+    if "is_currency" not in nodes.columns:
+        return np.zeros(len(nodes), dtype=bool)
+    tagged = nodes["is_currency"].astype("boolean").fillna(False).to_numpy(dtype=bool)
+    return tagged & (nodes["node_type"].astype(str).to_numpy() == CURRENCY_NODE_TYPE)
+
+
+def currency_tags_on_other_node_types(nodes) -> list[str]:
+    """The nodes a table tags as currency that are not metabolites, which currency_flags reads as untagged."""
+    if "is_currency" not in nodes.columns:
+        return []
+    tagged = nodes["is_currency"].astype("boolean").fillna(False).to_numpy(dtype=bool)
+    other_type = nodes["node_type"].astype(str).to_numpy() != CURRENCY_NODE_TYPE
+    return [str(node_id) for node_id in nodes["node_id"].to_numpy()[tagged & other_type]]
+
+
+def retag_currency_by_name(node_identifiers, display_names, already_tagged, *, node_types,
                            currency_metabolite_names: frozenset[str] = DEFAULT_CURRENCY_METABOLITE_NAMES) -> set[str]:
-    """The currency set with the name rule applied to every node given, not only those present when the degree rule ran.
+    """The currency set with the name rule applied to every metabolite given, not only those present when the degree
+    rule ran.
 
     A build calls this once its graph is complete (defect 3). already_tagged is what the degree rule produced; a node
-    whose name is on NEVER_CURRENCY_NAMES is removed from it even if the degree rule tagged it."""
+    whose name is on NEVER_CURRENCY_NAMES is removed from it even if the degree rule tagged it, and so is a node that is
+    not a metabolite: node_types gives each node's type, and a gene or protein whose symbol spells a listed name (CA2,
+    the fourth defect) is never tagged."""
+    node_types = list(node_types)
+    node_identifiers, display_names = list(node_identifiers), list(display_names)
+    if not len(node_types) == len(node_identifiers) == len(display_names):
+        raise ValueError("node_identifiers, display_names and node_types must have one entry per node")
     tagged = set(already_tagged)
-    for identifier, display_name in zip(node_identifiers, display_names):
+    for identifier, display_name, node_type in zip(node_identifiers, display_names, node_types):
         forms = normalised_names(display_name) | normalised_names(identifier)
-        if never_currency(identifier, display_name):
+        if node_type != CURRENCY_NODE_TYPE or never_currency(identifier, display_name):
             tagged.discard(identifier)
         elif forms & currency_metabolite_names:
             tagged.add(identifier)
