@@ -66,7 +66,7 @@ def test_the_edge_prior_is_off_by_default_and_registered_as_absent_before_it_exi
                                    "edge_gate_binary_full_batch", "edge_gate_closure_evidence", "edge_gate_flip_checks",
                                    "curated_edge_labels", "curated_label_minimum_records", "curated_label_minimum_human_records"}
     assert arguments.curated_edge_labels is True and arguments.curated_label_minimum_records == 2 and arguments.curated_label_minimum_human_records == 1
-    assert arguments.edge_gate_closure_evidence == -1, "every closure is measured unless asked otherwise (decision 9.63 (c))"
+    assert arguments.edge_gate_closure_evidence == 20, "the exact evidence for the 20 closures against the strongest priors; every closure gets the estimate"
     assert "edge_prior_strength" in ARGUMENTS_RECORDED_ONLY_WHEN_SET
     for name in ("v4_linear_response_edge_priors", "v4_linear_response_edge_priors_permuted", "v4_message_passing_edge_priors", "v4_message_passing_edge_priors_permuted"):
         flags = CONFIGURATIONS[name]
@@ -293,6 +293,7 @@ def test_end_to_end_hard_gates_train_run_the_binary_pass_and_save_the_scored_rea
             assert closures.prior.is_monotonic_decreasing, "the closures against the strongest priors are measured first"
             assert not closures.edge.isin(np.flatnonzero(labels)).any(), "an edge taken as known cannot close"
             assert {"family", "kind", "records", "pubmed_ids", "human_records", "resources"} <= set(closures.columns), "each closure with its evidence (9.63 (c))"
+            assert closures.estimated_evidence_nats.notna().all() and closures.estimated_posterior_false.between(0, 1).all(), "every closure has its estimate"
         read_out = np.load(run["directory"] / "edge_gate_read_out.npy")
         assert set(np.unique(read_out)) <= {0, 1} and read_out[~gated].all(), "an ungated edge is always open"
         assert int((read_out[gated] == 0).sum()) == record["gates"]["closed_at_read_out"]

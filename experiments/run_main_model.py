@@ -128,7 +128,13 @@ from mechanistic_pathway_learning.models.baselines.local_descriptor_encoder impo
 from mechanistic_pathway_learning.models.baselines.relational_gnn_sigmoid_baseline import RelationalGnnSigmoidHead
 from mechanistic_pathway_learning.models.baselines.zero_field_encoder import ZeroFieldEncoder
 from mechanistic_pathway_learning.models.descriptor_treatments import DESCRIPTOR_TREATMENTS
-from mechanistic_pathway_learning.models.edge_gate_passes import DEFAULT_SURROGATE_WIDTH, binary_pass_step, closure_evidence, exact_flip_checks
+from mechanistic_pathway_learning.models.edge_gate_passes import (
+    DEFAULT_SURROGATE_WIDTH,
+    binary_pass_step,
+    closure_evidence,
+    estimated_closure_evidence,
+    exact_flip_checks,
+)
 from mechanistic_pathway_learning.models.edge_gates import EDGE_GATE_KINDS, HARD_CONCRETE_BETA, EdgeGates, HardConcreteEdgeGates, penalty_denominator
 from mechanistic_pathway_learning.models.laboratory_readout import LaboratoryLabelIndex, LaboratoryReadout, laboratory_sign_loss
 from mechanistic_pathway_learning.models.linear_response_encoder import (
@@ -815,8 +821,10 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
         if budget != 0:  # -1: every closed edge (decision 9.63 (c)); N: the N against the strongest priors
             evidence = closure_evidence(encoder, gates, data_loss, batches, edge_penalty_denominator, None if budget < 0 else budget,
                                         arguments.edge_gate_surrogate_width)
-        closed_gates = torch.nonzero((gates.read_out() < 0.5) & gates.read_by_encoder).flatten()
-        closed_edges = [{"edge": int(gates.gated_edges[index]), "prior": float(gates.prior_open[index])} for index in closed_gates]
+        # every closure, with its first-order evidence from one more pass, for the review list (decision 9.63 (c))
+        estimated = estimated_closure_evidence(encoder, gates, data_loss, batches, edge_penalty_denominator)
+        closed_edges = [{"edge": edge, **{key: record[key] for key in ("prior", "estimated_evidence_nats", "estimated_posterior_false")}}
+                        for edge, record in estimated.items()]
     finally:
         for parameter in frozen:
             parameter.requires_grad_(True)
@@ -826,15 +834,18 @@ def run_edge_gate_binary_pass(encoder, head, gates: HardConcreteEdgeGates, fit_r
             "closure_evidence": evidence, "closed_edges": closed_edges, "seconds": time.time() - started}
 
 
-CLOSURE_REVIEW_COLUMNS = ["edge", "source_id", "target_id", "relation", "prior", "evidence_nats", "posterior_false", "family", "kind", "records", "contested",
-                          "species_known_records", "human_records", "animal_only_records", "pubmed_ids", "pubmed_species", "resources"]
+CLOSURE_EVIDENCE_TABLE_COLUMNS = ["family", "kind", "records", "contested", "species_known_records", "human_records", "animal_only_records", "pubmed_ids",
+                                  "pubmed_species", "resources"]
+CLOSURE_REVIEW_COLUMNS = ["edge", "source_id", "target_id", "relation", "prior", "evidence_nats", "posterior_false", "estimated_evidence_nats",
+                          "estimated_posterior_false", *CLOSURE_EVIDENCE_TABLE_COLUMNS]
 
 
 def write_closure_review(binary_pass: dict, data, directory: Path) -> dict:
     """The review list of decision 9.63 (c): every edge the fit closed ("Fit decides": it stays closed), each with what
     the build knows of it, written to edge_gate_closures.csv, against the strongest priors first. Per edge: its graph
     edge (source, target, relation), its prior, its exact closure evidence in nats and P(false) where measured (empty
-    where --edge-gate-closure-evidence left it out), its family and kind, its independent records with their PubMed ids,
+    where --edge-gate-closure-evidence left it out), the first-order estimate of both for every closure (one pass for
+    all; models/edge_gate_passes.estimated_closure_evidence), its family and kind, its independent records with their PubMed ids,
     how many iCite scored, how many are human evidence and how many animal-only, each paper's species scores, and the
     resources that state the edge. Returns the summary results.json keeps in place of the rows."""
     measured = {record["edge"]: record for record in (binary_pass.get("closure_evidence") or {}).get("records", [])}
@@ -845,9 +856,10 @@ def write_closure_review(binary_pass: dict, data, directory: Path) -> dict:
         record = measured.get(edge, {})
         row = {"edge": edge, "source_id": str(data.node_ids[int(data.edge_source[edge])]), "target_id": str(data.node_ids[int(data.edge_target[edge])]),
                "relation": str(data.relation_types[int(data.edge_relation[edge])]), "prior": closed["prior"],
-               "evidence_nats": record.get("evidence_nats"), "posterior_false": record.get("posterior_false")}
+               "evidence_nats": record.get("evidence_nats"), "posterior_false": record.get("posterior_false"),
+               "estimated_evidence_nats": closed.get("estimated_evidence_nats"), "estimated_posterior_false": closed.get("estimated_posterior_false")}
         if evidence_table is not None:
-            for column in CLOSURE_REVIEW_COLUMNS[7:]:
+            for column in CLOSURE_EVIDENCE_TABLE_COLUMNS:
                 if column in evidence_table.columns:
                     value = evidence_table[column].iat[edge]
                     row[column] = value.item() if hasattr(value, "item") else value
@@ -1542,18 +1554,23 @@ def time_training_steps(data, encoder, head, optimizer, train_indices, validatio
         loss.backward()
         optimizer.step()
         step_seconds.append(time.time() - started)
-    started = time.time()
+    prediction_times = []
     with torch.no_grad():
         encoder.eval()
         head.eval()
-        node_index, sign_and_magnitude = pad_perturbations(data, order[: arguments.batch_size])
-        head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field), perturbation_covariate=covariate_of(data, order[: arguments.batch_size], arguments, device))
-    prediction_seconds = time.time() - started
+        for repeat in range(2):  # the first reads after the train-mode steps (caches rebuilt for the read-out); the second is the steady cost
+            batch = order[repeat * arguments.batch_size:][: arguments.batch_size]
+            started = time.time()
+            node_index, sign_and_magnitude = pad_perturbations(data, batch)
+            head(encode(encoder, node_index.to(device), sign_and_magnitude.to(device), adjacencies, arguments.field), perturbation_covariate=covariate_of(data, batch, arguments, device))
+            prediction_times.append(time.time() - started)
+    prediction_seconds = prediction_times[-1]
     steady = float(np.median(step_seconds[1:] if len(step_seconds) > 1 else step_seconds))
     steps_per_epoch = int(np.ceil(len(train_indices) / arguments.batch_size))
     prediction_batches = int(np.ceil(len(validation_indices) / arguments.batch_size))
     print(json.dumps({"timing_batches": arguments.timing_batches, "first_step_seconds": round(step_seconds[0], 2), "median_step_seconds": round(steady, 2),
-                      "prediction_batch_seconds": round(prediction_seconds, 2), "train_perturbations": len(train_indices), "steps_per_epoch": steps_per_epoch,
+                      "prediction_batch_seconds": round(prediction_seconds, 2), "first_prediction_batch_seconds": round(prediction_times[0], 2),
+                      "train_perturbations": len(train_indices), "steps_per_epoch": steps_per_epoch,
                       "epoch_minutes_estimate": round((steady * steps_per_epoch + prediction_seconds * prediction_batches) / 60.0, 1),
                       "torch_threads": torch.get_num_threads()}))
 
@@ -1801,11 +1818,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
                         help="hard gates: the width, in open log-odds, of the steep sigmoid the binary pass's proxy gradient passes through")
     parser.add_argument("--edge-gate-binary-full-batch", action=argparse.BooleanOptionalAction, default=True,
                         help="hard gates: one binary-pass step per epoch on the flips' effect averaged over every fit batch (no minibatch noise), or one per batch")
-    parser.add_argument("--edge-gate-closure-evidence", type=int, default=-1,
-                        help="hard gates: after the binary pass and the checks, measure for each closed edge the exact evidence for the closure, the rise in "
-                             "the data loss times W when the edge alone is reopened, and P(false) = sigmoid(evidence - logit prior); -1 (the default) every "
-                             "closed edge, as decision 9.63 (c) lists every closure with everything known of it; N the N against the strongest priors; 0 none. "
-                             "Each edge is one pass over the fit rows. Every closed edge is listed in edge_gate_closures.csv whatever this is")
+    parser.add_argument("--edge-gate-closure-evidence", type=int, default=20,
+                        help="hard gates: after the binary pass and the checks, measure for this many closed edges, against the strongest priors first, the "
+                             "exact evidence for the closure, the rise in the data loss times W when the edge alone is reopened, and P(false) = sigmoid(evidence "
+                             "- logit prior); -1 every closed edge; 0 none. Each edge is a forward pass over the fit rows with the limiting-step cache rebuilt, "
+                             "about 46 minutes on two CPU threads for the linear-response model on v5 (17 October 2026), hence the bound. Every closed edge "
+                             "is listed in edge_gate_closures.csv whatever this is, with its first-order estimate from one more pass (decision 9.63 (c))")
     parser.add_argument("--curated-edge-labels", action=argparse.BooleanOptionalAction, default=True,
                         help="with edge priors: a curated edge with at least --curated-label-minimum-records independent records, at least "
                              "--curated-label-minimum-human-records of them human evidence (NIH iCite human score above 0) and no IntAct absence is taken as "
