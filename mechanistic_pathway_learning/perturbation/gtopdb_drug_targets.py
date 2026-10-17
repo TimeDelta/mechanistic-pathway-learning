@@ -112,6 +112,24 @@ def read_ligand_mapping(gtopdb_directory: Path = GTOPDB_DIRECTORY) -> pd.DataFra
     return pd.read_csv(gtopdb_directory / LIGAND_MAPPING_FILE, low_memory=False, skiprows=VERSION_HEADER_ROWS)
 
 
+# A radiolabelled or fluorescent form of a ligand, which GtoPdb lists as a ligand of its own and often under the parent's
+# PubChem CID: [<sup>3</sup>H]flunitrazepam shares 3380 with flunitrazepam, and its binding rows say "Full agonist" at
+# GABRA2, GABRA3 and GABRA5 where the parent's say "Positive".
+LABELLED_LIGAND_PATTERN = re.compile(r"<sup>|\[(?:3H|125I|11C|18F|14C|35S|32P|99mTc)\]|alexa fluor|fluorescein|bodipy|cy[35]", re.IGNORECASE)
+
+
+def ligand_of_pubchem_cid_table(mapping: pd.DataFrame) -> dict[int, int]:
+    """PubChem CID -> one GtoPdb ligand id. A CID several ligands carry goes to the unlabelled ligand (the lowest id
+    among the unlabelled ones, so the choice does not depend on the file's row order), and a CID of 0 or less, which
+    GtoPdb writes for a ligand PubChem does not hold, goes to none."""
+    candidates: dict[int, list[tuple[bool, int]]] = {}
+    for cid, ligand, name in zip(pd.to_numeric(mapping["PubChem CID"], errors="coerce"), mapping["Ligand id"], mapping["Name"]):
+        if pd.isna(cid) or int(cid) <= 0:
+            continue
+        candidates.setdefault(int(cid), []).append((bool(LABELLED_LIGAND_PATTERN.search(str(name))), int(ligand)))
+    return {cid: min(choices)[1] for cid, choices in candidates.items()}
+
+
 def ligand_id_of_drug(pubchem_cid_of_drug: dict[str, int], name_of_drug: dict[str, str],
                       gtopdb_directory: Path = GTOPDB_DIRECTORY) -> tuple[dict[str, int], dict[str, str]]:
     """perturbation id -> GtoPdb ligand id, and perturbation id -> how it was matched.
@@ -120,8 +138,7 @@ def ligand_id_of_drug(pubchem_cid_of_drug: dict[str, int], name_of_drug: dict[st
     carries approved names for drugs whose CID it does not record. Matching by name alone reaches more of the study's
     drugs than by CID alone, so both are used and which one matched is reported, never guessed at."""
     mapping = read_ligand_mapping(gtopdb_directory)
-    cid_column = pd.to_numeric(mapping["PubChem CID"], errors="coerce")
-    ligand_of_cid = {int(cid): int(ligand) for cid, ligand in zip(cid_column, mapping["Ligand id"]) if pd.notna(cid)}
+    ligand_of_cid = ligand_of_pubchem_cid_table(mapping)
     ligand_of_name: dict[str, int] = {}
     for name, ligand in zip(mapping["Name"], mapping["Ligand id"]):
         key = str(name).strip().lower()
@@ -275,7 +292,7 @@ def pubchem_cid_from_perturbation_id(perturbation_id: str) -> int | None:
 # wherever one exists. Human rows alone by default, measured both ways on the drugs of the v5 graph and the OnSIDES
 # ingredients (17 October 2026): adding the rat and mouse rows changes three of the study drugs' complex targets, and
 # two of the three for the worse, lidocaine and lacosamide narrowing to the sodium channel subtypes rat assays named and
-# losing SCN1A, SCN3A and SCN8A, which both block; what it repairs is outside the study, GtoPdb holding nifedipine's and
+# losing SCN1A and SCN8A, brain subtypes GtoPdb holds no row of either drug for; what it repairs is outside the study, GtoPdb holding nifedipine's and
 # nimodipine's CaV1.2 rows for the rat only, so that on human rows nifedipine narrows to CACNA1D and CACNA1F. Either way
 # a narrowing follows the subunits GtoPdb's rows happen to name, which is assay coverage as much as selectivity.
 DEFAULT_NARROWING_SPECIES: tuple[str, ...] = ("Human",)
@@ -313,10 +330,25 @@ OBLIGATE_PARTNER_REASON = "obligate partner of the site, which the narrowing wou
 DEFAULT_BINDING_SITES_PATH = Path("configs/binding_sites.csv")
 
 
+def sign_of_rows(signs: list[float]) -> float:
+    """One subunit's sign from its rows: a row that states no direction (0, "Binding") gives way to rows that state
+    one; rows of one direction give the value most of them state, a tie going to the smaller magnitude (dexmedetomidine
+    at ADRA2A: "Agonist" and "Partial agonist"); rows of opposite directions give MIXED_SIGNS."""
+    directed = [sign for sign in signs if sign != 0]
+    if not directed:
+        return 0.0
+    if any(sign > 0 for sign in directed) and any(sign < 0 for sign in directed):
+        return MIXED_SIGNS
+    counts: dict[float, int] = {}
+    for sign in directed:
+        counts[sign] = counts.get(sign, 0) + 1
+    return max(counts, key=lambda sign: (counts[sign], -abs(sign)))
+
+
 def one_row_per_subunit(rows: pd.DataFrame, species: tuple[str, ...] = DEFAULT_NARROWING_SPECIES) -> pd.DataFrame:
     """One row per subunit for one ligand: gene_symbol (upper case, so a rat or mouse symbol names its human
     orthologue's gene), sign and the species that stated it. A subunit's human rows decide its sign when it has any, the
-    other listed species' rows otherwise; rows that disagree give MIXED_SIGNS. Rows of other species, rows naming no
+    other listed species' rows otherwise, as sign_of_rows reads them. Rows of other species, rows naming no
     single gene and rows whose action has no sign are left out, as one_gene_per_row leaves them."""
     kept = rows[rows["Target Species"].astype(str).str.strip().isin(species)].copy()
     if kept.empty:
@@ -328,9 +360,8 @@ def one_row_per_subunit(rows: pd.DataFrame, species: tuple[str, ...] = DEFAULT_N
     for gene, group in usable.groupby("gene_symbol"):
         human = group[group["Target Species"].astype(str).str.strip() == HUMAN_SPECIES]
         stating = human if len(human) else group
-        signs = set(stating.sign.astype(float))
         selectivity = stating["Selectivity"].astype(str).str.strip() if "Selectivity" in stating.columns else pd.Series([""] * len(stating))
-        records.append({"gene_symbol": gene, "sign": signs.pop() if len(signs) == 1 else MIXED_SIGNS,
+        records.append({"gene_symbol": gene, "sign": sign_of_rows(stating.sign.astype(float).tolist()),
                         "species": ";".join(sorted(set(stating["Target Species"].astype(str).str.strip()))),
                         "selectivity": ";".join(sorted(set(selectivity) - {"", "nan"}))})
     return pd.DataFrame(records, columns=["gene_symbol", "sign", "species", "selectivity"])
@@ -376,8 +407,7 @@ class ComplexTargetNarrowing:
                 raise FileNotFoundError(f"{gtopdb_directory / name} is missing: fetch the Guide to PHARMACOLOGY (scripts/fetch_raw_sources.sh), or build "
                                         "without the narrowing of complex targets (--no-narrow-complex-targets)")
         mapping = read_ligand_mapping(gtopdb_directory)
-        cid_column = pd.to_numeric(mapping["PubChem CID"], errors="coerce")
-        ligand_of_pubchem_cid = {int(cid): int(ligand) for cid, ligand in zip(cid_column, mapping["Ligand id"]) if pd.notna(cid)}
+        ligand_of_pubchem_cid = ligand_of_pubchem_cid_table(mapping)
         ligand_of_name: dict[str, int] = {}
         for name, ligand in zip(mapping["Name"], mapping["Ligand id"]):
             key = str(name).strip().lower()

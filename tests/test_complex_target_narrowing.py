@@ -215,3 +215,26 @@ def test_a_benzodiazepine_site_drug_gtopdb_leaves_unnamed_is_narrowed_by_its_sit
     assert barbiturate[0].gene_symbols == complex_with_alpha5.gene_symbols and record["kept_whole"] == {"CHEMBL2093872": "no GtoPdb ligand"}
     rows_only = ComplexTargetNarrowing.from_gtopdb(directory, sites, narrow_by_site_structure=False)
     assert rows_only.narrow([complex_with_alpha5], pubchem_cid=3958, drug_name="lorazepam")[0][0].gene_symbols == complex_with_alpha5.gene_symbols
+
+
+def test_a_cid_shared_with_a_radiolabelled_form_goes_to_the_parent_ligand():
+    """[3H]flunitrazepam shares PubChem CID 3380 with flunitrazepam in GtoPdb, and its binding rows say "Full agonist"
+    where the parent's say "Positive"; a CID of 0 is GtoPdb's word for none."""
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import ligand_of_pubchem_cid_table
+
+    for order in (1, -1):
+        mapping = pd.DataFrame([{"Ligand id": 4360, "Name": "[<sup>3</sup>H]flunitrazepam", "PubChem CID": "3380"},
+                                {"Ligand id": 4193, "Name": "flunitrazepam", "PubChem CID": "3380"},
+                                {"Ligand id": 9, "Name": "a peptide", "PubChem CID": "0"},
+                                {"Ligand id": 12, "Name": "[125I]a ligand", "PubChem CID": "77"}]).iloc[::order]
+        table = ligand_of_pubchem_cid_table(mapping)
+        assert table[3380] == 4193 and 0 not in table and table[77] == 12, "a labelled ligand is kept when it is the only one"
+
+
+def test_rows_of_one_direction_give_the_sign_most_of_them_state():
+    from mechanistic_pathway_learning.perturbation.gtopdb_drug_targets import MIXED_SIGNS, sign_of_rows
+
+    assert sign_of_rows([1.0, 0.5, 1.0]) == 1.0
+    assert sign_of_rows([1.0, 0.5]) == 0.5, "dexmedetomidine at ADRA2A: Agonist and Partial agonist, a tie goes to the smaller magnitude"
+    assert sign_of_rows([0.0, -1.0]) == -1.0, "a Binding row gives way to a row that states a direction"
+    assert sign_of_rows([1.0, -1.0]) == MIXED_SIGNS == 0.0 and sign_of_rows([]) == 0.0
