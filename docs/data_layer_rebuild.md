@@ -284,3 +284,26 @@ the chain's log holds four `stage graphs started` lines. What it found:
 
 The descriptors stage was running when this entry was written; the ESM protein embeddings are the long pole on two
 cores (103 batches a shard, about four minutes a batch). Nothing in this entry waits on them.
+
+## Addition, 17 October 2026: what training costs on the v5 graph
+
+`run_main_model.py --timing-batches 4` on `graph_full_neuronal_split_binders_drugs_v5` with the v5 tables
+(`evidence_full_v5`, `better_v2_full_v5`), the v5 node descriptors and cell-class weights, the registered v4 model
+flags, fold 0 and batch 16, on two CPU threads with 7 GB of memory (1,702 training perturbations, 107 steps an epoch):
+
+| configuration | seconds a training step | seconds a prediction batch | minutes an epoch (estimate) |
+| --- | --- | --- | --- |
+| linear response, registered settings, no edge priors | 33.9 | 3.6 | 61.5 |
+| the same with edge priors (hard gates, curated edges with human evidence taken as known) | 31.5 to 34.4 | 25.6 (steady) | 63.0 to 68.4 |
+| message passing, registered settings (fixed point, at most 60 rounds), with or without edge priors | killed, no Python error | | |
+
+Reading the numbers. The registered linear-response model computes each perturbation's limiting-step bottleneck once
+(`LinearResponseEncoder.cached_class_bottleneck`) and keeps it, so these first steps carry that cost: about 22 s of a
+batch, the gap between a prediction batch whose bottleneck is cached (3.6 s) and one whose cache was emptied (25.6 s).
+With hard gates the cache is emptied whenever the read-out changes, which is why the gated prediction batches cost
+25.6 s, why the binary pass costs about a training epoch per binary epoch, and why one closure's exact evidence costs
+about 46 minutes (107 forward batches after a rebuild). Memory: each cached bottleneck is a [nodes, classes] float32
+array, 49,797 x 12 x 4 bytes = 2.4 MB, so the 1,702 training perturbations alone would hold about 4.1 GB, and the
+validation perturbations more, against the 7 GB this container has before the model's own memory; a full run of the
+registered linear-response model on v5 may not fit here. The message-passing runs were killed with no Python error, which on this container has
+been the memory limit (the table above for 6 and 9 layers).
